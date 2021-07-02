@@ -7,9 +7,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
-// my debug header file
 #ifdef DEBUG
-#include "dbg.h"
+#include "dbg/dbg.h"
 extern dbg_t debug;
 #endif
 
@@ -35,9 +34,9 @@ static inline void str_print(str_t *str)
     printf(STR_FMT, STR_ARG(str));
 }
 
-static inline void str_free(str_t *pstr)
+static inline void str_free(str_t *str)
 {
-    free(pstr->buf);    
+    free(str->buf);    
 }
 
 static inline void pstr_free(str_t *pstr)

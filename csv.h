@@ -11,7 +11,7 @@
 
 // my debug header file
 #ifdef DEBUG
-#include "dbg.h"
+#include "dbg/dbg.h"
 extern dbg_t debug;
 #endif
 

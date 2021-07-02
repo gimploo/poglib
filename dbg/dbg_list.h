@@ -1,41 +1,47 @@
-#ifndef _LIST_H_
-#define _LIST_H_
+#ifndef _DBG_LIST_H_
+#define _DBG_LIST_H_
 
-#include "str.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
-#ifdef DEBUG
-#include "dbg/dbg.h"
-extern dbg_t debug;
-#endif
+/*
+ *
+ * Same version of the other list.h but to have the other list use 
+ * dbg.h, the best solution i know now is to create a separate list header
+ * just for this dbg
+ *
+ */
 
-typedef enum ValType {
 
-    VT_PSTR,  
-    VT_ADDR,
-    VT_COUNT
+typedef enum DValType {
 
-} ValType;
+    DVT_PSTR,  
+    DVT_ADDR,
+    DVT_COUNT
 
-typedef struct node {
+} DValType;
+
+typedef struct DNode {
 
     void * value;
-    ValType type;
-    struct node *next;
-    struct node *prev;
+    DValType type;
+    struct DNode *next;
+    struct DNode *prev;
 
-} Node;
+} DNode;
 
 typedef struct {
 
-    struct node *head;
-    struct node *tail;
+    struct DNode *head;
+    struct DNode *tail;
     size_t count;
 
-} List;
+} DList;
 
-static inline List list_init(void)
+static inline DList DList_init(void)
 {
-    return (List) {
+    return (DList) {
         .head = NULL,
         .tail = NULL,
         .count = 0
@@ -44,15 +50,73 @@ static inline List list_init(void)
 
 
 
-typedef void (*list_print_func)(void*);
 
-Node *  node_init(void *value, ValType type);
+/* =======================================================
+ *
+ * str_t exclusive for this dbg only
+ *
+ * =======================================================
+ */
 
-void    list_print(List *list);
-bool    list_append_node(List *list, Node *node);
-bool    list_delete_node(List *list, Node *node);
-bool    list_delete_node_by_value(List *list, void *pointer);
-void    list_destory(List *list);
+typedef struct {
+    char *buf;
+    size_t size;
+} Dstr_t;
+
+static inline void Dpstr_free(Dstr_t *pstr)
+{
+    free(pstr->buf);    
+    free(pstr);
+}
+
+static Dstr_t * new_Dpstr(char *buffer) 
+{
+    Dstr_t *str = (Dstr_t *)malloc(sizeof(Dstr_t));
+    if (str == NULL) return NULL;
+    str->size = strlen(buffer);
+
+    str->buf = (char *)malloc(sizeof(char) * (str->size +1));
+    if (str->buf == NULL) return NULL;
+
+    strcpy(str->buf, buffer);
+
+    return str;
+}
+
+
+static inline void Dstr_print(Dstr_t *pstr)
+{
+    printf("%.*s",(int)(pstr->size+1),pstr->buf);
+}
+
+// ===========================================================
+
+
+
+/*
+ *
+ *
+ *  FUNCTION DECLARATION
+ *
+ *
+ */
+
+
+typedef void (*DList_print_func)(void*);
+
+DNode *  DNode_init(void *value, DValType type);
+
+void    DList_print(DList *list);
+bool    DList_append_node(DList *list, DNode *node);
+bool    DList_delete_node(DList *list, DNode *node);
+bool    DList_delete_node_by_value(DList *list, void *pointer);
+void    DList_destory(DList *list);
+
+
+
+
+
+
 
 
 /*
@@ -62,10 +126,10 @@ void    list_destory(List *list);
  *                     v
  */
 
-Node * node_init(void *value, ValType type)
+DNode * DNode_init(void *value, DValType type)
 {
 
-    Node *node = (Node *) malloc(sizeof(Node));
+    DNode *node = (DNode *) malloc(sizeof(DNode));
     if (node == NULL) {
         fprintf(stderr, "%s: malloc failed\n", __func__);
         return NULL;
@@ -77,13 +141,13 @@ Node * node_init(void *value, ValType type)
     }
 
     switch(type) {
-        case VT_ADDR:
+        case DVT_ADDR:
             node->value = value;
-            node->type = VT_ADDR;
+            node->type = DVT_ADDR;
             break;
-        case VT_PSTR:
-            node->value = new_pstr((char *)value);
-            node->type = VT_PSTR;
+        case DVT_PSTR:
+            node->value = new_Dpstr((char *)value);
+            node->type = DVT_PSTR;
             break;
         default:
             fprintf(stderr, "%s: type not accounted for \n", __func__);
@@ -94,7 +158,9 @@ Node * node_init(void *value, ValType type)
 
     return node;
 }
-bool list_append_node(List *list, Node *node)
+
+
+bool DList_append_node(DList *list, DNode *node)
 {
     if (list == NULL) {
         fprintf(stderr, "%s: list argument is null\n", __func__);
@@ -121,14 +187,14 @@ bool list_append_node(List *list, Node *node)
     return true;
 }
 
-void node_destory(Node *del)
+void DNode_destory(DNode *del)
 {
     switch(del->type) {
-        case VT_PSTR: 
-            pstr_free((str_t *)del->value);
+        case DVT_PSTR: 
+            Dpstr_free((Dstr_t *)del->value);
             free(del);
             break;
-        case VT_ADDR:
+        case DVT_ADDR:
             free(del);
             break;
         default:
@@ -139,7 +205,7 @@ void node_destory(Node *del)
 
 
 
-bool list_delete_node(List *list, Node *node)
+bool DList_delete_node(DList *list, DNode *node)
 {
     if (list == NULL) {
         fprintf(stderr, "%s: list argument is null\n", __func__);
@@ -151,7 +217,7 @@ bool list_delete_node(List *list, Node *node)
         return false;
     }
 
-    Node *del = NULL;
+    DNode *del = NULL;
     if (list->head == node) {
 
         del = list->head; 
@@ -161,7 +227,7 @@ bool list_delete_node(List *list, Node *node)
             list->head->prev = NULL;
 
         list->count--;
-        node_destory(del);
+        DNode_destory(del);
         return true;
 
     } else if (list->tail == node) {
@@ -171,19 +237,20 @@ bool list_delete_node(List *list, Node *node)
         list->tail = list->tail->prev;
         if (list->tail != NULL)
             list->tail->next = NULL;
+
         list->count--;
-        node_destory(del);
+        DNode_destory(del);
         return true;
     }
 
-    Node *tmp = list->head->next;
+    DNode *tmp = list->head->next;
     while (tmp != NULL) {
         if (tmp == node) {
             del = tmp;
             tmp->prev->next = tmp->next;
             tmp->next->prev = tmp->prev;
             list->count--;
-            node_destory(del);
+            DNode_destory(del);
             return true;
         }
         tmp = tmp->next;
@@ -194,7 +261,7 @@ bool list_delete_node(List *list, Node *node)
 
 
 
-void list_print(List *list)
+void DList_print(DList *list)
 {
     if (list == NULL) {
         fprintf(stderr, "%s: list argument is null\n", __func__);
@@ -204,14 +271,14 @@ void list_print(List *list)
         exit(1);
     }
 
-    Node *track = list->head;
+    DNode *track = list->head;
     while (track != NULL) {
         switch(track->type) {
-            case VT_ADDR:
+            case DVT_ADDR:
                 printf("%p", track->value);
                 break;
-            case VT_PSTR:
-                str_print((str_t *)track->value);
+            case DVT_PSTR:
+                Dstr_print((Dstr_t *)track->value);
                 break;
             default:
                 fprintf(stderr, "%s: type not accounted for\n", __func__);
@@ -221,22 +288,22 @@ void list_print(List *list)
     }
 }
 
-void list_destory(List *list)
+void DList_destory(DList *list)
 {
     if (list == NULL) {
         fprintf(stderr ,"%s: list argument is null\n", __func__);
         exit(1);
     }
-    Node *tmp = list->head;
-    Node *del = NULL;
+    DNode *tmp = list->head;
+    DNode *del = NULL;
     while (tmp != NULL) {
         del = tmp;
         tmp = tmp->next;
-        node_destory(del);
+        DNode_destory(del);
     }
 }
 
-bool list_delete_node_by_value(List *list, void *value)
+bool DList_delete_node_by_value(DList *list, void *value)
 {
     if (list == NULL) {
         fprintf(stderr, "%s: list argument is null\n", __func__);
@@ -246,7 +313,7 @@ bool list_delete_node_by_value(List *list, void *value)
         exit(1);
     }
 
-    Node *del = NULL;
+    DNode *del = NULL;
     if (list->head->value == value) {
 
         del = list->head; 
@@ -256,7 +323,7 @@ bool list_delete_node_by_value(List *list, void *value)
             list->head->prev = NULL;
 
         list->count--;
-        node_destory(del);
+        DNode_destory(del);
         return true;
 
     } else if (list->tail->value == value) {
@@ -268,18 +335,18 @@ bool list_delete_node_by_value(List *list, void *value)
             list->tail->next = NULL;
 
         list->count--;
-        node_destory(del);
+        DNode_destory(del);
         return true;
     }
 
-    Node *tmp = list->head->next;
+    DNode *tmp = list->head->next;
     while (tmp != NULL) {
         if (tmp->value == value) {
             del = tmp;
             tmp->prev->next = tmp->next;
             tmp->next->prev = tmp->prev;
             list->count--;
-            node_destory(del);
+            DNode_destory(del);
             return true;
         }
         tmp = tmp->next;
@@ -287,8 +354,7 @@ bool list_delete_node_by_value(List *list, void *value)
 
     return false;
 
-
 }
 
 
-#endif //_LIST_H_
+#endif //_DBG_LIST_H_
