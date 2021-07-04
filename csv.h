@@ -337,7 +337,22 @@ Row csv_get_row_from_line_number(CSV *csv, size_t line_num)
 
     for (size_t i = epos, wcount = 0, lcount = 0; ;i++) {
 
-        if (tmp->buf[i] == ',') {
+        if (tmp->buf[i] == '"') { 
+
+            while (tmp->buf[++i] != '"') {
+                word[wcount] = tmp->buf[i];
+                wcount++;
+            }
+            word[wcount] = '\0';
+
+            list_buff[lcount] = new_pstr(word);
+
+            lcount++;
+            wcount = 0;
+            memset(word, 0, KB);
+            continue;
+
+        } else if (tmp->buf[i] == ',') {
 
             word[wcount] = '\0';
 
