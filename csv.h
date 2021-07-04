@@ -48,7 +48,7 @@ typedef struct {
     str_t *buffer;
     
     Row **row_list;
-    size_t row_list_index;
+    int row_list_index;
 
 } CSV;
 
@@ -57,7 +57,7 @@ typedef struct {
 
 CSV         csv_init(str_t *buffer);
 
-Row         csv_get_row_from_line_number(CSV *csv, size_t line_num);
+Row *       csv_get_row_from_line_number(CSV *csv, size_t line_num);
 
 int         csv_get_line_num_from_string(CSV *csv, str_t *find); // Depricated
 size_t      csv_get_line_num_of_string_restricted_to_a_header_field(CSV *csv, size_t field_num, str_t *find_word);
@@ -195,7 +195,7 @@ Row ** _csv_row_array_init(size_t ecount)
 
     Row **row = (Row **)malloc(sizeof(Row *) * ecount);
     assert(row);
-    memset(row, 0, sizeof(Row *) * ecount);
+    memset(row, 0, (sizeof(Row *) * ecount));
 
     return row;
 }
@@ -207,9 +207,9 @@ CSV csv_init(str_t *buffer)
 
     csv.header = _csv_header_init(buffer);
     csv.entries = _csv_entry_list_init(buffer);
-    csv.buffer = new_pstr(buffer->buf); // TO avoid the confusion of whether to pass an allocated or static buffer
+    csv.buffer = buffer; // TO avoid the confusion of whether to pass an allocated or static buffer
 
-    csv.row_list_index = 0;
+    csv.row_list_index = -1;
     csv.row_list = _csv_row_array_init(csv.entries.entry_count);
 
     return csv;
@@ -233,9 +233,13 @@ void csv_print_entry_from_line_num(CSV *csv, size_t lnum)
 
     str_t *buffer = csv->buffer;
     char ch;
-    while ((ch = buffer->buf[buf_pos]) != '\n') {
+    for(size_t i = buf_pos; i < buffer->size; i++)
+    {
+        ch = buffer->buf[i];
+        if (ch == '\n') {
+            break;
+        }
         printf("%c", ch);
-        buf_pos++;
     }
     printf("\n");
 }
@@ -302,12 +306,12 @@ size_t csv_get_entry_pos_from_line_number(CSV *csv, size_t line_num)
 }
 
 
-Row csv_get_row_from_line_number(CSV *csv, size_t line_num)
+Row * csv_get_row_from_line_number(CSV *csv, size_t line_num)
 {
     assert(csv); 
     assert(line_num > 0); 
 
-    if (csv->row_list_index == csv->entries.entry_count + 1) {
+    if (csv->row_list_index == (int )csv->entries.entry_count) {
 
         //TODO: row list has reached max capacity, what do u do?
         fprintf(stderr, "%s: row list has reached max capacity\n", __func__);
@@ -327,8 +331,10 @@ Row csv_get_row_from_line_number(CSV *csv, size_t line_num)
     assert(fcount != 0);
 
     
-    size_t list_buff_size = (fcount + 1) * sizeof(str_t *);
+    size_t list_buff_size = fcount * sizeof(str_t *);
+
     str_t **list_buff = (str_t **)malloc(list_buff_size);
+
     assert(list_buff);
     memset(list_buff, 0, list_buff_size);
 
@@ -381,10 +387,9 @@ Row csv_get_row_from_line_number(CSV *csv, size_t line_num)
     row->buffer = list_buff;
 
     // To free it later (memory management)
-    csv->row_list[csv->row_list_index] = row;
-    csv->row_list_index++;
+    csv->row_list[++csv->row_list_index] = row;
 
-    return *row;
+    return row;
 }
 
 
@@ -414,18 +419,12 @@ int csv_get_line_num_from_string(CSV *csv, str_t *find)
 
 void csv_destroy(CSV *csv)
 {
-
     assert(csv);
 
-    // str buffer
-    if (csv->buffer != NULL) {
+    // str_t buffer
+    pstr_free(csv->buffer);
 
-        pstr_free(csv->buffer);
-        csv->buffer = NULL;
-
-    }
-
-    //Entry list
+    //Meta list
     if (csv->entries.entry_pos_list != NULL) {
 
         free(csv->entries.entry_pos_list);
@@ -437,14 +436,15 @@ void csv_destroy(CSV *csv)
     if (csv->row_list != NULL) {
 
         Row *row = NULL;
-        for (size_t i = 0; i < csv->row_list_index; i++)
+        for (int i = 0; i <= csv->row_list_index; i++)
         {
             row = csv->row_list[i];
-            for (size_t i = 0; i < csv->header.header_count; i++)
+            for (size_t j = 0; j < row->field_count; j++)
             {
-                pstr_free(row->buffer[i]);
-                row->buffer[i] = NULL;
+                pstr_free(row->buffer[j]);
             }
+            free(row->buffer);
+            row->buffer = NULL;
             free(row);
             row = NULL;
         }
@@ -456,12 +456,11 @@ void csv_destroy(CSV *csv)
     if (csv->header.header != NULL) {
 
         for (size_t i = 0; i < csv->header.header_count; i++) {
-            free(csv->header.header[i]);
+            pstr_free(csv->header.header[i]);
             csv->header.header[i] = NULL;
         }
         free(csv->header.header);
         csv->header.header = NULL;
-
     }
 
 }
@@ -491,9 +490,9 @@ size_t csv_get_line_num_of_string_restricted_to_a_header_field(CSV *csv, size_t 
         size_t epos = csv->entries.entry_pos_list[i];
         size_t lnum = csv_get_line_num_from_entry_pos(csv, epos);
 
-        Row row = csv_get_row_from_line_number(csv, lnum);
+        Row *row = csv_get_row_from_line_number(csv, lnum);
 
-        str_t *str_field = row.buffer[buffer_index]; 
+        str_t *str_field = row->buffer[buffer_index]; 
         assert(str_field);
 
         if (str_is_string_in_buffer(find_word, str_field)) {
