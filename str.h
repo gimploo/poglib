@@ -25,7 +25,7 @@ static inline str_t new_str(char *buffer)
 {
     return (str_t) {
         .buf = buffer,
-        .size = strlen(buffer)
+        .size = strlen(buffer),
     };
 }
 
@@ -34,39 +34,70 @@ static inline void str_print(str_t *str)
     printf(STR_FMT, STR_ARG(str));
 }
 
-static inline void str_free(str_t *str)
+static inline void pstr_free(str_t *str)
 {
-    free(str->buf);    
-}
+    assert(str);
 
-static inline void pstr_free(str_t *pstr)
-{
-    free(pstr->buf);    
-    free(pstr);
+    free(str->buf);    
+    str->buf = NULL;
+
+    free(str);
+    str = NULL;
 }
 
 static str_t * new_pstr(char *buffer) 
 {
     str_t *str = (str_t *)malloc(sizeof(str_t));
     assert(str);
-    str->size = strlen(buffer);
 
-    str->buf = (char *)malloc(sizeof(char) * (str->size +1));
+    size_t buffer_size = sizeof(char) * (strlen(buffer) + 1);
+
+    str->buf = (char *)malloc(buffer_size);
     assert(str->buf);
 
-    strcpy(str->buf, buffer);
+    memset(str->buf, 0, buffer_size);
+
+    strncpy(str->buf, buffer, buffer_size-1);
+    str->size = buffer_size - 1;
+    //printf("\n\n\nSIZE: %li\n, CONTENT: %s\n\n\n\n", buffer_size, str->buf);
 
     return str;
 }
 
+static inline void str_cpy(str_t *dest, str_t *source)
+{
+    assert(dest);
+    assert(source);
+
+    strncpy(dest->buf, source->buf, source->size);
+    dest->size = source->size;
+}
+
 static inline bool str_cmp(str_t *a, str_t *b) 
 {
+    assert(a);
+    assert(b);
+
     if (a->size != b->size) return false;
 
     for (size_t i = 0; i < a->size; i++) 
         if (a->buf[i] != b->buf[i]) 
             return false;
     return true;
+}
+
+static str_t str_cpy_delimiter(str_t *buffer, char ch)
+{
+    assert(buffer);
+
+    str_t word = {0};
+    char bc; size_t i = 0;
+    while((bc = buffer->buf[i]) != ch)
+        word.buf[i++] = bc;
+    word.buf[i] = '\0';
+    word.size = i;
+
+    return word;
 }
 
 size_t _file_get_size(char *file_path)
@@ -107,7 +138,7 @@ static inline str_t str_read_file_to_str(char *file_path)
 }
 
 // Returns the pos of the word in buffer
-static inline int str_is_string_in_buffer(str_t *word, str_t *buffer)
+static inline int str_where_is_string_in_buffer(str_t *word, str_t *buffer)
 {
     //TODO: account for null characters
     
@@ -129,6 +160,31 @@ static inline int str_is_string_in_buffer(str_t *word, str_t *buffer)
         i++;
     }
     return -1;
+}
+
+static inline int str_is_string_in_buffer(str_t *word, str_t *buffer)
+{
+    //TODO: account for null characters
+    
+    assert(word);
+    assert(buffer);
+    if (buffer->size < word->size) return false;
+    size_t i = 0;
+    while (i < buffer->size) {
+
+        if (buffer->buf[i] == word->buf[0]) {
+
+            for (size_t j = 0, tmp = i; 
+                    j < word->size; 
+                    j++, tmp++)
+            {
+                if (word->buf[j] != buffer->buf[tmp]) break;
+                else if (j == (word->size - 1)) return true;
+            }
+        }
+        i++;
+    }
+    return false;
 }
 
 

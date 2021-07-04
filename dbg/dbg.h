@@ -49,15 +49,20 @@ static inline bool dbg_init(char *fpath)
 static inline void dbg_destroy()
 {
     fprintf(stdout, "DBG: Concluded\n");
+
+
     DList_destory(&debug.list);
 
 
-    if (debug.list.count == 0)
+    if (debug.list.count == 0) {
+
         fprintf(debug.fp, 
                 "NO MEMORY LEAKS\n");
-    else
+    } else {
+
         fprintf(debug.fp, 
                 "MEMORY LEAK FOUND -> COUNT %0li\n", debug.list.count);
+    }
 
     fclose(debug.fp);
 }
@@ -88,6 +93,8 @@ static void * debug_malloc(size_t size, char *file_path, size_t line_num, const 
     FILE *fp = debug.fp; // global variable
     DList *list = &debug.list;
 
+    assert(fp); assert(list);
+
     fprintf(fp, "%s: \tIn function '%s':\n", file_path, func_name);
     fprintf(fp, "%s:%li: \t\033[0;32mMEMORY ALLOCTED (%0li bytes)\033[0m\n", 
             file_path, line_num, size);
@@ -116,6 +123,8 @@ static void * debug_realloc(void *pointer, size_t size, char *file_path, size_t 
     FILE *fp = debug.fp; // global variable
     DList *list = &debug.list;
 
+    assert(fp); assert(list);
+
     fprintf(fp, "%s: \tIn function '%s':\n", file_path, func_name);
     fprintf(fp, "%s:%li: \tMEMORY \033[0;32m REALLOCTED \033[0m OF SIZE:%0li\n" ,
             file_path, line_num, size);
@@ -133,7 +142,7 @@ static void * debug_realloc(void *pointer, size_t size, char *file_path, size_t 
         fprintf(stderr, "%s: malloc failed\n", __func__);
         exit(1);
     }
-    DList_append_node(&debug.list, node);
+    DList_append_node(list, node);
     
     return realloc_mem;
 }
@@ -144,8 +153,10 @@ static void debug_free(void *pointer, char *pointer_name , char *file_path, size
     FILE *fp = debug.fp;
     DList *list = &debug.list;
 
+    assert(fp); assert(list);
+
     fprintf(fp, "%s: \tIn function '%s':\n", file_path, func_name);
-    fprintf(fp, "%s:%li: \t\033[01;34m'%s' DEALLOCATED\033[0m\n" 
+    fprintf(fp, "%s:%li: \t\033[01;34m'%s' DEALLOCATED  \033[0m\n" 
             ,file_path, line_num, pointer_name);
     fprintf(fp, "\n");
     

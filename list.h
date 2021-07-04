@@ -135,6 +135,8 @@ void node_destory(Node *del)
             fprintf(stderr, "%s: type not accounted for\n", __func__);
             exit(1);
     }
+
+    del = NULL;
 }
 
 

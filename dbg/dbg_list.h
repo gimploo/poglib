@@ -61,12 +61,13 @@ static inline DList DList_init(void)
 typedef struct {
     char *buf;
     size_t size;
+    bool isptr;
 } Dstr_t;
 
 static inline void Dpstr_free(Dstr_t *pstr)
 {
-    free(pstr->buf);    
-    free(pstr);
+    free(pstr->buf);
+    if (pstr->isptr) free(pstr);
 }
 
 static Dstr_t * new_Dpstr(char *buffer) 
@@ -74,6 +75,7 @@ static Dstr_t * new_Dpstr(char *buffer)
     Dstr_t *str = (Dstr_t *)malloc(sizeof(Dstr_t));
     if (str == NULL) return NULL;
     str->size = strlen(buffer);
+    str->isptr = true;
 
     str->buf = (char *)malloc(sizeof(char) * (str->size +1));
     if (str->buf == NULL) return NULL;
@@ -106,12 +108,11 @@ typedef void (*DList_print_func)(void*);
 
 DNode *  DNode_init(void *value, DValType type);
 
-void    DList_print(DList *list);
 bool    DList_append_node(DList *list, DNode *node);
 bool    DList_delete_node(DList *list, DNode *node);
 bool    DList_delete_node_by_value(DList *list, void *pointer);
 void    DList_destory(DList *list);
-
+void    DList_print(DList *list);
 
 
 
@@ -192,7 +193,6 @@ void DNode_destory(DNode *del)
     switch(del->type) {
         case DVT_PSTR: 
             Dpstr_free((Dstr_t *)del->value);
-            free(del);
             break;
         case DVT_ADDR:
             free(del);
@@ -201,6 +201,7 @@ void DNode_destory(DNode *del)
             fprintf(stderr, "%s: type not accounted for\n", __func__);
             exit(1);
     }
+    del = NULL;
 }
 
 
