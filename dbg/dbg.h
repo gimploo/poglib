@@ -12,6 +12,8 @@
 
 #include "dbg_list.h"
 
+#include <string.h>
+
 #define KB 1024
 
 typedef struct dbg_t dbg_t;
@@ -24,55 +26,22 @@ struct dbg_t {
 
 };
 
+// FIXME:
+// Issue in DValMeta filename member, apparantely the filename isnt copied properly to it but in func_name that isnt a problem.
+
 
 // Global debug meta data struct
 extern dbg_t debug; 
 
-
-// Init function required to start the debugger
-static inline bool dbg_init(char *fpath)
-{
-    assert(fpath);
-    FILE *fp = fopen(fpath, "w");
-    assert(fp);
-    debug = (dbg_t) {
-        .fp = fp,
-        .fname = fpath,
-        .list = DList_init()
-    };
-    fprintf(stdout, "DBG: Initalized\n");
-
-    return true;
-}
-
-// Close function required to end the debugger
-static inline void dbg_destroy()
-{
-    fprintf(stdout, "DBG: Concluded\n");
-
-
-    DList_destory(&debug.list);
-
-
-    if (debug.list.count == 0) {
-
-        fprintf(debug.fp, 
-                "NO MEMORY LEAKS\n");
-    } else {
-
-        fprintf(debug.fp, 
-                "MEMORY LEAK FOUND -> COUNT %0li\n", debug.list.count);
-    }
-
-    fclose(debug.fp);
-}
+bool dgb_init(const char *);
+void dbg_destroy();
 
 
 // Wrapper of common memory allocating function in stdlib 
 
-#define malloc(n) debug_malloc((n), __FILE__, __LINE__, __func__)
-#define realloc(p, n) debug_realloc((p), (n), __FILE__, __LINE__, __func__)
-#define free(p) debug_free((p), (#p), __FILE__, __LINE__, __func__) 
+#define malloc(n) _debug_malloc((n), __FILE__, __LINE__, __func__)
+#define realloc(p, n) _debug_realloc((p), (n), __FILE__, __LINE__, __func__)
+#define free(p) _debug_free((p), (#p), __FILE__, __LINE__, __func__) 
 
 
 
@@ -87,8 +56,24 @@ static inline void dbg_destroy()
  *
  */
 
+// Init function required to start the debugger
+bool dbg_init(const char *fpath)
+{
+    assert(fpath);
+    FILE *fp = fopen(fpath, "w");
+    assert(fp);
+    debug = (dbg_t) {
+        .fp = fp,
+        .fname = fpath,
+        .list = DList_init()
+    };
+    fprintf(stdout, "DBG: Initalized\n");
 
-static void * debug_malloc(size_t size, char *file_path, size_t line_num, const char *func_name)
+    return true;
+}
+
+
+static void * _debug_malloc(size_t size, const char *file_path, size_t line_num, const char *func_name)
 {
     FILE *fp = debug.fp; // global variable
     DList *list = &debug.list;
@@ -104,9 +89,17 @@ static void * debug_malloc(size_t size, char *file_path, size_t line_num, const 
 
     void *malloc_mem = malloc(size);
 
-#define malloc(n) debug_malloc((n), __FILE__, __LINE__, __func__)
+#define malloc(n) _debug_malloc((n), __FILE__, __LINE__, __func__)
+    DValMeta meta = {0};
 
-    DNode *node = DNode_init(malloc_mem, DVT_ADDR);
+    meta.line_num = line_num;
+    meta.size = size;
+    memcpy(meta.func_name, func_name,strlen(func_name));
+    memcpy(meta.filename, file_path, strlen(file_path));
+    
+    DNode *node = NULL;
+    node = DNode_init(malloc_mem, DVT_ADDR, meta);
+
     if (node == NULL) {
         fprintf(stderr, "%s: malloc failed\n", __func__);
         exit(1);
@@ -118,7 +111,7 @@ static void * debug_malloc(size_t size, char *file_path, size_t line_num, const 
 }
 
 
-static void * debug_realloc(void *pointer, size_t size, char *file_path, size_t line_num, const char *func_name)
+static void * _debug_realloc(void *pointer, size_t size, const char *file_path, size_t line_num, const char *func_name)
 {
     FILE *fp = debug.fp; // global variable
     DList *list = &debug.list;
@@ -134,10 +127,17 @@ static void * debug_realloc(void *pointer, size_t size, char *file_path, size_t 
 
     void *realloc_mem = realloc(pointer, size);
 
-#define realloc(p, n) debug_realloc((p), (n), __FILE__, __LINE__, __func__)
+#define realloc(p, n) _debug_realloc((p), (n), __FILE__, __LINE__, __func__)
 
+    DValMeta meta = {0};
+    meta.line_num = line_num;
+    meta.size = size;
+    memcpy(meta.func_name, func_name, strlen(func_name));
+    memcpy(meta.filename, file_path, strlen(file_path));
 
-    DNode *node = DNode_init(realloc_mem, DVT_ADDR);
+    DNode *node = NULL;
+    node = DNode_init(realloc_mem, DVT_ADDR, meta);
+
     if (node == NULL) {
         fprintf(stderr, "%s: malloc failed\n", __func__);
         exit(1);
@@ -148,7 +148,7 @@ static void * debug_realloc(void *pointer, size_t size, char *file_path, size_t 
 }
 
 
-static void debug_free(void *pointer, char *pointer_name , char *file_path, size_t line_num, const char *func_name)
+static void _debug_free(void *pointer, char *pointer_name , const char *file_path, size_t line_num, const char *func_name)
 {
     FILE *fp = debug.fp;
     DList *list = &debug.list;
@@ -166,7 +166,45 @@ static void debug_free(void *pointer, char *pointer_name , char *file_path, size
 
     free(pointer);
 
-#define free(p) debug_free((p), (#p), __FILE__, __LINE__, __func__) 
+#define free(p) _debug_free((p), (#p), __FILE__, __LINE__, __func__) 
+}
+
+void _debug_mem_dump()
+{
+    DList *list = &debug.list;
+    assert(list);
+
+    DList_print(list);
+    list = NULL;
+    
+}
+
+// Close function required to end the debugger
+void dbg_destroy()
+{
+    fprintf(stdout, "DBG: Concluded\n");
+
+
+    DList_destory(&debug.list);
+
+
+    if (debug.list.count == 0) {
+
+        fprintf(debug.fp, 
+                "NO MEMORY LEAKS\n");
+        fprintf(stdout, 
+                "NO MEMORY LEAKS\n");
+    } else {
+
+        fprintf(debug.fp, 
+                "MEMORY LEAK FOUND -> COUNT %0li\n", debug.list.count);
+        fprintf(stdout, 
+                "MEMORY LEAK FOUND -> COUNT %0li\n", debug.list.count);
+        _debug_mem_dump();
+    }
+
+
+    fclose(debug.fp);
 }
 
 #endif //_DEBUG_H_

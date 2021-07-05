@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define KB 1024
+
 /*
  *
  * Same version of the other list.h but to have the other list use 
@@ -22,9 +24,20 @@ typedef enum DValType {
 
 } DValType;
 
+typedef struct DValMeta DValMeta;
+struct DValMeta {
+
+    char filename[KB];
+    char func_name[KB];
+    size_t line_num;
+    size_t size;
+};
+
 typedef struct DNode {
 
     void * value;
+    DValMeta meta;
+
     DValType type;
     struct DNode *next;
     struct DNode *prev;
@@ -61,13 +74,14 @@ static inline DList DList_init(void)
 typedef struct {
     char *buf;
     size_t size;
-    bool isptr;
 } Dstr_t;
 
 static inline void Dpstr_free(Dstr_t *pstr)
 {
     free(pstr->buf);
-    if (pstr->isptr) free(pstr);
+    pstr->buf = NULL;
+    free(pstr);
+    pstr = NULL;
 }
 
 static Dstr_t * new_Dpstr(char *buffer) 
@@ -75,7 +89,6 @@ static Dstr_t * new_Dpstr(char *buffer)
     Dstr_t *str = (Dstr_t *)malloc(sizeof(Dstr_t));
     if (str == NULL) return NULL;
     str->size = strlen(buffer);
-    str->isptr = true;
 
     str->buf = (char *)malloc(sizeof(char) * (str->size +1));
     if (str->buf == NULL) return NULL;
@@ -106,7 +119,7 @@ static inline void Dstr_print(Dstr_t *pstr)
 
 typedef void (*DList_print_func)(void*);
 
-DNode *  DNode_init(void *value, DValType type);
+DNode *  DNode_init(void *value, DValType type, DValMeta meta);
 
 bool    DList_append_node(DList *list, DNode *node);
 bool    DList_delete_node(DList *list, DNode *node);
@@ -127,7 +140,7 @@ void    DList_print(DList *list);
  *                     v
  */
 
-DNode * DNode_init(void *value, DValType type)
+DNode * DNode_init(void *value, DValType type, DValMeta meta)
 {
 
     DNode *node = (DNode *) malloc(sizeof(DNode));
@@ -145,10 +158,12 @@ DNode * DNode_init(void *value, DValType type)
         case DVT_ADDR:
             node->value = value;
             node->type = DVT_ADDR;
+            node->meta = meta;
             break;
         case DVT_PSTR:
             node->value = new_Dpstr((char *)value);
             node->type = DVT_PSTR;
+            node->meta = meta;
             break;
         default:
             fprintf(stderr, "%s: type not accounted for \n", __func__);
@@ -275,16 +290,27 @@ void DList_print(DList *list)
     DNode *track = list->head;
     while (track != NULL) {
         switch(track->type) {
-            case DVT_ADDR:
-                printf("%p", track->value);
-                break;
-            case DVT_PSTR:
-                Dstr_print((Dstr_t *)track->value);
-                break;
+            case DVT_ADDR: {
+
+                fprintf(stdout, "%s: \tIn function '%s':\n", track->meta.filename, track->meta.func_name);
+                fprintf(stdout, "%s:%li: \tADDR :=\033[0;32m %p (%0li bytes)\033[0m\n", track->meta.filename, track->meta.line_num, track->value, track->meta.size);
+
+            } break;
+            case DVT_PSTR: {
+
+                Dstr_t *value = (Dstr_t *)track->value;
+                fprintf(stdout, "%s: \tIn function '%s':\n", 
+                        track->meta.filename, track->meta.func_name);
+                fprintf(stdout, "%s:%li: \tSTR :=\033[0;32m %.*s (%0li bytes)\033[0m\n", 
+                        track->meta.filename, track->meta.line_num, (int)value->size, (char *)value->buf, track->meta.size);
+                value = NULL;
+
+            } break;
             default:
                 fprintf(stderr, "%s: type not accounted for\n", __func__);
                 exit(1);
         }
+        printf("\n");
         track = track->next;
     }
 }
