@@ -11,7 +11,7 @@
 
 // my debug header file
 #ifdef DEBUG
-#include "dbg/dbg.h"
+#include "dbg/dbg.h" 
 extern dbg_t debug;
 #endif
 
@@ -21,7 +21,7 @@ extern dbg_t debug;
 typedef struct {
 
     str_t **buffer;
-    size_t field_count;
+    size_t buff_count;
 
 } Row;
 
@@ -331,7 +331,7 @@ Row * csv_get_row_from_line_number(CSV *csv, size_t line_num)
     assert(fcount != 0);
 
     
-    size_t list_buff_size = fcount * sizeof(str_t *);
+    size_t list_buff_size = (fcount + 1) * sizeof(str_t *);
 
     str_t **list_buff = (str_t **)malloc(list_buff_size);
 
@@ -341,7 +341,7 @@ Row * csv_get_row_from_line_number(CSV *csv, size_t line_num)
 
     char word[KB] = {0};
 
-    for (size_t i = epos, wcount = 0, lcount = 0; ;i++) {
+    for (size_t i = epos, wcount = 0, lcount = 0; i <= csv->buffer->size; i++) {
 
         if (tmp->buf[i] == '"') { 
 
@@ -369,21 +369,21 @@ Row * csv_get_row_from_line_number(CSV *csv, size_t line_num)
             memset(word, 0, KB);
             continue;
 
-        } else if (tmp->buf[i] == '\n') {
+        } else if (tmp->buf[i] == '\n' || i == csv->buffer->size) {
 
             word[wcount] = '\0';
 
             list_buff[lcount] = new_pstr(word);
 
-            lcount++;
             break;
-        }
+        } 
+
         word[wcount] = tmp->buf[i];
         wcount++;
-
     }
     
-    row->field_count = fcount;
+    assert(fcount == csv->header.header_count);
+    row->buff_count = fcount;
     row->buffer = list_buff;
 
     // To free it later (memory management)
@@ -397,7 +397,7 @@ void csv_print_row(Row *row)
 {
     assert(row);
     
-    for (size_t i = 0; i < row->field_count; i++)
+    for (size_t i = 0; i < row->buff_count; i++)
     {
         str_print(row->buffer[i]);
         printf("\n");
@@ -407,6 +407,9 @@ void csv_print_row(Row *row)
 
 int csv_get_line_num_from_string(CSV *csv, str_t *find)
 {
+    assert(csv);
+    assert(find);
+
     int gpos = str_is_string_in_buffer(find, csv->buffer);
     if (gpos == -1) return gpos;
 
@@ -435,18 +438,19 @@ void csv_destroy(CSV *csv)
     // Row list
     if (csv->row_list != NULL) {
 
-        Row *row = NULL;
+        Row *list = NULL;
         for (int i = 0; i <= csv->row_list_index; i++)
         {
-            row = csv->row_list[i];
-            for (size_t j = 0; j < row->field_count; j++)
+            list = csv->row_list[i];
+            assert(list);
+            for (size_t j = 0; j < list->buff_count; j++)
             {
-                pstr_free(row->buffer[j]);
+                pstr_free(list->buffer[j]);
             }
-            free(row->buffer);
-            row->buffer = NULL;
-            free(row);
-            row = NULL;
+            free(list->buffer);
+            list->buffer = NULL;
+            free(list);
+            list = NULL;
         }
         free(csv->row_list);
         csv->row_list = NULL;
