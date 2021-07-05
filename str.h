@@ -31,6 +31,7 @@ static inline str_t new_str(char *buffer)
 
 static inline void str_print(str_t *str)
 {
+    assert(str);
     printf(STR_FMT, STR_ARG(str));
 }
 
@@ -45,6 +46,7 @@ static inline void pstr_free(str_t *str)
     str = NULL;
 }
 
+
 static str_t * new_pstr(char *buffer) 
 {
     str_t *str = (str_t *)malloc(sizeof(str_t));
@@ -58,8 +60,9 @@ static str_t * new_pstr(char *buffer)
     memset(str->buf, 0, buffer_size);
 
     strncpy(str->buf, buffer, buffer_size-1);
+
+
     str->size = buffer_size - 1;
-    //printf("\n\n\nSIZE: %li\n, CONTENT: %s\n\n\n\n", buffer_size, str->buf);
 
     return str;
 }
@@ -100,7 +103,7 @@ static str_t str_cpy_delimiter(str_t *buffer, char ch)
     return word;
 }
 
-size_t _file_get_size(char *file_path)
+size_t _file_get_size(const char *file_path)
 {
     FILE *fp = fopen(file_path, "r");
     if (fp == NULL) {
@@ -113,7 +116,7 @@ size_t _file_get_size(char *file_path)
     return size; // Returns the position of the null character 
 }
 
-static inline str_t str_read_file_to_str(char *file_path)
+static inline str_t * str_read_file_to_str(const char *file_path)
 {
     size_t size = _file_get_size(file_path); 
     assert(size > 0);
@@ -122,19 +125,23 @@ static inline str_t str_read_file_to_str(char *file_path)
         fprintf(stderr, "%s: malloc failed\n", __func__);
         exit(1);
     }
+    memset(buffer, 0, size);
 
     FILE *fp = fopen(file_path, "r");
     if (fp == NULL) {
         fprintf(stderr, "%s: failed to open file\n", __func__);
         exit(1);
     }
+
     fread(buffer, size, 1, fp);
     fclose(fp);
 
-    return (str_t) {
-        .buf = buffer,
-        .size = size-1 
-    };
+
+    str_t *str_file = (str_t *)malloc(sizeof(str_t));
+    str_file->buf = buffer;
+    str_file->size = size-1;
+
+    return str_file;
 }
 
 // Returns the pos of the word in buffer
