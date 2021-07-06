@@ -72,7 +72,8 @@ static inline void str_cpy(str_t *dest, str_t *source)
     assert(dest);
     assert(source);
 
-    strncpy(dest->buf, source->buf, source->size);
+    memcpy(dest->buf, source->buf, source->size);
+    dest->buf[source->size+1] = '\0';
     dest->size = source->size;
 }
 
