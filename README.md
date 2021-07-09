@@ -1,5 +1,5 @@
 # poglib
-    A header only c library contains that i commonly use.
+Bunch of C headers that i found useful.
 
 ## CONTENTS
 
