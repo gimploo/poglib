@@ -126,7 +126,7 @@ static inline str_t * str_read_file_to_str(const char *file_path)
         fprintf(stderr, "%s: malloc failed\n", __func__);
         exit(1);
     }
-    memset(buffer, 0, size);
+    memset(buffer, 0, size + 1);
 
     FILE *fp = fopen(file_path, "r");
     if (fp == NULL) {
@@ -140,7 +140,7 @@ static inline str_t * str_read_file_to_str(const char *file_path)
 
     str_t *str_file = (str_t *)malloc(sizeof(str_t));
     str_file->buf = buffer;
-    str_file->size = size-1;
+    str_file->size = size;
 
     return str_file;
 }
