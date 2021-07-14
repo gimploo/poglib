@@ -174,6 +174,21 @@ void window_event_process_user_input(SimpleWindow *window)
             case SDL_QUIT:
                 window->is_window_open = false;
                 break;
+            case SDL_KEYDOWN:
+                switch (event.key.keysym.sym)
+                {
+                    case SDLK_LEFT:  
+                    case SDLK_RIGHT: 
+                    case SDLK_UP:
+                    case SDLK_DOWN:
+                        break;
+                    case SDLK_F1:
+                        break;
+                    default:
+                        SDL_ShowSimpleMessageBox(0, "ERROR", "Key not accounted for", window->window_handle);
+                        exit(1);
+                }
+                break;
         }
 
     }
