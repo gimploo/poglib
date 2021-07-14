@@ -43,6 +43,7 @@ struct my_window {
 
 SimpleWindow    window_init(SDL_FLAGS flags);
 void            window_event_handler(SimpleWindow *window);
+void            window_event_process_user_input(SimpleWindow *window);
 void            window_destroy(SimpleWindow *window);
 
 
@@ -128,6 +129,7 @@ SimpleWindow window_init(SDL_FLAGS flags)
         fprintf(stderr, "Error: %s\n", glewGetErrorString(glewError));
         exit(1);
     }
+
 #endif
 
     return output;
@@ -140,7 +142,7 @@ void window_event_handler(SimpleWindow *window)
         fprintf(stderr, "%s: window argument is null\n", __func__);
         exit(1);
     }
-    SDL_Event event = window->event;
+
     while (window->is_window_open) 
     {
     #ifdef __gl_h_
@@ -148,21 +150,32 @@ void window_event_handler(SimpleWindow *window)
         glClear(GL_COLOR_BUFFER_BIT);
     #endif 
 
-        while(SDL_PollEvent(&event) > 0) 
-        {
-            switch (event.type) 
-            {
-                case SDL_QUIT:
-                    window->is_window_open = false;
-                    break;
-            }
+        window_event_process_user_input(window);
 
-        }
     #ifdef __gl_h_
         SDL_GL_SwapWindow(window->window_handle);
     #else
         SDL_UpdateWindowSurface(window->window_handle);
     #endif
+    }
+}
+
+void window_event_process_user_input(SimpleWindow *window)
+{
+    if (window == NULL) {
+        fprintf(stderr, "%s: window argument is null\n", __func__);
+        exit(1);
+    }
+    SDL_Event event = window->event;
+    while(SDL_PollEvent(&event) > 0) 
+    {
+        switch (event.type) 
+        {
+            case SDL_QUIT:
+                window->is_window_open = false;
+                break;
+        }
+
     }
 }
 
