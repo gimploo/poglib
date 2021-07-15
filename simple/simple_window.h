@@ -8,10 +8,12 @@
 
 #ifdef __gl_h_
 #include <SDL2/SDL_opengl.h>
+#include "./shader.h"
 #endif
 
 
 #define SDL_FLAGS u_int32_t
+typedef void (*render_func) (void);
 
 
 
@@ -34,33 +36,32 @@ struct my_window {
 
 
 
-/*
- *
- * Function Declaration
- *
- */
-
 
 SimpleWindow    window_init(SDL_FLAGS flags);
-void            window_event_handler(SimpleWindow *window);
-void            window_event_process_user_input(SimpleWindow *window);
+void            window_render_init(SimpleWindow *window, render_func logic);
 void            window_destroy(SimpleWindow *window);
 
+#ifdef __gl_h_
+const char * const default_vertex_file_path = "/home/gokul/Documents/projects/poglib/simple/default.vs";
+const char * const default_fragment_file_path = "/home/gokul/Documents/projects/poglib/simple/default.fg";
+static inline Shader simple_use_default_shader(void) 
+{
+    return shader_init(default_vertex_file_path, default_fragment_file_path);
+}
+#endif
 
-/*
- *
- * Function Definitions
- *
- */
+
+
 
 
 SimpleWindow window_init(SDL_FLAGS flags)
 {
     SimpleWindow output = {0};
     SDL_FLAGS WinFlags = 0;
-
     output.is_window_open = true;
 
+
+    
 #ifdef __gl_h_
     WinFlags = SDL_WINDOW_OPENGL;
 
@@ -85,14 +86,9 @@ SimpleWindow window_init(SDL_FLAGS flags)
         fprintf(stderr, "Error: %s\n", SDL_GetError());
         exit(1);
     }
-
 #endif 
 
-    /*
-     *
-     * SDL init
-     *
-     */
+
 
     if (SDL_Init(flags) == -1) {
         fprintf(stderr, "Error: %s\n", SDL_GetError());
@@ -104,19 +100,18 @@ SimpleWindow window_init(SDL_FLAGS flags)
         exit(1);
     }
 
-    /*
-     *
-     * Surface context / Gl context
-     *
-     */
+
 
 #ifndef __gl_h_
+
     output.surface_handle = SDL_GetWindowSurface(output.window_handle);
     if (!output.surface_handle) {
         fprintf(stderr, "Error: %s\n", SDL_GetError());
         exit(1);
     }
+
 #else 
+
     output.gl_context = SDL_GL_CreateContext(output.window_handle);
     if (!output.gl_context) {
         fprintf(stderr, "Error: %s\n", SDL_GetError());
@@ -136,31 +131,7 @@ SimpleWindow window_init(SDL_FLAGS flags)
 
 }
 
-void window_event_handler(SimpleWindow *window)
-{
-    if (window == NULL) {
-        fprintf(stderr, "%s: window argument is null\n", __func__);
-        exit(1);
-    }
-
-    while (window->is_window_open) 
-    {
-    #ifdef __gl_h_
-        glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-    #endif 
-
-        window_event_process_user_input(window);
-
-    #ifdef __gl_h_
-        SDL_GL_SwapWindow(window->window_handle);
-    #else
-        SDL_UpdateWindowSurface(window->window_handle);
-    #endif
-    }
-}
-
-void window_event_process_user_input(SimpleWindow *window)
+void window_process_user_input(SimpleWindow *window)
 {
     if (window == NULL) {
         fprintf(stderr, "%s: window argument is null\n", __func__);
@@ -193,6 +164,35 @@ void window_event_process_user_input(SimpleWindow *window)
 
     }
 }
+
+void window_render_init(SimpleWindow *window, render_func render)
+{
+    if (window == NULL) {
+        fprintf(stderr, "%s: window argument is null\n", __func__);
+        exit(1);
+    }
+
+    while (window->is_window_open) 
+    {
+    #ifdef __gl_h_
+        glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+    #endif 
+
+        window_process_user_input(window);
+
+        render();
+
+    #ifdef __gl_h_
+        SDL_GL_SwapWindow(window->window_handle);
+    #else
+        SDL_UpdateWindowSurface(window->window_handle);
+    #endif
+    }
+
+    window_destroy(window);
+}
+
 
 void window_destroy(SimpleWindow *window)
 {

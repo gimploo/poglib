@@ -1,27 +1,98 @@
-#ifndef __SIMPLE_GL_H_
-#define __SIMPLE_GL_H_
+#ifndef _SHADER_H_
+#define _SHADER_H_
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #include <stdbool.h>
 
+
+// Includes OpenGL
+#include <GL/glew.h>
+
+
 #define KB 1024
 
-// comment this line not have opengl used for rendering
-#include <GL/glew.h> 
+typedef struct Shader Shader;
+struct Shader {
+    
+    GLuint id;
+    const char *vs_file_path;
+    const char *fg_file_path;
 
-#include "../win/simple_window.h"
+};
+
+#define GL_CHECK(cmd) {         \
+    GLenum err;                 \
+    cmd;                        \
+    err = glGetError();         \
+    if (err != GL_NO_ERROR) {   \
+        fprintf(stderr, "[GL] %s: %s\n", __func__, gluErrorString(err));\
+        exit(1);\
+    }\
+}
 
 
-const char * const default_vertex_file_path = "/home/gokul/Documents/projects/poglib/simple/gl/default.vert";
-const char * const default_fragment_file_path = "/home/gokul/Documents/projects/poglib/simple/gl/default.frag";
 
 
-GLuint  simple_gl_compile_shader(const char *vertexShaderSource, const char *fragmentShaderSource);
-void    simple_gl_render(SimpleWindow *window, float vertices[], size_t vertices_size, GLuint shaderProgram);
-void    simple_gl_draw_triangle(float arr[], size_t arr_size);
-void    simple_gl_clean_up(GLuint);
+
+Shader  shader_init(const char *vertexShaderSource, const char *fragmentShaderSource);
+
+void    shader_use_shader(Shader *shader);
+
+void    shader_set_farr(Shader *shader, const char *uniform, float arr[]);
+void    shader_set_fval(Shader *shader, const char *uniform, float val);
+void    shader_set_uival(Shader *shader, const char *uniform, unsigned int val);
+void    shader_set_ival(Shader *shader, const char *uniform, int val);
+
+void    shader_destroy(Shader *shader);
+
+
+
+
+
+
+void shader_set_ival(Shader *shader, const char *uniform, int val)
+{
+    GL_CHECK(glUniform1i(glGetUniformLocation(shader->id, uniform), val));
+}
+
+void shader_set_uival(Shader *shader, const char *uniform, unsigned int val)
+{
+    GL_CHECK(glUniform1ui(glGetUniformLocation(shader->id, uniform), val));
+}
+
+void shader_set_fval(Shader *shader, const char *uniform, float val)
+{
+    GL_CHECK(glUniform1f(glGetUniformLocation(shader->id, uniform), val));
+}
+
+void shader_set_farr(Shader *shader, const char *uniform, float arr[])
+{
+    GL_CHECK(glUniform4f(glGetUniformLocation(shader->id, uniform), arr[0], arr[1], arr[2], arr[3]));
+}
+
+
+inline void shader_destroy(Shader *shader)
+{
+    if (shader == NULL) {
+        fprintf(stderr, "%s: shader is null\n", __func__);
+        exit(1);
+    }
+
+    GL_CHECK(glDeleteProgram(shader->id));
+}
+
+
+void shader_use_shader(Shader *shader)
+{
+    if (shader == NULL) {
+        fprintf(stderr, "%s: shader is null\n", __func__);
+        exit(1);
+    }
+    GL_CHECK(glUseProgram(shader->id));
+}
 
 size_t _file_get_size(const char *file_path)
 {
@@ -59,14 +130,12 @@ static inline char * _read_file(const char *file_path)
     return buffer;
 }
 
-static inline GLuint simple_use_default_shader(void) 
+Shader shader_init(const char *vertex_source_path, const char *fragment_source_path)
 {
-    return simple_gl_compile_shader(default_vertex_file_path, default_fragment_file_path);
-}
+    Shader shader = {0};
+    shader.vs_file_path = vertex_source_path;
+    shader.fg_file_path = fragment_source_path;
 
-
-GLuint simple_gl_compile_shader(const char *vertex_source_path, const char *fragment_source_path)
-{
     int status;
     char error_log[KB] = {0};
 
@@ -93,6 +162,7 @@ GLuint simple_gl_compile_shader(const char *vertex_source_path, const char *frag
         fprintf(stderr, "Vertex Error:\n\t%s\n", error_log);
         exit(1);
     }
+    printf("[INFO] Vertex Shader successfully compiled\n");
 
     GLuint fragmentShader;
     fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -104,6 +174,7 @@ GLuint simple_gl_compile_shader(const char *vertex_source_path, const char *frag
         fprintf(stderr, "Fragment Error:\n\t%s\n", error_log);
         exit(1);
     }
+    printf("[INFO] Fragment Shader successfully compiled\n");
 
     GLuint shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
@@ -119,51 +190,11 @@ GLuint simple_gl_compile_shader(const char *vertex_source_path, const char *frag
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    return shaderProgram;
-}
+    printf("[POG] Shader successfully linked\n\n");
 
-void simple_gl_draw_triangle(float arr[], size_t arr_size)
-{
-
-    GLuint vertex_buffer_obj;
-    glGenBuffers(1, &vertex_buffer_obj);
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_obj);
-    glBufferData(GL_ARRAY_BUFFER, arr_size, arr, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    
-
-}
-
-void simple_gl_render(SimpleWindow *window, float vertices[], size_t vertices_size, GLuint shaderProgram)
-{
-    if (window == NULL) {
-        fprintf(stderr, "%s: window argument is null\n", __func__);
-        exit(1);
-    }
-
-    // Draws the background
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    // Draws a triangle
-    glUseProgram(shaderProgram);
-    simple_gl_draw_triangle(vertices, vertices_size);
-
-    SDL_GL_SwapWindow(window->window_handle);
-
+    shader.id = shaderProgram;
+    return shader;
 }
 
 
-void simple_gl_cleanup(GLuint prog)
-{
-    glDeleteProgram(prog);
-}
-
-
-#endif
+#endif //_SHADER_H_
