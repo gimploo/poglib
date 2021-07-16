@@ -39,7 +39,7 @@ struct Shader {
 
 Shader  shader_init(const char *vertexShaderSource, const char *fragmentShaderSource);
 
-void    shader_use_shader(Shader *shader);
+void    shader_use(Shader *shader);
 
 void    shader_set_farr(Shader *shader, const char *uniform, float arr[]);
 void    shader_set_fval(Shader *shader, const char *uniform, float val);
@@ -81,11 +81,13 @@ inline void shader_destroy(Shader *shader)
         exit(1);
     }
 
+    GLuint id = shader->id;
     GL_CHECK(glDeleteProgram(shader->id));
+    printf("[INFO]\tShader `%i` successfully deleted\n", id);
 }
 
 
-void shader_use_shader(Shader *shader)
+void shader_use(Shader *shader)
 {
     if (shader == NULL) {
         fprintf(stderr, "%s: shader is null\n", __func__);
@@ -162,7 +164,7 @@ Shader shader_init(const char *vertex_source_path, const char *fragment_source_p
         fprintf(stderr, "Vertex Error:\n\t%s\n", error_log);
         exit(1);
     }
-    printf("[INFO] Vertex Shader successfully compiled\n");
+    printf("[INFO]\tVertex Shader successfully compiled\n");
 
     GLuint fragmentShader;
     fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -174,7 +176,7 @@ Shader shader_init(const char *vertex_source_path, const char *fragment_source_p
         fprintf(stderr, "Fragment Error:\n\t%s\n", error_log);
         exit(1);
     }
-    printf("[INFO] Fragment Shader successfully compiled\n");
+    printf("[INFO]\tFragment Shader successfully compiled\n");
 
     GLuint shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
@@ -190,9 +192,10 @@ Shader shader_init(const char *vertex_source_path, const char *fragment_source_p
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    printf("[POG] Shader successfully linked\n\n");
-
     shader.id = shaderProgram;
+
+    printf("[POG]\tShader `%i` successfully linked\n", shader.id);
+
     return shader;
 }
 

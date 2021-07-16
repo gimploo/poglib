@@ -37,8 +37,9 @@ struct my_window {
 
 
 
-SimpleWindow    window_init(SDL_FLAGS flags);
-void            window_render_init(SimpleWindow *window, render_func logic);
+SimpleWindow    window_init(size_t width, size_t height, SDL_FLAGS flags);
+void            window_render(SimpleWindow *window, render_func render);
+void            window_process_user_input(SimpleWindow *window);
 void            window_destroy(SimpleWindow *window);
 
 #ifdef __gl_h_
@@ -54,7 +55,7 @@ static inline Shader simple_use_default_shader(void)
 
 
 
-SimpleWindow window_init(SDL_FLAGS flags)
+SimpleWindow window_init(size_t width, size_t height, SDL_FLAGS flags)
 {
     SimpleWindow output = {0};
     SDL_FLAGS WinFlags = 0;
@@ -94,7 +95,7 @@ SimpleWindow window_init(SDL_FLAGS flags)
         fprintf(stderr, "Error: %s\n", SDL_GetError());
         exit(1);
     }
-    output.window_handle = SDL_CreateWindow("Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 680, 480, WinFlags);
+    output.window_handle = SDL_CreateWindow("Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
     if (!output.window_handle) {
         fprintf(stderr, "Error: %s\n", SDL_GetError());
         exit(1);
@@ -165,32 +166,26 @@ void window_process_user_input(SimpleWindow *window)
     }
 }
 
-void window_render_init(SimpleWindow *window, render_func render)
+void window_render(SimpleWindow *window, render_func render)
 {
     if (window == NULL) {
         fprintf(stderr, "%s: window argument is null\n", __func__);
         exit(1);
     }
 
-    while (window->is_window_open) 
-    {
-    #ifdef __gl_h_
-        glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
-    #endif 
+#ifdef __gl_h_
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+#endif 
 
-        window_process_user_input(window);
+    render();
 
-        render();
+#ifdef __gl_h_
+    SDL_GL_SwapWindow(window->window_handle);
+#else
+    SDL_UpdateWindowSurface(window->window_handle);
+#endif
 
-    #ifdef __gl_h_
-        SDL_GL_SwapWindow(window->window_handle);
-    #else
-        SDL_UpdateWindowSurface(window->window_handle);
-    #endif
-    }
-
-    window_destroy(window);
 }
 
 

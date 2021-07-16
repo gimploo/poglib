@@ -1,16 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
-
 #include <GL/glew.h>
 
 #include "../simple_window.h"
 
 #define uint32 u_int32_t 
 
+static GLuint VAO;
+static Shader shader;
 
-void gl_draw_triangle(void)
+
+void gl_setup_triangle(void)
 {
-    Shader shader = simple_use_default_shader();
+    shader = simple_use_default_shader();
 
     float vertices[] = {    
     -0.5f, -0.5f, 0.0f, 
@@ -18,7 +20,6 @@ void gl_draw_triangle(void)
      0.0f,  0.5f, 0.0f  
     };                      
 
-    GLuint VAO;
     glGenVertexArrays(1, &VAO); 
     glBindVertexArray(VAO); 
 
@@ -37,18 +38,20 @@ void gl_draw_triangle(void)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0); 
 
+}
+
+void gl_draw_triangle(void)
+{
+    shader_use_shader(&shader);
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, 3);
-
-    glBindVertexArray(0);
-
-
 }
 
 int main(void)
 {
     uint32 FLAGS = SDL_INIT_VIDEO;
     SimpleWindow window = window_init(FLAGS);
+    gl_setup_triangle();
     window_render_init(&window, gl_draw_triangle); 
     return 0;
 }
