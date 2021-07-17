@@ -4,20 +4,31 @@
 #include <stdio.h>
 #include <sdlib.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
+typedef unsigned char   u8;
+typedef char            i8;
+typedef u_int16_t       u16;
+typedef int16_t         i16;
+typedef u_int32_t       u32;
+typedef u_int64_t       u64;
+typedef int             i32;
+typedef long            i64;
+typedef float           f32;
+typedef double          f64;
 
-typedef u_int8_t uint8;
-typedef u_int16_t uint16;
-typedef u_int32_t uint32;
-typedef u_int64_t uint64;
+#define WORD    512
+#define KB      (WORD * 2)
+#define MB      (KB * 1024)
+#define GB      (MB * 1024)
 
+#define NOPADDING __attribute__((packed)) 
 
-
-#define error(fmt, arg) {                       \
-    fprintf(stderr, "%s:" fmt, __func__, arg);  \
+#define eprint(fmt, ...) {\
+    fprintf(stderr, "(%s:%d):%s -> ",__FILE__, __LINE__, __func__); \
+    fprintf(stderr, fmt "\n" __VA_OPT__(,)  __VA_ARGS__);\
     exit(1);                                    \
 }
-
 
 
 
