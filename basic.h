@@ -2,9 +2,11 @@
 #define _BASIC_H_
 
 #include <stdio.h>
-#include <sdlib.h>
+#include <stdlib.h>
 #include <stdbool.h>
+#include <assert.h>
 #include <stdarg.h>
+#include <stddef.h>
 
 typedef unsigned char   u8;
 typedef char            i8;

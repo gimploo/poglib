@@ -49,6 +49,7 @@ bool file_open(File *file, const char *mode)
     file->fp = fopen(file->name, mode);
     if (file->fp == NULL) return false;
 
+    file->is_closed = false;
     return true;
 }
 
