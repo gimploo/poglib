@@ -119,14 +119,17 @@ size_t _file_get_size(const char *file_path)
 
 static inline str_t * str_read_file_to_str(const char *file_path)
 {
+    //NOTE: this code works dont tinker
+    
     size_t size = _file_get_size(file_path); 
     assert(size > 0);
-    char *buffer = (char *)malloc(size);
+
+    //NOTE: the +1 hold the null character
+    char *buffer = (char *)malloc(size+1);
     if (buffer == NULL) {
         fprintf(stderr, "%s: malloc failed\n", __func__);
         exit(1);
     }
-    memset(buffer, 0, size + 1);
 
     FILE *fp = fopen(file_path, "r");
     if (fp == NULL) {
@@ -134,7 +137,12 @@ static inline str_t * str_read_file_to_str(const char *file_path)
         exit(1);
     }
 
+    //NOTE: here the the contents in the file including the
+    //null character is copied over to buffer
     fread(buffer, size, 1, fp);
+
+    //NOTE: being extra carefull to ensure its null terminated (optional)
+    buffer[size] = '\0';
     fclose(fp);
 
 
