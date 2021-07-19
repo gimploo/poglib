@@ -42,7 +42,7 @@ void gl_setup_triangle(void)
 
 void gl_draw_triangle(void)
 {
-    shader_use_shader(&shader);
+    shader_use(&shader);
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 }
@@ -50,8 +50,12 @@ void gl_draw_triangle(void)
 int main(void)
 {
     uint32 FLAGS = SDL_INIT_VIDEO;
-    SimpleWindow window = window_init(FLAGS);
+    SimpleWindow window = window_init(600, 800, FLAGS);
     gl_setup_triangle();
-    window_render_init(&window, gl_draw_triangle); 
+    while (window.is_window_open)
+    {
+        window_process_user_input(&window);
+        window_render(&window, gl_draw_triangle); 
+    }
     return 0;
 }
