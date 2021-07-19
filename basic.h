@@ -1,11 +1,10 @@
-#ifdef _BASIC_H_
+#ifndef _BASIC_H_
 #define _BASIC_H_
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
-#include <stdarg.h>
 #include <stddef.h>
 
 typedef unsigned char   u8;
@@ -24,6 +23,7 @@ typedef double          f64;
 #define MB      (KB * 1024)
 #define GB      (MB * 1024)
 
+// Used with struct declaration to avoid padding
 #define NOPADDING __attribute__((packed)) 
 
 #define eprint(fmt, ...) {\
