@@ -25,13 +25,7 @@ typedef double          f64;
 
 // Disables padding in structs
 #define NOPADDING __attribute__((packed)) 
-#define KB 1024
 
-#define eprint(fmt, ...) {\
-    fprintf(stderr, "(%s:%d):%s -> ",__FILE__, __LINE__, __func__); \
-    fprintf(stderr, fmt"\n" __VA_OPT__(,)  __VA_ARGS__);\
-    exit(1);                                    \
-}
 
 typedef struct BITMAP_header BITMAP_header;
 struct NOPADDING BITMAP_header {
@@ -66,34 +60,39 @@ struct Pixel_data {
     Color pixel;
 };
 
-typedef struct BitMapImage BitMapImage;
-struct BitMapImage {
-    BITMAP_header bm_h;
-    DIB_header    dib_h;
-    Pixel_data    *pixels;
+
+typedef struct BitMap BitMap;
+struct BitMap {
+    BITMAP_header   bm_h;
+    DIB_header      dib_h;
+    Pixel_data      *pixels;
 };
 
-
-
-
-
-BitMapImage     bitmap_init(File *file);
-void            bitmap_clone_image(BitMapImage *img, size_t width, size_t height);
-void            bitmap_dump_spec(BitMapImage *img);
-void            bitmap_destroy(BitMapImage *img);
+#define bitmap_get_num_channels(pbmp) ((*pbmp).dib_h.bitsperpixel / 8)
+#define bitmap_get_width(pbmp)        ((*pbmp).dib_h.width)
+#define bitmap_get_height(pbmp)       ((*pbmp).dib_h.height)
 
 
 
 
 
-void bitmap_destroy(BitMapImage *img)
+BitMap          bitmap_init(const char *file);
+void            bitmap_clone_image(BitMap *img, size_t width, size_t height);
+void            bitmap_dump_spec(BitMap *img);
+void            bitmap_destroy(BitMap *img);
+
+
+
+
+
+void bitmap_destroy(BitMap *input)
 {
-    if (img == NULL) eprint("img is null");
+    if (input == NULL) eprint("img is null");
 
-    free(img->pixels);
+    free(input->pixels);
 }
 
-void bitmap_dump_spec(BitMapImage *img)
+void bitmap_dump_spec(BitMap *img)
 {
     if (img == NULL) eprint("img is null");
 
@@ -178,13 +177,14 @@ void bitmap_dump_spec(BitMapImage *img)
 
 }
 
-BitMapImage bitmap_init(File *file)
+BitMap bitmap_init(const char *file_path)
 {
-    if (file == NULL) eprint("file arg is null\n");
+    File file = file_init(file_path);
+    if (!file_open(&file, "rb")) eprint("file cant be opened");
 
-    BitMapImage img = {0};
-    fread(&img.bm_h, sizeof(BITMAP_header), 1, file->fp); 
-    fread(&img.dib_h, sizeof(DIB_header), 1, file->fp); 
+    BitMap img = {0};
+    fread(&img.bm_h, sizeof(BITMAP_header), 1, file.fp); 
+    fread(&img.dib_h, sizeof(DIB_header), 1, file.fp); 
 
 
     if (img.dib_h.compression != 0) {
@@ -193,28 +193,30 @@ BitMapImage bitmap_init(File *file)
         bitmap_dump_spec(&img);
         exit(1);
 
-    } else if (img.dib_h.bitsperpixel != 24 
-                || img.dib_h.header_size != 124) {
+    } else if ( img.dib_h.bitsperpixel != 24 
+            || img.dib_h.header_size != 124) {
 
         fprintf(stderr, "Error: Bitmap format not supported yet\n");
         bitmap_dump_spec(&img);
         exit(1);
     }
 
-    fseek(file->fp, img.bm_h.image_offset, SEEK_SET);
+    fseek(file.fp, img.bm_h.image_offset, SEEK_SET);
 
-    u32 width = img.dib_h.width;
-    u32 height = img.dib_h.height;
+    u32 width        =  img.dib_h.width;
+    u32 height       =  img.dib_h.height;
 
     img.pixels = (Pixel_data *)malloc(sizeof(Pixel_data) * height * width); 
-    fread(img.pixels, width * height * sizeof(Pixel_data),1, file->fp);
+    fread(img.pixels, width * height * sizeof(Pixel_data),1, file.fp);
 
+
+    file_destroy(&file);
 
     return img;
 
 }
 
-void bitmap_clone_image(BitMapImage *img, size_t width, size_t height)
+void bitmap_clone_image(BitMap *img, size_t width, size_t height)
 {
     FILE *file = fopen("tmp.bmp", "wb");
     if (file == NULL) eprint("file arg is null\n");
