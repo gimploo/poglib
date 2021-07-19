@@ -187,7 +187,13 @@ BitMap bitmap_init(const char *file_path)
     fread(&img.dib_h, sizeof(DIB_header), 1, file.fp); 
 
 
-    if (img.dib_h.compression != 0) {
+    if (img.bm_h.format[0] != 'B' || img.bm_h.format[1] != 'M') {
+
+        fprintf(stderr, "Error: File is not in a bitmap format\n");
+        bitmap_dump_spec(&img);
+        exit(1);
+
+    } else if (img.dib_h.compression != 0) {
 
         fprintf(stderr, "Error: bitmap is compressed\n");
         bitmap_dump_spec(&img);
