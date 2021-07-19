@@ -10,9 +10,8 @@
 
 // Includes OpenGL
 #include <GL/glew.h>
+#include "../file.h"
 
-
-#define KB 1024
 
 typedef struct Shader Shader;
 struct Shader {
@@ -96,41 +95,7 @@ void shader_use(Shader *shader)
     GL_CHECK(glUseProgram(shader->id));
 }
 
-size_t _file_get_size(const char *file_path)
-{
-    FILE *fp = fopen(file_path, "r");
-    if (fp == NULL) {
-        fprintf(stderr, "%s: file failed to open\n", __func__);
-        exit(1);
-    }
-    fseek(fp, 0L, SEEK_END);
-    size_t size = ftell(fp);
-    fclose(fp);
-    return size; // Returns the position of the null character 
-}
 
-static inline char * _read_file(const char *file_path)
-{
-    size_t size = _file_get_size(file_path); 
-    assert(size > 0);
-    char * buffer = (char *)malloc(size);
-    if (buffer == NULL) {
-        fprintf(stderr, "%s: malloc failed\n", __func__);
-        exit(1);
-    }
-    memset(buffer, 0, size+1);
-
-    FILE *fp = fopen(file_path, "r");
-    if (fp == NULL) {
-        fprintf(stderr, "%s: failed to open file\n", __func__);
-        exit(1);
-    }
-
-    fread(buffer, size, 1, fp);
-    fclose(fp);
-
-    return buffer;
-}
 
 Shader shader_init(const char *vertex_source_path, const char *fragment_source_path)
 {
@@ -141,14 +106,16 @@ Shader shader_init(const char *vertex_source_path, const char *fragment_source_p
     int status;
     char error_log[KB] = {0};
 
-    const char *const vtxfile = _read_file(vertex_source_path);
+    File vsfile = file_init(vertex_source_path);
+    const char * vtxfile = file_readall(&vsfile);
     if (vtxfile == NULL) {
         fprintf(stderr, "%s: vertex file returned null\n", __func__);
         exit(1);
     }
 
 
-    const char *const frgfile = _read_file(fragment_source_path);
+    File fgfile = file_init(fragment_source_path);
+    const char *frgfile = file_readall(&fgfile);
     if (frgfile == NULL) {
         fprintf(stderr, "%s: vertex file returned null\n", __func__);
         exit(1);
