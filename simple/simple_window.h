@@ -44,8 +44,8 @@ void            window_process_user_input(SimpleWindow *window);
 void            window_destroy(SimpleWindow *window);
 
 #ifdef __gl_h_
-const char * const default_vertex_file_path = "/home/gokul/Documents/projects/poglib/simple/default.vs";
-const char * const default_fragment_file_path = "/home/gokul/Documents/projects/poglib/simple/default.fg";
+const char * const default_vertex_file_path = "/home/gokul/Documents/projects/poglib/simple/res/default.vs";
+const char * const default_fragment_file_path = "/home/gokul/Documents/projects/poglib/simple/res/default.fs";
 static inline Shader simple_use_default_shader(void) 
 {
     return shader_init(default_vertex_file_path, default_fragment_file_path);
