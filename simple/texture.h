@@ -61,9 +61,9 @@ Texture2D texture_init(const char *file_path)
      *
      */
     // opengl (0,0) starts at the bottom left
-    //stbi_set_flip_vertically_on_load(1);                                
-    //buf = stbi_load(file_path, &width, &height, &bpp, 0); //RGB
-    //if (buf == NULL) eprint("Failed to load texture");
+    stbi_set_flip_vertically_on_load(1);                                
+    buf = stbi_load(file_path, &width, &height, &bpp, 0); //RGB
+    if (buf == NULL) eprint("Failed to load texture");
 
 
     /*
@@ -74,10 +74,10 @@ Texture2D texture_init(const char *file_path)
     //NOTE: my bitmap lib works with opengl, apparantly bitmap dont have an alpha channel
     //so uncomment below lines for it to work with bitmaps and comment the stbi lines aswell
     //
-    BitMap bitmap = bitmap_init(file_path);   
-    width   = bitmap_get_width(&bitmap);
-    height  = bitmap_get_height(&bitmap);
-    buf     = (u8 *)bitmap.pixels;
+    //BitMap bitmap = bitmap_init(file_path);   
+    //width   = bitmap_get_width(&bitmap);
+    //height  = bitmap_get_height(&bitmap);
+    //buf     = (u8 *)bitmap.pixels;
 
     GL_CHECK(glGenTextures(1, &id));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, id));
