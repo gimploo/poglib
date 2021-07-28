@@ -1,17 +1,8 @@
-#ifndef _SHADER_H_
-#define _SHADER_H_
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include <stdbool.h>
+#ifndef __GL_SHADER_H__
+#define __GL_SHADER_H__
 
 
-// Includes OpenGL
-#include <GL/glew.h>
-#include "../file.h"
-
+#include "gl_common.h"
 
 typedef struct Shader Shader;
 struct Shader {
@@ -22,23 +13,13 @@ struct Shader {
 
 };
 
-#define GL_CHECK(cmd) {         \
-    GLenum err;                 \
-    cmd;                        \
-    err = glGetError();         \
-    if (err != GL_NO_ERROR) {   \
-        fprintf(stderr, "[GL] %s: %s\n", __func__, gluErrorString(err));\
-        exit(1);\
-    }\
-}
-
 
 
 
 
 Shader  shader_init(const char *vertexShaderSource, const char *fragmentShaderSource);
 
-void    shader_use(Shader *shader);
+void    shader_bind(Shader *shader);
 
 void    shader_set_farr(Shader *shader, const char *uniform, float arr[]);
 void    shader_set_fval(Shader *shader, const char *uniform, float val);
@@ -54,23 +35,49 @@ void    shader_destroy(Shader *shader);
 
 void shader_set_ival(Shader *shader, const char *uniform, int val)
 {
-    GL_CHECK(glUniform1i(glGetUniformLocation(shader->id, uniform), val));
+    if (shader == NULL) eprint("shader argument is null");
+    if (uniform == NULL) eprint("uniform argument is null");
+
+    int location;
+    GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
+    if (location == -1) eprint("[ERROR] uniform doesnt exist");
+
+    GL_CHECK(glUniform1i(location, val));
 }
 
 void shader_set_uival(Shader *shader, const char *uniform, unsigned int val)
 {
-    GL_CHECK(glUniform1ui(glGetUniformLocation(shader->id, uniform), val));
+    if (shader == NULL) eprint("shader argument is null");
+    if (uniform == NULL) eprint("uniform argument is null");
+
+    int location;
+    GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
+    if (location == -1) eprint("[ERROR] uniform doesnt exist");
+    GL_CHECK(glUniform1ui(location, val));
 }
 
 void shader_set_fval(Shader *shader, const char *uniform, float val)
 {
-    GL_CHECK(glUniform1f(glGetUniformLocation(shader->id, uniform), val));
+    if (shader == NULL) eprint("shader argument is null");
+    if (uniform == NULL) eprint("uniform argument is null");
+
+    int location;
+    GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
+    if (location == -1) eprint("[ERROR] uniform doesnt exist");
+    GL_CHECK(glUniform1f(location, val));
 }
 
 void shader_set_farr(Shader *shader, const char *uniform, float arr[])
 {
-    GL_CHECK(glUniform4f(glGetUniformLocation(shader->id, uniform), arr[0], arr[1], arr[2], arr[3]));
+    if (shader == NULL) eprint("shader argument is null");
+    if (uniform == NULL) eprint("uniform argument is null");
+
+    int location;
+    GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
+    if (location == -1) eprint("[ERROR] uniform doesnt exist");
+    GL_CHECK(glUniform4f(location, arr[0], arr[1], arr[2], arr[3]));
 }
+
 
 
 inline void shader_destroy(Shader *shader)
@@ -86,7 +93,7 @@ inline void shader_destroy(Shader *shader)
 }
 
 
-void shader_use(Shader *shader)
+void shader_bind(Shader *shader)
 {
     if (shader == NULL) {
         fprintf(stderr, "%s: shader is null\n", __func__);
@@ -167,4 +174,4 @@ Shader shader_init(const char *vertex_source_path, const char *fragment_source_p
 }
 
 
-#endif //_SHADER_H_
+#endif //_GL_SHADER_H_

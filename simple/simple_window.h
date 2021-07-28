@@ -9,6 +9,7 @@
 #ifdef __gl_h_
 #include <SDL2/SDL_opengl.h>
 #include "./shader.h"
+#include "./texture.h"
 #endif
 
 
@@ -158,7 +159,7 @@ void window_process_user_input(SimpleWindow *window)
                         break;
                     default:
                         SDL_ShowSimpleMessageBox(0, "ERROR", "Key not accounted for", window->window_handle);
-                        exit(1);
+                        window->is_window_open = false;
                 }
                 break;
         }

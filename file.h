@@ -18,8 +18,8 @@ struct File {
 };
 
 File            file_init(const char *file_path);
-void            file_read_to_buf(File *file, char *buffer, size_t bytes);
 bool            file_open(File *file, const char *mode);
+void            file_read_to_buf(File *file, char *buffer, size_t bytes);
 char *          file_readall(File *file);
 void            file_destroy(File *file);
 

@@ -4,8 +4,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <assert.h>
 #include <stddef.h>
+#include <string.h>
+#include <errno.h>
+#include <assert.h>
 
 typedef unsigned char   u8;
 typedef char            i8;
@@ -26,9 +28,13 @@ typedef double          f64;
 // Used with struct declaration to avoid padding
 #define NOPADDING __attribute__((packed)) 
 
+#define ERROR {\
+    fprintf(stderr, "[(%s:%d): %s] %s\n",__FILE__, __LINE__, __func__, strerror(errno)); \
+    exit(1);                                    \
+}
+
 #define eprint(fmt, ...) {\
-    fprintf(stderr, "(%s:%d):%s -> ",__FILE__, __LINE__, __func__); \
-    fprintf(stderr, fmt "\n" __VA_OPT__(,)  __VA_ARGS__);\
+    fprintf(stderr, "[(%s:%d): %s] " fmt "\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__); \
     exit(1);                                    \
 }
 
