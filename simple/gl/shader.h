@@ -2,7 +2,7 @@
 #define __GL_SHADER_H__
 
 
-#include "gl_common.h"
+#include "internal/gl_common.h"
 
 typedef struct Shader Shader;
 struct Shader {

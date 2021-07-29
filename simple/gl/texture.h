@@ -2,13 +2,11 @@
 #define __GL_TEXTURE_H__
 
 
-#include "gl_common.h"
+#include "internal/gl_common.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "../misc/stb_image.h"
+#include "../../misc/stb_image.h"
 
-#include "../image/bitmap.h"
-#include "../file.h"
 
 
 //NOTE: color is of RGB type 

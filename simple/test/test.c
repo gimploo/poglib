@@ -2,20 +2,18 @@
 #include <stdlib.h>
 #include <GL/glew.h>
 
+#include "../simple_opengl.h"
 #include "../simple_window.h"
 
-#define uint32 u_int32_t 
-
-static GLuint VAO, EBO;
-static Shader shader;
-static Texture2D texture;
-
-
-void gl_setup_rectangle(void)
+void loop(void *arg)
 {
-    shader = shader_init("./wood.vs", "./wood.fs");
+    gl_object_t *obj = arg;
+    gl_object_draw(obj, GL_TRIANGLES);
+}
 
-    texture = texture_init("./wall.jpg");
+int main(void)
+{
+    SimpleWindow window = window_init(1080, 920, SDL_INIT_VIDEO);
 
     float vertices[] = {    
               // positions          // colors           // texture coords
@@ -30,57 +28,27 @@ void gl_setup_rectangle(void)
             1, 2, 3  // second triangle
     };
 
+    
 
-    glGenVertexArrays(1, &VAO); 
-    glBindVertexArray(VAO); 
-    glGenBuffers(1, &EBO);
+    Shader shader = shader_init("./wood.vs", "./wood.fs");
 
-    GLuint VBO;
-    glGenBuffers(1, &VBO); 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    Texture2D texture = texture_init("./wall.jpg");
+    
+    gl_object_t obj = gl_object_init(vertices, sizeof(vertices), indices, 6, &shader, &texture);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    // color attribute
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-    // texture coord attribute
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    glEnableVertexAttribArray(2);
+    vao_set_attributes(&obj.vao, 3, GL_FLOAT, false, 8 * sizeof(float), 0);
+    vao_set_attributes(&obj.vao, 3, GL_FLOAT, false, 8 * sizeof(float), 3 * sizeof(float));
+    vao_set_attributes(&obj.vao, 2, GL_FLOAT, false, 8 * sizeof(float), 6 * sizeof(float));
 
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0); 
-
-}
-
-void gl_draw_rectangle(void)
-{
-    texture_bind(&texture, 0);
-    shader_bind(&shader);
-
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-}
-
-int main(void)
-{
-    uint32 FLAGS = SDL_INIT_VIDEO;
-    SimpleWindow window = window_init(1080, 920, FLAGS);
-    gl_setup_rectangle();
-    while (window.is_window_open)
+    while (window.is_open)
     {
         window_process_user_input(&window);
-        window_render(&window, gl_draw_rectangle); 
+        window_render(&window, loop, &obj); 
     }
 
-    shader_destroy(&shader);
-    texture_destroy(&texture);
+    gl_object_destroy(&obj);
+
     window_destroy(&window);
     return 0;
 }

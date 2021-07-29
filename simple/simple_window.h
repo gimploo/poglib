@@ -8,20 +8,18 @@
 
 #ifdef __gl_h_
 #include <SDL2/SDL_opengl.h>
-#include "./shader.h"
-#include "./texture.h"
 #endif
 
 
 #define SDL_FLAGS u_int32_t
-typedef void (*render_func) (void);
+typedef void (*render_func) (void*);
 
 
 
 typedef struct my_window SimpleWindow;
 struct my_window {
 
-    bool is_window_open;
+    bool is_open;
     SDL_Window *window_handle;
 
 #ifndef __gl_h_ // if OpenGL is included
@@ -39,7 +37,7 @@ struct my_window {
 
 
 SimpleWindow    window_init(size_t width, size_t height, SDL_FLAGS flags);
-void            window_render(SimpleWindow *window, render_func render);
+void            window_render(SimpleWindow *window, render_func render, void * arg);
 void            window_process_user_input(SimpleWindow *window);
 void            window_destroy(SimpleWindow *window);
 
@@ -51,7 +49,7 @@ SimpleWindow window_init(size_t width, size_t height, SDL_FLAGS flags)
 {
     SimpleWindow output = {0};
     SDL_FLAGS WinFlags = 0;
-    output.is_window_open = true;
+    output.is_open = true;
 
 
     
@@ -103,6 +101,8 @@ SimpleWindow window_init(size_t width, size_t height, SDL_FLAGS flags)
         exit(1);
     }
 
+    printf("[OUTPUT] Using standard sdl2 render\n");
+
 #else 
 
     output.gl_context = SDL_GL_CreateContext(output.window_handle);
@@ -117,6 +117,7 @@ SimpleWindow window_init(size_t width, size_t height, SDL_FLAGS flags)
         fprintf(stderr, "Error: %s\n", glewGetErrorString(glewError));
         exit(1);
     }
+    printf("[OUTPUT] Using OpenGL render\n");
 
 #endif
 
@@ -136,7 +137,7 @@ void window_process_user_input(SimpleWindow *window)
         switch (event.type) 
         {
             case SDL_QUIT:
-                window->is_window_open = false;
+                window->is_open = false;
                 break;
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym)
@@ -150,7 +151,7 @@ void window_process_user_input(SimpleWindow *window)
                         break;
                     default:
                         SDL_ShowSimpleMessageBox(0, "ERROR", "Key not accounted for", window->window_handle);
-                        window->is_window_open = false;
+                        window->is_open = false;
                 }
                 break;
         }
@@ -158,7 +159,7 @@ void window_process_user_input(SimpleWindow *window)
     }
 }
 
-void window_render(SimpleWindow *window, render_func render)
+void window_render(SimpleWindow *window, render_func render, void *arg)
 {
     if (window == NULL) {
         fprintf(stderr, "%s: window argument is null\n", __func__);
@@ -170,7 +171,7 @@ void window_render(SimpleWindow *window, render_func render)
     glClear(GL_COLOR_BUFFER_BIT);
 #endif 
 
-    render();
+    render(arg);
 
 #ifdef __gl_h_
     SDL_GL_SwapWindow(window->window_handle);

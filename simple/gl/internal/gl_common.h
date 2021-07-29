@@ -1,9 +1,11 @@
-#ifndef __GL_COMMON_H__
-#define __GL_COMMON_H__
+#ifndef __GL_INTERNAL_COMMON_H__
+#define __GL_INTERNAL_COMMON_H__
 
-#include "../file.h"
-#include "../basic.h"
 #include <GL/glew.h>
+
+#include "../../../image/bitmap.h"
+#include "../../../file.h"
+#include "../../../basic.h"
 
 #define GL_CHECK(cmd) {\
     GLenum err;\
@@ -15,4 +17,4 @@
     }\
 }
 
-#endif //__GL_COMMON_H__
+#endif //__GL_INTERNAL_COMMON_H__
