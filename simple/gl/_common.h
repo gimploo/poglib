@@ -1,11 +1,13 @@
-#ifndef __GL_INTERNAL_COMMON_H__
-#define __GL_INTERNAL_COMMON_H__
+#ifndef __INTERNAL_COMMON_H__
+#define __INTERNAL_COMMON_H__
 
 #include <GL/glew.h>
 
-#include "../../../image/bitmap.h"
-#include "../../../file.h"
-#include "../../../basic.h"
+#include "../../basic.h"
+#include "../../ds/stack.h"
+#include "../../file.h"
+
+#define GL_LOG(fmt, ...) fprintf(stderr, "[LOG]\t " fmt "\n", ##__VA_ARGS__); \
 
 #define GL_CHECK(cmd) {\
     GLenum err;\
@@ -17,4 +19,4 @@
     }\
 }
 
-#endif //__GL_INTERNAL_COMMON_H__
+#endif //__INTERNAL_COMMON_H__

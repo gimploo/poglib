@@ -16,7 +16,7 @@ typedef void (*render_func) (void*);
 
 
 
-typedef struct my_window SimpleWindow;
+typedef struct my_window Window;
 struct my_window {
 
     bool is_open;
@@ -36,18 +36,18 @@ struct my_window {
 
 
 
-SimpleWindow    window_init(size_t width, size_t height, SDL_FLAGS flags);
-void            window_render(SimpleWindow *window, render_func render, void * arg);
-void            window_process_user_input(SimpleWindow *window);
-void            window_destroy(SimpleWindow *window);
+Window    window_init(size_t width, size_t height, SDL_FLAGS flags);
+void            window_render(Window *window, render_func render, void * arg);
+void            window_process_user_input(Window *window);
+void            window_destroy(Window *window);
 
 
 
 
 
-SimpleWindow window_init(size_t width, size_t height, SDL_FLAGS flags)
+Window window_init(size_t width, size_t height, SDL_FLAGS flags)
 {
-    SimpleWindow output = {0};
+    Window output = {0};
     SDL_FLAGS WinFlags = 0;
     output.is_open = true;
 
@@ -125,7 +125,7 @@ SimpleWindow window_init(size_t width, size_t height, SDL_FLAGS flags)
 
 }
 
-void window_process_user_input(SimpleWindow *window)
+void window_process_user_input(Window *window)
 {
     if (window == NULL) {
         fprintf(stderr, "%s: window argument is null\n", __func__);
@@ -159,7 +159,7 @@ void window_process_user_input(SimpleWindow *window)
     }
 }
 
-void window_render(SimpleWindow *window, render_func render, void *arg)
+void window_render(Window *window, render_func render, void *arg)
 {
     if (window == NULL) {
         fprintf(stderr, "%s: window argument is null\n", __func__);
@@ -182,7 +182,7 @@ void window_render(SimpleWindow *window, render_func render, void *arg)
 }
 
 
-void window_destroy(SimpleWindow *window)
+void window_destroy(Window *window)
 {
     if (window == NULL) {
         fprintf(stderr, "%s: window argument is null\n", __func__);

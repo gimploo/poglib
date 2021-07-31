@@ -1,7 +1,7 @@
 #ifndef _LIST_H_
 #define _LIST_H_
 
-#include "str.h"
+#include "../str.h"
 
 #ifdef DEBUG
 #include "dbg/dbg.h"

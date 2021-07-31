@@ -2,7 +2,7 @@
 #define __GL_TEXTURE_H__
 
 
-#include "internal/gl_common.h"
+#include "_common.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../misc/stb_image.h"
@@ -103,7 +103,7 @@ Texture2D texture_init(const char *file_path)
 
     stbi_image_free(buf);
     
-    printf("[POG]\tTexture `%i` successfully created\n", id);
+   GL_LOG("Texture `%i` successfully created", id);
 
     return (Texture2D) {
         .id        = id,
@@ -120,7 +120,7 @@ void texture_destroy(Texture2D *texture)
     if (texture == NULL) eprint("texture argument is null");
 
     GL_CHECK(glDeleteTextures(1, &texture->id));
-    printf("[INFO]\tTexture `%i` successfully deleted\n", texture->id);
+   GL_LOG("Texture `%i` successfully deleted", texture->id);
 }
 
 

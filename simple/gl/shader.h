@@ -2,7 +2,7 @@
 #define __GL_SHADER_H__
 
 
-#include "internal/gl_common.h"
+#include "_common.h"
 
 typedef struct Shader Shader;
 struct Shader {
@@ -90,7 +90,7 @@ inline void shader_destroy(Shader *shader)
 
     GLuint id = shader->id;
     GL_CHECK(glDeleteProgram(shader->id));
-    printf("[INFO]\tShader `%i` successfully deleted\n", id);
+   GL_LOG("Shader `%i` successfully deleted", id);
 }
 
 
@@ -139,7 +139,7 @@ Shader shader_init(const char *vertex_source_path, const char *fragment_source_p
         fprintf(stderr, "Vertex Error:\n\t%s\n", error_log);
         exit(1);
     }
-    printf("[INFO]\tVertex Shader successfully compiled\n");
+   GL_LOG("Vertex Shader successfully compiled");
 
     GLuint fragmentShader;
     fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -151,7 +151,7 @@ Shader shader_init(const char *vertex_source_path, const char *fragment_source_p
         fprintf(stderr, "Fragment Error:\n\t%s\n", error_log);
         exit(1);
     }
-    printf("[INFO]\tFragment Shader successfully compiled\n");
+   GL_LOG("Fragment Shader successfully compiled");
 
     GLuint shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
@@ -169,7 +169,7 @@ Shader shader_init(const char *vertex_source_path, const char *fragment_source_p
 
     shader.id = shaderProgram;
 
-    printf("[POG]\tShader `%i` successfully linked\n", shader.id);
+   GL_LOG("Shader `%i` successfully linked", shader.id);
 
     return shader;
 }
@@ -209,7 +209,7 @@ Shader simple_use_default_shader(void)
         fprintf(stderr, "Vertex Error:\n\t%s\n", error_log);
         exit(1);
     }
-    printf("[INFO]\tVertex Shader successfully compiled\n");
+   GL_LOG("Vertex Shader successfully compiled");
 
     GLuint fragmentShader;
     fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -221,7 +221,7 @@ Shader simple_use_default_shader(void)
         fprintf(stderr, "Fragment Error:\n\t%s\n", error_log);
         exit(1);
     }
-    printf("[INFO]\tFragment Shader successfully compiled\n");
+   GL_LOG("Fragment Shader successfully compiled");
 
     GLuint shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
@@ -241,7 +241,7 @@ Shader simple_use_default_shader(void)
     shader.fg_file_path = shader.vs_file_path = NULL;
     shader.id = shaderProgram;
 
-    printf("[POG]\tShader `%i` successfully linked\n", shader.id);
+   GL_LOG("Shader `%i` successfully linked", shader.id);
 
     return shader;
 }

@@ -1,7 +1,7 @@
 #ifndef __MY_LA_H__
 #define __MY_LA_H__
 
-#include "basic.h"
+#include "../basic.h"
 
 typedef struct vec2f vec2f;
 typedef struct vec3f vec3f;
