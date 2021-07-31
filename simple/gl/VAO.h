@@ -12,8 +12,9 @@ struct vao_t {
 
     GLuint  id;
     stack_t vbos;
-
 };
+
+#define vao_unbind() GL_CHECK(glBindVertexArray(0))
 
 
 static inline vao_t vao_init(u32 capacity)
@@ -59,7 +60,7 @@ static inline void vao_set_attributes(
     if (vao == NULL) eprint("vao_set_attribute: vao argument is null");
 
     if (stack_vbo_index > vao->vbos.top) eprint("vao_set_attribute: index out of bound");
-
+    
 
     vbo_t *vbo = (vbo_t *)vao->vbos.array[stack_vbo_index]; 
     vbo_bind(vbo); {
@@ -74,28 +75,26 @@ static inline void vao_set_attributes(
                     stride, 
                     (void *)offset));
 
+        ++vbo->attribute_count;
+
     } vbo_unbind();
+
     
 }
 
-static inline void vao_unbind(void)
-{
-    GL_CHECK(glBindVertexArray(0));
-}
 
 static inline bool vao_draw(vao_t *vao)
 {
     if (vao == NULL) eprint("vao_draw: vao argument is null");
-
     if(stack_is_empty(&vao->vbos)) eprint("vao_draw: vao stack is empty");
 
     stack_t *stack = &vao->vbos;
     vbo_t *vbo = NULL;
 
+    vao_bind(vao);
     for (i64 i = stack->top; i >= 0; i--) 
     {
         vbo = (vbo_t *)stack->array[i];
-
         vbo_bind(vbo); {
 
             if (vbo->indices_count == 0) eprint("vao_draw: vbo[%li] indices_count is %i", i, vbo->indices_count);
@@ -104,7 +103,8 @@ static inline bool vao_draw(vao_t *vao)
 
         } vbo_unbind();
 
-    }
+    } 
+    vao_unbind();
     
     return true;
 }

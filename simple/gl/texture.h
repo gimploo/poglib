@@ -9,10 +9,6 @@
 
 
 
-//NOTE: color is of RGB type 
-//TODO: support RGBA
-
-
 
 typedef struct Texture2D Texture2D;
 
@@ -119,8 +115,8 @@ void texture_destroy(Texture2D *texture)
 {
     if (texture == NULL) eprint("texture argument is null");
 
-    GL_CHECK(glDeleteTextures(1, &texture->id));
-   GL_LOG("Texture `%i` successfully deleted", texture->id);
+    GL_LOG("Texture `%i` successfully deleted", texture->id);
+    GL_CHECK(glDeleteTextures(1, &texture->id)); 
 }
 
 

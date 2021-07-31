@@ -8,8 +8,11 @@ typedef struct vbo_t vbo_t;
 struct vbo_t {
 
     GLuint  id; 
-    i32     attribute_index;
+
     u32     indices_count;
+
+    u32     attribute_count;
+    i32     attribute_index; // this is basically (count-1), i have this to avoid possible headaches in the future
 
 };
 
@@ -32,8 +35,10 @@ static inline vbo_t vbo_init(const void *vertices, const size_t vsize)
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, VBO.id));
     GL_CHECK(glBufferData(GL_ARRAY_BUFFER, vsize, vertices, GL_STATIC_DRAW));
 
-    VBO.attribute_index = -1;
     VBO.indices_count = 0;
+
+    VBO.attribute_index = -1;
+    VBO.attribute_count = 0;
 
     GL_LOG("VBO `%i` created", VBO.id);
     return VBO;
