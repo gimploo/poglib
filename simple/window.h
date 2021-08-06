@@ -36,10 +36,10 @@ struct my_window {
 
 
 
-Window    window_init(size_t width, size_t height, SDL_FLAGS flags);
-void            window_render(Window *window, render_func render, void * arg);
-void            window_process_user_input(Window *window);
-void            window_destroy(Window *window);
+Window      window_init(size_t width, size_t height, SDL_FLAGS flags);
+void        window_render(Window *window, render_func render, void * arg);
+void        window_process_user_input(Window *window);
+void        window_destroy(Window *window);
 
 
 

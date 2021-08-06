@@ -8,6 +8,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include <time.h>
 
 typedef unsigned char   u8;
 typedef char            i8;
@@ -37,7 +38,6 @@ typedef double          f64;
     fprintf(stderr, "[(%s:%d): %s] " fmt "\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__); \
     exit(1);                                    \
 }
-
 
 
 #endif // _BASIC_H_

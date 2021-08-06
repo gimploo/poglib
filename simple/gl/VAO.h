@@ -17,18 +17,19 @@ struct vao_t {
 #define vao_unbind() GL_CHECK(glBindVertexArray(0))
 
 
-static inline vao_t vao_init(u32 capacity)
+static inline vao_t vao_init(u32 vbo_count)
 {
     vao_t vao;
 
     GL_CHECK(glGenVertexArrays(1, &vao.id)); 
     GL_CHECK(glBindVertexArray(vao.id)); 
     
-    vbo_t **vbos_array = (vbo_t **)malloc(sizeof(vbo_t*) * capacity);
+    vbo_t **vbos_array = (vbo_t **)malloc(sizeof(vbo_t*) * vbo_count);
 
-    vao.vbos = stack_init((void **)vbos_array, capacity);
+    vao.vbos = stack_init((void **)vbos_array, vbo_count);
 
     GL_LOG("VAO `%i` created", vao.id);
+
     return vao;
 }
 
@@ -92,18 +93,20 @@ static inline bool vao_draw(vao_t *vao)
     vbo_t *vbo = NULL;
 
     vao_bind(vao);
-    for (i64 i = stack->top; i >= 0; i--) 
     {
-        vbo = (vbo_t *)stack->array[i];
-        vbo_bind(vbo); {
+        for (i64 i = stack->top; i >= 0; i--) 
+        {
+            vbo = (vbo_t *)stack->array[i];
+            vbo_bind(vbo); {
 
-            if (vbo->indices_count == 0) eprint("vao_draw: vbo[%li] indices_count is %i", i, vbo->indices_count);
+                if (vbo->indices_count == 0) eprint("vao_draw: vbo[%li] indices_count is %i", i, vbo->indices_count);
 
-            glDrawElements(GL_TRIANGLES, vbo->indices_count, GL_UNSIGNED_INT, 0);
+                glDrawElements(GL_TRIANGLES, vbo->indices_count, GL_UNSIGNED_INT, 0);
 
-        } vbo_unbind();
+            } vbo_unbind();
 
-    } 
+        } 
+    }
     vao_unbind();
     
     return true;
