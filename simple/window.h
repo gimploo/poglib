@@ -10,25 +10,35 @@
 #include <SDL2/SDL_opengl.h>
 #endif
 
+#include "../math/la.h"
 
 #define SDL_FLAGS u_int32_t
 typedef void (*render_func) (void*);
 
+typedef struct Mouse Mouse;
+struct Mouse {
 
+    bool    is_active;
+    vec2f   position;
+};
 
-typedef struct my_window Window;
-struct my_window {
+typedef struct Window Window;
+struct Window {
 
     bool is_open;
-    SDL_Window *window_handle;
+    u64 width, height;
 
-#ifndef __gl_h_ // if OpenGL is included
+    SDL_Window *window_handle; // initializes the window 
+
+    SDL_Event event;           // handles the user inputs
+
+    Mouse mouse_handler;
+
+#ifndef __gl_h_                 // initializes the renderer
     SDL_Surface *surface_handle;
 #else 
     SDL_GLContext gl_context;
 #endif 
-
-    SDL_Event event;
 
 };
 
@@ -45,12 +55,56 @@ void        window_destroy(Window *window);
 
 
 
+vec2f __mouse_get_position(Window *window)
+{
+    if (window == NULL) eprint("window argument is null");
+
+    int x, y;
+    vec2f pos;
+
+    SDL_GetMouseState(&x, &y);
+
+    //printf("Mouse pos := (%d, %d)\n", x, y);
+
+    f32 normalizedX = -1.0 + 2.0 *  (f32) x / window->width;
+    f32 normalizedY = (1.0 - 2.0 * (f32) y / window->height);
+    
+    pos.cmp[X] = normalizedX;
+    pos.cmp[Y] = normalizedY;
+    
+    //printf("Mouse pos := (%f, %f)\n", normalizedX, normalizedY);
+    
+    return pos;
+}
+
+void  __mouse_update(Window *window)
+{
+    if (window == NULL) eprint("window argument is null");
+
+    window->mouse_handler.position =  __mouse_get_position(window);
+}
+
+Mouse __mouse_init(Window *window)
+{
+    if (window == NULL) eprint("window argument is null");
+
+    return (Mouse) {
+        .is_active = false,
+        .position = __mouse_get_position(window)
+    };
+}
+
+
+
 Window window_init(size_t width, size_t height, SDL_FLAGS flags)
 {
     Window output = {0};
     SDL_FLAGS WinFlags = 0;
     output.is_open = true;
+    output.width = width;
+    output.height = height;
 
+    output.mouse_handler = __mouse_init(&output);
 
     
 #ifdef __gl_h_
@@ -139,6 +193,17 @@ void window_process_user_input(Window *window)
             case SDL_QUIT:
                 window->is_open = false;
                 break;
+            case SDL_MOUSEMOTION:
+                __mouse_update(window);
+                break;
+            case SDL_MOUSEBUTTONDOWN:
+                __mouse_update(window);
+                window->mouse_handler.is_active = true;
+                break;
+            case SDL_MOUSEBUTTONUP:
+                __mouse_update(window);
+                window->mouse_handler.is_active = false;
+                break;
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym)
                 {
@@ -192,5 +257,6 @@ void window_destroy(Window *window)
     SDL_Quit();
     
 }
+
 
 #endif // __SIMPLE_WINDOW_H_
