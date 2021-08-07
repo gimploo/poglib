@@ -2,12 +2,7 @@
 #define __MY_LA_H__
 
 #include "../basic.h"
-#include <string.h>
-
-#define R 0
-#define G 1
-#define B 2
-#define A 3
+#include "my_math.h"
 
 #define X 0
 #define Y 1
@@ -43,7 +38,14 @@ struct vec4f {
 };
 
 
+vec2f vec2f_add(vec2f x, vec2f y)
+{
+    vec2f output;
+    output.cmp[X] = x.cmp[X] + y.cmp[X];
+    output.cmp[Y] = x.cmp[Y] + y.cmp[Y];
 
+    return output;
+}
 
 
 #endif //__MY_LA_H__

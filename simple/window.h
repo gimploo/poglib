@@ -19,6 +19,7 @@ typedef struct Mouse Mouse;
 struct Mouse {
 
     bool    is_active;
+    bool    is_dragged;
     vec2f   position;
 };
 
@@ -90,6 +91,7 @@ Mouse __mouse_init(Window *window)
 
     return (Mouse) {
         .is_active = false,
+        .is_dragged = false,
         .position = __mouse_get_position(window)
     };
 }
@@ -193,16 +195,26 @@ void window_process_user_input(Window *window)
             case SDL_QUIT:
                 window->is_open = false;
                 break;
+
             case SDL_MOUSEMOTION:
+
                 __mouse_update(window);
+                if (window->mouse_handler.is_active == true) window->mouse_handler.is_dragged = true; 
+
                 break;
             case SDL_MOUSEBUTTONDOWN:
+
                 __mouse_update(window);
                 window->mouse_handler.is_active = true;
+                window->mouse_handler.is_dragged = false;
+
                 break;
             case SDL_MOUSEBUTTONUP:
+
                 __mouse_update(window);
+                window->mouse_handler.is_dragged = false;
                 window->mouse_handler.is_active = false;
+
                 break;
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym)

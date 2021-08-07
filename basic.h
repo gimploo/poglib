@@ -10,6 +10,9 @@
 #include <assert.h>
 #include <time.h>
 
+#define global      static 
+#define internal    static 
+
 typedef unsigned char   u8;
 typedef char            i8;
 typedef u_int16_t       u16;

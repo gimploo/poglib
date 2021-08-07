@@ -7,7 +7,11 @@
 #include "../../ds/stack.h"
 #include "../../file.h"
 
-#define GL_LOG(fmt, ...) fprintf(stderr, "[LOG]\t " fmt "\n", ##__VA_ARGS__); \
+#ifdef GL_LOG_ENABLE
+#   define GL_LOG(fmt, ...) fprintf(stderr, "[LOG]\t " fmt "\n", ##__VA_ARGS__)
+#else
+#   define GL_LOG(fmt, ...) 
+#endif
 
 #define GL_CHECK(cmd) {\
     GLenum err;\
