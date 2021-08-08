@@ -5,7 +5,7 @@
 
 
 #include "gl/shader.h"
-#include "gl/texture.h"
+#include "gl/texture2d.h"
 
 #include "gl/VAO.h"
 #include "gl/VBO.h"
