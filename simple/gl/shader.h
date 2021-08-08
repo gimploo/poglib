@@ -202,7 +202,7 @@ Shader shader_init(const char *vertex_source_path, const char *fragment_source_p
     int status;
     char error_log[KB] = {0};
 
-    File vsfile = file_init(vertex_source_path);
+    file_t vsfile = file_init(vertex_source_path);
     const char * vtxfile = file_readall(&vsfile);
     if (vtxfile == NULL) {
         fprintf(stderr, "%s: vertex file returned null\n", __func__);
@@ -210,7 +210,7 @@ Shader shader_init(const char *vertex_source_path, const char *fragment_source_p
     }
 
 
-    File fgfile = file_init(fragment_source_path);
+    file_t fgfile = file_init(fragment_source_path);
     const char *frgfile = file_readall(&fgfile);
     if (frgfile == NULL) {
         fprintf(stderr, "%s: vertex file returned null\n", __func__);
