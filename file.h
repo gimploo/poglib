@@ -1,5 +1,9 @@
-#ifndef __FILE_H__
-#define __FILE_H__
+#ifndef __MY__FILE__H__
+#define __MY__FILE__H__
+
+/*===================================================
+ // File handling library
+===================================================*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,19 +13,26 @@
 
 #include "basic.h"
 
-typedef struct File File;
-struct File {
+typedef struct file_t file_t;
+struct file_t {
+
     const char *name;
-    FILE    *fp;
-    u64     size;
-    bool    is_closed;
+    FILE        *fp;
+    u64         size;
+    bool        is_closed;
+
 };
 
-File            file_init(const char *file_path);
-bool            file_open(File *file, const char *mode);
-void            file_read_to_buf(File *file, char *buffer, size_t bytes);
-char *          file_readall(File *file);
-void            file_destroy(File *file);
+/*------------------------------------------
+ // Declarations
+------------------------------------------*/
+
+
+file_t          file_init(const char *file_path);
+bool            file_open(file_t *file, const char *mode);
+void            file_read_to_buf(file_t *file, char * const buffer, size_t bytes);
+const char *    file_readall(file_t * const file);
+void            file_destroy(file_t * const file);
 
 #define file_close(pfile) {\
     fclose((*pfile).fp);\
@@ -29,7 +40,12 @@ void            file_destroy(File *file);
 }
 
 
-size_t file_get_size(const char *file_path)
+/*------------------------------------------
+ // Implementataion
+------------------------------------------*/
+
+
+size_t __file_get_size(const char *file_path)
 {
     FILE *fp = fopen(file_path, "r");
     if (fp == NULL) {
@@ -43,18 +59,18 @@ size_t file_get_size(const char *file_path)
 }
 
 
-File file_init(const char *file_path)
+file_t file_init(const char *file_path)
 {
-    File file = {0};
+    file_t file = {0};
     file.name = file_path;
-    file.size = file_get_size(file_path);
+    file.size = __file_get_size(file_path);
     file.fp = NULL;
     file.is_closed = true;
 
     return file;
 }
 
-bool file_open(File *file, const char *mode)
+bool file_open(file_t *file, const char *mode)
 {
     if (file == NULL) return false;
     file->fp = fopen(file->name, mode);
@@ -65,7 +81,7 @@ bool file_open(File *file, const char *mode)
 }
 
 
-void file_read_to_buf(File *file, char *buffer, size_t bytes)
+void file_read_to_buf(file_t *file,  char * const buffer, size_t bytes)
 {
     assert(file != NULL);
     assert(buffer != NULL);
@@ -80,7 +96,7 @@ void file_read_to_buf(File *file, char *buffer, size_t bytes)
     file_destroy(file);
 }
 
-char * file_readall(File *file)
+const char * file_readall(file_t * const file)
 {
     //NOTE: this code works dont tinker
     
@@ -98,7 +114,7 @@ char * file_readall(File *file)
     return buffer;
 }
 
-void file_destroy(File *file)
+void file_destroy(file_t * const file)
 {
     assert(file != NULL);
     if (!file->is_closed) fclose(file->fp);
@@ -109,4 +125,4 @@ void file_destroy(File *file)
 
 
 
-#endif // __FILE_H__
+#endif // __MY__FILE__H__
