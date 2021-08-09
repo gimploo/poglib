@@ -19,7 +19,7 @@ int main(void)
     uint32 FLAGS = SDL_INIT_VIDEO;
     Window window = window_init(1080, 920, FLAGS);
 
-    gl_ascii_font_handler_t font = gl_ascii_font_init("../res/ascii_font.png", ASCII_TILE_WIDTH_COUNT, ASCII_TILE_HEIGHT_COUNT);
+    gl_ascii_font_handler_t font = gl_ascii_font_init("../res/glyph_atlas.png", ASCII_TILE_WIDTH_COUNT, ASCII_TILE_HEIGHT_COUNT);
 
     while (window.is_open)
     {
