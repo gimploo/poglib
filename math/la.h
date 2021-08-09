@@ -23,6 +23,8 @@ struct vec4 {
 };
 
 
+#define VEC2F_FMT       "(%f,%f)"
+#define VEC2F_ARG(vec)  (vec).cmp[0], (vec).cmp[1]
 typedef struct vec2f vec2f;
 typedef struct vec3f vec3f;
 typedef struct vec4f vec4f;
@@ -47,5 +49,9 @@ vec2f vec2f_add(vec2f x, vec2f y)
     return output;
 }
 
+void matrix4f_copy(vec2f destination[], vec2f src[])
+{
+    memcpy(destination, src, sizeof(vec2f) * 4);
+}
 
 #endif //__MY_LA_H__

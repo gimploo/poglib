@@ -10,9 +10,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../external/stb_image.h"
 
-
-typedef struct texture2d_t texture2d_t;
-struct texture2d_t {
+typedef struct gl_texture2d_t {
     
     GLuint          id; 
     const char      *file_path;
@@ -21,8 +19,7 @@ struct texture2d_t {
     int             height;
     int             bpp;        //BytesPerPixel
 
-
-};
+} gl_texture2d_t;
 
 
 /*-----------------------------------------------------
@@ -30,10 +27,11 @@ struct texture2d_t {
 -----------------------------------------------------*/
 
 
-texture2d_t                 texture_init(const char * file_path);
-void                        texture_destroy(texture2d_t *texture);
-//NOTE:(macro)              texture_bind(texture2d_t *, u32 )
-//NOTE:(macro)              texture_unbind(void)
+gl_texture2d_t              texture_init(const char * file_path);
+void                        texture_destroy(gl_texture2d_t *texture);
+//NOTE:(macro)              texture_bind(gl_texture2d_t *, u32 ) --> void
+//NOTE:(macro)              texture_unbind(void) --> void
+//
 
 
 /*------------------------------------------------------
@@ -47,7 +45,7 @@ void                        texture_destroy(texture2d_t *texture);
 #define texture_unbind()    (GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
 
 
-texture2d_t texture_init(const char *file_path)
+gl_texture2d_t texture_init(const char *file_path)
 {
     if (file_path == NULL) eprint("file argument is null");
 
@@ -103,21 +101,21 @@ texture2d_t texture_init(const char *file_path)
 
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 
-    stbi_image_free(buf);
+    //stbi_image_free(buf);
     
    GL_LOG("Texture `%i` successfully created", id);
 
-    return (texture2d_t) {
+    return (gl_texture2d_t) {
         .id        = id,
         .file_path = file_path,
-        .buf       = NULL,
+        .buf       = buf,
         .width     = width,
         .height    = height,
         .bpp       = bpp
     };
 }
 
-void texture_destroy(texture2d_t *texture)
+void texture_destroy(gl_texture2d_t *texture)
 {
     if (texture == NULL) eprint("texture argument is null");
 

@@ -113,7 +113,7 @@ struct button_t {
     vbo_t       vbo;
     ebo_t       ebo;
     vec3f       vertices[4];
-    Shader      shader;
+    gl_shader_t shader;
 };
 
 const u32 RECT_INDICES[] = {          

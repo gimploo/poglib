@@ -1,17 +1,19 @@
 #ifndef __GL_SHADER_H__
 #define __GL_SHADER_H__
 
+/*=======================================================
+ // OpenGL shader handling library
+=======================================================*/
 
 #include "_common.h"
 
-typedef struct Shader Shader;
-struct Shader {
-    
+typedef struct gl_shader_t {
+
     GLuint id;
     const char *vs_file_path;
     const char *fg_file_path;
 
-};
+} gl_shader_t;
 
 
 const char * const default_vshader = 
@@ -33,27 +35,34 @@ const char * const default_fshader =
         "FragColor = u_color;\n"
     "}";
 
+    
 
 
-Shader  shader_init(const char *file_vs, const char *file_fs);
-Shader  shader_load_code(const char *vertex_source_code, const char *fragment_source_code);
-#define shader_load_default() shader_load_code(default_vshader, default_fshader)
+/*-----------------------------------------------------
+ // Declarations
+-----------------------------------------------------*/
 
-void    shader_bind(Shader *shader);
+//NOTE:(macro)  shader_default_init(void) --> gl_shader_t
+gl_shader_t     shader_init(const char *file_vs, const char *file_fs);
+gl_shader_t     shader_load_code(const char *vertex_source_code, const char *fragment_source_code);
 
-void    shader_set_farr(Shader *shader, const char *uniform, float arr[]);
-void    shader_set_fval(Shader *shader, const char *uniform, float val);
-void    shader_set_uival(Shader *shader, const char *uniform, unsigned int val);
-void    shader_set_ival(Shader *shader, const char *uniform, int val);
+void            shader_bind(gl_shader_t *shader);
 
-void    shader_destroy(Shader *shader);
+void            shader_set_farr(gl_shader_t *shader, const char *uniform, float arr[]);
+void            shader_set_fval(gl_shader_t *shader, const char *uniform, float val);
+void            shader_set_uival(gl_shader_t *shader, const char *uniform, unsigned int val);
+void            shader_set_ival(gl_shader_t *shader, const char *uniform, int val);
 
-
-
-
+void            shader_destroy(gl_shader_t *shader);
 
 
-void shader_set_ival(Shader *shader, const char *uniform, int val)
+/*--------------------------------------------------------
+ // Implementation
+--------------------------------------------------------*/
+
+#define shader_default_init() shader_load_code(default_vshader, default_fshader)
+
+void shader_set_ival(gl_shader_t *shader, const char *uniform, int val)
 {
     if (shader == NULL) eprint("shader argument is null");
     if (uniform == NULL) eprint("uniform argument is null");
@@ -66,7 +75,7 @@ void shader_set_ival(Shader *shader, const char *uniform, int val)
     GL_CHECK(glUniform1i(location, val));
 }
 
-void shader_set_uival(Shader *shader, const char *uniform, unsigned int val)
+void shader_set_uival(gl_shader_t *shader, const char *uniform, unsigned int val)
 {
     if (shader == NULL) eprint("shader argument is null");
     if (uniform == NULL) eprint("uniform argument is null");
@@ -78,7 +87,7 @@ void shader_set_uival(Shader *shader, const char *uniform, unsigned int val)
     GL_CHECK(glUniform1ui(location, val));
 }
 
-void shader_set_fval(Shader *shader, const char *uniform, float val)
+void shader_set_fval(gl_shader_t *shader, const char *uniform, float val)
 {
     if (shader == NULL) eprint("shader argument is null");
     if (uniform == NULL) eprint("uniform argument is null");
@@ -90,7 +99,7 @@ void shader_set_fval(Shader *shader, const char *uniform, float val)
     GL_CHECK(glUniform1f(location, val));
 }
 
-void shader_set_farr(Shader *shader, const char *uniform, float arr[])
+void shader_set_farr(gl_shader_t *shader, const char *uniform, float arr[])
 {
     if (shader == NULL) eprint("shader argument is null");
     if (uniform == NULL) eprint("uniform argument is null");
@@ -105,7 +114,7 @@ void shader_set_farr(Shader *shader, const char *uniform, float arr[])
 
 
 
-inline void shader_destroy(Shader *shader)
+inline void shader_destroy(gl_shader_t *shader)
 {
     if (shader == NULL) {
         fprintf(stderr, "%s: shader is null\n", __func__);
@@ -115,11 +124,11 @@ inline void shader_destroy(Shader *shader)
 
     GLuint id = shader->id;
     GL_CHECK(glDeleteProgram(shader->id));
-    GL_LOG("Shader `%i` successfully deleted", id);
+    GL_LOG("gl_shader_t `%i` successfully deleted", id);
 }
 
 
-void shader_bind(Shader *shader)
+void shader_bind(gl_shader_t *shader)
 {
     if (shader == NULL) {
         fprintf(stderr, "%s: shader is null\n", __func__);
@@ -128,9 +137,9 @@ void shader_bind(Shader *shader)
     GL_CHECK(glUseProgram(shader->id));
 }
 
-Shader shader_load_code(const char *vertex_source_code, const char *fragment_source_code)
+gl_shader_t shader_load_code(const char *vertex_source_code, const char *fragment_source_code)
 {
-    Shader shader = {0};
+    gl_shader_t shader = {0};
     int status;
     char error_log[KB] = {0};
 
@@ -193,9 +202,9 @@ Shader shader_load_code(const char *vertex_source_code, const char *fragment_sou
 
 
 
-Shader shader_init(const char *vertex_source_path, const char *fragment_source_path)
+gl_shader_t shader_init(const char *vertex_source_path, const char *fragment_source_path)
 {
-    Shader shader = {0};
+    gl_shader_t shader = {0};
     shader.vs_file_path = vertex_source_path;
     shader.fg_file_path = fragment_source_path;
 
