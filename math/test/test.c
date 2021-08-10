@@ -1,12 +1,27 @@
 #include <stdio.h>
 
 #include "../../basic.h"
-#include "../my_math.h"
 
 #include "../la.h"
-
+#include "../shapes.h"
 
 int main(void)
+{
+
+    quadf_t rect01 = quadf_init((vec2f) {0.0f, 0.0f}, 1.0f, 1.0f);
+    quadf_t rect02 = quadf_init((vec2f) {-1.0f, 1.0f}, 1.0f, 1.0f);
+    quadf_t rect03 = quadf_init((vec2f) {-1.0f, -1.0f}, 1.0f, 1.0f);
+
+
+    printf(QUAD_FMT"\n", QUAD_ARG(rect01));
+    quadf_translate(&rect01, (vec2f) {0.5f, 0.5f});
+
+    printf(QUAD_FMT, QUAD_ARG(rect01));
+    return 0;
+}
+
+
+int oldmain(void)
 {
     f32 x = 3.03;
     f32 y = 3.0343;
@@ -36,4 +51,5 @@ int main(void)
     printf("y = %f\n", abs(y));
     printf("z = %f\n", abs(z));
     */
+    return 0;
 }

@@ -2,7 +2,9 @@
 #define __MY_LA_H__
 
 #include "../basic.h"
-#include "my_math.h"
+#include <math.h>
+
+#define norm(x, min, max) (((x) - (min))/((max) - (min)))
 
 #define X 0
 #define Y 1
@@ -40,6 +42,7 @@ struct vec4f {
 };
 
 
+#define vec2f_translate(x, y) vec2f_add(x, y)
 vec2f vec2f_add(vec2f x, vec2f y)
 {
     vec2f output;
@@ -48,6 +51,7 @@ vec2f vec2f_add(vec2f x, vec2f y)
 
     return output;
 }
+
 
 void matrix4f_copy(vec2f destination[], vec2f src[])
 {
