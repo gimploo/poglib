@@ -11,7 +11,7 @@ void loop(void *arg)
 {
     gl_ascii_font_handler_t *font = (gl_ascii_font_handler_t *)arg;
 
-    gl_ascii_font_render_text(font, "H", (vec2f){ 0.0f, 0.0f });
+    gl_ascii_font_render_text(font, "Gokul", (vec2f){ -1.0f, 1.0f });
 }
 
 int main(void)
@@ -19,7 +19,8 @@ int main(void)
     uint32 FLAGS = SDL_INIT_VIDEO;
     Window window = window_init(1080, 920, FLAGS);
 
-    gl_ascii_font_handler_t font = gl_ascii_font_init("../res/glyph_atlas.png", ASCII_TILE_WIDTH_COUNT, ASCII_TILE_HEIGHT_COUNT);
+    gl_ascii_font_handler_t font = gl_ascii_font_init(
+            "../res/glyph_atlas.png", 16, 6);
 
     while (window.is_open)
     {

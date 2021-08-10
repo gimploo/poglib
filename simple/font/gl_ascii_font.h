@@ -5,11 +5,11 @@
  // OpenGL font rendering with ascii style spritesheets
 ======================================================*/
 
+#include "../../math/la.h"
+#include "../../math/shapes.h"
 #include "../gl_renderer.h"
 
-#define ASCII_TILE_WIDTH_COUNT     16
-#define ASCII_TILE_HEIGHT_COUNT    6
-#define MAX_ASCII_TILES_COUNT    (ASCII_TILE_HEIGHT_COUNT * ASCII_TILE_WIDTH_COUNT)
+#define MAX_ASCII_TILES_COUNT 200
 
 typedef struct character_info_t  {
 
@@ -19,6 +19,9 @@ typedef struct character_info_t  {
     f32                 font_width;
     f32                 font_height;
 
+    f32                 norm_font_width;
+    f32                 norm_font_height;
+
 } character_info_t;
 
 typedef struct gl_ascii_font_handler_t {
@@ -27,8 +30,9 @@ typedef struct gl_ascii_font_handler_t {
     gl_shader_t         shader;
 
     gl_texture2d_t      texture;
-    u32                 sprite_count_width;
-    u32                 sprite_count_height;
+
+    u32                 font_count_width;
+    u32                 font_count_height;
 
 
 } gl_ascii_font_handler_t;
@@ -44,7 +48,7 @@ const char *ascii_font_vs =
     "\n"
     "void main()\n"
     "{\n"
-    "   gl_Position = vec4(aPos, 0.0f);\n"
+    "   gl_Position = vec4(aPos, 1.0f);\n"
     "   TexCoord    = aTexCoord;\n"
     "}";
 
@@ -60,6 +64,7 @@ const char *ascii_font_fs =
     "void main()\n"
     "{\n"
         "FragColor = texture(texture1, TexCoord);\n"
+        //"FragColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);\n"
     "}";
 
 /*----------------------------------------------------------------
@@ -81,26 +86,26 @@ gl_ascii_font_handler_t gl_ascii_font_init(const char *file_path, u32 tile_count
     if (file_path == NULL) eprint("file_path argument is null");
 
 
-    gl_ascii_font_handler_t output;
-    output.shader = shader_load_code(ascii_font_vs, ascii_font_fs);
-    output.texture = texture_init(file_path);
+    gl_ascii_font_handler_t output = {
+        .shader     = shader_load_code(ascii_font_vs, ascii_font_fs),
+        .texture    = texture_init(file_path),
+    };
 
-    const f32 tiles_U = tile_count_width;
-    const f32 tiles_V = tile_count_height;
+    const u32 font_width    = output.texture.width / tile_count_width;
+    const u32 font_height   = output.texture.height / tile_count_height;
 
-    u32 tile_index = 0;
-    char character = ' ';
-    const u32 font_width = output.texture.width / tiles_U;
-    const u32 font_height = output.texture.height / tiles_V;
+    f32 norm_sprite_height  = norm(font_height, 0.0f, output.texture.height); 
+    f32 norm_sprite_width   = norm(font_width, 0.0f, output.texture.width);
 
-    for (u32 u = 0; u < tiles_U; u++)
+    for (u32 u = 0, tile_index = 0; u < tile_count_width; u++)
     {
-        for (u32 v = 0; v < tiles_V; v++)
+        for (u32 v = 0; v < tile_count_height; v++)
         {
-            f32 left_U      = u        / tiles_U;
-            f32 right_U     = (u+1.0f) / tiles_U; 
-            f32 top_V       = (tiles_V - v)        / tiles_V;
-            f32 bottom_V    = (tiles_V - v - 1.0f) / tiles_V;
+            
+            f32 left_U      = u * norm_sprite_width;
+            f32 right_U     = left_U + norm_sprite_width; 
+            f32 top_V       = v * norm_sprite_height;
+            f32 bottom_V    = top_V - norm_sprite_height ;
 
             vec2f tex_coord[4] = {
                 {left_U, top_V},
@@ -109,29 +114,36 @@ gl_ascii_font_handler_t gl_ascii_font_init(const char *file_path, u32 tile_count
                 {left_U, bottom_V},
             };
 
-            output.font_atlas[tile_index].character = (character + tile_index);
+            output.font_atlas[tile_index].character = (' ' + tile_index);
             output.font_atlas[tile_index].font_height = font_height;
             output.font_atlas[tile_index].font_width =  font_width;
+            output.font_atlas[tile_index].norm_font_width = norm_sprite_width;
+            output.font_atlas[tile_index].norm_font_height = norm_sprite_height;
+
+
             matrix4f_copy(
                     output.font_atlas[tile_index].texture_coord,
                     tex_coord
             );
 
-            /*
+#if 0
             printf("Character = %c \n", output.font_atlas[tile_index].character);
             printf("font height = %f\n", output.font_atlas[tile_index].font_height);
-            printf("font height = %f\n", output.font_atlas[tile_index].font_width);
+            printf("font width = %f\n", output.font_atlas[tile_index].font_width);
+            printf("norm font height = %f\n", output.font_atlas[tile_index].norm_font_height);
+            printf("norm font width = %f\n", output.font_atlas[tile_index].norm_font_width);
             printf("TexCoord: " VEC2F_FMT "\n",VEC2F_ARG(tex_coord[0])); 
             printf("TexCoord: " VEC2F_FMT "\n",VEC2F_ARG(tex_coord[1])); 
             printf("TexCoord: " VEC2F_FMT "\n",VEC2F_ARG(tex_coord[2])); 
             printf("TexCoord: " VEC2F_FMT "\n",VEC2F_ARG(tex_coord[3])); 
-            */
+#endif
 
 
             ++tile_index;
 
         }
     }
+
 
     return output;
     
@@ -142,43 +154,80 @@ void gl_ascii_font_render_text(gl_ascii_font_handler_t *handler, const char *tex
     if (handler == NULL)    eprint("handler argument is null");
     if (text == NULL)       eprint("text argument is null");
 
+
+    quadf_t             quad                = {0};
+    u32                 tile_index          = ' ';
+    vec2f               x_offset            = position;
+    character_info_t    *atlas              = handler->font_atlas;
+    f32                 norm_font_width     = atlas->norm_font_width; 
+    f32                 norm_font_height    = atlas->norm_font_height;
+
     unsigned int indices[] = {          
         0, 1, 2, // first triangle  
         2, 3, 0  // second triangle 
     };                                  
 
-    u32 tile_index = ' ';
-
-    character_info_t *atlas = handler->font_atlas;
-
-    gl_ascii_font_handler_t *output = handler; // NOTE: delete this line later
-
-    f32 font_width = handler->font_atlas[0].font_width;
-    f32 font_height = handler->font_atlas[0].font_height;
     
     for (int i = 0; text[i] != '\0'; i++) 
     {
-        tile_index = (text[i] - ' ') + i;
+        x_offset = vec2f_add(
+                x_offset, 
+                (vec2f) {norm_font_width * i ,0.0f}
+                //(vec2f) {0.4f * i ,0.0f}
+        );
 
+        tile_index = text[i] - ' ';
+
+        quad = quadf_init(
+                vec2f_add(position, x_offset), 
+                //0.4f,
+                //0.4f
+                atlas[tile_index].norm_font_width,
+                atlas[tile_index].norm_font_height
+        );
+
+
+        //printf(QUAD_FMT"\n", QUAD_ARG(quad));
+
+
+#if 1
+        gl_ascii_font_handler_t *output = handler; // NOTE: delete this line later
         printf("Tile index %i\n", tile_index);
         printf("Character = %c \n", output->font_atlas[tile_index].character);
+        printf("norm font width = %f\n", output->font_atlas[tile_index].norm_font_width);
+        printf("norm font height = %f\n", output->font_atlas[tile_index].norm_font_height);
         printf("font height = %f\n", output->font_atlas[tile_index].font_height);
-        printf("font height = %f\n", output->font_atlas[tile_index].font_width);
+        printf("font width = %f\n", output->font_atlas[tile_index].font_width);
         printf("TexCoord: " VEC2F_FMT "\n",VEC2F_ARG(output->font_atlas[tile_index].texture_coord[0])); 
         printf("TexCoord: " VEC2F_FMT "\n",VEC2F_ARG(output->font_atlas[tile_index].texture_coord[1])); 
         printf("TexCoord: " VEC2F_FMT "\n",VEC2F_ARG(output->font_atlas[tile_index].texture_coord[2])); 
         printf("TexCoord: " VEC2F_FMT "\n",VEC2F_ARG(output->font_atlas[tile_index].texture_coord[3])); 
+#endif 
 
         
 
         float vertices[] = {                           
 
-            position.cmp[X] , position.cmp[Y], 0.0f,                                atlas[tile_index].texture_coord[0].cmp[X], atlas[tile_index].texture_coord[0].cmp[Y],
-            (position.cmp[X] + font_width), position.cmp[Y], 0.0f,                  atlas[tile_index].texture_coord[1].cmp[X], atlas[tile_index].texture_coord[1].cmp[Y],
-            (position.cmp[X] + font_width), (position.cmp[Y] - font_height), 0.0f,  atlas[tile_index].texture_coord[2].cmp[X], atlas[tile_index].texture_coord[2].cmp[Y],
-            position.cmp[X], (position.cmp[Y] - font_height), 0.0f,                 atlas[tile_index].texture_coord[3].cmp[X], atlas[tile_index].texture_coord[3].cmp[Y],
+            quad.cmp[0].cmp[X], quad.cmp[0].cmp[Y], 0.0f,
+            quad.cmp[1].cmp[X], quad.cmp[1].cmp[Y], 0.0f,
+            quad.cmp[2].cmp[X], quad.cmp[2].cmp[Y], 0.0f,
+            quad.cmp[3].cmp[X], quad.cmp[3].cmp[Y], 0.0f,
+
+            atlas[tile_index].texture_coord[3].cmp[X], atlas[tile_index].texture_coord[3].cmp[Y],
+            atlas[tile_index].texture_coord[2].cmp[X], atlas[tile_index].texture_coord[2].cmp[Y],
+            atlas[tile_index].texture_coord[1].cmp[X], atlas[tile_index].texture_coord[1].cmp[Y],
+            atlas[tile_index].texture_coord[0].cmp[X], atlas[tile_index].texture_coord[0].cmp[Y],
 
         };                                             
+
+#if 1
+        printf("Position: " VEC2F_FMT"\n", vertices[0], vertices[1]);
+        printf("--------- " VEC2F_FMT"\n", vertices[3], vertices[4]); 
+        printf("          " VEC2F_FMT"\n", vertices[6], vertices[7]); 
+        printf("          " VEC2F_FMT"\n", vertices[9], vertices[10]); 
+#endif
+
+
 
         vao_t vao = vao_init(1);
         vbo_t vbo = vbo_init(vertices, sizeof(vertices)); 
@@ -186,8 +235,8 @@ void gl_ascii_font_render_text(gl_ascii_font_handler_t *handler, const char *tex
 
         ebo_t ebo = ebo_init(&vbo, indices, 6);
 
-        vao_set_attributes(&vao, 0, 3, GL_FLOAT, false, 5 * sizeof(float), 0);      
-        vao_set_attributes(&vao, 0, 2, GL_FLOAT, false, 5 * sizeof(float), 3 * sizeof(float));
+        vao_set_attributes(&vao, 0, 3, GL_FLOAT, false, 3 * sizeof(float), 0);      
+        vao_set_attributes(&vao, 0, 2, GL_FLOAT, false, 2 * sizeof(float), 12 * sizeof(float));
 
         texture_bind(&handler->texture, 0);
         shader_bind(&handler->shader);
@@ -197,6 +246,7 @@ void gl_ascii_font_render_text(gl_ascii_font_handler_t *handler, const char *tex
         ebo_destroy(&ebo);
         vbo_destroy(&vbo);
         vao_destroy(&vao);
+
 
     }
 }

@@ -31,7 +31,7 @@ gl_texture2d_t              texture_init(const char * file_path);
 void                        texture_destroy(gl_texture2d_t *texture);
 //NOTE:(macro)              texture_bind(gl_texture2d_t *, u32 ) --> void
 //NOTE:(macro)              texture_unbind(void) --> void
-//
+void                        texture_dump(gl_texture2d_t *texture);
 
 
 /*------------------------------------------------------
@@ -123,5 +123,25 @@ void texture_destroy(gl_texture2d_t *texture)
     GL_CHECK(glDeleteTextures(1, &texture->id)); 
 }
 
+void texture_dump(gl_texture2d_t *texture)
+{
+    if (texture == NULL) eprint("texture argument is null");
+
+    const char *FMT = 
+        "GLuint = %i\n"
+        "file_path = %s\n"
+        "buf = %s\n"
+        "width = %i\n"
+        "height = %i\n"
+        "bpp = %i\n";
+
+    printf(FMT,
+            texture->id, 
+            texture->file_path, 
+            texture->buf, 
+            texture->width, 
+            texture->height, 
+            texture->bpp);
+}
 
 #endif //__TEXTURE_H__
