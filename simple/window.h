@@ -244,7 +244,7 @@ void window_render(Window *window, render_func render, void *arg)
     }
 
 #ifdef __gl_h_
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClearColor(0.0f, 1.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 #endif 
 

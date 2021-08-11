@@ -223,9 +223,6 @@ void gl_ascii_font_render_text(
 #endif
 
 
-
-        vao_bind(&vao);
-
         vbo_t vbo = vbo_init(vertices, sizeof(vertices)); 
         ebo_t ebo = ebo_init(&vbo, indices, 6);
 
@@ -245,7 +242,6 @@ void gl_ascii_font_render_text(
                 (vec2f) {norm_font_width, 0.0f}
         );
 
-        vao_unbind();
 
     }
 
