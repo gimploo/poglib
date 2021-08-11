@@ -393,6 +393,28 @@ bool button_is_dragged(const crapgui_t *gui, button_t *button)
  //                 Sliders
 ============================================================================*/
 
+typedef struct {
+
+    const char *label;
+    f32 value;
+    struct {
+        f32 min;
+        f32 max;
+    } range;
+
+    vec2f_t     position; 
+    f32         width, height;
+
+    // Refactor vao, vbo and ebo into a renderer struct
+    vao_t       vao;
+    vbo_t       vbo;
+    ebo_t       ebo;
+    vec3f_t     vertices[4];
+    vec4f_t     color;
+    gl_shader_t shader;
+
+} slider_t;
+
 
 
 /*============================================================================

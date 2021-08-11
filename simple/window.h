@@ -122,82 +122,52 @@ static inline Mouse __mouse_init(window_t *window)
 
 window_t window_init(size_t width, size_t height, SDL_FLAGS flags)
 {
-    window_t output = {0};
-    SDL_FLAGS WinFlags = 0;
-    output.is_open = true;
-    output.width = width;
-    output.height = height;
+    window_t output         = {0};
+    SDL_FLAGS WinFlags      = 0;
+    output.is_open          = true;
+    output.width            = width;
+    output.height           = height;
     output.background_color = DEFAULT_BACKGROUND_COLOR;
+    output.mouse_handler    = __mouse_init(&output);
 
-    output.mouse_handler = __mouse_init(&output);
-
-    
 #ifdef __gl_h_
     WinFlags = SDL_WINDOW_OPENGL;
-
     int major_ver, minor_ver;
 
     if ( !SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &major_ver) || 
          !SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &minor_ver)) 
-    {
-        fprintf(stderr, "Error: %s\n", SDL_GetError());
-        exit(1);
-    }
+        eprint("Error: %s\n", SDL_GetError());
+
     if ( !SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major_ver) ||
          !SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor_ver))
-    {
-        fprintf(stderr, "Error: %s\n", SDL_GetError());
-        exit(1);
-    }
+
+        eprint("Error: %s\n", SDL_GetError());
 
     if (!SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 
                         SDL_GL_CONTEXT_PROFILE_CORE))
-    {
-        fprintf(stderr, "Error: %s\n", SDL_GetError());
-        exit(1);
-    }
+        eprint("Error: %s\n", SDL_GetError());
 #endif 
 
-
-
-    if (SDL_Init(flags) == -1) {
-        fprintf(stderr, "Error: %s\n", SDL_GetError());
-        exit(1);
-    }
+    if (SDL_Init(flags) == -1) eprint("Error: %s\n", SDL_GetError());
     output.window_handle = SDL_CreateWindow("window_t", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
-    if (!output.window_handle) {
-        fprintf(stderr, "Error: %s\n", SDL_GetError());
-        exit(1);
-    }
-
+    if (!output.window_handle) eprint("Error: %s\n", SDL_GetError());
 
 
 #ifndef __gl_h_
-
     output.surface_handle = SDL_GetWindowSurface(output.window_handle);
-    if (!output.surface_handle) {
-        fprintf(stderr, "Error: %s\n", SDL_GetError());
-        exit(1);
-    }
-
+    if (!output.surface_handle) eprint("Error: %s\n", SDL_GetError());
     printf("[OUTPUT] Using standard sdl2 render\n");
 
 #else 
+    glewExperimental = true; // if using GLEW version 1.13 or earlier
 
     output.gl_context = SDL_GL_CreateContext(output.window_handle);
-    if (!output.gl_context) {
-        fprintf(stderr, "Error: %s\n", SDL_GetError());
-        exit(1);
-    }
+    if (!output.gl_context) eprint("Error: %s\n", SDL_GetError());
 
-    glewExperimental = true; // if using GLEW version 1.13 or earlier
     GLenum glewError = glewInit();
-    if (glewError != GLEW_OK) {
-        fprintf(stderr, "Error: %s\n", glewGetErrorString(glewError));
-        exit(1);
-    }
-    printf("[OUTPUT] Using OpenGL render\n");
+    if (glewError != GLEW_OK) eprint("Error: %s\n", glewGetErrorString(glewError));
 
+    printf("[OUTPUT] Using OpenGL render\n");
 #endif
 
     return output;
@@ -206,10 +176,8 @@ window_t window_init(size_t width, size_t height, SDL_FLAGS flags)
 
 void window_process_user_input(window_t *window)
 {
-    if (window == NULL) {
-        fprintf(stderr, "%s: window argument is null\n", __func__);
-        exit(1);
-    }
+    if (window == NULL)  eprint("window argument is null");
+
     SDL_Event event = window->event;
     while(SDL_PollEvent(&event) > 0) 
     {
@@ -261,10 +229,7 @@ void window_process_user_input(window_t *window)
 
 void window_render(window_t *window, render_func render, void *arg)
 {
-    if (window == NULL) {
-        fprintf(stderr, "%s: window argument is null\n", __func__);
-        exit(1);
-    }
+    if (window == NULL) eprint("window argument is null");
 
 #ifdef __gl_h_
     glClearColor(
@@ -289,10 +254,8 @@ void window_render(window_t *window, render_func render, void *arg)
 
 void window_destroy(window_t *window)
 {
-    if (window == NULL) {
-        fprintf(stderr, "%s: window argument is null\n", __func__);
-        exit(1);
-    }
+    if (window == NULL) eprint("window argument is null");
+
     SDL_DestroyWindow(window->window_handle);
     SDL_Quit();
     
