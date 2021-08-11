@@ -4,10 +4,14 @@
 #include "../stack.h"
 
 
-
 void print_int(void *x)
 {
     printf("%i ", (int)x);
+}
+
+void print_long(void *x)
+{
+    printf("%lli ", (long long)x);
 }
 
 struct foo_t {
@@ -24,29 +28,16 @@ void print_foo(void *x)
 
 int main(void)
 {
-    struct foo_t foo = {"hello world", strlen("hello world")};
-    struct foo_t bar = {"foobar", strlen("foobar")};
+    u64 foo[10];
+    stack_t stack01 = stack_init(foo, 10);
 
-    struct foo_t arr[10];
-    stack_t stack = stack_init(arr, 10);
-    stack_dump(&stack);
+    stack_print(&stack01, print_int);
 
-    stack_push(&stack, &foo);
-    stack_push(&stack, &foo);
-    stack_push(&stack, &foo);
-    stack_push(&stack, &foo);
-    stack_push(&stack, &foo);
-    stack_push(&stack, &foo);
-    stack_push(&stack, &foo);
-    stack_push(&stack, &foo);
-    stack_print(&stack, print_foo);
-    stack_push(&stack, &bar);
-    stack_print(&stack, print_foo);
-    stack_pop(&stack);
-    stack_print(&stack, print_foo);
+    for (u64 i = 1; i <= 10; i++) stack_push(&stack01, (void *)i);
 
-    stack_print(&stack, print_foo);
-    stack_dump(&stack);
+    stack_print(&stack01, print_int);
+
+    stack_dump(&stack01);
 
     return 0;
 }

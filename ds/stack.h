@@ -48,7 +48,7 @@ static inline stack_t stack_init(void **array, size_t capacity)
 static inline void stack_push(stack_t *stack, void *elem)
 {
     if (stack == NULL) eprint("stack_push: stack argument is null");
-    if (elem == NULL) eprint("stack_push: stack argument is null");
+    if (elem == NULL) eprint("stack_push: elem argument is null");
 
     if (stack->top == stack->capacity-1) {
         stack_dump(stack);
