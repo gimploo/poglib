@@ -24,7 +24,7 @@ typedef struct character_info_t  {
 
 } character_info_t;
 
-typedef struct gl_ascii_font_handler_t {
+typedef struct gl_ascii_font_t {
     
     character_info_t    font_atlas[MAX_ASCII_TILES_COUNT];
     gl_shader_t         shader;
@@ -35,7 +35,7 @@ typedef struct gl_ascii_font_handler_t {
     u32                 font_count_height;
 
 
-} gl_ascii_font_handler_t;
+} gl_ascii_font_t;
 
 
 const char *ascii_font_vs = 
@@ -67,25 +67,27 @@ const char *ascii_font_fs =
         //"FragColor = (1.0f, 0.0f, 0.0f, 1.0f);\n"
     "}";
 
+
 /*----------------------------------------------------------------
  // Declarations
 ----------------------------------------------------------------*/
 
-gl_ascii_font_handler_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, u32 tile_count_height);
-void                    gl_ascii_font_render_text(gl_ascii_font_handler_t *handler, const char *text, vec2f position);
-void                    gl_ascii_font_destroy(gl_ascii_font_handler_t *);
+gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, u32 tile_count_height);
+void            gl_ascii_font_render_text(gl_ascii_font_t *handler, const char *text, vec2f position, f32  norm_font_size); 
+void            gl_ascii_font_destroy(gl_ascii_font_t *);
 
 /*----------------------------------------------------------------
  // Implementation
 ----------------------------------------------------------------*/
 
 
+
 //NOTE: this function only handles a ascii style spritesheets
-gl_ascii_font_handler_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, u32 tile_count_height)
+gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, u32 tile_count_height)
 {
     if (file_path == NULL) eprint("file_path argument is null");
 
-    gl_ascii_font_handler_t output = {
+    gl_ascii_font_t output = {
         .shader     = shader_load_code(ascii_font_vs, ascii_font_fs),
         .texture    = texture_init(file_path),
     };
@@ -149,44 +151,42 @@ gl_ascii_font_handler_t gl_ascii_font_init(const char *file_path, u32 tile_count
     
 }
 
-void gl_ascii_font_render_text(gl_ascii_font_handler_t *handler, const char *text, vec2f position)
+void gl_ascii_font_render_text(
+        gl_ascii_font_t *handler, 
+        const char      *text, 
+        vec2f           position, 
+        f32             norm_font_size)
 {
     if (handler == NULL)    eprint("handler argument is null");
     if (text == NULL)       eprint("text argument is null");
 
-
     quadf_t             quad                = {0};
     u32                 tile_index          = ' ';
-    vec2f               x_offset            = position;
     character_info_t    *atlas              = handler->font_atlas;
-    f32                 norm_font_width     = atlas->norm_font_width; 
-    f32                 norm_font_height    = atlas->norm_font_height;
+    f32                 norm_font_width     = norm_font_size;
+    f32                 norm_font_height    = norm_font_size;
 
     unsigned int indices[] = {          
         0, 1, 2, // first triangle  
         2, 3, 0  // second triangle 
     };                                  
 
-    
+    vao_t vao = vao_init(1);
+    vec2f x_offset = {0};
+
     for (int i = 0; text[i] != '\0'; i++) 
     {
-        x_offset = vec2f_add(
-                x_offset, 
-                (vec2f) {norm_font_width, 0.0f}
-        );
-
         tile_index = text[i] - ' ';
 
         quad = quadf_init(
                 vec2f_add(position, x_offset), 
-                atlas[tile_index].norm_font_width,
-                atlas[tile_index].norm_font_height
+                norm_font_width,
+                norm_font_height
         );
 
 
-
 #if 0
-        gl_ascii_font_handler_t *output = handler; // NOTE: delete this line later
+        gl_ascii_font_t *output = handler; // NOTE: delete this line later
         printf("Tile index %i\n", tile_index);
         printf("Character = %c \n", output->font_atlas[tile_index].character);
         printf("norm font width = %f\n", output->font_atlas[tile_index].norm_font_width);
@@ -224,29 +224,35 @@ void gl_ascii_font_render_text(gl_ascii_font_handler_t *handler, const char *tex
 
 
 
-        vao_t vao = vao_init(1);
-        vbo_t vbo = vbo_init(vertices, sizeof(vertices)); 
-        vao_push(&vao, &vbo);
+        vao_bind(&vao);
 
+        vbo_t vbo = vbo_init(vertices, sizeof(vertices)); 
         ebo_t ebo = ebo_init(&vbo, indices, 6);
 
-        vao_set_attributes(&vao, 0, 3, GL_FLOAT, false, 3 * sizeof(float), 0);      
-        vao_set_attributes(&vao, 0, 2, GL_FLOAT, false, 2 * sizeof(float), 12 * sizeof(float));
-
-        texture_bind(&handler->texture, 0);
-        shader_bind(&handler->shader);
-
-        vao_draw(&vao); 
+        vao_push(&vao, &vbo);
+            vao_set_attributes(&vao, 0, 3, GL_FLOAT, false, 3 * sizeof(float), 0);      
+            vao_set_attributes(&vao, 0, 2, GL_FLOAT, false, 2 * sizeof(float), 12 * sizeof(float));
+            texture_bind(&handler->texture, 0);
+            shader_bind(&handler->shader);
+            vao_draw(&vao); 
+        vao_pop(&vao);
 
         ebo_destroy(&ebo);
         vbo_destroy(&vbo);
-        vao_destroy(&vao);
 
+        x_offset = vec2f_add(
+                x_offset, 
+                (vec2f) {norm_font_width, 0.0f}
+        );
+
+        vao_unbind();
 
     }
+
+    vao_destroy(&vao);
 }
 
-void gl_ascii_font_destroy(gl_ascii_font_handler_t *self)
+void gl_ascii_font_destroy(gl_ascii_font_t *self)
 {
     if (self == NULL) eprint("argument is null");
 

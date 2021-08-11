@@ -11,7 +11,8 @@ void loop(void *arg)
 {
     gl_ascii_font_handler_t *font = (gl_ascii_font_handler_t *)arg;
 
-    gl_ascii_font_render_text(font, "Gokul", (vec2f){ -1.0f, 1.0f });
+    gl_ascii_font_render_text(font, "Youre gay", (vec2f){ 0.0f, 0.0f });
+    /*exit(1);*/
 }
 
 int main(void)
