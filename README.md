@@ -1,5 +1,5 @@
 # poglib
-Bunch of C headers that i found useful.
+Header files that i keep adding and updating on as i program more in C
 
 ## CONTENTS
 
