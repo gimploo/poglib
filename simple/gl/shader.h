@@ -46,7 +46,7 @@ const char * const default_fshader =
 gl_shader_t     shader_init(const char *file_vs, const char *file_fs);
 gl_shader_t     shader_load_code(const char *vertex_source_code, const char *fragment_source_code);
 
-void            shader_bind(gl_shader_t *shader);
+void            shader_bind(const gl_shader_t *shader);
 
 void            shader_set_farr(gl_shader_t *shader, const char *uniform, float arr[]);
 void            shader_set_fval(gl_shader_t *shader, const char *uniform, float val);
@@ -128,7 +128,7 @@ inline void shader_destroy(gl_shader_t *shader)
 }
 
 
-void shader_bind(gl_shader_t *shader)
+void shader_bind(const gl_shader_t *shader)
 {
     if (shader == NULL) {
         fprintf(stderr, "%s: shader is null\n", __func__);

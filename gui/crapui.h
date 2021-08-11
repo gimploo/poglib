@@ -12,6 +12,7 @@
 #include "../simple/gl_renderer.h"
 #include "../simple/window.h"
 
+#include "../simple/font/gl_ascii_font.h"
 
 /*===============================================================
  //                     CrapGui
@@ -35,10 +36,11 @@ struct ui_component_t {
 typedef struct crapgui_t crapgui_t;
 struct crapgui_t {
 
-    Window      *window;
-    stack_t     ui_components;
-    u64         ui_component_count;
-    bool        is_close;
+    Window          *window;
+    gl_ascii_font_t font; 
+    stack_t         ui_components;
+    u64             ui_component_count;
+    bool            is_close;
 };
 
 /*--------------------------------------------
@@ -61,6 +63,9 @@ crapgui_t gui_init(Window *window)
 
     return (crapgui_t) {
         .window = window,
+        .font   = gl_ascii_font_init(
+                "/home/gokul/Documents/projects/poglib/res/ascii_fonts/charmap-oldschool_black.png", 
+                18, 7),
         /*.ui_components = stack_init(GLOBAL_UI_COMPONENTS_ARRAY, MAX_GLOBAL_UI_COMPONENTS_CAPCITY),*/
         .ui_component_count = 0,
         .is_close = false
@@ -74,6 +79,8 @@ void gui_begin(crapgui_t *gui)
 void gui_end(crapgui_t *gui)
 {
     if (gui == NULL) eprint("gui argument is null");
+
+    gl_ascii_font_destroy(&gui->font);
 }
 
 
@@ -143,12 +150,12 @@ const char *fragment_source =
 // Declarations
 ---------------------------*/
 
-button_t    button_begin(crapgui_t *gui, const char *label);
+button_t    button_begin(crapgui_t *const gui, const char *label);
 
 #define     button_set_width(pbutton, width)        ((pbutton)->width = width)
 #define     button_set_height(pbutton,height)       ((pbutton)->height = height)
-void        button_set_position(button_t *button, vec2f position);
-void        button_set_color(button_t *button, vec4f color);
+void        button_set_position(const crapgui_t *gui, button_t *button, vec2f position);
+void        button_set_color(const crapgui_t *gui, button_t *button, vec4f color);
 
 bool        button_is_pressed(button_t *button);         
 bool        button_is_dragged(button_t *button);
@@ -238,7 +245,7 @@ button_t __button_init(const crapgui_t *gui, const char *label, vec4f color, vec
 
 
 
-void __button_draw(button_t * button)
+static inline void __button_draw(const crapgui_t *gui, button_t * button)
 {
     if (button == NULL) eprint("button argument is null");
 
@@ -247,15 +254,22 @@ void __button_draw(button_t * button)
         2, 3, 0  // second triangle 
     };                                  
 
+    vec2f text_position;
+    text_position.cmp[X] = button->vertices[0].cmp[X];
+    text_position.cmp[Y] = (button->vertices[0].cmp[Y] + button->vertices[2].cmp[Y]) /2;
+
     vao_bind(&button->vao);
     {
         shader_bind(&button->shader);
         GL_CHECK(glDrawElements(GL_TRIANGLES, button->vbo.indices_count, GL_UNSIGNED_INT, 0));
+
+        // Renders the font
+        gl_ascii_font_render_text(&gui->font, button->label, text_position, 0.1f);
     }
     vao_unbind();
 }
 
-button_t button_begin(crapgui_t *gui, const char *label) 
+button_t button_begin(crapgui_t *const gui, const char *label) 
 { 
     if (gui == NULL) eprint("gui argument is null");
     if (label == NULL) eprint("label argument is null");
@@ -267,7 +281,7 @@ button_t button_begin(crapgui_t *gui, const char *label)
     
     button_t button = __button_init(gui, label, DEFAULT_COLOR, generate_position, DEFAULT_WIDTH, DEFAULT_HEIGHT);
 
-    __button_draw(&button);
+    __button_draw(gui, &button);
 
     gui->ui_component_count++;
 
@@ -343,15 +357,15 @@ bool button_is_mouseover(button_t *button)
     return button->is_hot;
 }
 
-void button_set_color(button_t *button, vec4f color) 
+void button_set_color(const crapgui_t *gui, button_t *button, vec4f color) 
 {
     if (button == NULL) eprint("button argument is null");
 
     memcpy(&button->color, &color, sizeof(f32) * 4);
     shader_set_farr(&button->shader, "u_color", (float *)&button->color);
-    __button_draw(button);
+    __button_draw(gui, button);
 }
-void button_set_position(button_t *button, vec2f pos)  
+void button_set_position(const crapgui_t *gui, button_t *button, vec2f pos)  
 {
     if (button == NULL) eprint("button argument is null");
 
@@ -368,7 +382,7 @@ void button_set_position(button_t *button, vec2f pos)
 
     *button = new_button;
 
-    __button_draw(button);
+    __button_draw(gui, button);
 }
 
 bool button_is_released(button_t *button)

@@ -73,7 +73,7 @@ const char *ascii_font_fs =
 ----------------------------------------------------------------*/
 
 gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, u32 tile_count_height);
-void            gl_ascii_font_render_text(gl_ascii_font_t *handler, const char *text, vec2f position, f32  norm_font_size); 
+void            gl_ascii_font_render_text(const gl_ascii_font_t *handler, const char *text, const vec2f position, const f32 norm_font_size); 
 void            gl_ascii_font_destroy(gl_ascii_font_t *);
 
 /*----------------------------------------------------------------
@@ -152,19 +152,21 @@ gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, 
 }
 
 void gl_ascii_font_render_text(
-        gl_ascii_font_t *handler, 
-        const char      *text, 
-        vec2f           position, 
-        f32             norm_font_size)
+        const gl_ascii_font_t   *handler, 
+        const char              *text, 
+        const vec2f             position, 
+        const f32               norm_font_size)
 {
     if (handler == NULL)    eprint("handler argument is null");
     if (text == NULL)       eprint("text argument is null");
 
-    quadf_t             quad                = {0};
-    u32                 tile_index          = ' ';
-    character_info_t    *atlas              = handler->font_atlas;
-    f32                 norm_font_width     = norm_font_size;
-    f32                 norm_font_height    = norm_font_size;
+
+    const character_info_t    *atlas   = handler->font_atlas;
+
+    quadf_t quad                = {0};
+    u32     tile_index          = ' ';
+    f32     norm_font_width     = norm_font_size;
+    f32     norm_font_height    = norm_font_size;
 
     unsigned int indices[] = {          
         0, 1, 2, // first triangle  

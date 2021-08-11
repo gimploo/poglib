@@ -9,6 +9,7 @@ void loop(void *arg)
     Window *window = (Window *)arg;
 
     crapgui_t gui = gui_init(window);
+    /*gui.font = gl_ascii_font_init("./glyph_atlas.png", 16, 6);*/
 
     gui_begin(&gui);
     {
@@ -21,12 +22,12 @@ void loop(void *arg)
              } else if (button_is_dragged(&button01)) {
 
                 vec2f new_pos = button01.gui_handler->window->mouse_handler.position;
-                button_set_position(&button01, new_pos);
+                button_set_position(&gui, &button01, new_pos);
                 printf("%s is dragged\n", button01.label);
 
             } else if  (button_is_mouseover(&button01)) {
                 
-                button_set_color(&button01, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
+                button_set_color(&gui, &button01, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
             }
         }
         button_end(&button01);
@@ -40,12 +41,12 @@ void loop(void *arg)
              } else if (button_is_dragged(&button02)) {
 
                 vec2f new_pos = button02.gui_handler->window->mouse_handler.position;
-                button_set_position(&button02, new_pos);
+                button_set_position(&gui, &button02, new_pos);
                 printf("%s is dragged\n", button02.label);
 
             } else if  (button_is_mouseover(&button02)) {
                 
-                button_set_color(&button02, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
+                button_set_color(&gui, &button02, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
             }
         }
         button_end(&button02);
@@ -59,12 +60,12 @@ void loop(void *arg)
              } else if (button_is_dragged(&button03)) {
 
                 vec2f new_pos = button03.gui_handler->window->mouse_handler.position;
-                button_set_position(&button03, new_pos);
+                button_set_position(&gui, &button03, new_pos);
                 printf("%s is dragged\n", button03.label);
 
             } else if  (button_is_mouseover(&button03)) {
                 
-                button_set_color(&button03, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
+                button_set_color(&gui, &button03, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
             }
         }
         button_end(&button03);
@@ -78,12 +79,12 @@ void loop(void *arg)
              } else if (button_is_dragged(&button04)) {
 
                 vec2f new_pos = button04.gui_handler->window->mouse_handler.position;
-                button_set_position(&button04, new_pos);
+                button_set_position(&gui, &button04, new_pos);
                 printf("%s is dragged\n", button04.label);
 
             } else if  (button_is_mouseover(&button04)) {
                 
-                button_set_color(&button04, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
+                button_set_color(&gui, &button04, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
             }
         }
         button_end(&button04);
@@ -96,12 +97,12 @@ void loop(void *arg)
              } else if (button_is_dragged(&button05)) {
 
                 vec2f new_pos = button05.gui_handler->window->mouse_handler.position;
-                button_set_position(&button05, new_pos);
+                button_set_position(&gui, &button05, new_pos);
                 printf("%s is dragged\n", button05.label);
 
             } else if  (button_is_mouseover(&button05)) {
                 
-                button_set_color(&button05, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
+                button_set_color(&gui, &button05, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
             }
         }
         button_end(&button05);
