@@ -14,7 +14,7 @@
 typedef struct character_info_t  {
 
     char                character;
-    vec2f               texture_coord[4];
+    vec2f_t               texture_coord[4];
 
     f32                 font_width;
     f32                 font_height;
@@ -73,7 +73,7 @@ const char *ascii_font_fs =
 ----------------------------------------------------------------*/
 
 gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, u32 tile_count_height);
-void            gl_ascii_font_render_text(const gl_ascii_font_t *handler, const char *text, const vec2f position, const f32 norm_font_size); 
+void            gl_ascii_font_render_text(const gl_ascii_font_t *handler, const char *text, const vec2f_t position, const f32 norm_font_size); 
 void            gl_ascii_font_destroy(gl_ascii_font_t *);
 
 /*----------------------------------------------------------------
@@ -108,7 +108,7 @@ gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, 
             f32 top_V       = -(v * norm_sprite_height);
             f32 bottom_V    = top_V - norm_sprite_height ;
 
-            vec2f tex_coord[4] = {
+            vec2f_t tex_coord[4] = {
 
                 {left_U, top_V},
                 {right_U, top_V},
@@ -154,7 +154,7 @@ gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, 
 void gl_ascii_font_render_text(
         const gl_ascii_font_t   *handler, 
         const char              *text, 
-        const vec2f             position, 
+        const vec2f_t             position, 
         const f32               norm_font_size)
 {
     if (handler == NULL)    eprint("handler argument is null");
@@ -174,7 +174,7 @@ void gl_ascii_font_render_text(
     };                                  
 
     vao_t vao = vao_init(1);
-    vec2f x_offset = {0};
+    vec2f_t x_offset = {0};
 
     for (int i = 0; text[i] != '\0'; i++) 
     {
@@ -241,7 +241,7 @@ void gl_ascii_font_render_text(
 
         x_offset = vec2f_add(
                 x_offset, 
-                (vec2f) {norm_font_width, 0.0f}
+                (vec2f_t) {norm_font_width, 0.0f}
         );
 
 

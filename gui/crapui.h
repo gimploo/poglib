@@ -22,32 +22,35 @@
 global void * GLOBAL_UI_COMPONENTS_ARRAY[MAX_GLOBAL_UI_COMPONENTS_CAPCITY];
 
 typedef enum component_type {
+
     CT_BUTTON = 0,
     CT_COUNT
+
 } component_type;
 
-typedef struct ui_component_t ui_component_t;
-struct ui_component_t {
+typedef struct ui_component_t {
 
     void            *component; // holds the address to a component
     component_type  type;
-};
 
-typedef struct crapgui_t crapgui_t;
-struct crapgui_t {
+} ui_component_t;
 
-    Window          *window;
+typedef struct crapgui_t {
+
+    window_t        *sub_window;
     gl_ascii_font_t font; 
     stack_t         ui_components;
+
     u64             ui_component_count;
     bool            is_close;
-};
+
+} crapgui_t;
 
 /*--------------------------------------------
  // Declarations
 --------------------------------------------*/
 
-crapgui_t   gui_init(Window *window);
+crapgui_t   gui_init(window_t *window);
 void        gui_begin(crapgui_t *gui);
 void        gui_end(crapgui_t *gui);
 
@@ -56,16 +59,15 @@ void        gui_end(crapgui_t *gui);
  // Implementations
 --------------------------------------------*/
 
-
-crapgui_t gui_init(Window *window)
+// FIXME: how to manage fonts
+crapgui_t gui_init(window_t *window)
 {
-    if (window == NULL) eprint("window argument is null");
-
     return (crapgui_t) {
-        .window = window,
-        .font   = gl_ascii_font_init(
-                "/home/gokul/Documents/projects/poglib/res/ascii_fonts/charmap-oldschool_black.png", 
-                18, 7),
+        //.sub_window = window_init(540, 460, SDL_INIT_VIDEO),
+        .sub_window = window,
+        .font       = gl_ascii_font_init(
+                        "/home/gokul/Documents/projects/poglib/res/ascii_fonts/glyph_atlas.png", 
+                        16, 6),
         /*.ui_components = stack_init(GLOBAL_UI_COMPONENTS_ARRAY, MAX_GLOBAL_UI_COMPONENTS_CAPCITY),*/
         .ui_component_count = 0,
         .is_close = false
@@ -75,12 +77,19 @@ crapgui_t gui_init(Window *window)
 void gui_begin(crapgui_t *gui)
 {
     if (gui == NULL) eprint("gui argument is null");
+
+    //window_set_background(&gui->sub_window, (vec4f_t) {0.0f, 0.0f, 1.0f, 1.0f}); 
+    //window_process_user_input(&gui->sub_window);
+    //window_render(&gui->sub_window, NULL, NULL);
+
 }
 void gui_end(crapgui_t *gui)
 {
     if (gui == NULL) eprint("gui argument is null");
 
+    //window_destroy(&gui->sub_window);
     gl_ascii_font_destroy(&gui->font);
+
 }
 
 
@@ -97,31 +106,29 @@ void gui_end(crapgui_t *gui)
 #define BOTTOM_RIGHT    2
 #define BOTTOM_LEFT     3
 
-#define DEFAULT_COLOR   (vec4f) {0.4f, 0.3f, 0.8f, 1.0f}
-#define DEFAULT_POS     (vec2f) {-0.8f, +0.8f}
+#define DEFAULT_COLOR   (vec4f_t) {0.4f, 0.3f, 0.8f, 1.0f}
+#define DEFAULT_POS     (vec2f_t) {-0.8f, +0.8f}
 #define DEFAULT_WIDTH   0.3f
 #define DEFAULT_HEIGHT  0.2f
 
 
-typedef struct button_t button_t;
-struct button_t {
-
-    const crapgui_t * gui_handler;
+typedef struct button_t {
 
     const char  *label;
     bool        is_hot;
     bool        is_active;
 
-    vec2f       position; 
+    vec2f_t     position; 
     f32         width, height;
-    vec4f       color;
+    vec4f_t     color;
 
     vao_t       vao;
     vbo_t       vbo;
     ebo_t       ebo;
-    vec3f       vertices[4];
+    vec3f_t     vertices[4];
     gl_shader_t shader;
-};
+
+} button_t ;
 
 const u32 RECT_INDICES[] = {          
     0, 1, 3, // first triangle  
@@ -152,14 +159,14 @@ const char *fragment_source =
 
 button_t    button_begin(crapgui_t *const gui, const char *label);
 
-#define     button_set_width(pbutton, width)        ((pbutton)->width = width)
-#define     button_set_height(pbutton,height)       ((pbutton)->height = height)
-void        button_set_position(const crapgui_t *gui, button_t *button, vec2f position);
-void        button_set_color(const crapgui_t *gui, button_t *button, vec4f color);
+#define     button_set_width(pbutton, width)    ((pbutton)->width = width)
+#define     button_set_height(pbutton,height)   ((pbutton)->height = height)
+void        button_set_position(const crapgui_t *gui, button_t *button, vec2f_t position);
+void        button_set_color(const crapgui_t *gui, button_t *button, vec4f_t color);
 
-bool        button_is_pressed(button_t *button);         
-bool        button_is_dragged(button_t *button);
-bool        button_is_mouseover(button_t *button);
+bool        button_is_pressed(const crapgui_t *gui, button_t *button);
+bool        button_is_dragged(const crapgui_t *gui, button_t *button); 
+bool        button_is_mouseover(const crapgui_t *gui, button_t *button);
 
 #define     button_end(pbutton) (__button_destroy(pbutton))
 
@@ -169,10 +176,9 @@ bool        button_is_mouseover(button_t *button);
 // Implementations
 ---------------------------*/
 
-button_t __button_init(const crapgui_t *gui, const char *label, vec4f color, vec2f position, f32 width, f32 height) 
+button_t __button_init(const crapgui_t *gui, const char *label, vec4f_t color, vec2f_t position, f32 width, f32 height) 
 {
     button_t button = {
-        .gui_handler = gui,
         .label = label,
         .is_hot = false, 
         .is_active = false,
@@ -184,21 +190,21 @@ button_t __button_init(const crapgui_t *gui, const char *label, vec4f color, vec
         .shader = shader_load_code(vertex_source, fragment_source),
     };
 
-    vec3f vertices[4]; 
+    vec3f_t vertices[4]; 
 
     // top left
     memcpy(&vertices[0], &button.position, sizeof(button.position)); 
     vertices[0].cmp[Z] = 0.0f; 
     
     // top right
-    vertices[1] = (vec3f) {     
+    vertices[1] = (vec3f_t) {     
         button.position.cmp[X] + button.width,
         button.position.cmp[Y],
         0.0f
     }; 
 
     // bottom right
-    vertices[2] = (vec3f) {     
+    vertices[2] = (vec3f_t) {     
         button.position.cmp[X] + button.width,
         button.position.cmp[Y] - button.height,
         0.0f
@@ -206,22 +212,13 @@ button_t __button_init(const crapgui_t *gui, const char *label, vec4f color, vec
 
 
     // bottom left
-    vertices[3] = (vec3f) {     
+    vertices[3] = (vec3f_t) {     
         button.position.cmp[X],
         button.position.cmp[Y] - button.height,
         0.0f
     }; 
 
     memcpy(button.vertices, vertices, sizeof(vertices));
-
-    //for (int i = 0; i < 4; i++)
-    //{
-        //printf("(%f, %f, %f) \n", 
-                //button.vertices[i].cmp[X], 
-                //button.vertices[i].cmp[Y], 
-                //button.vertices[i].cmp[Z]); 
-    //}
-    //printf("\n");
 
     shader_set_farr(&button.shader, "u_color", (float *)&button.color);
     
@@ -254,7 +251,7 @@ static inline void __button_draw(const crapgui_t *gui, button_t * button)
         2, 3, 0  // second triangle 
     };                                  
 
-    vec2f text_position;
+    vec2f_t text_position;
     text_position.cmp[X] = button->vertices[0].cmp[X];
     text_position.cmp[Y] = (button->vertices[0].cmp[Y] + button->vertices[2].cmp[Y]) /2;
 
@@ -274,9 +271,9 @@ button_t button_begin(crapgui_t *const gui, const char *label)
     if (gui == NULL) eprint("gui argument is null");
     if (label == NULL) eprint("label argument is null");
 
-    vec2f generate_position = vec2f_add( 
+    vec2f_t generate_position = vec2f_add( 
                 DEFAULT_POS, 
-                (vec2f) {0.0f, -(DEFAULT_WIDTH * gui->ui_component_count)} 
+                (vec2f_t) {0.0f, -(DEFAULT_WIDTH * gui->ui_component_count)} 
     );
     
     button_t button = __button_init(gui, label, DEFAULT_COLOR, generate_position, DEFAULT_WIDTH, DEFAULT_HEIGHT);
@@ -293,7 +290,6 @@ static void __button_destroy(button_t *button)
     if (button == NULL) eprint("button argument is null");
 
     button->label = NULL;
-    button->gui_handler = NULL;
 
     vao_destroy(&button->vao);
     vbo_destroy(&button->vbo);
@@ -302,15 +298,13 @@ static void __button_destroy(button_t *button)
 }
 
 
-bool button_is_pressed(button_t *button)
+bool button_is_pressed(const crapgui_t *gui, button_t *button)
 {
     if (button == NULL) eprint("button argument is null");
+    if (gui == NULL) eprint("gui argument is null");
 
-    const crapgui_t *gui = button->gui_handler;
-    if (gui == NULL) eprint("gui is null");
-
-    f32 mouse_x = gui->window->mouse_handler.position.cmp[X];
-    f32 mouse_y = gui->window->mouse_handler.position.cmp[Y];
+    f32 mouse_x = gui->sub_window->mouse_handler.position.cmp[X];
+    f32 mouse_y = gui->sub_window->mouse_handler.position.cmp[Y];
 
     bool is_mouse_in_region = (
             button->vertices[TOP_LEFT].cmp[X]       < mouse_x && 
@@ -319,28 +313,20 @@ bool button_is_pressed(button_t *button)
             button->vertices[BOTTOM_LEFT].cmp[Y]    < mouse_y
     );
 
-    //printf("\n\n%f > %f\n", button->vertices[TOP_LEFT].cmp[X]  ,mouse_x ); 
-    //printf("%f < %f\n", button->vertices[TOP_RIGHT].cmp[X]  ,mouse_x ); 
-    //printf("%f > %f\n", button->vertices[TOP_LEFT].cmp[Y]  ,mouse_y ); 
-    //printf("%f < %f\n", button->vertices[BOTTOM_LEFT].cmp[Y]  ,mouse_y ); 
-
-
-    if (gui->window->mouse_handler.is_active == true && gui->window->mouse_handler.is_dragged == false && is_mouse_in_region) button->is_active = true;
+    if (gui->sub_window->mouse_handler.is_active == true && gui->sub_window->mouse_handler.is_dragged == false && is_mouse_in_region) button->is_active = true;
     else button->is_active = false;
 
     return button->is_active;
 }
 
-bool button_is_mouseover(button_t *button)
+bool button_is_mouseover(const crapgui_t *gui, button_t *button)
 {
     if (button == NULL) eprint("button argument is null");
+    if (gui == NULL) eprint("gui argument is null");
 
-    const crapgui_t *gui = button->gui_handler;
-    ;
-    if (gui == NULL) eprint("gui is null");
 
-    f32 button_x = gui->window->mouse_handler.position.cmp[X];
-    f32 button_y = gui->window->mouse_handler.position.cmp[Y];
+    f32 button_x = gui->sub_window->mouse_handler.position.cmp[X];
+    f32 button_y = gui->sub_window->mouse_handler.position.cmp[Y];
 
     bool is_mouse_in_region = (
             button->vertices[TOP_LEFT].cmp[X]       < button_x && 
@@ -357,7 +343,7 @@ bool button_is_mouseover(button_t *button)
     return button->is_hot;
 }
 
-void button_set_color(const crapgui_t *gui, button_t *button, vec4f color) 
+void button_set_color(const crapgui_t *gui, button_t *button, vec4f_t color) 
 {
     if (button == NULL) eprint("button argument is null");
 
@@ -365,12 +351,12 @@ void button_set_color(const crapgui_t *gui, button_t *button, vec4f color)
     shader_set_farr(&button->shader, "u_color", (float *)&button->color);
     __button_draw(gui, button);
 }
-void button_set_position(const crapgui_t *gui, button_t *button, vec2f pos)  
+void button_set_position(const crapgui_t *gui, button_t *button, vec2f_t pos)  
 {
     if (button == NULL) eprint("button argument is null");
 
     button_t new_button = __button_init(
-            button->gui_handler, 
+            gui,
             button->label, 
             button->color,
             pos,
@@ -392,15 +378,22 @@ bool button_is_released(button_t *button)
     return button->is_active == false ? true : false;
 }
 
-bool button_is_dragged(button_t *button) 
+bool button_is_dragged(const crapgui_t *gui, button_t *button) 
 {
     if (button == NULL) eprint("button argument is null");
+    if (gui == NULL) eprint("gui argument is null");
 
-    if (button_is_pressed(button))
-        if (button->gui_handler->window->mouse_handler.is_dragged)
+    if (button_is_pressed(gui, button))
+        if (gui->sub_window->mouse_handler.is_dragged)
             return true;
     return false;
 }
+
+/*============================================================================
+ //                 Sliders
+============================================================================*/
+
+
 
 /*============================================================================
  //                 

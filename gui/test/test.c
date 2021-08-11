@@ -6,7 +6,7 @@
 
 void loop(void *arg)
 {
-    Window *window = (Window *)arg;
+    window_t *window = (window_t *)arg;
 
     crapgui_t gui = gui_init(window);
     /*gui.font = gl_ascii_font_init("./glyph_atlas.png", 16, 6);*/
@@ -15,94 +15,94 @@ void loop(void *arg)
     {
         button_t button01 = button_begin(&gui, "button01");
         {
-             if (button_is_pressed(&button01)) {
+             if (button_is_pressed(&gui, &button01)) {
 
                 printf("%s is clicked\n", button01.label);
 
-             } else if (button_is_dragged(&button01)) {
+             } else if (button_is_dragged(&gui, &button01)) {
 
-                vec2f new_pos = button01.gui_handler->window->mouse_handler.position;
+                vec2f_t new_pos = gui.sub_window->mouse_handler.position;
                 button_set_position(&gui, &button01, new_pos);
                 printf("%s is dragged\n", button01.label);
 
-            } else if  (button_is_mouseover(&button01)) {
+            } else if  (button_is_mouseover(&gui, &button01)) {
                 
-                button_set_color(&gui, &button01, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
+                button_set_color(&gui, &button01, (vec4f_t) {1.0f, 0.0f, 0.0f, 1.0f});
             }
         }
         button_end(&button01);
 
         button_t button02 = button_begin(&gui, "button02");
         {
-             if (button_is_pressed(&button02)) {
+             if (button_is_pressed(&gui, &button02)) {
 
                 printf("%s is clicked\n", button02.label);
 
-             } else if (button_is_dragged(&button02)) {
+             } else if (button_is_dragged(&gui, &button02)) {
 
-                vec2f new_pos = button02.gui_handler->window->mouse_handler.position;
+                vec2f_t new_pos = gui.sub_window->mouse_handler.position;
                 button_set_position(&gui, &button02, new_pos);
                 printf("%s is dragged\n", button02.label);
 
-            } else if  (button_is_mouseover(&button02)) {
+            } else if  (button_is_mouseover(&gui, &button02)) {
                 
-                button_set_color(&gui, &button02, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
+                button_set_color(&gui, &button02, (vec4f_t) {1.0f, 0.0f, 0.0f, 1.0f});
             }
         }
         button_end(&button02);
 
         button_t button03 = button_begin(&gui, "button03");
         {
-             if (button_is_pressed(&button03)) {
+             if (button_is_pressed(&gui, &button03)) {
 
                 printf("%s is clicked\n", button03.label);
 
-             } else if (button_is_dragged(&button03)) {
+             } else if (button_is_dragged(&gui, &button03)) {
 
-                vec2f new_pos = button03.gui_handler->window->mouse_handler.position;
+                vec2f_t new_pos = gui.sub_window->mouse_handler.position;
                 button_set_position(&gui, &button03, new_pos);
                 printf("%s is dragged\n", button03.label);
 
-            } else if  (button_is_mouseover(&button03)) {
+            } else if  (button_is_mouseover(&gui, &button03)) {
                 
-                button_set_color(&gui, &button03, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
+                button_set_color(&gui, &button03, (vec4f_t) {1.0f, 0.0f, 0.0f, 1.0f});
             }
         }
         button_end(&button03);
 
         button_t button04 = button_begin(&gui, "button04");
         {
-             if (button_is_pressed(&button04)) {
+             if (button_is_pressed(&gui, &button04)) {
 
                 printf("%s is clicked\n", button04.label);
 
-             } else if (button_is_dragged(&button04)) {
+             } else if (button_is_dragged(&gui, &button04)) {
 
-                vec2f new_pos = button04.gui_handler->window->mouse_handler.position;
+                vec2f_t new_pos = gui.sub_window->mouse_handler.position;
                 button_set_position(&gui, &button04, new_pos);
                 printf("%s is dragged\n", button04.label);
 
-            } else if  (button_is_mouseover(&button04)) {
+            } else if  (button_is_mouseover(&gui, &button04)) {
                 
-                button_set_color(&gui, &button04, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
+                button_set_color(&gui, &button04, (vec4f_t) {1.0f, 0.0f, 0.0f, 1.0f});
             }
         }
         button_end(&button04);
 
         button_t button05 = button_begin(&gui, "button05"); {
-             if (button_is_pressed(&button05)) {
+             if (button_is_pressed(&gui, &button05)) {
 
                 printf("%s is clicked\n", button05.label);
 
-             } else if (button_is_dragged(&button05)) {
+             } else if (button_is_dragged(&gui, &button05)) {
 
-                vec2f new_pos = button05.gui_handler->window->mouse_handler.position;
+                vec2f_t new_pos = gui.sub_window->mouse_handler.position;
                 button_set_position(&gui, &button05, new_pos);
                 printf("%s is dragged\n", button05.label);
 
-            } else if  (button_is_mouseover(&button05)) {
+            } else if  (button_is_mouseover(&gui, &button05)) {
                 
-                button_set_color(&gui, &button05, (vec4f) {1.0f, 0.0f, 0.0f, 1.0f});
+                button_set_color(&gui, &button05, (vec4f_t) {1.0f, 0.0f, 0.0f, 1.0f});
             }
         }
         button_end(&button05);
@@ -112,7 +112,7 @@ void loop(void *arg)
 
 int main(void)
 {
-    Window window = window_init(1080, 920, SDL_INIT_VIDEO);
+    window_t window = window_init(1080, 920, SDL_INIT_VIDEO);
 
     while (window.is_open)
     {

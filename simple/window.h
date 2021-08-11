@@ -12,7 +12,13 @@
 
 #include "../math/la.h"
 
-#define SDL_FLAGS u_int32_t
+#define DEFAULT_BACKGROUND_COLOR (vec4f_t) {0.0f, 1.0f, 0.0f, 0.0f}
+#define SDL_FLAGS u32
+
+/*==============================================================================
+ // Window library that is wrapper around SDL2 
+==============================================================================*/
+
 typedef void (*render_func) (void*);
 
 typedef struct Mouse Mouse;
@@ -20,11 +26,11 @@ struct Mouse {
 
     bool    is_active;
     bool    is_dragged;
-    vec2f   position;
+    vec2f_t position;
 };
 
-typedef struct Window Window;
-struct Window {
+typedef struct window_t window_t;
+struct window_t {
 
     bool is_open;
     u64 width, height;
@@ -35,6 +41,8 @@ struct Window {
 
     Mouse mouse_handler;
 
+    vec4f_t background_color;
+
 #ifndef __gl_h_                 // initializes the renderer
     SDL_Surface *surface_handle;
 #else 
@@ -44,24 +52,38 @@ struct Window {
 };
 
 
+/*----------------------------------------------------------------------
+ // Declarations
+----------------------------------------------------------------------*/
+
+window_t    window_init(size_t width, size_t height, SDL_FLAGS flags);
+void        window_render(window_t *window, render_func render, void * arg);
+void        window_process_user_input(window_t *window);
+
+void        window_set_background(window_t *window, vec4f_t color);
+
+void        window_destroy(window_t *window);
 
 
-
-Window      window_init(size_t width, size_t height, SDL_FLAGS flags);
-void        window_render(Window *window, render_func render, void * arg);
-void        window_process_user_input(Window *window);
-void        window_destroy(Window *window);
+/*-------------------------------------------------------------------------
+ // Implementations
+-------------------------------------------------------------------------*/
 
 
+void window_set_background(window_t *window, vec4f_t color) 
+{
+    if(window == NULL) eprint("window argument is null");
+
+    window->background_color = color;
+}
 
 
-
-vec2f __mouse_get_position(Window *window)
+static inline vec2f_t __mouse_get_position(window_t *window)
 {
     if (window == NULL) eprint("window argument is null");
 
     int x, y;
-    vec2f pos;
+    vec2f_t pos;
 
     SDL_GetMouseState(&x, &y);
 
@@ -78,14 +100,14 @@ vec2f __mouse_get_position(Window *window)
     return pos;
 }
 
-void  __mouse_update(Window *window)
+static inline void  __mouse_update(window_t *window)
 {
     if (window == NULL) eprint("window argument is null");
 
     window->mouse_handler.position =  __mouse_get_position(window);
 }
 
-Mouse __mouse_init(Window *window)
+static inline Mouse __mouse_init(window_t *window)
 {
     if (window == NULL) eprint("window argument is null");
 
@@ -98,13 +120,14 @@ Mouse __mouse_init(Window *window)
 
 
 
-Window window_init(size_t width, size_t height, SDL_FLAGS flags)
+window_t window_init(size_t width, size_t height, SDL_FLAGS flags)
 {
-    Window output = {0};
+    window_t output = {0};
     SDL_FLAGS WinFlags = 0;
     output.is_open = true;
     output.width = width;
     output.height = height;
+    output.background_color = DEFAULT_BACKGROUND_COLOR;
 
     output.mouse_handler = __mouse_init(&output);
 
@@ -141,7 +164,7 @@ Window window_init(size_t width, size_t height, SDL_FLAGS flags)
         fprintf(stderr, "Error: %s\n", SDL_GetError());
         exit(1);
     }
-    output.window_handle = SDL_CreateWindow("Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
+    output.window_handle = SDL_CreateWindow("window_t", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
     if (!output.window_handle) {
         fprintf(stderr, "Error: %s\n", SDL_GetError());
         exit(1);
@@ -181,7 +204,7 @@ Window window_init(size_t width, size_t height, SDL_FLAGS flags)
 
 }
 
-void window_process_user_input(Window *window)
+void window_process_user_input(window_t *window)
 {
     if (window == NULL) {
         fprintf(stderr, "%s: window argument is null\n", __func__);
@@ -236,7 +259,7 @@ void window_process_user_input(Window *window)
     }
 }
 
-void window_render(Window *window, render_func render, void *arg)
+void window_render(window_t *window, render_func render, void *arg)
 {
     if (window == NULL) {
         fprintf(stderr, "%s: window argument is null\n", __func__);
@@ -244,7 +267,12 @@ void window_render(Window *window, render_func render, void *arg)
     }
 
 #ifdef __gl_h_
-    glClearColor(0.0f, 1.0f, 0.0f, 0.0f);
+    glClearColor(
+            window->background_color.cmp[0], 
+            window->background_color.cmp[1],
+            window->background_color.cmp[2],
+            window->background_color.cmp[3]
+    );
     glClear(GL_COLOR_BUFFER_BIT);
 #endif 
 
@@ -259,7 +287,7 @@ void window_render(Window *window, render_func render, void *arg)
 }
 
 
-void window_destroy(Window *window)
+void window_destroy(window_t *window)
 {
     if (window == NULL) {
         fprintf(stderr, "%s: window argument is null\n", __func__);

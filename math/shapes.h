@@ -4,19 +4,19 @@
 #include "la.h"
 
 typedef struct trif {
-    vec2f cmp[3];
+    vec2f_t cmp[3];
 } trif_t;
 
 #define QUAD_FMT    VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT "\n" 
 #define QUAD_ARG(q) VEC2F_ARG(q.cmp[0]), VEC2F_ARG(q.cmp[1]), VEC2F_ARG(q.cmp[2]), VEC2F_ARG(q.cmp[3]) 
 
 typedef struct quadf {
-    vec2f cmp[4];
+    vec2f_t cmp[4];
 } quadf_t;
 
 
 
-quadf_t quadf_init(vec2f position, f32 width, f32 height)
+quadf_t quadf_init(vec2f_t position, f32 width, f32 height)
 {
     quadf_t output;
     output.cmp[0] = position;
@@ -33,7 +33,7 @@ quadf_t quadf_init(vec2f position, f32 width, f32 height)
     return output;
 }
 
-void quadf_translate(quadf_t *quad, vec2f vec)
+void quadf_translate(quadf_t *quad, vec2f_t vec)
 {
     quad->cmp[0] = vec2f_add(quad->cmp[0] , vec);
     quad->cmp[1] = vec2f_add(quad->cmp[1] , vec);

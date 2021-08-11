@@ -9,43 +9,52 @@
 #define X 0
 #define Y 1
 #define Z 2
+#define W 3
 
-typedef struct vec2 vec2;
-typedef struct vec3 vec3;
-typedef struct vec4 vec4;
+typedef struct vec2_t vec2_t;
+typedef struct vec3_t vec3_t;
+typedef struct vec4_t vec4_t;
 
-struct vec2 { 
+struct vec2_t { 
     u8 cmp[2];
 }; 
-struct vec3 { 
+struct vec3_t { 
     u8 cmp[3];
 };
-struct vec4 { 
+struct vec4_t { 
     u8 cmp[4];
 };
 
 
 #define VEC2F_FMT       "(%f,%f)"
 #define VEC2F_ARG(vec)  (vec).cmp[0], (vec).cmp[1]
-typedef struct vec2f vec2f;
-typedef struct vec3f vec3f;
-typedef struct vec4f vec4f;
+#define VEC3F_FMT       "(%f,%f,%f)"
+#define VEC3F_ARG(vec)  (vec).cmp[0], (vec).cmp[1], (vec).cmp[2]
+#define VEC4F_FMT       "(%f,%f,%f,%f)"
+#define VEC4F_ARG(vec)  (vec).cmp[0], (vec).cmp[1], (vec).cmp[2], (vec).cmp[3]
+typedef struct vec2f_t vec2f_t;
+typedef struct vec3f_t vec3f_t;
+typedef struct vec4f_t vec4f_t;
 
-struct vec2f {
+struct vec2f_t {
     f32 cmp[2];
 };
-struct vec3f {
+struct vec3f_t {
     f32 cmp[3];
 };
-struct vec4f {
+struct vec4f_t {
     f32 cmp[4];
 };
 
+#define vec2f_copy(pdest, psrc) memcpy(pdest, psrc, sizeof(vec2f))
+#define vec3f_copy(pdest, psrc) memcpy(pdest, psrc, sizeof(vec3f))
+#define vec4f_copy(pdest, psrc) memcpy(pdest, psrc, sizeof(vec4f))
+
 
 #define vec2f_translate(x, y) vec2f_add(x, y)
-vec2f vec2f_add(vec2f x, vec2f y)
+vec2f_t vec2f_add(vec2f_t x, vec2f_t y)
 {
-    vec2f output;
+    vec2f_t output;
     output.cmp[X] = x.cmp[X] + y.cmp[X];
     output.cmp[Y] = x.cmp[Y] + y.cmp[Y];
 
@@ -53,9 +62,9 @@ vec2f vec2f_add(vec2f x, vec2f y)
 }
 
 
-void matrix4f_copy(vec2f destination[], vec2f src[])
+void matrix4f_copy(vec2f_t destination[], vec2f_t src[])
 {
-    memcpy(destination, src, sizeof(vec2f) * 4);
+    memcpy(destination, src, sizeof(vec2f_t) * 4);
 }
 
 #endif //__MY_LA_H__
