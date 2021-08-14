@@ -18,31 +18,12 @@
  //                     CrapGui
 =============================================================== */
 
-#define MAX_GLOBAL_UI_COMPONENTS_CAPCITY 10
-global void * GLOBAL_UI_COMPONENTS_ARRAY[MAX_GLOBAL_UI_COMPONENTS_CAPCITY];
-
-typedef enum component_type {
-
-    CT_BUTTON = 0,
-    CT_COUNT
-
-} component_type;
-
-typedef struct ui_component_t {
-
-    void            *component; // holds the address to a component
-    component_type  type;
-
-} ui_component_t;
-
 typedef struct crapgui_t {
 
     window_t        *sub_window;
     gl_ascii_font_t font; 
-    stack_t         ui_components;
-
+    gl_renderer2d_t *renderer;
     u64             ui_component_count;
-    bool            is_close;
 
 } crapgui_t;
 
@@ -68,9 +49,7 @@ crapgui_t gui_init(window_t *window)
         .font       = gl_ascii_font_init(
                         "/home/gokul/Documents/projects/poglib/res/ascii_fonts/glyph_atlas.png", 
                         16, 6),
-        /*.ui_components = stack_init(GLOBAL_UI_COMPONENTS_ARRAY, MAX_GLOBAL_UI_COMPONENTS_CAPCITY),*/
         .ui_component_count = 0,
-        .is_close = false
     };
 }
 
@@ -257,6 +236,7 @@ static inline void __button_draw(const crapgui_t *gui, button_t * button)
 
     vao_bind(&button->vao);
     {
+
         shader_bind(&button->shader);
         GL_CHECK(glDrawElements(GL_TRIANGLES, button->vbo.indices_count, GL_UNSIGNED_INT, 0));
 
@@ -395,27 +375,37 @@ bool button_is_dragged(const crapgui_t *gui, button_t *button)
 
 typedef struct {
 
-    const char *label;
-    f32 value;
-    struct {
-        f32 min;
+    const char  *label;
+    f32         value;
+    struct { 
+        f32 min; 
         f32 max;
     } range;
-
     vec2f_t     position; 
-    f32         width, height;
+    f32         width; 
+    f32         height;
 
     // Refactor vao, vbo and ebo into a renderer struct
-    vao_t       vao;
-    vbo_t       vbo;
-    ebo_t       ebo;
-    vec3f_t     vertices[4];
-    vec4f_t     color;
-    gl_shader_t shader;
 
 } slider_t;
 
+/*-------------------------------------------------------------------------------
+ // Declarations
+-------------------------------------------------------------------------------*/
 
+slider_t slider_begin(const crapgui_t *gui, const char *label);
+
+
+/*-------------------------------------------------------------------------------
+ // Implementations
+-------------------------------------------------------------------------------*/
+
+slider_t slider_begin(const crapgui_t *gui)
+{
+    return (slider_t ) {
+    };
+
+}
 
 /*============================================================================
  //                 
