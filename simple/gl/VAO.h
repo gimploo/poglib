@@ -93,12 +93,12 @@ static inline void vao_set_attributes(
 }
 
 
-static inline bool vao_draw(vao_t *vao)
+static inline bool vao_draw(const vao_t *vao)
 {
     if (vao == NULL) eprint("vao_draw: vao argument is null");
     if(stack_is_empty(&vao->vbos)) eprint("vao_draw: vao stack is empty");
 
-    stack_t *stack = &vao->vbos;
+    const stack_t *stack = &vao->vbos;
     vbo_t *vbo = NULL;
 
     vao_bind(vao);
@@ -106,13 +106,14 @@ static inline bool vao_draw(vao_t *vao)
         for (i64 i = stack->top; i >= 0; i--) 
         {
             vbo = (vbo_t *)stack->array[i];
-            vbo_bind(vbo); {
-
+            vbo_bind(vbo); 
+            {
                 if (vbo->indices_count == 0) eprint("vao_draw: vbo[%li] indices_count is %i", i, vbo->indices_count);
 
                 glDrawElements(GL_TRIANGLES, vbo->indices_count, GL_UNSIGNED_INT, 0);
 
-            } vbo_unbind();
+            } 
+            vbo_unbind();
 
         } 
     }

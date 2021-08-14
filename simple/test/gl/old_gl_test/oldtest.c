@@ -2,13 +2,13 @@
 #include <stdlib.h>
 #include <GL/glew.h>
 
-#include "../gl_renderer.h"
-#include "../window.h"
+#include "../../../gl_renderer.h"
+#include "../../../window.h"
 
 #define uint32 u_int32_t 
 
-static Shader shader;
-static Texture2D texture;
+static gl_shader_t shader;
+static gl_texture2d_t texture;
 
 static vbo_t VBO;
 static ebo_t EBO;
@@ -40,7 +40,7 @@ void gl_setup_rectangle(void)
         -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left
     };                      
 
-    unsigned int indices[] = {  
+    u8 indices[] = {  
             0, 1, 3, // first triangle
             1, 2, 3  // second triangle
     };
@@ -121,8 +121,8 @@ void gl_draw_rectangle(void * arg)
 
 int main(void)
 {
-    uint32 FLAGS = SDL_INIT_VIDEO;
-    Window window = window_init(1080, 920, FLAGS);
+    unsigned int FLAGS = SDL_INIT_VIDEO;
+    window_t window = window_init(1080, 920, FLAGS);
     gl_setup_rectangle();
     while (window.is_open)
     {

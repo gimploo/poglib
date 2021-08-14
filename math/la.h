@@ -46,9 +46,9 @@ struct vec4f_t {
     f32 cmp[4];
 };
 
-#define vec2f_copy(pdest, psrc) memcpy(pdest, psrc, sizeof(vec2f))
-#define vec3f_copy(pdest, psrc) memcpy(pdest, psrc, sizeof(vec3f))
-#define vec4f_copy(pdest, psrc) memcpy(pdest, psrc, sizeof(vec4f))
+#define vec2f_copy(pdest, psrc) memcpy(pdest, psrc, sizeof(vec2f_t))
+#define vec3f_copy(pdest, psrc) memcpy(pdest, psrc, sizeof(vec3f_t))
+#define vec4f_copy(pdest, psrc) memcpy(pdest, psrc, sizeof(vec4f_t))
 
 
 #define vec2f_translate(x, y) vec2f_add(x, y)

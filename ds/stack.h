@@ -23,12 +23,7 @@ static inline void stack_dump(stack_t *stack)
     printf("\n");
 }
 
-static inline bool stack_is_empty(stack_t *stack)
-{
-    if (stack == NULL) eprint("stack_is_empty: stack argument is null");
-
-    return stack->top == -1 ? true : false; 
-}
+#define stack_is_empty(pstack) ((pstack)->top == -1 ? true : false)
 
 
 static inline stack_t stack_init(void **array, size_t capacity)

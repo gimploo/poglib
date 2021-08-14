@@ -14,7 +14,7 @@
 typedef struct character_info_t  {
 
     char                character;
-    vec2f_t               texture_coord[4];
+    vec2f_t             texture_coord[4];
 
     f32                 font_width;
     f32                 font_height;

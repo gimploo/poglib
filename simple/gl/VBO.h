@@ -3,31 +3,48 @@
 
 #include "_common.h"
 
+/*========================================================================
+ // GL Vertex Buffer Object Abstraction (internal)
+========================================================================*/
+typedef enum vbo_type {
 
-typedef struct vbo_t vbo_t;
-struct vbo_t {
+    VBO_TYPE_STATIC = 0,
+    VBO_TYPE_DYNAMIC,
+    VBO_TYPE_COUNT
 
-    GLuint  id; 
+} vbo_type;
 
-    u32     indices_count;
+typedef struct vbo_t {
 
-    u32     attribute_count;
-    i32     attribute_index; // this is basically (count-1), i have this to avoid possible headaches in the future
+    GLuint      id; 
+    vbo_type    type;
+    u32         indices_count;
+    u32         attribute_count;
+    i32         attribute_index; // this is basically (count-1), i have this to avoid possible headaches in the future
 
-};
+} vbo_t ;
 
-/*
- *
- *  FUNCTION:
- *  ========
- *      1. vbo_init()
- *      2. vbo_bind()
- *      3. vbo_unbind()
- *      4. vbo_destroy()
- *
- */
 
-static inline vbo_t vbo_init(const void *vertices, const size_t vsize)
+/*------------------------------------------------------------------------
+ // Declarations
+------------------------------------------------------------------------*/
+
+//NOTE:(macro)          vbo_init(vertices[], vsize) -> vbo_t
+static inline vbo_t     vbo_static_init(const void *vertices, const size_t vsize);
+static inline vbo_t     vbo_dynamic_init(const size_t vsize);
+
+static inline void      vbo_bind(const vbo_t *obj);
+static inline void      vbo_unbind(void);
+
+static inline void      vbo_destroy(const vbo_t *obj);
+
+/*------------------------------------------------------------------------
+ // Implementations
+------------------------------------------------------------------------*/
+
+#define vbo_init(v, s)  vbo_static_init(v, s)
+
+static inline vbo_t vbo_static_init(const void *vertices, const size_t vsize)
 {
     vbo_t VBO;
 
@@ -35,14 +52,37 @@ static inline vbo_t vbo_init(const void *vertices, const size_t vsize)
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, VBO.id));
     GL_CHECK(glBufferData(GL_ARRAY_BUFFER, vsize, vertices, GL_STATIC_DRAW));
 
+    VBO.type = VBO_TYPE_STATIC;
+
     VBO.indices_count = 0;
 
     VBO.attribute_index = -1;
     VBO.attribute_count = 0;
 
-    GL_LOG("VBO `%i` created", VBO.id);
+    GL_LOG("VBO (STATIC)\t `%i` created", VBO.id);
     return VBO;
 }
+
+static inline vbo_t vbo_dynamic_init(const size_t vsize)
+{
+    vbo_t VBO;
+
+    GL_CHECK(glGenBuffers(1, &VBO.id)); 
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, VBO.id));
+    GL_CHECK(glBufferData(GL_ARRAY_BUFFER, vsize, NULL, GL_DYNAMIC_DRAW));
+
+    VBO.type = VBO_TYPE_DYNAMIC;
+
+    VBO.indices_count = 0;
+
+    VBO.attribute_index = -1;
+    VBO.attribute_count = 0;
+
+    GL_LOG("VBO (DYNAMIC)\t `%i` created", VBO.id);
+    return VBO;
+}
+
+
 
 static inline void vbo_bind(const vbo_t *obj)
 {

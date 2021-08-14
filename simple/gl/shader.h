@@ -17,22 +17,33 @@ typedef struct gl_shader_t {
 
 
 const char * const default_vshader = 
-    "#version 460 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
+    "#version 330 core\n"
+    "layout (location = 0) in vec3 v_pos;\n"
+    "layout (location = 1) in vec3 v_color;\n"
+    "layout (location = 2) in vec2 v_tex_coord;\n"
+    "\n"
+    "out vec3 color;\n"
+    "out vec2 tex_coord;\n"
+    "\n"
     "void main()\n"
     "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+        "gl_Position = vec4(v_pos, 1.0f);\n"
+        "color = v_color;\n"
+        "tex_coord = v_tex_coord;\n"
     "}";
 
 const char * const default_fshader = 
-    "#version 460 core\n"
-    "out vec4 FragColor;\n"
+    "#version 330 core\n"
+    "in vec3 color;\n"
+    "in vec2 tex_coord;\n"
     "\n"
-    "uniform vec4 u_color;\n"
+    "uniform sampler2D u_texture01;\n"
+    "\n"
+    "out vec4 FragColor;\n"
     "\n"
     "void main()\n"
     "{\n"
-        "FragColor = u_color;\n"
+        "FragColor = texture(u_texture01, tex_coord) * vec4(color, 1.0f);\n"
     "}";
 
     
@@ -53,7 +64,7 @@ void            shader_set_fval(gl_shader_t *shader, const char *uniform, float 
 void            shader_set_uival(gl_shader_t *shader, const char *uniform, unsigned int val);
 void            shader_set_ival(gl_shader_t *shader, const char *uniform, int val);
 
-void            shader_destroy(gl_shader_t *shader);
+void            shader_destroy(const gl_shader_t *shader);
 
 
 /*--------------------------------------------------------
@@ -114,7 +125,7 @@ void shader_set_farr(gl_shader_t *shader, const char *uniform, float arr[])
 
 
 
-inline void shader_destroy(gl_shader_t *shader)
+inline void shader_destroy(const gl_shader_t *shader)
 {
     if (shader == NULL) {
         fprintf(stderr, "%s: shader is null\n", __func__);

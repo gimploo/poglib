@@ -28,10 +28,10 @@ typedef struct gl_texture2d_t {
 
 
 gl_texture2d_t              texture_init(const char * file_path);
-void                        texture_destroy(gl_texture2d_t *texture);
+void                        texture_destroy(const gl_texture2d_t *texture);
 //NOTE:(macro)              texture_bind(gl_texture2d_t *, u32 ) --> void
 //NOTE:(macro)              texture_unbind(void) --> void
-void                        texture_dump(gl_texture2d_t *texture);
+void                        texture_dump(const gl_texture2d_t *texture);
 
 
 /*------------------------------------------------------
@@ -115,7 +115,7 @@ gl_texture2d_t texture_init(const char *file_path)
     };
 }
 
-void texture_destroy(gl_texture2d_t *texture)
+void texture_destroy(const gl_texture2d_t *texture)
 {
     if (texture == NULL) eprint("texture argument is null");
 
@@ -123,7 +123,7 @@ void texture_destroy(gl_texture2d_t *texture)
     GL_CHECK(glDeleteTextures(1, &texture->id)); 
 }
 
-void texture_dump(gl_texture2d_t *texture)
+void texture_dump(const gl_texture2d_t *texture)
 {
     if (texture == NULL) eprint("texture argument is null");
 

@@ -56,19 +56,33 @@ struct window_t {
  // Declarations
 ----------------------------------------------------------------------*/
 
-window_t    window_init(size_t width, size_t height, SDL_FLAGS flags);
-void        window_render(window_t *window, render_func render, void * arg);
-void        window_process_user_input(window_t *window);
+window_t        window_init(size_t width, size_t height, SDL_FLAGS flags);
+void            window_set_background(window_t *window, vec4f_t color);
 
-void        window_set_background(window_t *window, vec4f_t color);
+//NOTE:(macro)  window_gl_render_begin(window_t *window)
+//NOTE:(macro)  window_gl_render_end(window_t *window)
+void            window_render(window_t *window, render_func render, void * arg);
 
-void        window_destroy(window_t *window);
+void            window_process_user_input(window_t *window);
+
+void            window_destroy(window_t *window);
 
 
 /*-------------------------------------------------------------------------
  // Implementations
 -------------------------------------------------------------------------*/
 
+#define window_gl_render_begin(pwindow) {\
+    glClearColor(\
+            (pwindow)->background_color.cmp[0],\
+            (pwindow)->background_color.cmp[1],\
+            (pwindow)->background_color.cmp[2],\
+            (pwindow)->background_color.cmp[3]\
+    );\
+    glClear(GL_COLOR_BUFFER_BIT);\
+}
+
+#define window_gl_render_end(pwindow) SDL_GL_SwapWindow((pwindow)->window_handle)
 
 void window_set_background(window_t *window, vec4f_t color) 
 {
@@ -226,6 +240,7 @@ void window_process_user_input(window_t *window)
 
     }
 }
+
 
 void window_render(window_t *window, render_func render, void *arg)
 {

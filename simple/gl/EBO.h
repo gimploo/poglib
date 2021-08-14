@@ -23,20 +23,36 @@ struct ebo_t {
  *
  */
 
+#define ebo_bind(pebo)  GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (pebo)->id));
 
-static inline ebo_t ebo_init(vbo_t * const vbo, const unsigned int *indices, const u32 count)
+static inline ebo_t ebo_init(vbo_t * const vbo, const u32 *indices, const u32 count)
 {
     if (vbo == NULL) eprint("ebo_init: vbo argument is null");
-    if (indices == NULL) eprint("ebo_init: indices argumen is null");
+    if (indices == NULL) eprint("ebo_init: indices argument is null");
     if (count <= 0) eprint("ebo_init: isize is not greater than 0");
 
     ebo_t ebo;
+    ebo.count = count;
     GL_CHECK(glGenBuffers(1, &ebo.id));
     GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo.id));
-    GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(unsigned int), indices, GL_STATIC_DRAW));
+    GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(u32), indices, GL_STATIC_DRAW));
 
     vbo->indices_count = count;
+
+    GL_LOG("EBO `%i` created", ebo.id);
+    return ebo;
+}
+
+static inline ebo_t ebo_empty_init(const u32 *indices, const u32 count)
+{
+    if (indices == NULL) eprint("ebo_init: indices argument is null");
+    if (count <= 0) eprint("ebo_init: isize is not greater than 0");
+
+    ebo_t ebo;
     ebo.count = count;
+    GL_CHECK(glGenBuffers(1, &ebo.id));
+    GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo.id));
+    GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(u32), indices, GL_STATIC_DRAW));
 
     GL_LOG("EBO `%i` created", ebo.id);
     return ebo;
