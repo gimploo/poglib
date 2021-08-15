@@ -38,6 +38,8 @@ static inline void vao_push(vao_t *vao, vbo_t *vbo)
     if (vao == NULL) eprint("vao_push: vao argument is null");
     if (vbo == NULL) eprint("vao_push: vbo argument is null");
 
+    if (vao->vbos.array == NULL) eprint("vao is not initialized");
+
     vao_bind(vao);
         stack_push(&vao->vbos, vbo);
     vao_unbind();

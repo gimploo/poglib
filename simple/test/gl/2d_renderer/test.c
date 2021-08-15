@@ -11,19 +11,19 @@ int oldmain(void)
     u32 FLAGS = SDL_INIT_VIDEO;
     window_t window = window_init(1080, 920, FLAGS);
 
-    float vertices[] = {    
+    gl_quad_t quad = {    
                         // positon,            // color            // texture
-        0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,   1.0f, 1.0f ,
-        0.5f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,   1.0f, 0.0f,
-        0.5f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 0.0f,
-        0.0f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 1.0f,
+      (gl_vertex_t){0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,   1.0f, 1.0f}, 
+      (gl_vertex_t){0.5f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,   1.0f, 0.0}, 
+      (gl_vertex_t){0.5f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 0.0}, 
+      (gl_vertex_t){0.0f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 1.0}, 
     };                      
 
     gl_shader_t shader = shader_default_init();
-    gl_texture2d_t texture = texture_init("./glyph_atlas.png");
+    gl_texture2d_t texture = texture_init("./wall.jpg");
 
     vao_t vao = vao_init(1);
-    vbo_t vbo = vbo_init(vertices, sizeof(vertices));
+    vbo_t vbo = vbo_init(&quad, sizeof(quad));
     ebo_t ebo = ebo_init(&vbo, DEFAULT_QUAD_INDICES, 6);
     vao_push(&vao, &vbo);
 
@@ -52,9 +52,9 @@ int main(void)
     u32 FLAGS = SDL_INIT_VIDEO;
     window_t window = window_init(1080, 920, FLAGS);
 
-    const gl_quad_t quads[2] = {    
+    const gl_quad_t quad[2] = {    
                         // positon,            // color            // texture
-        (gl_vertex_t) {0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,   1.0f, 1.0f} ,
+        (gl_vertex_t) {0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,   1.0f, 1.0f},
         (gl_vertex_t) {0.5f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,   1.0f, 0.0f},
         (gl_vertex_t) {0.5f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 0.0f},
         (gl_vertex_t) {0.0f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 1.0f},
@@ -66,12 +66,12 @@ int main(void)
 
     };                      
 
-    gl_batch_t batch = (gl_batch_t) { 
+    gl_batch_t batch = { 
 
         .shape_type = BT_QUAD,
         .shape_count = 2,
-        .vertex_buffer= quads,
-        .vertex_buffer_size= sizeof(quads),
+        .vertex_buffer= (gl_vertex_t *)quad,
+        .vertex_buffer_size= sizeof(quad),
     };
 
     gl_shader_t shader = shader_default_init();

@@ -85,19 +85,27 @@ static inline void __gen_quad_indices(u32 indices[], const u32 shape_count)
     const u32 indices_count = shape_count * DEFAULT_QUAD_INDICES_CAPACITY;
 
     memcpy(indices, DEFAULT_QUAD_INDICES, sizeof(DEFAULT_QUAD_INDICES));
+    for (int i = 1; i < shape_count; i++)
+    {
+        indices[(i*6) + 0]   = DEFAULT_QUAD_INDICES[0] + 4; 
+        indices[(i*6) + 1]   = DEFAULT_QUAD_INDICES[1] + 4;
+        indices[(i*6) + 2]   = DEFAULT_QUAD_INDICES[2] + 4;
+        indices[(i*6) + 3]   = DEFAULT_QUAD_INDICES[3] + 4;
+        indices[(i*6) + 4]   = DEFAULT_QUAD_INDICES[4] + 4;
+        indices[(i*6) + 5]   = DEFAULT_QUAD_INDICES[5] + 4;
+    }
 
-    for (int i = DEFAULT_QUAD_INDICES_CAPACITY, index = 0; i < indices_count; i++, index++)
-        indices[i] = 3 + DEFAULT_QUAD_INDICES[index % 4];
 }
 
 static inline void __gen_tri_indices(u32 indices[], const u32 shape_count)
 {
-    const u32 indices_count = shape_count * DEFAULT_TRI_INDICES_CAPACITY;
+    for (int i = 0; i < shape_count; i++)
+    {
+        indices[i] = 3 * i;
+        indices[i+1] = indices[i] + 1;
+        indices[i+2] = indices[i+1] + 1;
+    }
 
-    memcpy(indices, DEFAULT_TRI_INDICES, sizeof(DEFAULT_TRI_INDICES));
-
-    for (int i = DEFAULT_TRI_INDICES_CAPACITY, index = 0; i < indices_count; i++, index++)
-        indices[i] = 3 + DEFAULT_TRI_INDICES[index % 4];
 }
 
 
@@ -148,12 +156,15 @@ void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *
     ebo_t ebo;
     vbo_t vbo;
 
+    renderer->vao = vao_init(1);
+
     u32 indices_buffer[
         batch->shape_count * (
                     batch->shape_type == BT_QUAD ?  
                     DEFAULT_QUAD_INDICES_CAPACITY : DEFAULT_TRI_INDICES_CAPACITY
                 )
     ]; 
+    memset(indices_buffer, 0, sizeof(indices_buffer));
 
     vao_bind(&renderer->vao);
 
