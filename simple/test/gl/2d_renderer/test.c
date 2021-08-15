@@ -52,16 +52,30 @@ int main(void)
     u32 FLAGS = SDL_INIT_VIDEO;
     window_t window = window_init(1080, 920, FLAGS);
 
-    gl_quad_t vertices = {    
+    const gl_quad_t quads[2] = {    
                         // positon,            // color            // texture
         (gl_vertex_t) {0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,   1.0f, 1.0f} ,
         (gl_vertex_t) {0.5f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,   1.0f, 0.0f},
         (gl_vertex_t) {0.5f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 0.0f},
         (gl_vertex_t) {0.0f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 1.0f},
+
+        (gl_vertex_t) {-0.5f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,   1.0f, 0.0f},
+        (gl_vertex_t) {0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,   1.0f, 1.0f} ,
+        (gl_vertex_t) {0.0f, -0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 0.0f},
+        (gl_vertex_t) {-0.5f, -0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 1.0f},
+
     };                      
 
+    gl_batch_t batch = (gl_batch_t) { 
+
+        .shape_type = BT_QUAD,
+        .shape_count = 2,
+        .vertex_buffer= quads,
+        .vertex_buffer_size= sizeof(quads),
+    };
+
     gl_shader_t shader = shader_default_init();
-    gl_texture2d_t texture = texture_init("./glyph_atlas.png");
+    gl_texture2d_t texture = texture_init("./wall.jpg");
     gl_renderer2d_t renderer = gl_renderer2d_init(&shader, &texture);
 
 
@@ -69,7 +83,7 @@ int main(void)
     {
         window_process_user_input(&window);
         window_gl_render_begin(&window);
-            gl_render2d_draw_quad(&renderer, vertices);
+            gl_renderer2d_draw_from_batch(&renderer, &batch);
         window_gl_render_end(&window);
     }
 

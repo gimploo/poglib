@@ -42,5 +42,15 @@ typedef double          f64;
     exit(1);                                    \
 }
 
+//  Buffer type (hopefully this will help in avoiding buffer overflows)
+typedef struct {
+
+    void *array;
+    u64 capacity;
+
+} buffer_t;
+
+#define buffer_init(parray, capacity) { .array = parray, .capacity = capacity}
+
 
 #endif // _BASIC_H_
