@@ -41,8 +41,9 @@ typedef struct  { gl_vertex_t vertices[4]; } gl_quad_t;
 
 typedef struct gl_renderer2d_t {
 
-    const gl_shader_t     *shader;
-    const gl_texture2d_t  *texture;
+    vao_t                   vao;
+    const gl_shader_t       *shader;
+    const gl_texture2d_t    *texture;
 
 } gl_renderer2d_t;
 
@@ -71,25 +72,29 @@ void gl_render2d_draw_quad(gl_renderer2d_t *renderer, gl_quad_t quad)
 {
     if (renderer == NULL) eprint("renderer argument is null");
 
-    vao_t vao = vao_init(1);
+    renderer->vao = vao_init(1);
     vbo_t vbo = vbo_init(&quad, sizeof(gl_quad_t));
     ebo_t ebo = ebo_init(&vbo, DEFAULT_QUAD_INDICES, DEFAULT_QUAD_INDICES_CAPACITY);
 
-    vao_push(&vao, &vbo);
-    vao_set_attributes(&vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position));
-    vao_set_attributes(&vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, color));
+    vao_bind(&renderer->vao);
 
-    if (renderer->texture != NULL) {
-        vao_set_attributes(&vao, 0, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord));
-        texture_bind(renderer->texture, 0);
-    }
+        vao_push(&renderer->vao, &vbo);
+            vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position));
+            vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, color));
 
-    shader_bind(renderer->shader);
-    vao_draw(&vao);
+            if (renderer->texture != NULL) {
+                vao_set_attributes(&renderer->vao, 0, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord));
+                texture_bind(renderer->texture, 0);
+            }
+
+            shader_bind(renderer->shader);
+            vao_draw(&renderer->vao);
+        vao_pop(&renderer->vao);
+
+    vao_unbind();
 
     ebo_destroy(&ebo);
     vbo_destroy(&vbo);
-    vao_destroy(&vao);
 
 }
 
@@ -98,6 +103,7 @@ void gl_render2d_destroy(gl_renderer2d_t *renderer)
     if (renderer == NULL) eprint("renderer argument is null");
 
     shader_destroy(renderer->shader);
+    vao_destroy(&renderer->vao);
     if (renderer->texture != NULL) texture_destroy(renderer->texture);
 }
 
