@@ -28,7 +28,7 @@ void print_VBO(void *arg)
 
 void gl_setup_rectangle(void)
 {
-    shader = shader_init("./wood.vs", "./wood.fs");
+    shader = gl_shader_from_file_init("./wood.vs", "./wood.fs");
 
     texture = texture_init("./wall.jpg");
 
@@ -110,7 +110,7 @@ void gl_draw_rectangle(void * arg)
 {
     (void)arg;
 
-    shader_bind(&shader);
+    gl_shader_bind(&shader);
     texture_bind(&texture, 0);
 
     /*stack_print(&VAO.vbos, print_VBO);*/
@@ -126,15 +126,19 @@ int main(void)
     gl_setup_rectangle();
     while (window.is_open)
     {
-        window_process_user_input(&window);
-        window_render(&window, gl_draw_rectangle, NULL); 
+        if (window.keyboard_handler.key == SDLK_q)
+            window.is_open = false;
+        /*window_render(&window, gl_draw_rectangle, NULL); */
+        window_gl_render_begin(&window);
+            gl_draw_rectangle(NULL);
+        window_gl_render_end(&window);
     }
 
     ebo_destroy(&EBO);
     
     vao_destroy(&VAO);
 
-    shader_destroy(&shader);
+    gl_shader_destroy(&shader);
     texture_destroy(&texture);
 
     window_destroy(&window);

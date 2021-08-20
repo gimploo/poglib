@@ -19,7 +19,7 @@ int oldmain(void)
       (gl_vertex_t){0.0f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 1.0}, 
     };                      
 
-    gl_shader_t shader = shader_default_init();
+    gl_shader_t shader = gl_shader_default_init();
     gl_texture2d_t texture = texture_init("./wall.jpg");
 
     vao_t vao = vao_init(1);
@@ -34,9 +34,8 @@ int oldmain(void)
 
     while (window.is_open)
     {
-        window_process_user_input(&window);
         window_gl_render_begin(&window);
-            shader_bind(&shader);
+            gl_shader_bind(&shader);
             texture_bind(&texture, 0);
             vao_draw(&vao);
         window_gl_render_end(&window);
@@ -74,14 +73,13 @@ int main(void)
         .vertex_buffer_size= sizeof(quad),
     };
 
-    gl_shader_t shader = shader_default_init();
+    gl_shader_t shader = gl_shader_default_init();
     gl_texture2d_t texture = texture_init("./wall.jpg");
     gl_renderer2d_t renderer = gl_renderer2d_init(&shader, &texture);
 
 
     while (window.is_open)
     {
-        window_process_user_input(&window);
         window_gl_render_begin(&window);
             gl_renderer2d_draw_from_batch(&renderer, &batch);
         window_gl_render_end(&window);
