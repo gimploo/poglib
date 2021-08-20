@@ -45,13 +45,11 @@ void            file_destroy(file_t * const file);
 ------------------------------------------*/
 
 
-size_t __file_get_size(const char *file_path)
+static inline int __file_get_size(const char *file_path)
 {
     FILE *fp = fopen(file_path, "r");
-    if (fp == NULL) {
-        fprintf(stderr, "%s: file failed to open\n", __func__);
-        exit(1);
-    }
+    if (fp == NULL) eprint("failed to open");
+    
     fseek(fp, 0L, SEEK_END);
     size_t size = ftell(fp);
     fclose(fp);
