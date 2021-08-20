@@ -53,15 +53,15 @@ typedef struct gl_shader_t {
 } gl_shader_t;
 
 
-typedef void (*shader_uniform_set_arr_f) (const gl_shader_t *, const char *, void **);
-typedef void (*shader_uniform_set_val_f) (const gl_shader_t *, const char *, void *);
-
 typedef enum gl_shader_uniform_type {
 
     UT_UINT = 0,
     UT_INT,
     UT_FLOAT,
-    UT_FLOAT_ARRAY,
+
+    UT_VEC3F,
+    UT_VEC4F,
+
     UT_COUNT
 
 } gl_uniform_type;
@@ -86,18 +86,7 @@ gl_shader_t     gl_shader_from_file_init(const char *file_vs, const char *file_f
 gl_shader_t     gl_shader_from_cstr_init(const char *vs_code, const char *fs_code);
 
 void            gl_shader_bind(gl_shader_t *shader);
-
-void            gl_shader_uniform_set_farr(gl_shader_t *shader, const char *uniform, float arr[]);
-void            gl_shader_uniform_set_fval(gl_shader_t *shader, const char *uniform, float val);
-void            gl_shader_uniform_set_uival(gl_shader_t *shader, const char *uniform, unsigned int val);
-void            gl_shader_uniform_set_ival(gl_shader_t *shader, const char *uniform, int val);
-
-void            gl_shader_push_uniform(
-                            gl_shader_t *shader, 
-                            const char *uniform_name, 
-                            void *value, 
-                            u64 value_size, 
-                            gl_uniform_type type);
+void            gl_shader_push_uniform(gl_shader_t *shader, const char *uniform_name, void *value, u64 value_size, gl_uniform_type type);
 
 void            gl_shader_destroy(const gl_shader_t *shader);
 
@@ -105,6 +94,7 @@ void            gl_shader_destroy(const gl_shader_t *shader);
 /*--------------------------------------------------------
  // Implementation
 --------------------------------------------------------*/
+#define GL_SHADER_BIND(pshader) GL_CHECK(glUseProgram((pshader)->id));
 
 #define gl_shader_default_init() gl_shader_from_cstr_init(default_vshader, default_fshader)
 
@@ -264,7 +254,7 @@ void gl_shader_uniform_set_ival(gl_shader_t *shader, const char *uniform, int va
     if (shader == NULL) eprint("shader argument is null");
     if (uniform == NULL) eprint("uniform argument is null");
 
-    gl_shader_bind(shader);
+    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
@@ -277,7 +267,7 @@ void gl_shader_uniform_set_uival(gl_shader_t *shader, const char *uniform, unsig
     if (shader == NULL) eprint("shader argument is null");
     if (uniform == NULL) eprint("uniform argument is null");
 
-    gl_shader_bind(shader);
+    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
@@ -289,24 +279,37 @@ void gl_shader_uniform_set_fval(gl_shader_t *shader, const char *uniform, float 
     if (shader == NULL) eprint("shader argument is null");
     if (uniform == NULL) eprint("uniform argument is null");
 
-    gl_shader_bind(shader);
+    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
     GL_CHECK(glUniform1f(location, val));
 }
 
-void gl_shader_uniform_set_farr(gl_shader_t *shader, const char *uniform, float arr[])
+void gl_shader_uniform_set_vec3f(gl_shader_t *shader, const char *uniform, vec3f_t val)
 {
     if (shader == NULL) eprint("shader argument is null");
     if (uniform == NULL) eprint("uniform argument is null");
 
-    gl_shader_bind(shader);
+    GL_SHADER_BIND(shader);
 
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
-    GL_CHECK(glUniform4f(location, arr[0], arr[1], arr[2], arr[3]));
+    GL_CHECK(glUniform3f(location, val.cmp[0], val.cmp[1], val.cmp[2]));
+}
+
+void gl_shader_uniform_set_vec4f(gl_shader_t *shader, const char *uniform, vec4f_t val)
+{
+    if (shader == NULL) eprint("shader argument is null");
+    if (uniform == NULL) eprint("uniform argument is null");
+
+    GL_SHADER_BIND(shader);
+
+    int location;
+    GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
+    if (location == -1) eprint("[ERROR] uniform doesnt exist");
+    GL_CHECK(glUniform4f(location, val.cmp[0], val.cmp[1], val.cmp[2], val.cmp[3]));
 }
 
 
@@ -326,11 +329,10 @@ void gl_shader_bind(gl_shader_t *shader)
 {
     if (shader == NULL) eprint("shader argument is null");
 
-    GL_CHECK(glUseProgram(shader->id));
-
     for (int i = 0; i <= shader->uniforms.top; i++)
     {
         __uniform_meta_data_t *uniform = (__uniform_meta_data_t *)shader->uniforms.array + i;
+        GL_LOG("Shader `%i` setting uniform `%s`", shader->id, uniform->variable_name);
 
         switch(uniform->uniform_type)
         {
@@ -343,8 +345,11 @@ void gl_shader_bind(gl_shader_t *shader)
             case UT_FLOAT:
                 gl_shader_uniform_set_fval(shader, uniform->variable_name, *(f32 *)uniform->data_buffer);
                 break;
-            case UT_FLOAT_ARRAY:
-                gl_shader_uniform_set_farr(shader, uniform->variable_name, (f32 *)uniform->data_buffer);
+            case UT_VEC3F:
+                gl_shader_uniform_set_vec3f(shader, uniform->variable_name, *(vec3f_t *)uniform->data_buffer);
+                break;
+            case UT_VEC4F:
+                gl_shader_uniform_set_vec4f(shader, uniform->variable_name, *(vec4f_t *)uniform->data_buffer);
                 break;
             default:
                 eprint("uniform type not accounted for");
