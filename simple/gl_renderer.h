@@ -59,7 +59,7 @@ typedef struct gl_batch_t {
 typedef struct gl_renderer2d_t {
 
     vao_t                   vao;
-    const gl_shader_t       *shader;
+    gl_shader_t             *shader;
     const gl_texture2d_t    *texture;
 
 } gl_renderer2d_t;
@@ -68,7 +68,7 @@ typedef struct gl_renderer2d_t {
  // Declarations
 --------------------------------------------------------*/
 
-gl_renderer2d_t     gl_renderer2d_init(const gl_shader_t *shader, const gl_texture2d_t *texture);
+gl_renderer2d_t     gl_renderer2d_init(gl_shader_t *shader, const gl_texture2d_t *texture);
 
 void                gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_quad_t quad);
 void                gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *batch);
@@ -82,10 +82,8 @@ void                gl_render2d_destroy(gl_renderer2d_t *renderer);
 
 static inline void __gen_quad_indices(u32 indices[], const u32 shape_count)
 {
-    const u32 indices_count = shape_count * DEFAULT_QUAD_INDICES_CAPACITY;
-
     memcpy(indices, DEFAULT_QUAD_INDICES, sizeof(DEFAULT_QUAD_INDICES));
-    for (int i = 1; i < shape_count; i++)
+    for (u32 i = 1; i < shape_count; i++)
     {
         indices[(i*6) + 0]   = DEFAULT_QUAD_INDICES[0] + 4; 
         indices[(i*6) + 1]   = DEFAULT_QUAD_INDICES[1] + 4;
@@ -99,7 +97,7 @@ static inline void __gen_quad_indices(u32 indices[], const u32 shape_count)
 
 static inline void __gen_tri_indices(u32 indices[], const u32 shape_count)
 {
-    for (int i = 0; i < shape_count; i++)
+    for (u32 i = 0; i < shape_count; i++)
     {
         indices[i] = 3 * i;
         indices[i+1] = indices[i] + 1;
@@ -109,7 +107,7 @@ static inline void __gen_tri_indices(u32 indices[], const u32 shape_count)
 }
 
 
-gl_renderer2d_t gl_renderer2d_init(const gl_shader_t *shader, const gl_texture2d_t *texture)
+gl_renderer2d_t gl_renderer2d_init(gl_shader_t *shader, const gl_texture2d_t *texture)
 {
     if (shader == NULL) eprint("shader argument is null");
     return (gl_renderer2d_t) {
@@ -137,7 +135,7 @@ void gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_quad_t quad)
                 texture_bind(renderer->texture, 0);
             }
 
-            shader_bind(renderer->shader);
+            gl_shader_bind(renderer->shader);
             vao_draw(&renderer->vao);
         vao_pop(&renderer->vao);
 
@@ -193,7 +191,7 @@ void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *
                 vao_set_attributes(&renderer->vao, 0, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord));
                 texture_bind(renderer->texture, 0);
             }
-            shader_bind(renderer->shader);
+            gl_shader_bind(renderer->shader);
             vao_draw(&renderer->vao);
 
         vao_pop(&renderer->vao);
@@ -209,7 +207,7 @@ void gl_render2d_destroy(gl_renderer2d_t *renderer)
 {
     if (renderer == NULL) eprint("renderer argument is null");
 
-    shader_destroy(renderer->shader);
+    gl_shader_destroy(renderer->shader);
     vao_destroy(&renderer->vao);
     if (renderer->texture != NULL) texture_destroy(renderer->texture);
 }
