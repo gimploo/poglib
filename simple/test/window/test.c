@@ -21,7 +21,6 @@ int main(void)
 
     while (window.is_open)
     {
-        window_process_user_input(&window);
         window_render(&window, loop,NULL);// &sub_window);
     }
 
