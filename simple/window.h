@@ -248,6 +248,7 @@ void window_render(window_t *window, render_func render, void *arg)
 {
     if (window == NULL) eprint("window argument is null");
 
+    __window_update_user_input(window);
 #ifdef __gl_h_
     glClearColor(
             window->background_color.cmp[0], 
