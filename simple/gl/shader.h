@@ -394,19 +394,18 @@ __uniform_meta_data_t __uniform_meta_data_init(const char *var_name, void *data_
 }
 
 
-void gl_shader_push_uniform(gl_shader_t *shader, const char *uniform_name, void *value, u64 value_size, gl_uniform_type type) 
+void gl_shader_push_uniform(gl_shader_t *shader, const char *uniform_name, void *value_ref, u64 value_size, gl_uniform_type type) 
 {
     if (shader == NULL) eprint("shader arg is null");    
-    if (value == NULL) eprint("value arg is null");
+    if (value_ref == NULL) eprint("value ref is null");
 
     __uniform_meta_data_t data = __uniform_meta_data_init(
             uniform_name, 
-            value, 
+            value_ref, 
             value_size, 
             type);
 
     stack_push(&shader->uniforms, data);
-
 }
 
 
