@@ -41,5 +41,14 @@ void quadf_translate(quadf_t *quad, vec2f_t vec)
     quad->cmp[3] = vec2f_add(quad->cmp[3] , vec);
 }
 
+void quadf_scale(quadf_t *quad, f32 scale)
+{
+    quad->cmp[0] = vec2f_scale(quad->cmp[0], scale);
+    quad->cmp[1] = vec2f_scale(quad->cmp[1], scale);
+    quad->cmp[2] = vec2f_scale(quad->cmp[2], scale);
+    quad->cmp[3] = vec2f_scale(quad->cmp[3], scale);
+}
+
+
 
 #endif //__MY__SHAPES__H__
