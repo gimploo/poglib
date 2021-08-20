@@ -12,7 +12,7 @@
 
 #include "../math/la.h"
 
-#define DEFAULT_BACKGROUND_COLOR (vec4f_t) {0.0f, 1.0f, 0.0f, 0.0f}
+#define DEFAULT_BACKGROUND_COLOR (vec4f_t){{ 0.0f, 1.0f, 0.0f, 0.0f}}
 #define SDL_FLAGS u32
 
 /*==============================================================================
@@ -21,36 +21,39 @@
 
 typedef void (*render_func) (void*);
 
-typedef struct Mouse Mouse;
-struct Mouse {
+typedef struct __mouse_t {
 
     bool    is_active;
     bool    is_dragged;
     vec2f_t position;
-};
 
-typedef struct window_t window_t;
-struct window_t {
+} __mouse_t;
 
-    bool is_open;
-    u64 width, height;
+typedef struct __keyboard_t {
 
-    SDL_Window *window_handle; // initializes the window 
+    bool        is_active;
+    SDL_Keycode key;
 
-    SDL_Event event;           // handles the user inputs
+} __keyboard_t;
 
-    Mouse mouse_handler;
+typedef struct window_t {
 
-    vec4f_t background_color;
+    bool            is_open;
+    u64             width; 
+    u64             height;
+    SDL_Window      *window_handle;             // initializes the window 
+    SDL_Event       event;                      // handles the user inputs
+    __mouse_t       mouse_handler;
+    __keyboard_t    keyboard_handler;
+    vec4f_t         background_color;
 
-#ifndef __gl_h_                 // initializes the renderer
-    SDL_Surface *surface_handle;
+#ifndef __gl_h_                                 // initializes the renderer
+    SDL_Surface     *surface_handle;
 #else 
-    SDL_GLContext gl_context;
+    SDL_GLContext   gl_context;
 #endif 
 
-};
-
+} window_t;
 
 /*----------------------------------------------------------------------
  // Declarations
@@ -63,8 +66,6 @@ void            window_set_background(window_t *window, vec4f_t color);
 //NOTE:(macro)  window_gl_render_end(window_t *window)
 void            window_render(window_t *window, render_func render, void * arg);
 
-void            window_process_user_input(window_t *window);
-
 void            window_destroy(window_t *window);
 
 
@@ -73,6 +74,7 @@ void            window_destroy(window_t *window);
 -------------------------------------------------------------------------*/
 
 #define window_gl_render_begin(pwindow) {\
+    __window_update_user_input(pwindow);\
     glClearColor(\
             (pwindow)->background_color.cmp[0],\
             (pwindow)->background_color.cmp[1],\
@@ -121,11 +123,11 @@ static inline void  __mouse_update(window_t *window)
     window->mouse_handler.position =  __mouse_get_position(window);
 }
 
-static inline Mouse __mouse_init(window_t *window)
+static inline __mouse_t __mouse_init(window_t *window)
 {
     if (window == NULL) eprint("window argument is null");
 
-    return (Mouse) {
+    return (__mouse_t) {
         .is_active = false,
         .is_dragged = false,
         .position = __mouse_get_position(window)
@@ -188,7 +190,7 @@ window_t window_init(size_t width, size_t height, SDL_FLAGS flags)
 
 }
 
-void window_process_user_input(window_t *window)
+void __window_update_user_input(window_t *window)
 {
     if (window == NULL)  eprint("window argument is null");
 
@@ -205,37 +207,37 @@ void window_process_user_input(window_t *window)
 
                 __mouse_update(window);
                 if (window->mouse_handler.is_active == true) window->mouse_handler.is_dragged = true; 
-
                 break;
+
             case SDL_MOUSEBUTTONDOWN:
 
                 __mouse_update(window);
                 window->mouse_handler.is_active = true;
                 window->mouse_handler.is_dragged = false;
-
                 break;
+
             case SDL_MOUSEBUTTONUP:
 
                 __mouse_update(window);
                 window->mouse_handler.is_dragged = false;
                 window->mouse_handler.is_active = false;
+                break;
 
-                break;
             case SDL_KEYDOWN:
-                switch (event.key.keysym.sym)
-                {
-                    case SDLK_LEFT:  
-                    case SDLK_RIGHT: 
-                    case SDLK_UP:
-                    case SDLK_DOWN:
-                        break;
-                    case SDLK_F1:
-                        break;
-                    default:
-                        SDL_ShowSimpleMessageBox(0, "ERROR", "Key not accounted for", window->window_handle);
-                        window->is_open = false;
-                }
+
+                window->keyboard_handler.is_active = true;
+                window->keyboard_handler.key = event.key.keysym.sym;
                 break;
+
+            case SDL_KEYUP:
+
+                window->keyboard_handler.is_active = false;
+                window->keyboard_handler.key = event.key.keysym.sym;
+                break;
+
+            //default:
+                //SDL_ShowSimpleMessageBox(0, "ERROR", "Key not accounted for", window->window_handle);
+                //window->is_open = false;
         }
 
     }
