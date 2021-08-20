@@ -27,11 +27,11 @@ struct vec4_t {
 
 
 #define VEC2F_FMT       "(%f,%f)"
-#define VEC2F_ARG(vec)  (vec).cmp[0], (vec).cmp[1]
+#define VEC2F_ARG(pvec)  (pvec)->cmp[0], (pvec)->cmp[1]
 #define VEC3F_FMT       "(%f,%f,%f)"
-#define VEC3F_ARG(vec)  (vec).cmp[0], (vec).cmp[1], (vec).cmp[2]
+#define VEC3F_ARG(pvec)  (pvec)->cmp[0], (pvec)->cmp[1], (pvec)->cmp[2]
 #define VEC4F_FMT       "(%f,%f,%f,%f)"
-#define VEC4F_ARG(vec)  (vec).cmp[0], (vec).cmp[1], (vec).cmp[2], (vec).cmp[3]
+#define VEC4F_ARG(pvec)  (pvec)->cmp[0], (pvec)->cmp[1], (pvec)->cmp[2], (pvec)->cmp[3]
 typedef struct vec2f_t vec2f_t;
 typedef struct vec3f_t vec3f_t;
 typedef struct vec4f_t vec4f_t;
@@ -46,6 +46,22 @@ struct vec4f_t {
     f32 cmp[4];
 };
 
+vec2f_t vec2f(float x)
+{
+    return (vec2f_t) { x, x };
+}
+
+vec3f_t vec3f(float x)
+{
+    return (vec3f_t) { x, x, x };
+}
+
+vec4f_t vec4f(float x)
+{
+    return (vec4f_t) { x, x, x, x };
+}
+
+
 #define vec2f_copy(pdest, psrc) memcpy(pdest, psrc, sizeof(vec2f_t))
 #define vec3f_copy(pdest, psrc) memcpy(pdest, psrc, sizeof(vec3f_t))
 #define vec4f_copy(pdest, psrc) memcpy(pdest, psrc, sizeof(vec4f_t))
@@ -58,6 +74,14 @@ vec2f_t vec2f_add(vec2f_t x, vec2f_t y)
     output.cmp[X] = x.cmp[X] + y.cmp[X];
     output.cmp[Y] = x.cmp[Y] + y.cmp[Y];
 
+    return output;
+}
+
+vec2f_t vec2f_scale(vec2f_t x, f32 scale)
+{
+    vec2f_t output;
+    output.cmp[X] = x.cmp[X] * scale;
+    output.cmp[Y] = x.cmp[Y] * scale;
     return output;
 }
 
