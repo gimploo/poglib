@@ -32,6 +32,9 @@ typedef double          f64;
 // Used with struct declaration to avoid padding
 #define NOPADDING __attribute__((packed)) 
 
+// Used with function declaration to force inlining
+#define FORCEINLINE __attribute__((always_inline))
+
 #define ERROR {\
     fprintf(stderr, "[(%s:%d): %s] %s\n",__FILE__, __LINE__, __func__, strerror(errno)); \
     exit(1);                                    \
