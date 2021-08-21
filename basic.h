@@ -55,5 +55,10 @@ typedef struct {
 
 #define buffer_init(parray, capacity) { .array = parray, .capacity = capacity}
 
+int randint(int min, int max)
+{
+    srand(time(NULL));
+    return (rand() % (max - min + 1)) + min;
+}
 
 #endif // _BASIC_H_

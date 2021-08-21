@@ -90,7 +90,7 @@ static inline bool str_cmp(str_t *a, str_t *b)
     return true;
 }
 
-static str_t str_cpy_delimiter(str_t *buffer, char ch)
+static inline str_t str_cpy_delimiter(str_t *buffer, char ch)
 {
     assert(buffer);
 
