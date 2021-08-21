@@ -31,13 +31,15 @@ typedef struct  gl_vertex_t {
 
 } gl_vertex_t;
 
-typedef struct  { gl_vertex_t vertices[3]; } gl_tri_t;
-typedef struct  { gl_vertex_t vertices[4]; } gl_quad_t;
+typedef struct  { gl_vertex_t vertex[3]; } gl_tri_t;
+typedef struct  { gl_vertex_t vertex[4]; } gl_quad_t;
 
 typedef enum {
+
     BT_TRI = 0,
     BT_QUAD,
     BT_COUNT
+
 } gl_batch_type;
 
 typedef struct gl_batch_t {
@@ -111,6 +113,7 @@ gl_renderer2d_t gl_renderer2d_init(gl_shader_t *shader, const gl_texture2d_t *te
 {
     if (shader == NULL) eprint("shader argument is null");
     return (gl_renderer2d_t) {
+        .vao = vao_init(1),
         .shader = shader,
         .texture = texture
     };
@@ -120,7 +123,6 @@ void gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_quad_t quad)
 {
     if (renderer == NULL) eprint("renderer argument is null");
 
-    renderer->vao = vao_init(1);
     vbo_t vbo = vbo_init(&quad, sizeof(gl_quad_t));
     ebo_t ebo = ebo_init(&vbo, DEFAULT_QUAD_INDICES, DEFAULT_QUAD_INDICES_CAPACITY);
 
@@ -154,8 +156,6 @@ void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *
     ebo_t ebo;
     vbo_t vbo;
 
-    renderer->vao = vao_init(1);
-
     u32 indices_buffer[
         batch->shape_count * (
                     batch->shape_type == BT_QUAD ?  
@@ -163,6 +163,8 @@ void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *
                 )
     ]; 
     memset(indices_buffer, 0, sizeof(indices_buffer));
+
+    GL_LOG("Batch size: %li\n", batch->vertex_buffer_size);
 
     vao_bind(&renderer->vao);
 

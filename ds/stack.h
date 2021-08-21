@@ -71,7 +71,7 @@ static void __impl_stack_push(stack_t *stack, void *elem_ref, u64 elem_size)
 
 }
 
-#define stack_push(pstack, elem) __impl_stack_push(pstack, &elem, sizeof(elem))
+#define stack_push(pstack, elem) __impl_stack_push((pstack), &(elem), sizeof (elem) )
 
 
 static inline void * stack_pop(stack_t *stack)

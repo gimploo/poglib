@@ -4,14 +4,15 @@
 #include "la.h"
 
 typedef struct trif {
-    vec2f_t cmp[3];
+    vec2f_t vertex[3];
 } trif_t;
 
 #define QUAD_FMT    VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT "\n" 
-#define QUAD_ARG(q) VEC2F_ARG(q.cmp[0]), VEC2F_ARG(q.cmp[1]), VEC2F_ARG(q.cmp[2]), VEC2F_ARG(q.cmp[3]) 
+#define QUAD_ARG(q) VEC2F_ARG(q.vertex[0]), VEC2F_ARG(q.vertex[1]), VEC2F_ARG(q.vertex[2]), VEC2F_ARG(q.vertex[3]) 
 
 typedef struct quadf {
-    vec2f_t cmp[4];
+    vec2f_t vertex[4];
+    f32 width, height;
 } quadf_t;
 
 
@@ -19,15 +20,17 @@ typedef struct quadf {
 quadf_t quadf_init(vec2f_t position, f32 width, f32 height)
 {
     quadf_t output;
-    output.cmp[0] = position;
-    output.cmp[1].cmp[X] = position.cmp[X] + width;
-    output.cmp[1].cmp[Y] = position.cmp[Y];
+    output.width = width;
+    output.height = height;
+    output.vertex[0] = position;
+    output.vertex[1].cmp[X] = position.cmp[X] + width;
+    output.vertex[1].cmp[Y] = position.cmp[Y];
 
-    output.cmp[2].cmp[X] = position.cmp[X] + width;
-    output.cmp[2].cmp[Y] = position.cmp[Y] - height;
+    output.vertex[2].cmp[X] = position.cmp[X] + width;
+    output.vertex[2].cmp[Y] = position.cmp[Y] - height;
 
-    output.cmp[3].cmp[X] = position.cmp[X];
-    output.cmp[3].cmp[Y] = position.cmp[Y] - height;
+    output.vertex[3].cmp[X] = position.cmp[X];
+    output.vertex[3].cmp[Y] = position.cmp[Y] - height;
 
 
     return output;
@@ -35,18 +38,18 @@ quadf_t quadf_init(vec2f_t position, f32 width, f32 height)
 
 void quadf_translate(quadf_t *quad, vec2f_t vec)
 {
-    quad->cmp[0] = vec2f_add(quad->cmp[0] , vec);
-    quad->cmp[1] = vec2f_add(quad->cmp[1] , vec);
-    quad->cmp[2] = vec2f_add(quad->cmp[2] , vec);
-    quad->cmp[3] = vec2f_add(quad->cmp[3] , vec);
+    quad->vertex[0] = vec2f_add(quad->vertex[0] , vec);
+    quad->vertex[1] = vec2f_add(quad->vertex[1] , vec);
+    quad->vertex[2] = vec2f_add(quad->vertex[2] , vec);
+    quad->vertex[3] = vec2f_add(quad->vertex[3] , vec);
 }
 
 void quadf_scale(quadf_t *quad, f32 scale)
 {
-    quad->cmp[0] = vec2f_scale(quad->cmp[0], scale);
-    quad->cmp[1] = vec2f_scale(quad->cmp[1], scale);
-    quad->cmp[2] = vec2f_scale(quad->cmp[2], scale);
-    quad->cmp[3] = vec2f_scale(quad->cmp[3], scale);
+    quad->vertex[0] = vec2f_scale(quad->vertex[0], scale);
+    quad->vertex[1] = vec2f_scale(quad->vertex[1], scale);
+    quad->vertex[2] = vec2f_scale(quad->vertex[2], scale);
+    quad->vertex[3] = vec2f_scale(quad->vertex[3], scale);
 }
 
 
