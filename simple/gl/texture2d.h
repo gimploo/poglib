@@ -100,10 +100,8 @@ gl_texture2d_t texture_init(const char *file_path)
     GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
 
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
-
-    //stbi_image_free(buf);
     
-   GL_LOG("Texture `%i` successfully created", id);
+    GL_LOG("Texture `%i` successfully created", id);
 
     return (gl_texture2d_t) {
         .id        = id,
@@ -121,6 +119,7 @@ void texture_destroy(const gl_texture2d_t *texture)
 
     GL_LOG("Texture `%i` successfully deleted", texture->id);
     GL_CHECK(glDeleteTextures(1, &texture->id)); 
+    stbi_image_free(texture->buf);
 }
 
 void texture_dump(const gl_texture2d_t *texture)
