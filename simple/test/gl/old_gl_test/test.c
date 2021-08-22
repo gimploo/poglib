@@ -32,7 +32,7 @@ void gl_setup_rectangle(void)
 
     texture = texture_init("./wall.jpg");
 
-    float vertices[] = {    
+    gl_vertex_t vertices[4] = {    
               // positions          // colors           // texture coords
         -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f,  // top left
          0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
@@ -95,9 +95,9 @@ void gl_setup_rectangle(void)
     //               V
 
     //                 | vao |cmp| type   | norm | offset           |  start ptr
-    vao_set_attributes(&VAO, 0, 3, GL_FLOAT, false, 8 * sizeof(float), 0);
-    vao_set_attributes(&VAO, 0, 3, GL_FLOAT, false, 8 * sizeof(float), 3 * sizeof(float));
-    vao_set_attributes(&VAO, 0, 2, GL_FLOAT, false, 8 * sizeof(float), 6 * sizeof(float));
+    vao_set_attributes(&VAO, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position));
+    vao_set_attributes(&VAO, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, color));
+    vao_set_attributes(&VAO, 0, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord));
 
     
     

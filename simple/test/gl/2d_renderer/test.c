@@ -73,7 +73,7 @@ int main(void)
         .vertex_buffer_size= sizeof(quad),
     };
 
-    gl_shader_t shader = gl_shader_default_init();
+    gl_shader_t shader = gl_shader_from_file_init("./wood.vs", "./wood.fs");
     gl_texture2d_t texture = texture_init("./wall.jpg");
     gl_renderer2d_t renderer = gl_renderer2d_init(&shader, &texture);
     /*gl_renderer2d_t renderer = gl_renderer2d_init(&shader,NULL);*/
