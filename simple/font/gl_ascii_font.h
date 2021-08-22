@@ -77,6 +77,54 @@ void            gl_ascii_font_destroy(gl_ascii_font_t *);
  // Implementation
 ----------------------------------------------------------------*/
 
+gl_texture2d_t __gl_ascii_load_texture(const char *file_path)
+{
+    if (file_path == NULL) eprint("file argument is null");
+
+    GLuint id;
+    int width = 0, height = 0, bpp = 0;
+    u8 *buf = NULL;
+
+    stbi_set_flip_vertically_on_load(1);                                
+    buf = stbi_load(file_path, &width, &height, &bpp, 0); //RGB
+    if (buf == NULL) eprint("Failed to load texture");
+
+    GL_CHECK(glGenTextures(1, &id));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, id));
+
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));	
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+
+
+    GL_CHECK(glTexImage2D(
+        GL_TEXTURE_2D, 
+        0, 
+        GL_RGBA8, // The format opengl will store the pixel data in
+        width,
+        height,
+        0,
+        GL_RGB, // The format the buf variable is in
+        GL_UNSIGNED_BYTE,
+        buf
+     ));
+
+    GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
+
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+    
+    GL_LOG("Texture `%i` successfully created", id);
+
+    return (gl_texture2d_t) {
+        .id        = id,
+        .file_path = file_path,
+        .buf       = buf,
+        .width     = width,
+        .height    = height,
+        .bpp       = bpp,
+    };
+}
 
 
 //NOTE: this function only handles a ascii style spritesheets
@@ -86,7 +134,7 @@ gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, 
 
     gl_ascii_font_t output = {
         .shader     = gl_shader_from_cstr_init(ascii_font_vs, ascii_font_fs),
-        .texture    = texture_init(file_path),
+        .texture    = __gl_ascii_load_texture(file_path),
     };
 
     const u32 font_width    = output.texture.width / tile_count_width;
