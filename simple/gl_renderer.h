@@ -87,12 +87,12 @@ static inline void __gen_quad_indices(u32 indices[], const u32 shape_count)
     memcpy(indices, DEFAULT_QUAD_INDICES, sizeof(DEFAULT_QUAD_INDICES));
     for (u32 i = 1; i < shape_count; i++)
     {
-        indices[(i*6) + 0]   = DEFAULT_QUAD_INDICES[0] + 4; 
-        indices[(i*6) + 1]   = DEFAULT_QUAD_INDICES[1] + 4;
-        indices[(i*6) + 2]   = DEFAULT_QUAD_INDICES[2] + 4;
-        indices[(i*6) + 3]   = DEFAULT_QUAD_INDICES[3] + 4;
-        indices[(i*6) + 4]   = DEFAULT_QUAD_INDICES[4] + 4;
-        indices[(i*6) + 5]   = DEFAULT_QUAD_INDICES[5] + 4;
+        indices[(i*6) + 0]   = DEFAULT_QUAD_INDICES[0] + (4 * i); 
+        indices[(i*6) + 1]   = DEFAULT_QUAD_INDICES[1] + (4 * i);
+        indices[(i*6) + 2]   = DEFAULT_QUAD_INDICES[2] + (4 * i);
+        indices[(i*6) + 3]   = DEFAULT_QUAD_INDICES[3] + (4 * i);
+        indices[(i*6) + 4]   = DEFAULT_QUAD_INDICES[4] + (4 * i);
+        indices[(i*6) + 5]   = DEFAULT_QUAD_INDICES[5] + (4 * i);
     }
 
 }
