@@ -39,7 +39,8 @@ const char * const default_fshader =
     "\n"
     "void main()\n"
     "{\n"
-        "FragColor = texture(u_texture01, tex_coord) + vec4(color, 1.0f);\n"
+        "FragColor = texture(u_texture01, tex_coord) * vec4(color, 1.0f);\n"
+        //"FragColor = vec4(1.0f, 0.0f, 1.0f, 1.0f);\n"
     "}";
 
 
@@ -152,16 +153,12 @@ static inline void __shader_load_from_file(gl_shader_t *shader, const char *vert
 {
     if (shader == NULL) eprint("shader argument is null");
 
-    int status;
-    char error_log[KB] = {0};
-
     file_t vs_file = file_init(vertex_source_path);
     const char * vs_code = file_readall(&vs_file);
     if (vs_code == NULL) {
         fprintf(stderr, "%s: vertex file returned null\n", __func__);
         exit(1);
     }
-
 
     file_t fg_file = file_init(fragment_source_path);
     const char *fs_code = file_readall(&fg_file);
@@ -170,48 +167,12 @@ static inline void __shader_load_from_file(gl_shader_t *shader, const char *vert
         exit(1);
     }
 
-    GLuint vertexShader;
-    GL_CHECK(vertexShader = glCreateShader(GL_VERTEX_SHADER));
-    GL_CHECK(glShaderSource(vertexShader, 1, &vs_code, NULL));
-    GL_CHECK(glCompileShader(vertexShader));
-    GL_CHECK(glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status));
-    if (!status) {
-        glGetShaderInfoLog(vertexShader, KB, NULL, error_log);
-        eprint("Vertex Error:\n\t%s\n", error_log);
-    }
-    GL_LOG("Vertex Shader successfully compiled");
-
-    GLuint fragmentShader;
-    GL_CHECK(fragmentShader = glCreateShader(GL_FRAGMENT_SHADER));
-    GL_CHECK(glShaderSource(fragmentShader, 1, &fs_code, NULL));
-    GL_CHECK(glCompileShader(fragmentShader));
-    GL_CHECK(glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status));
-    if (!status) {
-        GL_CHECK(glGetShaderInfoLog(fragmentShader, KB, NULL, error_log));
-        eprint("Fragment Error:\n\t%s\n", error_log);
-    }
-    GL_LOG("Fragment Shader successfully compiled");
-
-    GLuint shaderProgram;
-    GL_CHECK(shaderProgram = glCreateProgram());
-    GL_CHECK(glAttachShader(shaderProgram, vertexShader));
-    GL_CHECK(glAttachShader(shaderProgram, fragmentShader));
-    GL_CHECK(glLinkProgram(shaderProgram));
-    GL_CHECK(glGetProgramiv(shaderProgram, GL_LINK_STATUS, &status));
-    if(!status) {
-        GL_CHECK(glGetProgramInfoLog(shaderProgram, KB, NULL, error_log));
-        eprint("Error: %s\n", error_log);
-    }
-
-    GL_CHECK(glDeleteShader(vertexShader));
-    GL_CHECK(glDeleteShader(fragmentShader));
-
-    shader->id = shaderProgram;
+    __shader_load_code(shader, vs_code, fs_code);
 
     free((void *)vs_code);
     free((void *)fs_code);
 
-   GL_LOG("Shader `%i` successfully linked", shader->id);
+    GL_LOG("Shader `%i` successfully linked", shader->id);
 }
 
 gl_shader_t  gl_shader_from_file_init(const char *file_vs, const char *file_fs)
@@ -255,10 +216,6 @@ gl_shader_t  gl_shader_from_cstr_init(const char *vs_code, const char *fs_code)
 
 void __gl_shader_uniform_set_ival(gl_shader_t *shader, const char *uniform, int val)
 {
-    if (shader == NULL) eprint("shader argument is null");
-    if (uniform == NULL) eprint("uniform argument is null");
-
-    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
@@ -268,10 +225,6 @@ void __gl_shader_uniform_set_ival(gl_shader_t *shader, const char *uniform, int 
 
 void __gl_shader_uniform_set_uival(gl_shader_t *shader, const char *uniform, unsigned int val)
 {
-    if (shader == NULL) eprint("shader argument is null");
-    if (uniform == NULL) eprint("uniform argument is null");
-
-    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
@@ -280,10 +233,6 @@ void __gl_shader_uniform_set_uival(gl_shader_t *shader, const char *uniform, uns
 
 void __gl_shader_uniform_set_fval(gl_shader_t *shader, const char *uniform, float val)
 {
-    if (shader == NULL) eprint("shader argument is null");
-    if (uniform == NULL) eprint("uniform argument is null");
-
-    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
@@ -292,11 +241,6 @@ void __gl_shader_uniform_set_fval(gl_shader_t *shader, const char *uniform, floa
 
 void __gl_shader_uniform_set_vec3f(gl_shader_t *shader, const char *uniform, vec3f_t val)
 {
-    if (shader == NULL) eprint("shader argument is null");
-    if (uniform == NULL) eprint("uniform argument is null");
-
-    GL_SHADER_BIND(shader);
-
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
@@ -305,11 +249,6 @@ void __gl_shader_uniform_set_vec3f(gl_shader_t *shader, const char *uniform, vec
 
 void __gl_shader_uniform_set_vec4f(gl_shader_t *shader, const char *uniform, vec4f_t val)
 {
-    if (shader == NULL) eprint("shader argument is null");
-    if (uniform == NULL) eprint("uniform argument is null");
-
-    GL_SHADER_BIND(shader);
-
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
@@ -318,11 +257,6 @@ void __gl_shader_uniform_set_vec4f(gl_shader_t *shader, const char *uniform, vec
 
 void __gl_shader_uniform_set_vec2f(gl_shader_t *shader, const char *uniform, vec2f_t val)
 {
-    if (shader == NULL) eprint("shader argument is null");
-    if (uniform == NULL) eprint("uniform argument is null");
-
-    GL_SHADER_BIND(shader);
-
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
@@ -338,13 +272,15 @@ inline void gl_shader_destroy(const gl_shader_t *shader)
     free(shader->uniforms.array);
 
     GL_CHECK(glDeleteProgram(shader->id));
-    GL_LOG("gl_shader_t `%i` successfully deleted", shader->id);
+    GL_LOG("Shader `%i` successfully deleted", shader->id);
 }
 
 
 void gl_shader_bind(gl_shader_t *shader)
 {
     if (shader == NULL) eprint("shader argument is null");
+
+    GL_SHADER_BIND(shader);
 
     for (int i = 0; i <= shader->uniforms.top; i++)
     {
