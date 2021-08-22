@@ -46,9 +46,9 @@ crapgui_t gui_init(window_t *window)
     return (crapgui_t) {
         //.sub_window = window_init(540, 460, SDL_INIT_VIDEO),
         .sub_window = window,
-        .font       = gl_ascii_font_init(
-                        "/home/gokul/Documents/projects/poglib/res/ascii_fonts/glyph_atlas.png", 
-                        16, 6),
+        //.font       = gl_ascii_font_init(
+                        //"/home/gokul/Documents/projects/poglib/res/ascii_fonts/glyph_atlas.png", 
+                        //16, 6),
         .ui_component_count = 0,
     };
 }
@@ -70,9 +70,6 @@ void gui_end(crapgui_t *gui)
     gl_ascii_font_destroy(&gui->font);
 
 }
-
-
-
 
 
 /*=========================================================
@@ -166,7 +163,7 @@ button_t __button_init(const crapgui_t *gui, const char *label, vec4f_t color, v
         .height = height,
         .color = color,
         .vao    = vao_init(1),
-        .shader = shader_load_code(vertex_source, fragment_source),
+        .shader = gl_shader_from_cstr_init(vertex_source, fragment_source),
     };
 
     vec3f_t vertices[4]; 
@@ -199,7 +196,7 @@ button_t __button_init(const crapgui_t *gui, const char *label, vec4f_t color, v
 
     memcpy(button.vertices, vertices, sizeof(vertices));
 
-    shader_set_farr(&button.shader, "u_color", (float *)&button.color);
+    gl_shader_push_uniform(&button.shader, "u_color", &button.color, sizeof(button.color), UT_VEC4F);
     
 
     vao_bind(&button.vao);
@@ -237,7 +234,7 @@ static inline void __button_draw(const crapgui_t *gui, button_t * button)
     vao_bind(&button->vao);
     {
 
-        shader_bind(&button->shader);
+        gl_shader_bind(&button->shader);
         GL_CHECK(glDrawElements(GL_TRIANGLES, button->vbo.indices_count, GL_UNSIGNED_INT, 0));
 
         // Renders the font
@@ -328,7 +325,7 @@ void button_set_color(const crapgui_t *gui, button_t *button, vec4f_t color)
     if (button == NULL) eprint("button argument is null");
 
     memcpy(&button->color, &color, sizeof(f32) * 4);
-    shader_set_farr(&button->shader, "u_color", (float *)&button->color);
+    gl_shader_push_uniform(&button->shader, "u_color", &button->color, sizeof(button->color), UT_VEC4F);
     __button_draw(gui, button);
 }
 void button_set_position(const crapgui_t *gui, button_t *button, vec2f_t pos)  
@@ -393,7 +390,7 @@ typedef struct {
  // Declarations
 -------------------------------------------------------------------------------*/
 
-slider_t slider_begin(const crapgui_t *gui, const char *label);
+//slider_t slider_begin(const crapgui_t *gui, const char *label);
 
 
 /*-------------------------------------------------------------------------------

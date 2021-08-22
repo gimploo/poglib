@@ -9,7 +9,7 @@ void loop(void *arg)
     window_t *window = (window_t *)arg;
 
     crapgui_t gui = gui_init(window);
-    /*gui.font = gl_ascii_font_init("./glyph_atlas.png", 16, 6);*/
+    gui.font = gl_ascii_font_init("glyph_atlas.png", 16, 6);
 
     gui_begin(&gui);
     {
@@ -116,7 +116,6 @@ int main(void)
 
     while (window.is_open)
     {
-        window_process_user_input(&window);
         window_render(&window, loop, &window); 
     }
 
