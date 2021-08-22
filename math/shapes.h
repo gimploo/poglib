@@ -8,7 +8,7 @@ typedef struct trif {
 } trif_t;
 
 #define QUAD_FMT    VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT "\n" 
-#define QUAD_ARG(q) VEC2F_ARG(q.vertex[0]), VEC2F_ARG(q.vertex[1]), VEC2F_ARG(q.vertex[2]), VEC2F_ARG(q.vertex[3]) 
+#define QUAD_ARG(q) VEC2F_ARG(&(q.vertex[0])), VEC2F_ARG(&(q.vertex[1])), VEC2F_ARG(&(q.vertex[2])), VEC2F_ARG(&(q.vertex[3])) 
 
 typedef struct quadf {
     vec2f_t vertex[4];
