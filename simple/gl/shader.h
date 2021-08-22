@@ -155,24 +155,24 @@ static inline void __shader_load_from_file(gl_shader_t *shader, const char *vert
     int status;
     char error_log[KB] = {0};
 
-    file_t vsfile = file_init(vertex_source_path);
-    const char * vtxfile = file_readall(&vsfile);
-    if (vtxfile == NULL) {
+    file_t vs_file = file_init(vertex_source_path);
+    const char * vs_code = file_readall(&vs_file);
+    if (vs_code == NULL) {
         fprintf(stderr, "%s: vertex file returned null\n", __func__);
         exit(1);
     }
 
 
-    file_t fgfile = file_init(fragment_source_path);
-    const char *frgfile = file_readall(&fgfile);
-    if (frgfile == NULL) {
+    file_t fg_file = file_init(fragment_source_path);
+    const char *fs_code = file_readall(&fg_file);
+    if (fs_code == NULL) {
         fprintf(stderr, "%s: vertex file returned null\n", __func__);
         exit(1);
     }
 
     GLuint vertexShader;
     GL_CHECK(vertexShader = glCreateShader(GL_VERTEX_SHADER));
-    GL_CHECK(glShaderSource(vertexShader, 1, &vtxfile, NULL));
+    GL_CHECK(glShaderSource(vertexShader, 1, &vs_code, NULL));
     GL_CHECK(glCompileShader(vertexShader));
     GL_CHECK(glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status));
     if (!status) {
@@ -183,7 +183,7 @@ static inline void __shader_load_from_file(gl_shader_t *shader, const char *vert
 
     GLuint fragmentShader;
     GL_CHECK(fragmentShader = glCreateShader(GL_FRAGMENT_SHADER));
-    GL_CHECK(glShaderSource(fragmentShader, 1, &frgfile, NULL));
+    GL_CHECK(glShaderSource(fragmentShader, 1, &fs_code, NULL));
     GL_CHECK(glCompileShader(fragmentShader));
     GL_CHECK(glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status));
     if (!status) {
@@ -207,6 +207,9 @@ static inline void __shader_load_from_file(gl_shader_t *shader, const char *vert
     GL_CHECK(glDeleteShader(fragmentShader));
 
     shader->id = shaderProgram;
+
+    free((void *)vs_code);
+    free((void *)fs_code);
 
    GL_LOG("Shader `%i` successfully linked", shader->id);
 }
