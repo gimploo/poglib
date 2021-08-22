@@ -40,7 +40,7 @@ void                        texture_dump(const gl_texture2d_t *texture);
 
 #define texture_bind(ptex, slot) {\
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + (slot)));\
-    GL_CHECK(glBindTexture(GL_TEXTURE_2D, (*ptex).id));\
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, (ptex)->id));\
 }
 #define texture_unbind()    (GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
 
@@ -109,7 +109,7 @@ gl_texture2d_t texture_init(const char *file_path)
         .buf       = buf,
         .width     = width,
         .height    = height,
-        .bpp       = bpp
+        .bpp       = bpp,
     };
 }
 

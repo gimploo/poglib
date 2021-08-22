@@ -108,7 +108,7 @@ static inline void __gen_tri_indices(u32 indices[], const u32 shape_count)
 
 }
 
-
+//NOTE: make sure to not have texture uniform if your passing NULL as texture argument
 gl_renderer2d_t gl_renderer2d_init(gl_shader_t *shader, const gl_texture2d_t *texture)
 {
     if (shader == NULL) eprint("shader argument is null");
@@ -119,14 +119,50 @@ gl_renderer2d_t gl_renderer2d_init(gl_shader_t *shader, const gl_texture2d_t *te
     };
 }
 
+void gl_renderer2d_draw_line(gl_renderer2d_t *renderer, const vec2f_t point1, const vec2f_t point2)
+{
+    if (renderer == NULL) eprint("renderer argument is null");
+
+    gl_vertex_t points[2] = {
+        point1.cmp[X], point1.cmp[Y], 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+        point2.cmp[X], point2.cmp[Y], 0.0f, 1.0f, 1.0f, 1.0f, 0.0f,0.0f
+    };
+
+    u32 indices_point[4] = {
+        0, 1
+    };
+
+    vbo_t vbo = vbo_init(points, sizeof(points));
+    ebo_t ebo = ebo_init(&vbo, indices_point, 2);
+
+    vao_bind(&renderer->vao);
+        
+        vao_push(&renderer->vao, &vbo);
+            vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position));
+            vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, color));
+            gl_shader_bind(renderer->shader);
+            vao_draw(&renderer->vao);
+        vao_pop(&renderer->vao);
+
+    vao_unbind();
+
+
+    ebo_destroy(&ebo);
+    vbo_destroy(&vbo);
+
+}
+
 void gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_quad_t quad)
 {
     if (renderer == NULL) eprint("renderer argument is null");
 
-    vbo_t vbo = vbo_init(&quad, sizeof(gl_quad_t));
-    ebo_t ebo = ebo_init(&vbo, DEFAULT_QUAD_INDICES, DEFAULT_QUAD_INDICES_CAPACITY);
+    vbo_t vbo; 
+    ebo_t ebo;
 
     vao_bind(&renderer->vao);
+
+        vbo = vbo_init(&quad, sizeof(gl_quad_t));
+        ebo = ebo_init(&vbo, DEFAULT_QUAD_INDICES, DEFAULT_QUAD_INDICES_CAPACITY);
 
         vao_push(&renderer->vao, &vbo);
             vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position));
@@ -148,6 +184,7 @@ void gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_quad_t quad)
 
 }
 
+
 void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *batch) 
 {
     if (renderer == NULL) eprint("renderer argument is null");
@@ -159,8 +196,7 @@ void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *
     u32 indices_buffer[
         batch->shape_count * (
                     batch->shape_type == BT_QUAD ?  
-                    DEFAULT_QUAD_INDICES_CAPACITY : DEFAULT_TRI_INDICES_CAPACITY
-                )
+                    DEFAULT_QUAD_INDICES_CAPACITY : DEFAULT_TRI_INDICES_CAPACITY)
     ]; 
     memset(indices_buffer, 0, sizeof(indices_buffer));
 
