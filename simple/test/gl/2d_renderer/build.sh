@@ -10,7 +10,7 @@ reset=$(tput sgr0)
 #              |
 #              v
 
-SRC_PATH="./test.c"
+SRC_PATH="$1"
 EXE_PATH="./a.out"
 BIN_DIR="./"
 
