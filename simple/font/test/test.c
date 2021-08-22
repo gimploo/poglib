@@ -11,21 +11,20 @@ void loop(void *arg)
 {
     gl_ascii_font_t *font = (gl_ascii_font_t *)arg;
 
-    gl_ascii_font_render_text(font, "329374~!#*&*", (vec2f){-1.0f, 1.0f}, 0.1f);
-    gl_ascii_font_render_text(font, "Bruh", (vec2f){ 0.0f,0.0f }, 0.1f);
+    gl_ascii_font_render_text(font, "329374~!#*&*", (vec2f_t) {-1.0f, 1.0f}, 0.1f);
+    gl_ascii_font_render_text(font, "Bruh", (vec2f_t) { 0.0f,0.0f }, 0.1f);
 }
 
 int main(void)
 {
     uint32 FLAGS = SDL_INIT_VIDEO;
-    Window window = window_init(1080, 920, FLAGS);
+    window_t window = window_init(1080, 920, FLAGS);
 
     gl_ascii_font_t font = gl_ascii_font_init(
             "../res/glyph_atlas.png", 16, 6);
 
     while (window.is_open)
     {
-        window_process_user_input(&window);
         window_render(&window, loop, &font); 
     }
 

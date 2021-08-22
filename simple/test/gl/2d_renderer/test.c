@@ -36,7 +36,7 @@ int oldmain(void)
     {
         window_gl_render_begin(&window);
             gl_shader_bind(&shader);
-            texture_bind(&texture, 0);
+            texture_bind(&texture, 1);
             vao_draw(&vao);
         window_gl_render_end(&window);
     }
@@ -76,6 +76,7 @@ int main(void)
     gl_shader_t shader = gl_shader_default_init();
     gl_texture2d_t texture = texture_init("./wall.jpg");
     gl_renderer2d_t renderer = gl_renderer2d_init(&shader, &texture);
+    /*gl_renderer2d_t renderer = gl_renderer2d_init(&shader,NULL);*/
 
 
     while (window.is_open)
