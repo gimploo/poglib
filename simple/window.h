@@ -219,39 +219,34 @@ void __window_update_user_input(window_t *window)
         {
             case SDL_QUIT:
                 window->is_open = false;
-                break;
+            break;
 
             case SDL_MOUSEMOTION:
-
                 __mouse_update(window);
                 if (window->mouse_handler.is_active == true) window->mouse_handler.is_dragged = true; 
-                break;
+            break;
 
             case SDL_MOUSEBUTTONDOWN:
-
                 __mouse_update(window);
                 window->mouse_handler.is_active = true;
                 window->mouse_handler.is_dragged = false;
-                break;
+            break;
 
             case SDL_MOUSEBUTTONUP:
-
                 __mouse_update(window);
                 window->mouse_handler.is_dragged = false;
                 window->mouse_handler.is_active = false;
-                break;
+            break;
 
             case SDL_KEYDOWN:
-
                 window->keyboard_handler.is_active = true;
                 window->keyboard_handler.key = event.key.keysym.sym;
-                break;
+            break;
 
             case SDL_KEYUP:
-
                 window->keyboard_handler.is_active = false;
                 window->keyboard_handler.key = event.key.keysym.sym;
-                break;
+            break;
 
             //default:
                 //SDL_ShowSimpleMessageBox(0, "ERROR", "Key not accounted for", window->window_handle);
