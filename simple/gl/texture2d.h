@@ -85,6 +85,7 @@ gl_texture2d_t texture_init(const char *file_path)
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));	
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
 
+
     GL_CHECK(glTexImage2D(
         GL_TEXTURE_2D, 
         0, 

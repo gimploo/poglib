@@ -8,9 +8,12 @@
 
 #ifdef __gl_h_
 #include <SDL2/SDL_opengl.h>
+#else 
+#include <SDL2/SDL_render.h>
 #endif
 
 #include "../math/la.h"
+#include "../game/delta_time.h"
 
 #define DEFAULT_BACKGROUND_COLOR (vec4f_t){{ 0.0f, 1.0f, 0.0f, 0.0f}}
 #define SDL_FLAGS u32
@@ -39,10 +42,10 @@ typedef struct __keyboard_t {
 typedef struct window_t {
 
     bool            is_open;
+    const char      *title_name;
     u64             width; 
     u64             height;
     SDL_Window      *window_handle;             // initializes the window 
-    SDL_Event       event;                      // handles the user inputs
     __mouse_t       mouse_handler;
     __keyboard_t    keyboard_handler;
     vec4f_t         background_color;
@@ -53,25 +56,39 @@ typedef struct window_t {
     SDL_GLContext   gl_context;
 #endif 
 
+    game_loop_time_t time;
+
 } window_t;
 
 /*----------------------------------------------------------------------
  // Declarations
 ----------------------------------------------------------------------*/
 
-window_t        window_init(size_t width, size_t height, SDL_FLAGS flags);
+window_t        window_init(const char *title, size_t width, size_t height, SDL_FLAGS flags);
 void            window_set_background(window_t *window, vec4f_t color);
+void            window_set_title(window_t *window, const char *title_name);
 
 //NOTE:(macro)  window_gl_render_begin(window_t *window)
 //NOTE:(macro)  window_gl_render_end(window_t *window)
+//NOTE:(macro)  window_game_loop(window_t *window)
+//NOTE:(macro)  window_get_dt(window_t *window) -> f64
+//NOTE:(macro)  window_get_fps(window_t *window) -> f64
+
 void            window_render(window_t *window, render_func render, void * arg);
 
 void            window_destroy(window_t *window);
 
 
+
 /*-------------------------------------------------------------------------
  // Implementations
 -------------------------------------------------------------------------*/
+
+#define window_game_loop(pwindow)   while((pwindow)->is_open && game_loop_time_calculate(&(pwindow)->time))
+#define window_cap_fps(pwindow)     SDL_Delay(floor(16.666f - (pwindow)->time.elapsed_in_ms))
+
+#define window_get_dt(pwindow)      (pwindow)->time.dt_value
+#define window_get_fps(pwindow)     (pwindow)->time.fps_value
 
 #define window_gl_render_begin(pwindow) {\
     __window_update_user_input(pwindow);\
@@ -86,6 +103,13 @@ void            window_destroy(window_t *window);
 
 #define window_gl_render_end(pwindow) SDL_GL_SwapWindow((pwindow)->window_handle)
 
+void window_set_title(window_t *window, const char *title_name)
+{
+    if (window == NULL) eprint("window argument is null");
+
+    window->title_name = title_name;
+}
+
 void window_set_background(window_t *window, vec4f_t color) 
 {
     if(window == NULL) eprint("window argument is null");
@@ -96,8 +120,6 @@ void window_set_background(window_t *window, vec4f_t color)
 
 static inline vec2f_t __mouse_get_position(window_t *window)
 {
-    if (window == NULL) eprint("window argument is null");
-
     int x, y;
     vec2f_t pos;
 
@@ -118,15 +140,11 @@ static inline vec2f_t __mouse_get_position(window_t *window)
 
 static inline void  __mouse_update(window_t *window)
 {
-    if (window == NULL) eprint("window argument is null");
-
     window->mouse_handler.position =  __mouse_get_position(window);
 }
 
 static inline __mouse_t __mouse_init(window_t *window)
 {
-    if (window == NULL) eprint("window argument is null");
-
     return (__mouse_t) {
         .is_active = false,
         .is_dragged = false,
@@ -136,15 +154,17 @@ static inline __mouse_t __mouse_init(window_t *window)
 
 
 
-window_t window_init(size_t width, size_t height, SDL_FLAGS flags)
+window_t window_init(const char *title_name, size_t width, size_t height, SDL_FLAGS flags)
 {
     window_t output         = {0};
     SDL_FLAGS WinFlags      = 0;
+    output.title_name       = title_name;
     output.is_open          = true;
     output.width            = width;
     output.height           = height;
     output.background_color = DEFAULT_BACKGROUND_COLOR;
     output.mouse_handler    = __mouse_init(&output);
+    output.time             = game_loop_time_init();
 
 #ifdef __gl_h_
     WinFlags = SDL_WINDOW_OPENGL;
@@ -165,7 +185,7 @@ window_t window_init(size_t width, size_t height, SDL_FLAGS flags)
 #endif 
 
     if (SDL_Init(flags) == -1) eprint("Error: %s\n", SDL_GetError());
-    output.window_handle = SDL_CreateWindow("window_t", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
+    output.window_handle = SDL_CreateWindow(output.title_name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
     if (!output.window_handle) eprint("Error: %s\n", SDL_GetError());
 
 
@@ -192,9 +212,7 @@ window_t window_init(size_t width, size_t height, SDL_FLAGS flags)
 
 void __window_update_user_input(window_t *window)
 {
-    if (window == NULL)  eprint("window argument is null");
-
-    SDL_Event event = window->event;
+    SDL_Event event;
     while(SDL_PollEvent(&event) > 0) 
     {
         switch (event.type) 
@@ -259,6 +277,8 @@ void window_render(window_t *window, render_func render, void *arg)
     glClear(GL_COLOR_BUFFER_BIT);
 #endif 
 
+    game_loop_time_calculate(&window->time);
+
     render(arg);
 
 #ifdef __gl_h_
@@ -274,8 +294,17 @@ void window_destroy(window_t *window)
 {
     if (window == NULL) eprint("window argument is null");
 
+#ifdef __gl_h_
+    SDL_GL_DeleteContext(window->gl_context);
+#else 
+    SDL_DestroyRenderer(window->surface_handle);
+    window->surface_handle = NULL;
+#endif 
     SDL_DestroyWindow(window->window_handle);
     SDL_Quit();
+
+    window->window_handle = NULL;
+    window = NULL;
     
 }
 
