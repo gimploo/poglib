@@ -70,8 +70,8 @@ const char * const ascii_font_fs =
 ----------------------------------------------------------------*/
 
 gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, u32 tile_count_height);
-void            gl_ascii_font_render_text(gl_ascii_font_t *handler, const char *text, const vec2f_t position, const f32 norm_font_size); 
-void            gl_ascii_font_destroy(gl_ascii_font_t *);
+void            gl_ascii_font_render_text(const gl_ascii_font_t *handler, const char *text, const vec2f_t position, const f32 norm_font_size); 
+void            gl_ascii_font_destroy(const gl_ascii_font_t *);
 
 /*----------------------------------------------------------------
  // Implementation
@@ -197,7 +197,7 @@ gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, 
 }
 
 void gl_ascii_font_render_text(
-        gl_ascii_font_t   *handler, 
+        const gl_ascii_font_t   *handler, 
         const char              *text, 
         const vec2f_t           position, 
         const f32               norm_font_size)
@@ -206,7 +206,7 @@ void gl_ascii_font_render_text(
     if (text == NULL)       eprint("text argument is null");
 
 
-    character_info_t    *atlas   = handler->font_atlas;
+    const character_info_t    *atlas   = handler->font_atlas;
 
     quadf_t quad                = {0};
     u32     tile_index          = ' ';
@@ -295,7 +295,7 @@ void gl_ascii_font_render_text(
     vao_destroy(&vao);
 }
 
-void gl_ascii_font_destroy(gl_ascii_font_t *self)
+void gl_ascii_font_destroy(const gl_ascii_font_t *self)
 {
     if (self == NULL) eprint("argument is null");
 
