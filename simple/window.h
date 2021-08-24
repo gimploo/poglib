@@ -68,6 +68,8 @@ window_t        window_init(const char *title, size_t width, size_t height, SDL_
 void            window_set_background(window_t *window, vec4f_t color);
 void            window_set_title(window_t *window, const char *title_name);
 
+//NOTE:(macro)  window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key) -> bool
+
 //NOTE:(macro)  window_gl_render_begin(window_t *window)
 //NOTE:(macro)  window_gl_render_end(window_t *window)
 //NOTE:(macro)  window_game_loop(window_t *window)
@@ -255,6 +257,8 @@ void __window_update_user_input(window_t *window)
 
     }
 }
+
+#define window_keyboard_is_key_pressed(pwindow, KEY) ((pwindow)->keyboard_handler.is_active && ((pwindow)->keyboard_handler.key == KEY))
 
 
 void window_render(window_t *window, render_func render, void *arg)
