@@ -34,6 +34,34 @@ typedef struct  gl_vertex_t {
 typedef struct  { gl_vertex_t vertex[3]; } gl_tri_t;
 typedef struct  { gl_vertex_t vertex[4]; } gl_quad_t;
 
+// Creates a quad of a single color assuming no textures
+static inline gl_quad_t gl_quad(quadf_t quad, vec3f_t color, quadf_t tex_coord)
+{
+    return (gl_quad_t) {
+
+        .vertex[0] = (gl_vertex_t ){ 
+            quad.vertex[0].cmp[X], quad.vertex[0].cmp[Y], 0.0f, 
+            color, 
+            0.0f, 0.0f
+        }, 
+        .vertex[1] = (gl_vertex_t ){ 
+            quad.vertex[1].cmp[X], quad.vertex[1].cmp[Y], 0.0f, 
+            color, 
+            0.0f, 0.0f
+        }, 
+        .vertex[2] = (gl_vertex_t ) { 
+            quad.vertex[2].cmp[X], quad.vertex[2].cmp[Y], 0.0f, 
+            color, 
+            0.0f, 0.0f
+        }, 
+        .vertex[3] = (gl_vertex_t ){ 
+            quad.vertex[3].cmp[X], quad.vertex[3].cmp[Y], 0.0f, 
+            color, 
+            0.0f, 0.0f
+        }, 
+    };
+}
+
 typedef enum {
 
     BT_TRI = 0,
@@ -70,7 +98,7 @@ typedef struct gl_renderer2d_t {
  // Declarations
 --------------------------------------------------------*/
 
-gl_renderer2d_t     gl_renderer2d_init(gl_shader_t *shader, const gl_texture2d_t *texture);
+gl_renderer2d_t     gl_renderer2d_init(const gl_shader_t *shader, const gl_texture2d_t *texture);
 
 void                gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_quad_t quad);
 void                gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *batch);
@@ -109,7 +137,7 @@ static inline void __gen_tri_indices(u32 indices[], const u32 shape_count)
 }
 
 //NOTE: make sure to not have texture uniform if your passing NULL as texture argument
-gl_renderer2d_t gl_renderer2d_init(gl_shader_t *shader, const gl_texture2d_t *texture)
+gl_renderer2d_t gl_renderer2d_init(const gl_shader_t *shader, const gl_texture2d_t *texture)
 {
     if (shader == NULL) eprint("shader argument is null");
     return (gl_renderer2d_t) {

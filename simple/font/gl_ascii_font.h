@@ -140,8 +140,8 @@ gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, 
     const u32 font_width    = output.texture.width / tile_count_width;
     const u32 font_height   = output.texture.height / tile_count_height;
 
-    const f32 norm_sprite_height  = norm(font_height, 0.0f, output.texture.height); 
-    const f32 norm_sprite_width   = norm(font_width, 0.0f, output.texture.width);
+    const f32 norm_sprite_height  = normalize(font_height, 0.0f, output.texture.height); 
+    const f32 norm_sprite_width   = normalize(font_width, 0.0f, output.texture.width);
 
     for (u32 v = 0, tile_index = 0; v < tile_count_height; v++)
     {
