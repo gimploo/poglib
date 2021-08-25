@@ -34,8 +34,12 @@ typedef struct __mouse_t {
 
 typedef struct __keyboard_t {
 
-    bool        is_active;
-    SDL_Keycode key;
+    //bool        is_active;
+    //SDL_Keycode key;
+    
+    bool        key_pressed[SDL_NUM_SCANCODES];
+    bool        key_held[SDL_NUM_SCANCODES];
+    bool        key_released[SDL_NUM_SCANCODES];
 
 } __keyboard_t;
 
@@ -167,6 +171,11 @@ window_t window_init(const char *title_name, size_t width, size_t height, SDL_FL
     output.background_color = DEFAULT_BACKGROUND_COLOR;
     output.mouse_handler    = __mouse_init(&output);
     output.time             = game_loop_time_init();
+    output.keyboard_handler = (__keyboard_t  ){
+        .key_pressed    = {false},
+        .key_held       = {false},
+        .key_released   = {false}
+    };
 
 #ifdef __gl_h_
     WinFlags = SDL_WINDOW_OPENGL;
@@ -241,13 +250,23 @@ void __window_update_user_input(window_t *window)
             break;
 
             case SDL_KEYDOWN:
-                window->keyboard_handler.is_active = true;
-                window->keyboard_handler.key = event.key.keysym.sym;
+                fprintf(stderr, "KEY_DOWN: %s\n", SDL_GetScancodeName(event.key.keysym.scancode));
+
+                window->keyboard_handler.key_pressed[event.key.keysym.scancode]     = true;
+                window->keyboard_handler.key_held[event.key.keysym.scancode]        = true;
+                window->keyboard_handler.key_released[event.key.keysym.scancode]    = false;
+                //window->keyboard_handler.is_active = true;
+                //window->keyboard_handler.key = event.key.keysym.sym;
             break;
 
             case SDL_KEYUP:
-                window->keyboard_handler.is_active = false;
-                window->keyboard_handler.key = event.key.keysym.sym;
+                fprintf(stderr, "KEY_UP: %s\n", SDL_GetScancodeName(event.key.keysym.scancode));
+
+                window->keyboard_handler.key_pressed[event.key.keysym.scancode]     = false;
+                window->keyboard_handler.key_held[event.key.keysym.scancode]        = false;
+                window->keyboard_handler.key_released[event.key.keysym.scancode]    = true;
+                //window->keyboard_handler.is_active = false;
+                //window->keyboard_handler.key = event.key.keysym.sym;
             break;
 
             //default:
@@ -258,7 +277,10 @@ void __window_update_user_input(window_t *window)
     }
 }
 
-#define window_keyboard_is_key_pressed(pwindow, KEY) ((pwindow)->keyboard_handler.is_active && ((pwindow)->keyboard_handler.key == KEY))
+//#define window_keyboard_is_key_pressed(pwindow, KEY) ((pwindow)->keyboard_handler.is_active && ((pwindow)->keyboard_handler.key == KEY))
+#define window_keyboard_is_key_pressed(pwindow, KEY) ((pwindow)->keyboard_handler.key_pressed[SDL_GetScancodeFromKey(KEY)] == true)
+#define window_keyboard_is_key_released(pwindow, KEY) ((pwindow)->keyboard_handler.key_released[SDL_GetScancodeFromKey(KEY)] == true)
+#define window_keyboard_is_key_held(pwindow, KEY) ((pwindow)->keyboard_handler.key_held[SDL_GetScancodeFromKey(KEY)] == true)
 
 
 void window_render(window_t *window, render_func render, void *arg)
