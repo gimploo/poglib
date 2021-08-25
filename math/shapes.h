@@ -3,32 +3,39 @@
 
 #include "la.h"
 
-typedef struct trif {
-    vec2f_t vertex[3];
-} trif_t;
+/*---------------------------------------------------------
+ // Triangle (float type)
+---------------------------------------------------------*/
+
+typedef struct trif_t { vec2f_t vertex[3]; } trif_t; 
+
+/*---------------------------------------------------------
+ // QUAD (float type)
+---------------------------------------------------------*/
+
+typedef struct quadf_t { vec2f_t vertex[4]; } quadf_t;
 
 #define QUAD_FMT    VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT "\n" 
 #define QUAD_ARG(q) VEC2F_ARG(&(q.vertex[0])), VEC2F_ARG(&(q.vertex[1])), VEC2F_ARG(&(q.vertex[2])), VEC2F_ARG(&(q.vertex[3])) 
 
-typedef struct quadf {
-    vec2f_t vertex[4];
-    f32 width, height;
-} quadf_t;
+static inline quadf_t quadf(f32 x)
+{
+    return (quadf_t) {x}; 
+}
 
+#define quadf_get_width(pquadf)   abs((pquadf)->vertex[1].cmp[X] - (pquadf)->vertex[3].cmp[X])
+#define quadf_get_height(pquadf)  abs((pquadf)->vertex[1].cmp[Y] - (pquadf)->vertex[3].cmp[Y])
 
 
 quadf_t quadf_init(vec2f_t position, f32 width, f32 height)
 {
     quadf_t output;
-    output.width = width;
-    output.height = height;
+
     output.vertex[0] = position;
     output.vertex[1].cmp[X] = position.cmp[X] + width;
     output.vertex[1].cmp[Y] = position.cmp[Y];
-
     output.vertex[2].cmp[X] = position.cmp[X] + width;
     output.vertex[2].cmp[Y] = position.cmp[Y] - height;
-
     output.vertex[3].cmp[X] = position.cmp[X];
     output.vertex[3].cmp[Y] = position.cmp[Y] - height;
 
