@@ -83,7 +83,7 @@ void            window_set_background(window_t *window, vec4f_t color);
 void            window_set_title(window_t *window, const char *title_name);
 
 //NOTE:(macro)  window_keyboard_is_key_just_pressed(window_t *window, SDL_KeyCode key)  -> bool
-//NOTE:(macro)  window_keyboard_is_key_is_held(window_t *window, SDL_KeyCode key)       -> bool
+//NOTE:(macro)  window_keyboard_is_key_held(window_t *window, SDL_KeyCode key)       -> bool
 //NOTE:(macro)  window_keyboard_is_key_pressed(window_t *window, SDL_KeyCode key)       -> bool
 //NOTE:(macro)  window_keyboard_is_key_released(window_t *window, SDL_KeyCode key)      -> bool
 
@@ -512,7 +512,7 @@ static inline void __window_update_user_input(window_t *window)
 }
 
 #define window_keyboard_is_key_just_pressed(pwindow, KEY)   ((pwindow)->keyboard_handler.just_pressed[SDL_GetScancodeFromKey(KEY)] == true)
-#define window_keyboard_is_key_is_held(pwindow, KEY)        ((pwindow)->keyboard_handler.is_held[SDL_GetScancodeFromKey(KEY)] == true)
+#define window_keyboard_is_key_held(pwindow, KEY)        ((pwindow)->keyboard_handler.is_held[SDL_GetScancodeFromKey(KEY)] == true)
 #define window_keyboard_is_key_pressed(pwindow, KEY)        ((pwindow)->keyboard_handler.key_state[SDL_GetScancodeFromKey(KEY)] == true)
 #define window_keyboard_is_key_released(pwindow, KEY)       ((pwindow)->keyboard_handler.key_state[SDL_GetScancodeFromKey(KEY)] == false)
 
