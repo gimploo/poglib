@@ -36,7 +36,11 @@ typedef struct __mouse_t {
 
 typedef struct __keyboard_t {
 
-    bool key_state[SDL_NUM_SCANCODES];
+    // STATES := true -> is_pressed | false -> is_released
+    bool keystate[SDL_NUM_SCANCODES]; 
+
+    bool just_pressed[SDL_NUM_SCANCODES]; 
+    bool is_held[SDL_NUM_SCANCODES]; 
 
 } __keyboard_t;
 
@@ -61,6 +65,7 @@ typedef struct window_t {
 
     game_loop_time_t    time;
 
+    //TODO: this approach was to have a debug window, but at the moment can only hold one sub window at a time. In the future lets implement a list of sub windows 
     // Sub window logic
     struct window_t     *sub_window_handle;             // Holds sub_window address
     bool                is_sub_window_active;
@@ -77,17 +82,18 @@ window_t *      window_sub_window_init(window_t *parent, const char *title_name,
 void            window_set_background(window_t *window, vec4f_t color);
 void            window_set_title(window_t *window, const char *title_name);
 
-//NOTE:(macro)  window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key) -> bool
-//NOTE:(macro)  window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key) -> bool
-//NOTE:(macro)  window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key) -> bool
-//NOTE:(macro)  window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key) -> bool
+//NOTE:(macro)  window_keyboard_is_key_just_pressed(window_t *window, SDL_KeyCode key)  -> bool
+//NOTE:(macro)  window_keyboard_is_key_is_held(window_t *window, SDL_KeyCode key)       -> bool
+//NOTE:(macro)  window_keyboard_is_key_pressed(window_t *window, SDL_KeyCode key)       -> bool
+//NOTE:(macro)  window_keyboard_is_key_released(window_t *window, SDL_KeyCode key)      -> bool
+
+//NOTE:(macro)  window_game_while_loop(window_t *window) // this is the normal while(window.is_open) loop but with the added dt and fps calculation
 
 //NOTE:(macro)  window_gl_render_begin(window_t *window)
 //NOTE:(macro)  window_gl_render_end(window_t *window)
-//NOTE:(macro)  window_game_loop(window_t *window)
 
-//NOTE:(macro)  window_get_dt(window_t *window) -> f64
-//NOTE:(macro)  window_get_fps(window_t *window) -> f64
+//NOTE:(macro)  window_grab_dt(window_t *window) -> f64
+//NOTE:(macro)  window_grab_fps(window_t *window) -> f64
 
 void            window_render(window_t *window, render_func stuff_to_render, void * arg);
 
@@ -100,13 +106,13 @@ void            window_destroy(window_t *window);
 -------------------------------------------------------------------------*/
 
 
-#define window_game_loop(pwindow)   while((pwindow)->is_open && game_loop_time_calculate(&(pwindow)->time))
+#define window_game_while_loop(pwindow)   while((pwindow)->is_open && game_loop_time_calculate(&(pwindow)->time))
 
 // FIXME: This function doesnt work
 #define window_cap_fps(pwindow)     SDL_Delay(floor(16.666f - (pwindow)->time.elapsed_in_ms))
 
-#define window_get_dt(pwindow)      (pwindow)->time.dt_value
-#define window_get_fps(pwindow)     (pwindow)->time.fps_value
+#define window_grab_dt(pwindow)      (pwindow)->time.dt_value
+#define window_grab_fps(pwindow)     (pwindow)->time.fps_value
 
 #define window_gl_render_begin(pwindow) {\
     __window_update_user_input(pwindow);\
@@ -199,7 +205,11 @@ window_t window_init(const char *title_name, size_t width, size_t height, SDL_FL
     output.mouse_handler    = __mouse_init(&output);
     output.time             = game_loop_time_init();
 
-    memset(output.keyboard_handler.key_state, false, sizeof(__keyboard_t));
+    output.keyboard_handler = (__keyboard_t ) {
+        .keystate       = {false},
+        .just_pressed   = {false},
+        .is_held        = {false}
+    };
 
     output.sub_window_handle = NULL;
     output.is_sub_window_active = false;
@@ -411,6 +421,48 @@ static inline void __window_sub_window_handle_window_event(window_t *window, SDL
 
 }
 
+
+static inline void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_Scancode key)
+{
+    switch(act)
+    {
+        case SDL_KEYDOWN:
+            if (window->is_sub_window_active) {
+                SDL_Log("Window (%s) KEY_DOWN: %s\n", window->sub_window_handle->title_name, SDL_GetScancodeName(key));
+
+                if (window->sub_window_handle->keyboard_handler.keystate[key] == true)         window->sub_window_handle->keyboard_handler.is_held[key]  = true;
+                else if (window->sub_window_handle->keyboard_handler.keystate[key] == false)   window->sub_window_handle->keyboard_handler.just_pressed[key] = true;
+
+                window->sub_window_handle->keyboard_handler.keystate[key] = true;
+
+            } else {
+                SDL_Log("Window (%s) KEY_DOWN: %s\n", window->title_name, SDL_GetScancodeName(key));
+
+                if (window->keyboard_handler.keystate[key] == true)         window->keyboard_handler.is_held[key]  = true;
+                else if (window->keyboard_handler.keystate[key] == false)   window->keyboard_handler.just_pressed[key] = true;
+
+                window->keyboard_handler.keystate[key] = true;
+
+            }
+        break;
+
+        case SDL_KEYUP:
+            if (window->is_sub_window_active) {
+                SDL_Log("Window (%s) KEY_UP: %s\n", window->sub_window_handle->title_name, SDL_GetScancodeName(key));
+                window->sub_window_handle->keyboard_handler.is_held[key]        = false;
+                window->sub_window_handle->keyboard_handler.just_pressed[key]   = false;
+                window->sub_window_handle->keyboard_handler.keystate[key]       = false;
+
+            } else {
+                SDL_Log("Window (%s) KEY_UP: %s\n", window->title_name, SDL_GetScancodeName(key));
+                window->keyboard_handler.is_held[key]        = false;
+                window->keyboard_handler.just_pressed[key]   = false;
+                window->keyboard_handler.keystate[key]       = false;
+            }
+        break;
+    }
+}
+
 static inline void __window_update_user_input(window_t *window)
 {
     SDL_Event event;
@@ -445,24 +497,11 @@ static inline void __window_update_user_input(window_t *window)
             break;
 
             case SDL_KEYDOWN:
-
-                if (window->is_sub_window_active) {
-                    SDL_Log("Window (%s) KEY_DOWN: %s\n", window->sub_window_handle->title_name, SDL_GetScancodeName(event.key.keysym.scancode));
-                    window->sub_window_handle->keyboard_handler.key_state[event.key.keysym.scancode] = true;
-                } else {
-                    SDL_Log("Window (%s) KEY_DOWN: %s\n", window->title_name, SDL_GetScancodeName(event.key.keysym.scancode));
-                    window->keyboard_handler.key_state[event.key.keysym.scancode] = true;
-                }
+                __keyboard_update_buffers(window, SDL_KEYDOWN, event.key.keysym.scancode);
             break;
 
             case SDL_KEYUP:
-                if (window->is_sub_window_active) {
-                    SDL_Log("Window (%s) KEY_UP: %s\n", window->sub_window_handle->title_name, SDL_GetScancodeName(event.key.keysym.scancode));
-                    window->sub_window_handle->keyboard_handler.key_state[event.key.keysym.scancode] = false;
-                } else {
-                    SDL_Log("Window (%s) KEY_UP: %s\n", window->title_name, SDL_GetScancodeName(event.key.keysym.scancode));
-                    window->keyboard_handler.key_state[event.key.keysym.scancode] = false;
-                }
+                __keyboard_update_buffers(window, SDL_KEYUP, event.key.keysym.scancode);
             break;
 
             //default:
@@ -472,8 +511,10 @@ static inline void __window_update_user_input(window_t *window)
     }
 }
 
-#define window_keyboard_is_key_pressed(pwindow, KEY)    ((pwindow)->keyboard_handler.key_state[SDL_GetScancodeFromKey(KEY)] == true)
-#define window_keyboard_is_key_released(pwindow, KEY)   ((pwindow)->keyboard_handler.key_state[SDL_GetScancodeFromKey(KEY)] == false)
+#define window_keyboard_is_key_just_pressed(pwindow, KEY)   ((pwindow)->keyboard_handler.just_pressed[SDL_GetScancodeFromKey(KEY)] == true)
+#define window_keyboard_is_key_is_held(pwindow, KEY)        ((pwindow)->keyboard_handler.is_held[SDL_GetScancodeFromKey(KEY)] == true)
+#define window_keyboard_is_key_pressed(pwindow, KEY)        ((pwindow)->keyboard_handler.key_state[SDL_GetScancodeFromKey(KEY)] == true)
+#define window_keyboard_is_key_released(pwindow, KEY)       ((pwindow)->keyboard_handler.key_state[SDL_GetScancodeFromKey(KEY)] == false)
 
 static inline void __render_sub_window(window_t *sub_window)
 {
@@ -557,7 +598,7 @@ static inline void __window_sub_window_destory(window_t *window)
 {
     if (window->sub_window_handle != NULL) {
 #ifdef __gl_h_
-        SDL_GL_DeleteContext(window->sub_window->gl_context);
+        SDL_GL_DeleteContext(window->sub_window_handle->gl_context);
 #else 
         SDL_FreeSurface(window->sub_window_handle->surface_handle);
         window->sub_window_handle->surface_handle = NULL;
