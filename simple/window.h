@@ -14,7 +14,7 @@
 #endif
 
 #include "../math/la.h"
-#include "../game/delta_time.h"
+#include "window/delta_time.h"
 
 #define DEFAULT_BACKGROUND_COLOR (vec4f_t){{ 0.0f, 1.0f, 0.0f, 0.0f}}
 #define SDL_FLAGS u32
@@ -23,8 +23,8 @@
  // Window library that is wrapper around SDL2 
 ==============================================================================*/
 
-typedef void (*render_func) (void*);
 
+// Mouse 
 typedef struct __mouse_t {
 
     bool    is_active;
@@ -34,9 +34,10 @@ typedef struct __mouse_t {
 
 } __mouse_t;
 
+
+// Keyboard
 typedef struct __keyboard_t {
 
-    // STATES := true -> is_pressed | false -> is_released
     bool keystate[SDL_NUM_SCANCODES]; 
 
     bool just_pressed[SDL_NUM_SCANCODES]; 
@@ -71,6 +72,8 @@ typedef struct window_t {
     bool                is_sub_window_active;
 
 } window_t;
+
+typedef void (*render_func) (void*);
 
 /*----------------------------------------------------------------------
  // Declarations
@@ -430,16 +433,38 @@ static inline void __keyboard_update_buffers(window_t *window, SDL_Keycode act, 
             if (window->is_sub_window_active) {
                 SDL_Log("Window (%s) KEY_DOWN: %s\n", window->sub_window_handle->title_name, SDL_GetScancodeName(key));
 
-                if (window->sub_window_handle->keyboard_handler.keystate[key] == true)         window->sub_window_handle->keyboard_handler.is_held[key]  = true;
-                else if (window->sub_window_handle->keyboard_handler.keystate[key] == false)   window->sub_window_handle->keyboard_handler.just_pressed[key] = true;
+                if (window->sub_window_handle->keyboard_handler.keystate[key] == true) { 
+
+                    SDL_Log("Window (%s) KEY_HELD: %s\n", window->sub_window_handle->title_name, SDL_GetScancodeName(key));
+                    window->sub_window_handle->keyboard_handler.is_held[key]        = true;
+                    window->sub_window_handle->keyboard_handler.just_pressed[key]   = false;
+
+                } else if (window->sub_window_handle->keyboard_handler.keystate[key] == false) {
+
+                    SDL_Log("Window (%s) KEY_JUST_PRESSED: %s\n", window->sub_window_handle->title_name, SDL_GetScancodeName(key));
+                    window->sub_window_handle->keyboard_handler.just_pressed[key]   = true;
+                    window->sub_window_handle->keyboard_handler.is_held[key]        = false;
+
+                }
 
                 window->sub_window_handle->keyboard_handler.keystate[key] = true;
 
             } else {
-                SDL_Log("Window (%s) KEY_DOWN: %s\n", window->title_name, SDL_GetScancodeName(key));
 
-                if (window->keyboard_handler.keystate[key] == true)         window->keyboard_handler.is_held[key]  = true;
-                else if (window->keyboard_handler.keystate[key] == false)   window->keyboard_handler.just_pressed[key] = true;
+                SDL_Log("Window (%s) KEY_DOWN: %s\n", window->title_name, SDL_GetScancodeName(key));
+                if (window->keyboard_handler.keystate[key] == true) { 
+
+                    SDL_Log("Window (%s) KEY_HELD: %s\n", window->title_name, SDL_GetScancodeName(key));
+                    window->keyboard_handler.is_held[key]        = true;
+                    window->keyboard_handler.just_pressed[key]   = false;
+
+                } else if (window->keyboard_handler.keystate[key] == false) {
+
+                    SDL_Log("Window (%s) KEY_JUST_PRESSED: %s\n", window->title_name, SDL_GetScancodeName(key));
+                    window->keyboard_handler.just_pressed[key]   = true;
+                    window->keyboard_handler.is_held[key]        = false;
+
+                }
 
                 window->keyboard_handler.keystate[key] = true;
 
@@ -512,7 +537,7 @@ static inline void __window_update_user_input(window_t *window)
 }
 
 #define window_keyboard_is_key_just_pressed(pwindow, KEY)   ((pwindow)->keyboard_handler.just_pressed[SDL_GetScancodeFromKey(KEY)] == true)
-#define window_keyboard_is_key_held(pwindow, KEY)        ((pwindow)->keyboard_handler.is_held[SDL_GetScancodeFromKey(KEY)] == true)
+#define window_keyboard_is_key_held(pwindow, KEY)           ((pwindow)->keyboard_handler.is_held[SDL_GetScancodeFromKey(KEY)] == true)
 #define window_keyboard_is_key_pressed(pwindow, KEY)        ((pwindow)->keyboard_handler.key_state[SDL_GetScancodeFromKey(KEY)] == true)
 #define window_keyboard_is_key_released(pwindow, KEY)       ((pwindow)->keyboard_handler.key_state[SDL_GetScancodeFromKey(KEY)] == false)
 
