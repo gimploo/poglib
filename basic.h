@@ -13,6 +13,8 @@
 #define global      static 
 #define internal    static 
 
+#define INTERNAL    static inline
+
 typedef unsigned char   u8;
 typedef char            i8;
 typedef u_int16_t       u16;
