@@ -27,25 +27,25 @@ typedef struct gl_texture2d_t {
 -----------------------------------------------------*/
 
 
-gl_texture2d_t              texture_init(const char * file_path);
-void                        texture_destroy(const gl_texture2d_t *texture);
-//NOTE:(macro)              texture_bind(gl_texture2d_t *, u32 ) --> void
-//NOTE:(macro)              texture_unbind(void) --> void
-void                        texture_dump(const gl_texture2d_t *texture);
+gl_texture2d_t              gl_texture_init(const char * file_path);
+void                        gl_texture_destroy(const gl_texture2d_t *texture);
+//NOTE:(macro)              gl_texture_bind(gl_texture2d_t *, u32 ) --> void
+//NOTE:(macro)              gl_texture_unbind(void) --> void
+void                        gl_texture_dump(const gl_texture2d_t *texture);
 
 
 /*------------------------------------------------------
  // Implementation
 ------------------------------------------------------*/
 
-#define texture_bind(ptex, slot) {\
+#define gl_texture_bind(ptex, slot) {\
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + (slot)));\
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, (ptex)->id));\
 }
-#define texture_unbind()    (GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
+#define gl_texture_unbind()    (GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
 
 
-gl_texture2d_t texture_init(const char *file_path)
+gl_texture2d_t gl_texture_init(const char *file_path)
 {
     if (file_path == NULL) eprint("file argument is null");
 
@@ -114,7 +114,7 @@ gl_texture2d_t texture_init(const char *file_path)
     };
 }
 
-void texture_destroy(const gl_texture2d_t *texture)
+void gl_texture_destroy(const gl_texture2d_t *texture)
 {
     if (texture == NULL) eprint("texture argument is null");
 
@@ -123,7 +123,7 @@ void texture_destroy(const gl_texture2d_t *texture)
     stbi_image_free(texture->buf);
 }
 
-void texture_dump(const gl_texture2d_t *texture)
+void gl_texture_dump(const gl_texture2d_t *texture)
 {
     if (texture == NULL) eprint("texture argument is null");
 
