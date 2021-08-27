@@ -7,7 +7,7 @@
 
 #include "../../math/la.h"
 #include "../../math/shapes.h"
-#include "../gl_renderer.h"
+#include "../gl_renderer2d.h"
 
 #define MAX_ASCII_TILES_COUNT 200
 
@@ -26,11 +26,12 @@ typedef struct character_info_t  {
 
 typedef struct gl_ascii_font_t {
     
-    character_info_t    font_atlas[MAX_ASCII_TILES_COUNT];
+    vao_t               vao;
     gl_shader_t         shader;
     gl_texture2d_t      texture;
     u32                 font_count_width;
     u32                 font_count_height;
+    character_info_t    font_atlas[MAX_ASCII_TILES_COUNT];
 
 
 } gl_ascii_font_t;
@@ -70,14 +71,14 @@ const char * const ascii_font_fs =
 ----------------------------------------------------------------*/
 
 gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, u32 tile_count_height);
-void            gl_ascii_font_render_text(const gl_ascii_font_t *handler, const char *text, const vec2f_t position, const f32 norm_font_size); 
-void            gl_ascii_font_destroy(const gl_ascii_font_t *);
+void            gl_ascii_font_render_text(gl_ascii_font_t *handler, const char *text, const vec2f_t position, const f32 norm_font_size); 
+void            gl_ascii_font_destroy(gl_ascii_font_t *);
 
 /*----------------------------------------------------------------
  // Implementation
 ----------------------------------------------------------------*/
 
-gl_texture2d_t __gl_ascii_load_texture(const char *file_path)
+INTERNAL gl_texture2d_t __ascii_load_texture(const char *file_path)
 {
     if (file_path == NULL) eprint("file argument is null");
 
@@ -133,8 +134,9 @@ gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, 
     if (file_path == NULL) eprint("file_path argument is null");
 
     gl_ascii_font_t output = {
+        .vao        = vao_init(1),
         .shader     = gl_shader_from_cstr_init(ascii_font_vs, ascii_font_fs),
-        .texture    = __gl_ascii_load_texture(file_path),
+        .texture    = __ascii_load_texture(file_path),
     };
 
     const u32 font_width    = output.texture.width / tile_count_width;
@@ -197,7 +199,7 @@ gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, 
 }
 
 void gl_ascii_font_render_text(
-        const gl_ascii_font_t   *handler, 
+        gl_ascii_font_t   *handler, 
         const char              *text, 
         const vec2f_t           position, 
         const f32               norm_font_size)
@@ -218,7 +220,7 @@ void gl_ascii_font_render_text(
         2, 3, 0  // second triangle 
     };                                  
 
-    vao_t vao = vao_init(1);
+    vao_bind(&handler->vao);
     vec2f_t x_offset = {0};
 
     for (int i = 0; text[i] != '\0'; i++) 
@@ -273,13 +275,13 @@ void gl_ascii_font_render_text(
         vbo_t vbo = vbo_init(vertices, sizeof(vertices)); 
         ebo_t ebo = ebo_init(&vbo, indices, 6);
 
-        vao_push(&vao, &vbo);
-            vao_set_attributes(&vao, 0, 3, GL_FLOAT, false, 3 * sizeof(float), 0);      
-            vao_set_attributes(&vao, 0, 2, GL_FLOAT, false, 2 * sizeof(float), 12 * sizeof(float));
-            texture_bind(&handler->texture, 0);
+        vao_push(&handler->vao, &vbo);
+            vao_set_attributes(&handler->vao, 0, 3, GL_FLOAT, false, 3 * sizeof(float), 0);      
+            vao_set_attributes(&handler->vao, 0, 2, GL_FLOAT, false, 2 * sizeof(float), 12 * sizeof(float));
+            gl_texture_bind(&handler->texture, 0);
             gl_shader_bind(&handler->shader);
-            vao_draw(&vao); 
-        vao_pop(&vao);
+            vao_draw(&handler->vao); 
+        vao_pop(&handler->vao);
 
         ebo_destroy(&ebo);
         vbo_destroy(&vbo);
@@ -292,14 +294,16 @@ void gl_ascii_font_render_text(
 
     }
 
-    vao_destroy(&vao);
+    vao_unbind();
 }
 
-void gl_ascii_font_destroy(const gl_ascii_font_t *self)
+void gl_ascii_font_destroy(gl_ascii_font_t *self)
 {
     if (self == NULL) eprint("argument is null");
 
+    vao_destroy(&self->vao);
     gl_shader_destroy(&self->shader);
+    gl_texture_destroy(&self->texture);
 }
 
 #endif //__MY__FONT__H__
