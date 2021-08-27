@@ -33,7 +33,7 @@ struct dbg_t {
 // Global debug meta data struct
 extern dbg_t debug; 
 
-bool dgb_init(const char *);
+bool dgb_init(dbg_t *debug, const char *);
 void dbg_destroy();
 
 
@@ -57,16 +57,16 @@ void dbg_destroy();
  */
 
 // Init function required to start the debugger
-bool dbg_init(const char *fpath)
+bool dbg_init(dbg_t *debug, const char *fpath)
 {
     assert(fpath);
     FILE *fp = fopen(fpath, "w");
     assert(fp);
-    debug = (dbg_t) {
-        .fp = fp,
-        .fname = fpath,
-        .list = DList_init()
-    };
+    assert(debug);
+    debug->fp = fp;
+    debug->fname = fpath;
+    debug->list = DList_init();
+
     fprintf(stdout, "DBG: Initalized\n");
 
     return true;
@@ -160,7 +160,7 @@ static void _debug_free(void *pointer, char *pointer_name , const char *file_pat
             ,file_path, line_num, pointer_name);
     fprintf(fp, "\n");
     
-    DList_delete_node_by_value(list, pointer);
+    if (DList_delete_node_by_value(list, &pointer)) fprintf(stderr, "DList_delete_node_by_value: failed to find value\n");
 
 #undef free
 
