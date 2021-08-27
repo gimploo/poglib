@@ -39,7 +39,7 @@ const char * const default_fshader =
     "\n"
     "void main()\n"
     "{\n"
-        "FragColor = texture(u_texture01, tex_coord) * vec4(color, 1.0f);\n"
+        "FragColor = texture(u_texture01, tex_coord) + vec4(color, 1.0f);\n"
         //"FragColor = vec4(1.0f, 0.0f, 1.0f, 1.0f);\n"
     "}";
 
@@ -87,8 +87,8 @@ typedef struct __uniform_meta_data_t {
 gl_shader_t     gl_shader_from_file_init(const char *file_vs, const char *file_fs);
 gl_shader_t     gl_shader_from_cstr_init(const char *vs_code, const char *fs_code);
 
-void            gl_shader_bind(const gl_shader_t *shader);
-void            gl_shader_push_uniform(gl_shader_t *shader, const char *uniform_name, void *value, u64 value_size, gl_uniform_type type);
+void            gl_shader_bind(gl_shader_t *shader);
+void            gl_shader_set_uniform(gl_shader_t *shader, const char *uniform_name, void *value, u64 value_size, gl_uniform_type type);
 
 void            gl_shader_destroy(const gl_shader_t *shader);
 
@@ -276,7 +276,46 @@ inline void gl_shader_destroy(const gl_shader_t *shader)
 }
 
 
-void gl_shader_bind(const gl_shader_t *shader)
+
+__uniform_meta_data_t __uniform_meta_data_init(const char *var_name, void *data_ref, const u64 data_size, const gl_uniform_type type)
+{
+    if (var_name == NULL) eprint("var_name argument is null");
+    if (data_ref == NULL) eprint("data_ref argument is null");
+
+    assert(data_size <= MAX_UNIFORM_VALUE_SIZE);
+
+    __uniform_meta_data_t data = {
+        .variable_name  = var_name,
+        .data_size      = data_size,
+        .uniform_type   = type,
+    };
+
+    memcpy(data.data_buffer, data_ref, data_size); 
+
+    return data;
+}
+
+
+void gl_shader_set_uniform(gl_shader_t *shader, const char *uniform_name, void *value_ref, u64 value_size, gl_uniform_type type) 
+{
+    if (shader == NULL) eprint("shader arg is null");    
+    if (value_ref == NULL) eprint("value ref is null");
+
+    __uniform_meta_data_t data = __uniform_meta_data_init(
+            uniform_name, 
+            value_ref, 
+            value_size, 
+            type);
+
+    stack_push(&shader->uniforms, data);
+}
+
+void gl_shader_pop_uniform(gl_shader_t *shader)
+{
+    stack_pop(&shader->uniforms);
+}
+
+void gl_shader_bind(gl_shader_t *shader)
 {
     if (shader == NULL) eprint("shader argument is null");
 
@@ -310,41 +349,9 @@ void gl_shader_bind(const gl_shader_t *shader)
             default:
                 eprint("uniform type not accounted for");
         }
+        gl_shader_pop_uniform(shader);
     }
         
-}
-
-__uniform_meta_data_t __uniform_meta_data_init(const char *var_name, void *data_ref, const u64 data_size, const gl_uniform_type type)
-{
-    if (var_name == NULL) eprint("var_name argument is null");
-    if (data_ref == NULL) eprint("data_ref argument is null");
-
-    assert(data_size <= MAX_UNIFORM_VALUE_SIZE);
-
-    __uniform_meta_data_t data = {
-        .variable_name  = var_name,
-        .data_size      = data_size,
-        .uniform_type   = type,
-    };
-
-    memcpy(data.data_buffer, data_ref, data_size); 
-
-    return data;
-}
-
-
-void gl_shader_push_uniform(gl_shader_t *shader, const char *uniform_name, void *value_ref, u64 value_size, gl_uniform_type type) 
-{
-    if (shader == NULL) eprint("shader arg is null");    
-    if (value_ref == NULL) eprint("value ref is null");
-
-    __uniform_meta_data_t data = __uniform_meta_data_init(
-            uniform_name, 
-            value_ref, 
-            value_size, 
-            type);
-
-    stack_push(&shader->uniforms, data);
 }
 
 
