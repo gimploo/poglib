@@ -79,26 +79,34 @@ typedef void (*render_func) (void*);
  // Declarations
 ----------------------------------------------------------------------*/
 
+// Initializing +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 window_t        window_init(const char *title, size_t width, size_t height, SDL_FLAGS flags);
 window_t *      window_sub_window_init(window_t *parent, const char *title_name, size_t width, size_t height, SDL_FLAGS flags);
 
+// Helper ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void            window_set_background(window_t *window, vec4f_t color);
 void            window_set_title(window_t *window, const char *title_name);
+
+// Input ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //NOTE:(macro)  window_keyboard_is_key_just_pressed(window_t *window, SDL_KeyCode key)  -> bool
 //NOTE:(macro)  window_keyboard_is_key_held(window_t *window, SDL_KeyCode key)       -> bool
 //NOTE:(macro)  window_keyboard_is_key_pressed(window_t *window, SDL_KeyCode key)       -> bool
 //NOTE:(macro)  window_keyboard_is_key_released(window_t *window, SDL_KeyCode key)      -> bool
-
-//NOTE:(macro)  window_game_while_loop(window_t *window) // this is the normal while(window.is_open) loop but with the added dt and fps calculation
-
-//NOTE:(macro)  window_gl_render_begin(window_t *window)
-//NOTE:(macro)  window_gl_render_end(window_t *window)
-
 //NOTE:(macro)  window_grab_dt(window_t *window) -> f64
 //NOTE:(macro)  window_grab_fps(window_t *window) -> f64
 
-void            window_render(window_t *window, render_func stuff_to_render, void * arg);
+// Render ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 
+//NOTE:(macro)  window_game_while_loop(window_t *window) // this is the normal while(window.is_open) loop but with the added dt and fps calculation
+//NOTE:(macro)  window_gl_render_begin(window_t *window)
+//NOTE:(macro)  window_gl_render_end(window_t *window)
+void            window_render_stuff(window_t *window, render_func stuff, void * arg);
+void            window_sub_window_render_stuff(window_t *sub_window, render_func stuff, void *arg);
+
+// Cleanup ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void            window_destroy(window_t *window);
 
@@ -145,7 +153,7 @@ void window_set_background(window_t *window, vec4f_t color)
 }
 
 
-static inline vec2f_t __mouse_get_position(window_t *window)
+INTERNAL vec2f_t __mouse_get_position(window_t *window)
 {
     int x, y;
     vec2f_t pos;
@@ -168,12 +176,12 @@ static inline vec2f_t __mouse_get_position(window_t *window)
 }
 
 
-static inline void  __mouse_update(window_t *window)
+INTERNAL void  __mouse_update(window_t *window)
 {
     window->mouse_handler.norm_position =  __mouse_get_position(window);
 }
 
-static inline __mouse_t __mouse_init(window_t *window)
+INTERNAL __mouse_t __mouse_init(window_t *window)
 {
     return (__mouse_t) {
         .is_active = false,
@@ -182,24 +190,9 @@ static inline __mouse_t __mouse_init(window_t *window)
     };
 }
 
-window_t * window_sub_window_init(window_t *parent, const char *title_name, size_t width, size_t height, SDL_FLAGS flags)
-{
-    if (parent == NULL) eprint("parent window argument is null");
-
-    window_t *sub_window = (window_t *)malloc(sizeof(window_t));
-    if (sub_window == NULL) eprint("sub_window malloc failed");
-
-    *sub_window                 = window_init(title_name, width, height, flags);
-    parent->sub_window_handle   = sub_window;
-
-    return sub_window;
-}
-
-
-window_t window_init(const char *title_name, size_t width, size_t height, SDL_FLAGS flags)
-{
+INTERNAL window_t __sub_window_init(const char *title_name, size_t width, size_t height, SDL_FLAGS flags) 
+{   
     window_t output         = {0};
-    SDL_FLAGS WinFlags      = 0;
     output.title_name       = title_name;
     output.is_open          = true;
     output.width            = width;
@@ -217,46 +210,37 @@ window_t window_init(const char *title_name, size_t width, size_t height, SDL_FL
     output.sub_window_handle = NULL;
     output.is_sub_window_active = false;
 
+    SDL_FLAGS WinFlags      = 0;
+
 #ifdef __gl_h_
+
     WinFlags = SDL_WINDOW_OPENGL;
-    int major_ver, minor_ver;
 
-    if ( !SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &major_ver) || 
-         !SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &minor_ver)) 
-        eprint("Error: %s\n", SDL_GetError());
-
-    if ( !SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major_ver) ||
-         !SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor_ver))
-
-        eprint("Error: %s\n", SDL_GetError());
-
-    if (!SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 
-                        SDL_GL_CONTEXT_PROFILE_CORE))
-        eprint("Error: %s\n", SDL_GetError());
 #endif 
 
-    if (SDL_Init(flags) == -1) eprint("Error: %s\n", SDL_GetError());
+    if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
+
     output.window_handle = SDL_CreateWindow(output.title_name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
-    if (!output.window_handle) eprint("Error: %s\n", SDL_GetError());
+
+    if (!output.window_handle) eprint("SDL Error: %s\n", SDL_GetError());
 
     if (!SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1"))
         eprint("SDL Error: %s", SDL_GetError());
 
 
-
 #ifdef __gl_h_
     glewExperimental = true; // if using GLEW version 1.13 or earlier
     output.gl_context = SDL_GL_CreateContext(output.window_handle);
-    if (!output.gl_context) eprint("Error: %s\n", SDL_GetError());
+    if (!output.gl_context) eprint("SDL Error: %s\n", SDL_GetError());
 
     GLenum glewError = glewInit();
-    if (glewError != GLEW_OK) eprint("Error: %s\n", glewGetErrorString(glewError));
+    if (glewError != GLEW_OK) eprint("GLEW Error: %s\n", glewGetErrorString(glewError));
 
     printf("[OUTPUT] Using OpenGL render\n");
 
 #else 
     output.surface_handle = SDL_GetWindowSurface(output.window_handle);
-    if (!output.surface_handle) eprint("Error: %s\n", SDL_GetError());
+    if (!output.surface_handle) eprint("SDL Error: %s\n", SDL_GetError());
 
     printf("[OUTPUT] Using standard sdl2 render\n");
 #endif
@@ -266,7 +250,94 @@ window_t window_init(const char *title_name, size_t width, size_t height, SDL_FL
 
 }
 
-static inline void __window_sub_window_handle_window_event(window_t *window, SDL_Event *event)
+window_t * window_sub_window_init(window_t *parent, const char *title_name, size_t width, size_t height, SDL_FLAGS flags)
+{
+    if (parent == NULL) eprint("parent window argument is null");
+
+    window_t *sub_window = (window_t *)malloc(sizeof(window_t));
+    if (sub_window == NULL) eprint("sub_window malloc failed");
+
+    *sub_window                 = __sub_window_init(title_name, width, height, flags);
+    parent->sub_window_handle   = sub_window;
+
+    return sub_window;
+}
+
+
+window_t window_init(const char *title_name, size_t width, size_t height, SDL_FLAGS flags)
+{
+    window_t output         = {0};
+    output.title_name       = title_name;
+    output.is_open          = true;
+    output.width            = width;
+    output.height           = height;
+    output.background_color = DEFAULT_BACKGROUND_COLOR;
+    output.mouse_handler    = __mouse_init(&output);
+    output.time             = game_loop_time_init();
+
+    output.keyboard_handler = (__keyboard_t ) {
+        .keystate       = {false},
+        .just_pressed   = {false},
+        .is_held        = {false}
+    };
+
+    output.sub_window_handle = NULL;
+    output.is_sub_window_active = false;
+
+    SDL_FLAGS WinFlags      = 0;
+
+#ifdef __gl_h_
+    WinFlags = SDL_WINDOW_OPENGL;
+    int major_ver, minor_ver;
+
+    if ( !SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &major_ver) || 
+         !SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &minor_ver)) 
+        eprint("SDL GL Error: %s\n", SDL_GetError());
+
+    if ( !SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major_ver) ||
+         !SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor_ver))
+
+        eprint("SDL GL Error: %s\n", SDL_GetError());
+
+    if (!SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 
+                        SDL_GL_CONTEXT_PROFILE_CORE))
+        eprint("SDL GL Error: %s\n", SDL_GetError());
+#endif 
+
+    if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
+
+    output.window_handle = SDL_CreateWindow(output.title_name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
+
+    if (!output.window_handle) eprint("SDL Error: %s\n", SDL_GetError());
+
+    if (!SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1"))
+        eprint("SDL Error: %s", SDL_GetError());
+
+
+
+#ifdef __gl_h_
+    glewExperimental = true; // if using GLEW version 1.13 or earlier
+    output.gl_context = SDL_GL_CreateContext(output.window_handle);
+    if (!output.gl_context) eprint("SDL GL Error: %s\n", SDL_GetError());
+
+    GLenum glewError = glewInit();
+    if (glewError != GLEW_OK) eprint("GLEW Error: %s\n", glewGetErrorString(glewError));
+
+    printf("[OUTPUT] Using OpenGL render\n");
+
+#else 
+    output.surface_handle = SDL_GetWindowSurface(output.window_handle);
+    if (!output.surface_handle) eprint("SDL Error: %s\n", SDL_GetError());
+
+    printf("[OUTPUT] Using standard sdl2 render\n");
+#endif
+
+    output.SDL_Window_ID = SDL_GetWindowID(output.window_handle);
+    return output;
+
+}
+
+INTERNAL void __window_sub_window_handle_window_event(window_t *window, SDL_Event *event)
 {
     if (window->SDL_Window_ID == event->window.windowID) {
 
@@ -425,7 +496,7 @@ static inline void __window_sub_window_handle_window_event(window_t *window, SDL
 }
 
 
-static inline void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_Scancode key)
+INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_Scancode key)
 {
     switch(act)
     {
@@ -488,7 +559,7 @@ static inline void __keyboard_update_buffers(window_t *window, SDL_Keycode act, 
     }
 }
 
-static inline void __window_update_user_input(window_t *window)
+INTERNAL void __window_update_user_input(window_t *window)
 {
     SDL_Event event;
     while(SDL_PollEvent(&event) > 0) 
@@ -541,9 +612,10 @@ static inline void __window_update_user_input(window_t *window)
 #define window_keyboard_is_key_pressed(pwindow, KEY)        ((pwindow)->keyboard_handler.key_state[SDL_GetScancodeFromKey(KEY)] == true)
 #define window_keyboard_is_key_released(pwindow, KEY)       ((pwindow)->keyboard_handler.key_state[SDL_GetScancodeFromKey(KEY)] == false)
 
-static inline void __render_sub_window(window_t *sub_window)
+void window_sub_window_render_stuff(window_t *sub_window, render_func stuff, void *arg)
 {
 #ifdef __gl_h_
+        SDL_GL_MakeCurrent(sub_window->window_handle, sub_window->gl_context);
         glClearColor(
                 sub_window->background_color.cmp[0], 
                 sub_window->background_color.cmp[1],
@@ -567,6 +639,7 @@ static inline void __render_sub_window(window_t *sub_window)
                 );
 #endif 
 
+        stuff(arg);
 
 #ifdef __gl_h_
         SDL_GL_SwapWindow(sub_window->window_handle);
@@ -576,13 +649,14 @@ static inline void __render_sub_window(window_t *sub_window)
     
 }
 
-void window_render(window_t *window, render_func render, void *arg)
+void window_render_stuff(window_t *window, render_func render, void *arg)
 {
     if (window == NULL) eprint("window argument is null");
 
     __window_update_user_input(window);
 
 #ifdef __gl_h_
+    SDL_GL_MakeCurrent(window->window_handle, window->gl_context);
     glClearColor(
             window->background_color.cmp[0], 
             window->background_color.cmp[1],
@@ -608,8 +682,7 @@ void window_render(window_t *window, render_func render, void *arg)
 
     render(arg);
 
-    // Renders the sub window
-    if (window->sub_window_handle != NULL) __render_sub_window(window->sub_window_handle);
+
 
 #ifdef __gl_h_
     SDL_GL_SwapWindow(window->window_handle);
@@ -619,7 +692,7 @@ void window_render(window_t *window, render_func render, void *arg)
 
 }
 
-static inline void __window_sub_window_destory(window_t *window)
+INTERNAL void __sub_window_destory(window_t *window)
 {
     if (window->sub_window_handle != NULL) {
 #ifdef __gl_h_
@@ -648,7 +721,7 @@ void window_destroy(window_t *window)
     SDL_FreeSurface(window->surface_handle);
     window->surface_handle = NULL;
 #endif 
-    __window_sub_window_destory(window);
+    __sub_window_destory(window);
     SDL_DestroyWindow(window->window_handle);
     SDL_Quit();
 
