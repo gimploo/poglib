@@ -40,7 +40,6 @@ const char * const default_fshader =
     "void main()\n"
     "{\n"
         "FragColor = texture(u_texture01, tex_coord) + vec4(color, 1.0f);\n"
-        //"FragColor = vec4(1.0f, 0.0f, 1.0f, 1.0f);\n"
     "}";
 
 
@@ -265,13 +264,13 @@ void __gl_shader_uniform_set_vec2f(const gl_shader_t *shader, const char *unifor
 
 
 
-inline void gl_shader_destroy(const gl_shader_t *shader)
+void gl_shader_destroy(const gl_shader_t *shader)
 {
     if (shader == NULL) eprint("shader argument is null");
 
+    GL_CHECK(glDeleteProgram(shader->id));
     free(shader->uniforms.array);
 
-    GL_CHECK(glDeleteProgram(shader->id));
     GL_LOG("Shader `%i` successfully deleted", shader->id);
 }
 
