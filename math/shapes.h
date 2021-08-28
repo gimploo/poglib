@@ -3,6 +3,11 @@
 
 #include "la.h"
 
+#define TOP_LEFT     0
+#define TOP_RIGHT    1
+#define BOTTOM_RIGHT 2
+#define BOTTOM_LEFT  3
+
 /*---------------------------------------------------------
  // Triangle (float type)
 ---------------------------------------------------------*/
@@ -59,6 +64,13 @@ void quadf_scale(quadf_t *quad, f32 scale)
     quad->vertex[3] = vec2f_scale(quad->vertex[3], scale);
 }
 
+bool quadf_is_point_in_quad(quadf_t quad, vec2f_t point)
+{
+    return (quad.vertex[TOP_LEFT].cmp[X] < point.cmp[X] 
+            && quad.vertex[TOP_RIGHT].cmp[X] > point.cmp[X] 
+            && quad.vertex[TOP_LEFT].cmp[Y] > point.cmp[Y]
+            && quad.vertex[BOTTOM_LEFT].cmp[Y] <  point.cmp[Y]);
+}
 
 
 #endif //__MY__SHAPES__H__
