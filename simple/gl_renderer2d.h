@@ -138,7 +138,8 @@ void                gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_
 void                gl_renderer2d_draw_triangle(gl_renderer2d_t *renderer, const gl_tri_t tri);
 void                gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *batch);
 
-void                gl_render2d_destroy(gl_renderer2d_t *renderer);
+//NOTE: renderer destroy only frees the vao in it and not the shaders and textures passed to it
+void                gl_renderer2d_destroy(gl_renderer2d_t *renderer);
 
 
 /*----------------------------------------------------------
@@ -306,13 +307,12 @@ void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *
 }
 
 
-void gl_render2d_destroy(gl_renderer2d_t *renderer)
+void gl_renderer2d_destroy(gl_renderer2d_t *renderer)
 {
     if (renderer == NULL) eprint("renderer argument is null");
 
-    gl_shader_destroy(renderer->shader);
+    // vao
     vao_destroy(&renderer->vao);
-    if (renderer->texture != NULL) gl_texture_destroy(renderer->texture);
 }
 
 
