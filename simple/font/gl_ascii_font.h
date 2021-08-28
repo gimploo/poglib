@@ -71,7 +71,7 @@ const char * const ascii_font_fs =
 ----------------------------------------------------------------*/
 
 gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, u32 tile_count_height);
-void            gl_ascii_font_render_text(gl_ascii_font_t *handler, const char *text, const vec2f_t position, const f32 norm_font_size); 
+void            gl_ascii_font_render_text(gl_ascii_font_t *handler, const char *text, const vec2f_t norm_position, const f32 norm_font_size); 
 void            gl_ascii_font_destroy(gl_ascii_font_t *);
 
 /*----------------------------------------------------------------
@@ -200,9 +200,9 @@ gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, 
 
 void gl_ascii_font_render_text(
         gl_ascii_font_t   *handler, 
-        const char              *text, 
-        const vec2f_t           position, 
-        const f32               norm_font_size)
+        const char        *text, 
+        const vec2f_t     position, 
+        const f32         norm_font_size)
 {
     if (handler == NULL)    eprint("handler argument is null");
     if (text == NULL)       eprint("text argument is null");
