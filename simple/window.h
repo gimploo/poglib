@@ -84,10 +84,17 @@ typedef void (*render_func) (void*);
 window_t        window_init(const char *title, size_t width, size_t height, SDL_FLAGS flags);
 window_t *      window_sub_window_init(window_t *parent, const char *title_name, size_t width, size_t height, SDL_FLAGS flags);
 
+//NOTE:(macro)  window_while_is_open(window_t *window) -> while loop
+//              (or)
+//NOTE:(macro)  window_game_while_is_open(window_t *window) -> while loop
+
 // Helper ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 void            window_set_background(window_t *window, vec4f_t color);
 void            window_update_title(window_t *window, const char *title_name);
+
+//NOTE:(macro)  window_grab_dt(window_t *window) -> f64
+//NOTE:(macro)  window_grab_fps(window_t *window) -> f64
 
 // Input ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -96,22 +103,21 @@ void            window_update_title(window_t *window, const char *title_name);
 //NOTE:(macro)  window_mouse_button_is_held(window_t *window) -> bool
 
 //NOTE:(macro)  window_keyboard_is_key_just_pressed(window_t *window, SDL_KeyCode key)  -> bool
-//NOTE:(macro)  window_keyboard_is_key_held(window_t *window, SDL_KeyCode key)       -> bool
+//NOTE:(macro)  window_keyboard_is_key_held(window_t *window, SDL_KeyCode key)          -> bool
 //NOTE:(macro)  window_keyboard_is_key_pressed(window_t *window, SDL_KeyCode key)       -> bool
 //NOTE:(macro)  window_keyboard_is_key_released(window_t *window, SDL_KeyCode key)      -> bool
 
-//NOTE:(macro)  window_grab_dt(window_t *window) -> f64
-//NOTE:(macro)  window_grab_fps(window_t *window) -> f64
 
 // Render ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  
-//NOTE:(macro)  window_game_while_loop(window_t *window) // this is the normal while(window.is_open) loop but with the added dt and fps calculation
 //NOTE:(macro)  window_gl_render_begin(window_t *window)
 //NOTE:(macro)  window_gl_render_end(window_t *window)
+//              (or)
+void            window_render_stuff(window_t *window, render_func stuff, void * arg);
+
 //NOTE:(macro)  window_sub_window_gl_render_begin(window_t *sub_window)
 //NOTE:(macro)  window_sub_window_gl_render_end(window_t *sub_window)
-
-void            window_render_stuff(window_t *window, render_func stuff, void * arg);
+//              (or)
 void            window_sub_window_render_stuff(window_t *sub_window, render_func stuff, void *arg);
 
 // Cleanup ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -128,7 +134,8 @@ void            window_sub_window_destroy(window_t *sub_window);
 #define window_mouse_button_just_pressed(pwindow)      (pwindow)->mouse_handler.just_pressed
 #define window_mouse_button_is_held(pwindow)           (pwindow)->mouse_handler.is_held
 
-#define window_game_while_loop(pwindow)   while((pwindow)->is_open && game_loop_time_calculate(&(pwindow)->time))
+#define window_while_is_open(pwindow)           while((pwindow)->is_open && __window_update_user_input(pwindow))
+#define window_game_while_is_open(pwindow)      while((pwindow)->is_open && __window_update_user_input(pwindow) && game_loop_time_calculate(&(pwindow)->time))
 
 // FIXME: This function doesnt work
 #define window_cap_fps(pwindow)     SDL_Delay(floor(16.666f - (pwindow)->time.elapsed_in_ms))
@@ -137,7 +144,6 @@ void            window_sub_window_destroy(window_t *sub_window);
 #define window_grab_fps(pwindow)     (pwindow)->time.fps_value
 
 #define window_gl_render_begin(pwindow) {\
-    __window_update_user_input(pwindow);\
     glClearColor(\
             (pwindow)->background_color.cmp[0],\
             (pwindow)->background_color.cmp[1],\
@@ -586,7 +592,7 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
     }
 }
 
-INTERNAL void __window_update_user_input(window_t *window)
+INTERNAL bool __window_update_user_input(window_t *window)
 {
     SDL_Event event;
     while(SDL_PollEvent(&event) > 0) 
@@ -642,6 +648,7 @@ INTERNAL void __window_update_user_input(window_t *window)
                 //window->is_open = false;
         }
     }
+    return true;
 }
 
 
