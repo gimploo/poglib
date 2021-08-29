@@ -309,7 +309,7 @@ void gl_shader_set_uniform(gl_shader_t *shader, const char *uniform_name, void *
     stack_push(&shader->uniforms, data);
 }
 
-void gl_shader_pop_uniform(gl_shader_t *shader)
+void __gl_shader_pop_uniform(gl_shader_t *shader)
 {
     stack_pop(&shader->uniforms);
 }
@@ -348,7 +348,7 @@ void gl_shader_bind(gl_shader_t *shader)
             default:
                 eprint("uniform type not accounted for");
         }
-        gl_shader_pop_uniform(shader);
+        __gl_shader_pop_uniform(shader);
     }
         
 }
