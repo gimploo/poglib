@@ -94,9 +94,9 @@ void crapgui_destroy(crapgui_t *gui)
 }
 
 
-/*------------------------------------------------------------------------------------------------
+/*================================================================================================
  // Buttons
-------------------------------------------------------------------------------------------------*/
+================================================================================================*/
 
 #define BUTTON_DEFAULT_WIDTH    0.3f
 #define BUTTON_DEFAULT_HEIGHT   0.2f
@@ -110,20 +110,28 @@ typedef struct button_t {
     f32         height;
     vec3f_t     norm_color;
 
-    quadf_t     __quad;
-
-    // caching button state
-    bool is_hot;
-    bool is_active;
-    bool is_dragged;
+    quadf_t     __quad_vertices;
 
 } button_t;
 
-button_t    button_init(const char *label, vec2f_t norm_position);
-void        button_begin(crapgui_t *gui, button_t *button);
-bool        button_is_mouse_over(crapgui_t *gui, button_t *button);
-bool        button_is_mouse_clicked(crapgui_t *gui, button_t *button);
-bool        button_is_mouse_dragging(crapgui_t *gui, button_t *button);
+/*------------------------------------------------------------------------
+ // Declarations
+------------------------------------------------------------------------*/
+
+button_t        button_init(const char *label, vec2f_t norm_position);
+void            button_draw(crapgui_t *gui, button_t *button);
+
+//NOTE:(macro)  button_update_color(button_t *, vec3f_t) -> void
+//NOTE:(macro)  button_update_label(button_t *, const char *) -> void
+//NOTE:(macro)  button_update_norm_position(button_t *, vec2f_t) -> void
+
+bool            button_is_mouse_over(crapgui_t *gui, button_t *button);
+bool            button_is_mouse_clicked(crapgui_t *gui, button_t *button);
+bool            button_is_mouse_dragging(crapgui_t *gui, button_t *button);
+
+/*------------------------------------------------------------------------
+ // Implementation
+------------------------------------------------------------------------*/
 
 button_t button_init(const char *label, vec2f_t norm_position)
 {
@@ -133,10 +141,7 @@ button_t button_init(const char *label, vec2f_t norm_position)
         .width = BUTTON_DEFAULT_WIDTH,
         .height = BUTTON_DEFAULT_HEIGHT,
         .norm_color = BUTTON_DEFAULT_COLOR,
-        .__quad = quadf_init(norm_position, BUTTON_DEFAULT_WIDTH, BUTTON_DEFAULT_HEIGHT),
-        .is_hot = false,
-        .is_active = false,
-        .is_dragged = false,
+        .__quad_vertices = quadf_init(norm_position, BUTTON_DEFAULT_WIDTH, BUTTON_DEFAULT_HEIGHT),
     };
 }
 
@@ -144,16 +149,13 @@ button_t button_init(const char *label, vec2f_t norm_position)
 #define button_update_label(pbutton, text) (pbutton)->label = text
 
 #define button_update_norm_position(pbutton, vec2) do {\
-    (pbutton)->norm_position = vec2;\
-    (pbutton)->__quad = quadf_init(vec2, BUTTON_DEFAULT_WIDTH, BUTTON_DEFAULT_HEIGHT);\
+    (pbutton)->norm_position    = vec2;\
+    (pbutton)->__quad_vertices  = quadf_init(vec2, BUTTON_DEFAULT_WIDTH, BUTTON_DEFAULT_HEIGHT);\
 } while(0)
 
 void button_draw(crapgui_t *gui, button_t *button) 
 {
-
-    quadf_t vertices;
-
-    const gl_quad_t quad= gl_quad(button->__quad, button->norm_color, quadf(0));
+    const gl_quad_t quad= gl_quad(button->__quad_vertices, button->norm_color, quadf(0));
     gl_renderer2d_draw_quad(&gui->renderer_handle, quad); 
     gl_ascii_font_render_text(
             gui->font_handle, 
@@ -168,22 +170,21 @@ void button_draw(crapgui_t *gui, button_t *button)
 bool button_is_mouse_over(crapgui_t *gui, button_t *button)
 {
     vec2f_t mouse_position = window_mouse_get_norm_position(gui->window_handle);
-    button->is_hot =  quadf_is_point_in_quad(button->__quad, mouse_position);
-    return button->is_hot;
+    return quadf_is_point_in_quad(button->__quad_vertices, mouse_position);
 }
 
 bool button_is_mouse_clicked(crapgui_t *gui, button_t *button)
 {
-    button->is_active = (window_mouse_button_just_pressed(gui->window_handle) && button_is_mouse_over(gui, button));
-    return button->is_active;
+    return (window_mouse_button_just_pressed(gui->window_handle) && button_is_mouse_over(gui, button));
 }
 
 bool button_is_mouse_dragging(crapgui_t *gui, button_t *button)
 {
     // NOTE: this code will have the button rendererd as the mouse at the center
-    button->is_dragged = (window_mouse_button_is_held(gui->window_handle) && button_is_mouse_over(gui, button));
-    if (button->is_dragged) {
+    bool is_drag = (window_mouse_button_is_held(gui->window_handle) && button_is_mouse_over(gui, button));
 
+    if (is_drag) 
+    {
         vec2f_t mouse_position = window_mouse_get_norm_position(gui->window_handle);
         vec2f_t mouse_at_center_offset_position = {
             .cmp[X] = (mouse_position.cmp[X] - (BUTTON_DEFAULT_WIDTH/2)),
@@ -191,67 +192,148 @@ bool button_is_mouse_dragging(crapgui_t *gui, button_t *button)
         };
         button_update_norm_position(button, mouse_at_center_offset_position);
     } 
-    return button->is_dragged;
+    return is_drag;
 }
 
 
-/*------------------------------------------------------------------------------------------
+/*================================================================================================
  // Slider
-------------------------------------------------------------------------------------------*/
+================================================================================================*/
+
+#define SLIDER_BODY_DEFAULT_WIDTH 0.5f
+#define SLIDER_BODY_DEFAULT_HEIGHT 0.1f
+#define SLIDER_BODY_DEFAULT_COLOR {0.0f, 1.0f, 1.0f}
+
+#define SLIDER_BOX_DEFAULT_WIDTH 0.1f
+#define SLIDER_BOX_DEFAULT_HEIGHT SLIDER_BODY_DEFAULT_HEIGHT
+#define SLIDER_BOX_DEFAULT_COLOR {1.0f, 1.0f, 0.0f}
 
 typedef struct slider_t {
 
-    vec2f_t     norm_position;
-    f32         width;
-    f32         height;
-    vec3f_t     norm_color;
+    vec2f_t     body_norm_position;
+    f32         body_width;
+    f32         body_height;
+    vec3f_t     body_norm_color;
+    quadf_t     __body_vertices;
 
-    quadf_t     __quad;
+    vec2f_t     box_norm_position;
+    f32         box_width;
+    f32         box_height;
+    vec3f_t     box_norm_color;
+    quadf_t     __box_vertices;
 
     f32         value;
     vec2f_t     range;
 
-
 } slider_t;
 
-slider_t slider_begin(vec2f_t range, vec2f_t norm_position)
+
+/*---------------------------------------------------------------
+ // Declarations
+---------------------------------------------------------------*/
+
+slider_t        slider_init(vec2f_t range, vec2f_t norm_position);
+//NOTE:(macro)  slider_get_value(pslider) (pslider)->value;
+void            slider_draw(crapgui_t *gui, slider_t *slider);
+bool            slider_box_is_mouse_dragging(crapgui_t *gui, slider_t *slider);
+
+
+/*---------------------------------------------------------------
+ // Implementation
+---------------------------------------------------------------*/
+
+INTERNAL bool __box_is_mouse_over(crapgui_t *gui, slider_t *slider)
+{
+    vec2f_t mouse_position = window_mouse_get_norm_position(gui->window_handle);
+    return quadf_is_point_in_quad(slider->__box_vertices, mouse_position);
+}
+
+#define slider_get_value(pslider) (pslider)->value;
+#define slider_body_update_color(pslider, color)    (pslider)->body_norm_color = color;
+
+#define slider_box_update_color(pslider, color)     (pslider)->box_norm_color = color;
+
+slider_t slider_init(vec2f_t range, vec2f_t norm_position)
 {
     return (slider_t ) {
-        .norm_position = norm_position,
-        .width = BUTTON_DEFAULT_WIDTH,
-        .height = BUTTON_DEFAULT_HEIGHT,
-        .norm_color = BUTTON_DEFAULT_COLOR,
-        .__quad = quadf_init(norm_position, BUTTON_DEFAULT_WIDTH, BUTTON_DEFAULT_HEIGHT),
 
-        .value = ((range.cmp[X] + range.cmp[Y]) / 2),
-        .range = range,
+        .body_norm_position = norm_position,
+        .body_width         = SLIDER_BODY_DEFAULT_WIDTH,
+        .body_height        = SLIDER_BODY_DEFAULT_HEIGHT,
+        .body_norm_color    = SLIDER_BODY_DEFAULT_COLOR,
+        .__body_vertices    = quadf_init(norm_position, SLIDER_BODY_DEFAULT_WIDTH, SLIDER_BODY_DEFAULT_HEIGHT),
+
+        .box_norm_position  = norm_position,
+        .box_width          = SLIDER_BOX_DEFAULT_WIDTH,
+        .box_height         = SLIDER_BOX_DEFAULT_HEIGHT,
+        .box_norm_color     = SLIDER_BOX_DEFAULT_COLOR,
+        .__box_vertices     = quadf_init(norm_position, SLIDER_BOX_DEFAULT_WIDTH, SLIDER_BOX_DEFAULT_HEIGHT),
+
+        .value              = 0.0f,
+        .range              = range,
+
     };
 }
 
-#define slider_update_color(pslider, color) (pslider)->norm_color = color;
-#define slider_update_value(pslider, value) (pslider)->value = value;
-
-bool slider_is_mouse_over(crapgui_t *gui, slider_t *slider)
+bool slider_box_is_mouse_dragging(crapgui_t *gui, slider_t *slider)
 {
-    vec2f_t mouse_position = window_mouse_get_norm_position(gui->window_handle);
-    return quadf_is_point_in_quad(slider->__quad, mouse_position);
+    bool is_mouse_dragging  = (window_mouse_button_is_held(gui->window_handle) && __box_is_mouse_over(gui, slider));
+
+    vec2f_t mouse_position  = window_mouse_get_norm_position(gui->window_handle);
+
+    // NOTE: checks if the box goes out of the body of the slider
+    if (mouse_position.cmp[X] <= (slider->__body_vertices.vertex[TOP_LEFT].cmp[X] + SLIDER_BOX_DEFAULT_WIDTH/2))
+        mouse_position.cmp[X] = slider->body_norm_position.cmp[X] + SLIDER_BOX_DEFAULT_WIDTH/2;
+
+    else if (mouse_position.cmp[X] >= (slider->__body_vertices.vertex[TOP_RIGHT].cmp[X] - SLIDER_BOX_DEFAULT_WIDTH/2))
+        mouse_position.cmp[X] = (slider->__body_vertices.vertex[TOP_RIGHT].cmp[X] - SLIDER_BOX_DEFAULT_WIDTH/2);
+
+
+    // NOTE: this code will have the slider box rendererd as the mouse at the center
+    if (is_mouse_dragging) 
+    {
+        vec2f_t mouse_at_center_offset_position = {
+            .cmp[X] = mouse_position.cmp[X] - (SLIDER_BOX_DEFAULT_WIDTH /2),
+            .cmp[Y] = slider->box_norm_position.cmp[Y]
+        };
+
+        // NOTE: updates the box position
+        slider->box_norm_position = mouse_at_center_offset_position;
+        slider->__box_vertices = quadf_init(slider->box_norm_position, SLIDER_BOX_DEFAULT_WIDTH, SLIDER_BOX_DEFAULT_HEIGHT);
+
+        //NOTE: updating the value
+        f32 last_x_position     = mouse_position.cmp[X] + SLIDER_BOX_DEFAULT_WIDTH/2;
+        f32 first_x_position    = slider->body_norm_position.cmp[X];
+        f32 offset_per_box      = SLIDER_BODY_DEFAULT_WIDTH / slider->range.cmp[Y];
+        f32 new_value           = (last_x_position - first_x_position) / offset_per_box;
+        slider->value           = new_value - 1;
+
+    } 
+    return is_mouse_dragging;
 }
 
-bool slider_is_mouse_clicked(crapgui_t *gui, slider_t *slider)
-{
-    return (slider_is_mouse_over(gui, slider) && window_mouse_button_just_pressed(gui->window_handle));
-}
 
-void slider_end(crapgui_t *gui, slider_t *slider) 
+
+void slider_draw(crapgui_t *gui, slider_t *slider)
 {
-    const gl_quad_t quad = gl_quad(slider->__quad, slider->norm_color, quadf(0));
-    gl_renderer2d_draw_quad(&gui->renderer_handle, quad); 
-    gl_ascii_font_render_text(
-            gui->font_handle, 
-            "?",
-            vec2f_add(
-                slider->norm_position, 
-                (vec2f_t ){ 0, (-slider->height/2)}), 
-            slider->height/6);
+    const gl_quad_t body    = gl_quad(slider->__body_vertices, slider->body_norm_color, quadf(0));
+    const gl_quad_t box     = gl_quad(slider->__box_vertices, slider->box_norm_color, quadf(0));
+
+    const gl_quad_t buffer[2] = { body, box };
+
+    gl_batch_t batch = (gl_batch_t ){
+        .shape_type         = BT_QUAD,
+        .shape_count        = 2,
+        .vertex_buffer      = (gl_vertex_t *)buffer,
+        .vertex_buffer_size = sizeof(buffer)
+    };
+
+    gl_renderer2d_draw_from_batch(&gui->renderer_handle, &batch);
+
+    char text[(int )slider->range.cmp[Y]];
+    snprintf(text, sizeof(text), "%f", slider->value);
+    const f32 font_size = SLIDER_BOX_DEFAULT_WIDTH / 2;
+
+    gl_ascii_font_render_text(gui->font_handle, text, slider->box_norm_position, font_size);
 }
 

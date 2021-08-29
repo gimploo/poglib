@@ -29,7 +29,6 @@ function cleanup_envirnoment {
 function compile {
 
     local CC="gcc"
-    local FLAGS="-g"
     local LINKERS="-lSDL2 -lGLEW -lGLU -lGL -lm"
 
     local FILE_PATH="$1"
