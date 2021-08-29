@@ -213,6 +213,8 @@ INTERNAL __mouse_t __mouse_init(window_t *window)
         .is_held = false,
     };
     __mouse_update_position(window);
+
+    return mouse;
 }
 
 INTERNAL window_t __sub_window_init(const char *title_name, size_t width, size_t height, SDL_FLAGS flags) 
