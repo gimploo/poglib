@@ -4,28 +4,15 @@
 #include <GL/glew.h>
 
 #include "../math/shapes.h"
-
 #include "gl/shader.h"
 #include "gl/texture2d.h"
-
 #include "gl/VAO.h"
 #include "gl/VBO.h"
 #include "gl/EBO.h"
 
-
-#define MAX_QUAD_CAPACITY_PER_DRAW_CALL 10000
-
-
-#define DEFAULT_TRI_INDICES_CAPACITY 3
-const u32 DEFAULT_TRI_INDICES[] = {
-    0, 1, 2
-};
-
-#define DEFAULT_QUAD_INDICES_CAPACITY 6
-const u32 DEFAULT_QUAD_INDICES[] = {
-    0, 1, 2,
-    2, 3, 0
-};
+/*====================================================================================
+ // OpenGL specific types (Vertex, Triangles and Quads) and custom batch type
+====================================================================================*/
 
 typedef struct  gl_vertex_t {
 
@@ -40,7 +27,7 @@ typedef struct  { gl_vertex_t vertex[3]; } gl_tri_t;
 typedef struct  { gl_vertex_t vertex[4]; } gl_quad_t;
 
 // Creates a quad of a single color assuming no textures
-INTERNAL gl_quad_t gl_quad(quadf_t quad, vec3f_t color, quadf_t tex_coord)
+gl_quad_t gl_quad(quadf_t quad, vec3f_t color, quadf_t tex_coord)
 {
     return (gl_quad_t) {
 
@@ -71,7 +58,7 @@ INTERNAL gl_quad_t gl_quad(quadf_t quad, vec3f_t color, quadf_t tex_coord)
     };
 }
 
-INTERNAL gl_tri_t gl_tri(trif_t tri, vec3f_t color, quadf_t tex_coord)
+gl_tri_t gl_tri(trif_t tri, vec3f_t color, quadf_t tex_coord)
 {
     return (gl_tri_t) {
 
@@ -116,9 +103,23 @@ typedef struct gl_batch_t {
 } gl_batch_t;
 
 
+
 /*==================================================
  // OpenGL 2D renderer
 ==================================================*/
+
+#define MAX_QUAD_CAPACITY_PER_DRAW_CALL 10000
+#define DEFAULT_TRI_INDICES_CAPACITY 3
+#define DEFAULT_QUAD_INDICES_CAPACITY 6
+
+const u32 DEFAULT_TRI_INDICES[] = {
+    0, 1, 2
+};
+
+const u32 DEFAULT_QUAD_INDICES[] = {
+    0, 1, 2,
+    2, 3, 0
+};
 
 typedef struct gl_renderer2d_t {
 
@@ -145,6 +146,7 @@ void                gl_renderer2d_destroy(gl_renderer2d_t *renderer);
 /*----------------------------------------------------------
  // Implementations
 ----------------------------------------------------------*/
+
 
 INTERNAL void __gen_quad_indices(u32 indices[], const u32 shape_count)
 {
@@ -173,7 +175,8 @@ INTERNAL void __gen_tri_indices(u32 indices[], const u32 shape_count)
 }
 
 void gl_renderer2d_draw_triangle(gl_renderer2d_t *renderer, const gl_tri_t tri)
-{    if (renderer == NULL) eprint("renderer argument is null");
+{    
+    if (renderer == NULL) eprint("renderer argument is null");
 
     vbo_t vbo; 
     ebo_t ebo;
@@ -215,6 +218,7 @@ gl_renderer2d_t gl_renderer2d_init(gl_shader_t *shader, const gl_texture2d_t *te
         .texture = texture
     };
 }
+
 
 void gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_quad_t quad)
 {
@@ -314,6 +318,5 @@ void gl_renderer2d_destroy(gl_renderer2d_t *renderer)
     // vao
     vao_destroy(&renderer->vao);
 }
-
 
 #endif //__MY_GL_RENDERER_2D_H__
