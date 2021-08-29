@@ -92,8 +92,8 @@ void            window_update_title(window_t *window, const char *title_name);
 // Input ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //NOTE:(macro)  window_mouse_get_norm_position(window_t *window) -> vec2f_t
-//NOTE:(macro)  window_mouse_just_pressed(window_t *window) -> bool
-//NOTE:(macro)  window_mouse_is_held(window_t *window) -> bool
+//NOTE:(macro)  window_mouse_button_just_pressed(window_t *window) -> bool
+//NOTE:(macro)  window_mouse_button_is_held(window_t *window) -> bool
 
 //NOTE:(macro)  window_keyboard_is_key_just_pressed(window_t *window, SDL_KeyCode key)  -> bool
 //NOTE:(macro)  window_keyboard_is_key_held(window_t *window, SDL_KeyCode key)       -> bool
@@ -124,9 +124,9 @@ void            window_sub_window_destroy(window_t *sub_window);
  // Implementations
 -------------------------------------------------------------------------*/
 
-#define window_mouse_get_norm_position(pwindow) (pwindow)->mouse_handler.norm_position
-#define window_mouse_just_pressed(pwindow)      (pwindow)->mouse_handler.just_pressed
-#define window_mouse_is_held(pwindow)           (pwindow)->mouse_handler.is_held
+#define window_mouse_get_norm_position(pwindow)        (pwindow)->mouse_handler.norm_position
+#define window_mouse_button_just_pressed(pwindow)      (pwindow)->mouse_handler.just_pressed
+#define window_mouse_button_is_held(pwindow)           (pwindow)->mouse_handler.is_held
 
 #define window_game_while_loop(pwindow)   while((pwindow)->is_open && game_loop_time_calculate(&(pwindow)->time))
 
@@ -198,18 +198,13 @@ INTERNAL void __mouse_update_position(window_t *window)
     pos.cmp[X] = normalizedX;
     pos.cmp[Y] = normalizedY;
     
-    SDL_Log("Mouse pos := (%f, %f)\n", normalizedX, normalizedY);
+    //SDL_Log("Mouse pos := (%f, %f)\n", normalizedX, normalizedY);
     
     window->mouse_handler.position = (vec2i_t){x, y};
     window->mouse_handler.norm_position = pos;
 
 }
 
-
-INTERNAL void  __mouse_update(window_t *window)
-{
-    __mouse_update_position(window);
-}
 
 INTERNAL __mouse_t __mouse_init(window_t *window)
 {
@@ -605,25 +600,29 @@ INTERNAL void __window_update_user_input(window_t *window)
                 window->is_open = false;
             break;
 
+            //NOTE: Here a mouse held down is triggered if its just pressed and the mouse moved after.
             case SDL_MOUSEMOTION:
-                __mouse_update(window);
-                if(window->mouse_handler.just_pressed == true) {
-                    SDL_Log("Window (%s) MOUSE_HELD\n", window->title_name);
-                    window->mouse_handler.just_pressed = false;
-                    window->mouse_handler.is_held = true;
+                __mouse_update_position(window);
+                if(window->mouse_handler.just_pressed == true && window->mouse_handler.is_held == false) 
+                {
+                    SDL_Log("Window (%s) MOUSE_HELD_DOWN\n", window->title_name);
+                    window->mouse_handler.is_held       = true;
+                    window->mouse_handler.just_pressed  = false;
                 }
             break;
 
             case SDL_MOUSEBUTTONDOWN:
-                __mouse_update(window);
-                SDL_Log("Window (%s) MOUSE_JUST_DOWN\n", window->title_name);
-                window->mouse_handler.just_pressed  = true;
-                window->mouse_handler.is_held       = false;
+                __mouse_update_position(window);
+                if (window->mouse_handler.just_pressed == false && window->mouse_handler.is_held == false) 
+                {
+                    SDL_Log("Window (%s) MOUSE_JUST_DOWN\n", window->title_name);
+                    window->mouse_handler.just_pressed  = true;
+                } 
             break;
 
             case SDL_MOUSEBUTTONUP:
                 SDL_Log("Window (%s) MOUSE_UP\n", window->title_name);
-                __mouse_update(window);
+                __mouse_update_position(window);
                 window->mouse_handler.just_pressed  = false;
                 window->mouse_handler.is_held       = false;
             break;
