@@ -19,7 +19,7 @@ int main(void)
     slider_t slider01 = slider_init((vec2f_t ){0.0f, 5.0f}, (vec2f_t ){-0.5f, 0.2f});
     label_t label01 = label_init("label01", (vec2f_t ){-0.2f, 1.0f}, 0.1f);
 
-    while (window.is_open)
+    window_while_is_open(&window)
     {
         crapgui_begin(&gui);
 
