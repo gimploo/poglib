@@ -17,6 +17,7 @@ int main(void)
 
     button_t button01 = button_init("button01", (vec2f_t ){-0.5f, 0.5f});
     slider_t slider01 = slider_init((vec2f_t ){0.0f, 5.0f}, (vec2f_t ){-0.5f, 0.2f});
+    label_t label01 = label_init("label01", (vec2f_t ){-0.2f, 1.0f}, 0.1f);
 
     while (window.is_open)
     {
@@ -37,9 +38,13 @@ int main(void)
             button_draw(&gui, &button01);
 
                 if (slider_box_is_mouse_dragging(&gui, &slider01))
-                    printf("sadge\n");
+                    printf("sadge\n"); 
 
             slider_draw(&gui, &slider01);
+
+                if(label_is_mouse_dragging(&gui, &label01))
+                    label_update_value(&label01, "Among us");
+            label_draw(&gui, &label01);
 
         crapgui_end(&gui);
     }
