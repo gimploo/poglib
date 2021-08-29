@@ -93,6 +93,12 @@ void crapgui_destroy(crapgui_t *gui)
     gl_renderer2d_destroy(&gui->renderer_handle);
 }
 
+INTERNAL bool __is_mouse_over_quad(window_t *window, quadf_t norm_quad)
+{
+    vec2f_t mouse_position = window_mouse_get_norm_position(window);
+    return quadf_is_point_in_quad(norm_quad, mouse_position);
+}
+
 
 /*================================================================================================
  // Buttons
@@ -233,7 +239,7 @@ typedef struct slider_t {
 ---------------------------------------------------------------*/
 
 slider_t        slider_init(vec2f_t range, vec2f_t norm_position);
-//NOTE:(macro)  slider_get_value(pslider) (pslider)->value;
+//NOTE:(macro)  slider_get_value(slider_t *) -> f32
 void            slider_draw(crapgui_t *gui, slider_t *slider);
 bool            slider_box_is_mouse_dragging(crapgui_t *gui, slider_t *slider);
 
@@ -332,8 +338,76 @@ void slider_draw(crapgui_t *gui, slider_t *slider)
 
     char text[(int )slider->range.cmp[Y]];
     snprintf(text, sizeof(text), "%f", slider->value);
-    const f32 font_size = SLIDER_BOX_DEFAULT_WIDTH / 2;
+    const f32 font_size = SLIDER_BOX_DEFAULT_WIDTH / 4;
 
-    gl_ascii_font_render_text(gui->font_handle, text, slider->box_norm_position, font_size);
+    gl_ascii_font_render_text(gui->font_handle, text, vec2f_add(slider->box_norm_position, (vec2f_t ){0.0f, -1 * SLIDER_BOX_DEFAULT_HEIGHT/ 2}), font_size);
+}
+
+
+/*================================================================================================
+ // Label
+================================================================================================*/
+
+typedef struct label_t {
+
+    const char  *string;
+    u64         string_len;
+    vec2f_t     norm_position;
+    f32         norm_font_size;
+
+} label_t;
+
+/*-------------------------------------------------------------------------------------------------
+ // Declarations
+-------------------------------------------------------------------------------------------------*/
+
+label_t         label_init(const char *value, vec2f_t norm_position, f32 norm_font_size);
+//NOTE:(macro)  label_update_value(label_t *, const char *) -> void
+void            label_draw(crapgui_t *gui, label_t *label);
+
+
+/*-------------------------------------------------------------------------------------------------
+ // Implementation
+-------------------------------------------------------------------------------------------------*/
+
+#define label_update_value(plabel, text) do {\
+    (plabel)->string = text;\
+    (plabel)->string_len = strlen(text);\
+} while(0)
+
+
+label_t label_init(const char *value, vec2f_t norm_position, f32 norm_font_size)
+{
+    return (label_t) {
+        .string = value,
+        .string_len = strlen(value),
+        .norm_position = norm_position,
+        .norm_font_size = norm_font_size
+    };
+}
+
+bool label_is_mouse_dragging(crapgui_t *gui, label_t *label)
+{
+    vec2f_t norm_mouse_position  = window_mouse_get_norm_position(gui->window_handle);
+    quadf_t quad = quadf_init(label->norm_position, label->norm_font_size * label->string_len, label->norm_font_size);
+
+    bool is_mouse_dragging  = (window_mouse_button_is_held(gui->window_handle) && quadf_is_point_in_quad(quad, norm_mouse_position));
+
+    if (is_mouse_dragging) 
+    {
+        vec2f_t mouse_at_center_offset_position = {
+            .cmp[X] = norm_mouse_position.cmp[X] - (label->norm_font_size * label->string_len)/2,
+            .cmp[Y] = norm_mouse_position.cmp[Y] + label->norm_font_size/2
+        };
+
+        // NOTE: updates the label position
+        label->norm_position = mouse_at_center_offset_position;
+    } 
+    return is_mouse_dragging;
+}
+
+void label_draw(crapgui_t *gui, label_t *label)
+{
+    gl_ascii_font_render_text(gui->font_handle, label->string, label->norm_position, label->norm_font_size);
 }
 
