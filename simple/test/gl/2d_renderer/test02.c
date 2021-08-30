@@ -41,11 +41,11 @@ int main(void)
 
     gl_shader_t shader = gl_shader_from_file_init("./wood.vs", "./wood.fs");
     int i = 0;
-    gl_texture2d_t texture = texture_init("./wall.jpg");
+    gl_texture2d_t texture = gl_texture2d_init("./wall.jpg");
     gl_renderer2d_t renderer = gl_renderer2d_init(&shader, &texture);
 
 
-    while (window.is_open)
+    window_while_is_open(&window)
     {
         window_gl_render_begin(&window);
             gl_renderer2d_draw_quad(&renderer, qua);
@@ -53,7 +53,7 @@ int main(void)
         window_gl_render_end(&window);
     }
 
-    gl_render2d_destroy(&renderer);
+    gl_renderer2d_destroy(&renderer);
     window_destroy(&window);
 
     return 0;

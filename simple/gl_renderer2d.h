@@ -9,6 +9,7 @@
 #include "gl/VAO.h"
 #include "gl/VBO.h"
 #include "gl/EBO.h"
+#include "gl/framebuffer.h"
 
 /*====================================================================================
  // OpenGL specific types (Vertex, Triangles and Quads) and custom batch type
@@ -26,33 +27,33 @@ typedef struct  gl_vertex_t {
 typedef struct  { gl_vertex_t vertex[3]; } gl_tri_t;
 typedef struct  { gl_vertex_t vertex[4]; } gl_quad_t;
 
-// Creates a quad of a single color assuming no textures
-gl_quad_t gl_quad(quadf_t quad, vec3f_t color, quadf_t tex_coord)
+// Creates a quad suited for OpenGL
+gl_quad_t gl_quad(quadf_t positions, vec3f_t color, quadf_t tex_coord)
 {
     return (gl_quad_t) {
 
-        .vertex[0] = (gl_vertex_t ){ 
-            quad.vertex[0].cmp[X], quad.vertex[0].cmp[Y], 0.0f, 
+        .vertex[TOP_LEFT] = (gl_vertex_t ){ 
+            positions.vertex[0].cmp[X], positions.vertex[0].cmp[Y], 0.0f, 
             color, 
-            0.0f, 0.0f,
+            tex_coord.vertex[0].cmp[X], tex_coord.vertex[0].cmp[Y],
             0
         }, 
-        .vertex[1] = (gl_vertex_t ){ 
-            quad.vertex[1].cmp[X], quad.vertex[1].cmp[Y], 0.0f, 
+        .vertex[TOP_RIGHT] = (gl_vertex_t ){ 
+            positions.vertex[1].cmp[X], positions.vertex[1].cmp[Y], 0.0f, 
             color, 
-            0.0f, 0.0f,
+            tex_coord.vertex[1].cmp[X], tex_coord.vertex[1].cmp[Y],
             0
         }, 
-        .vertex[2] = (gl_vertex_t ) { 
-            quad.vertex[2].cmp[X], quad.vertex[2].cmp[Y], 0.0f, 
+        .vertex[BOTTOM_RIGHT] = (gl_vertex_t ){ 
+            positions.vertex[2].cmp[X], positions.vertex[2].cmp[Y], 0.0f, 
             color, 
-            0.0f, 0.0f,
+            tex_coord.vertex[2].cmp[X], tex_coord.vertex[2].cmp[Y],
             0
         }, 
-        .vertex[3] = (gl_vertex_t ){ 
-            quad.vertex[3].cmp[X], quad.vertex[3].cmp[Y], 0.0f, 
+        .vertex[BOTTOM_LEFT] = (gl_vertex_t ){ 
+            positions.vertex[3].cmp[X], positions.vertex[3].cmp[Y], 0.0f, 
             color, 
-            0.0f, 0.0f,
+            tex_coord.vertex[3].cmp[X], tex_coord.vertex[3].cmp[Y],
             0
         }, 
     };
@@ -139,6 +140,8 @@ void                gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_
 void                gl_renderer2d_draw_triangle(gl_renderer2d_t *renderer, const gl_tri_t tri);
 void                gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *batch);
 
+void                gl_renderer2d_draw_frame_buffer(gl_framebuffer_t *fbo, const gl_quad_t quad);
+
 //NOTE: renderer destroy only frees the vao in it and not the shaders and textures passed to it
 void                gl_renderer2d_destroy(gl_renderer2d_t *renderer);
 
@@ -193,7 +196,7 @@ void gl_renderer2d_draw_triangle(gl_renderer2d_t *renderer, const gl_tri_t tri)
             if (renderer->texture != NULL) {
                 vao_set_attributes(&renderer->vao, 0, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord));
                 vao_set_attributes(&renderer->vao, 0, 1, GL_UNSIGNED_INT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_id));
-                gl_texture_bind(renderer->texture, 0);
+                gl_texture2d_bind(renderer->texture, 0);
             }
 
             gl_shader_bind(renderer->shader);
@@ -239,7 +242,7 @@ void gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_quad_t quad)
             if (renderer->texture != NULL) {
                 vao_set_attributes(&renderer->vao, 0, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord));
                 vao_set_attributes(&renderer->vao, 0, 1, GL_UNSIGNED_INT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_id));
-                gl_texture_bind(renderer->texture, 0);
+                gl_texture2d_bind(renderer->texture, 0);
             }
 
             gl_shader_bind(renderer->shader);
@@ -297,7 +300,7 @@ void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *
             if (renderer->texture != NULL) {
                 vao_set_attributes(&renderer->vao, 0, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord));
                 vao_set_attributes(&renderer->vao, 0, 1, GL_UNSIGNED_INT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_id));
-                gl_texture_bind(renderer->texture, 0);
+                gl_texture2d_bind(renderer->texture, 0);
             }
             gl_shader_bind(renderer->shader);
             vao_draw(&renderer->vao);
@@ -317,6 +320,13 @@ void gl_renderer2d_destroy(gl_renderer2d_t *renderer)
 
     // vao
     vao_destroy(&renderer->vao);
+}
+
+void gl_renderer2d_draw_frame_buffer(gl_framebuffer_t *fbo, const gl_quad_t quad)
+{
+    gl_renderer2d_t rd = gl_renderer2d_init(&fbo->color_shader, &fbo->color_texture);
+    gl_renderer2d_draw_quad(&rd, quad);
+    gl_renderer2d_destroy(&rd);
 }
 
 #endif //__MY_GL_RENDERER_2D_H__

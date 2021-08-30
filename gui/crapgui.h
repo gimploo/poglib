@@ -411,3 +411,69 @@ void label_draw(crapgui_t *gui, label_t *label)
     gl_ascii_font_render_text(gui->font_handle, label->string, label->norm_position, label->norm_font_size);
 }
 
+
+/*=================================================================================
+ // Frame
+=================================================================================*/
+
+#define FRAME_DEFAULT_COLOR (vec3f_t ){0.2f, 0.2f, 0.2f}
+
+typedef struct frame_t {
+    
+    vec2f_t             norm_position;
+    f32                 norm_width;
+    f32                 norm_height;
+    vec3f_t             norm_color;
+    quadf_t             __quad_vertices;
+    gl_framebuffer_t    fbo;
+
+    bool                is_open;
+
+} frame_t;
+
+
+frame_t frame_init(crapgui_t *gui, vec2f_t norm_position, f32 norm_width, f32 norm_height)
+{
+    return (frame_t) {
+        .norm_position = norm_position,
+        .norm_width = norm_width,
+        .norm_height = norm_height,
+        .norm_color  = FRAME_DEFAULT_COLOR,
+        .__quad_vertices = quadf_init(norm_position, norm_width, norm_height),
+        .fbo =  gl_framebuffer_init(gui->window_handle->width, gui->window_handle->height),
+        .is_open = true,
+    };
+}
+
+void frame_begin(frame_t *frame)
+{
+    glClearColor(
+            frame->norm_color.cmp[X], 
+            frame->norm_color.cmp[Y],
+            frame->norm_color.cmp[Z],
+            1.0f);
+    gl_framebuffer_begin_scene(&frame->fbo);
+}
+
+void frame_end(frame_t *frame)
+{
+    gl_framebuffer_end_scene(&frame->fbo);
+}
+
+void frame_draw(frame_t *frame)
+{
+    gl_quad_t quad = gl_quad(
+            quadf_init(frame->norm_position, frame->norm_width, frame->norm_height),
+            frame->norm_color, 
+            quadf_init((vec2f_t ){0.0f, 1.0f}, 1.0f, 1.0f));
+
+    gl_renderer2d_draw_frame_buffer(&frame->fbo, quad); 
+}
+
+void frame_destroy(frame_t *frame)
+{
+    gl_framebuffer_destroy(&frame->fbo);
+}
+
+
+

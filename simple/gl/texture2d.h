@@ -27,25 +27,66 @@ typedef struct gl_texture2d_t {
 -----------------------------------------------------*/
 
 
-gl_texture2d_t              gl_texture_init(const char * file_path);
-void                        gl_texture_destroy(const gl_texture2d_t *texture);
-//NOTE:(macro)              gl_texture_bind(gl_texture2d_t *, u32 ) --> void
-//NOTE:(macro)              gl_texture_unbind(void) --> void
-void                        gl_texture_dump(const gl_texture2d_t *texture);
+gl_texture2d_t              gl_texture2d_init(const char * file_path);
+gl_texture2d_t              gl_texture2d_empty_init(u32 width, u32 height);
+void                        gl_texture2d_destroy(const gl_texture2d_t *texture);
+//NOTE:(macro)              gl_texture2d_bind(gl_texture2d_t *, u32 slot) --> void
+//NOTE:(macro)              gl_texture2d_unbind(void) --> void
+void                        gl_texture2d_dump(const gl_texture2d_t *texture);
 
 
 /*------------------------------------------------------
  // Implementation
 ------------------------------------------------------*/
 
-#define gl_texture_bind(ptex, slot) {\
+#define gl_texture2d_bind(ptex, slot) {\
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + (slot)));\
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, (ptex)->id));\
 }
-#define gl_texture_unbind()    (GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
+#define gl_texture2d_unbind()    (GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
 
 
-gl_texture2d_t gl_texture_init(const char *file_path)
+//NOTE: this function was created for framebuffers since they use color textures also the data is stored in RGB not RGBA8
+gl_texture2d_t gl_texture2d_empty_init(u32 width, u32 height)
+{   
+    GLuint id;
+
+    GL_CHECK(glGenTextures(1, &id));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, id));
+
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));	
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+
+
+    GL_CHECK(glTexImage2D(
+        GL_TEXTURE_2D, 
+        0, 
+        GL_RGB, // The format opengl will store the pixel data in
+        width,
+        height,
+        0,
+        GL_RGB, // The format the buf variable is in
+        GL_UNSIGNED_BYTE,
+        NULL
+     ));
+
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+    GL_LOG("Texture `%i` successfully created", id);
+
+    return (gl_texture2d_t) {
+        .id        = id,
+        .file_path = NULL,
+        .buf       = NULL,
+        .width     = (int)width,
+        .height    = (int)height,
+        .bpp       = 0,
+    };
+
+}
+
+gl_texture2d_t gl_texture2d_init(const char *file_path)
 {
     if (file_path == NULL) eprint("file argument is null");
 
@@ -114,7 +155,7 @@ gl_texture2d_t gl_texture_init(const char *file_path)
     };
 }
 
-void gl_texture_destroy(const gl_texture2d_t *texture)
+void gl_texture2d_destroy(const gl_texture2d_t *texture)
 {
     if (texture == NULL) eprint("texture argument is null");
 
@@ -123,7 +164,7 @@ void gl_texture_destroy(const gl_texture2d_t *texture)
     stbi_image_free(texture->buf);
 }
 
-void gl_texture_dump(const gl_texture2d_t *texture)
+void gl_texture2d_dump(const gl_texture2d_t *texture)
 {
     if (texture == NULL) eprint("texture argument is null");
 

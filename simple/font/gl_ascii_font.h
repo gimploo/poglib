@@ -278,7 +278,7 @@ void gl_ascii_font_render_text(
         vao_push(&handler->vao, &vbo);
             vao_set_attributes(&handler->vao, 0, 3, GL_FLOAT, false, 3 * sizeof(float), 0);      
             vao_set_attributes(&handler->vao, 0, 2, GL_FLOAT, false, 2 * sizeof(float), 12 * sizeof(float));
-            gl_texture_bind(&handler->texture, 0);
+            gl_texture2d_bind(&handler->texture, 0);
             gl_shader_bind(&handler->shader);
             vao_draw(&handler->vao); 
         vao_pop(&handler->vao);
@@ -303,7 +303,7 @@ void gl_ascii_font_destroy(gl_ascii_font_t *self)
 
     vao_destroy(&self->vao);
     gl_shader_destroy(&self->shader);
-    gl_texture_destroy(&self->texture);
+    gl_texture2d_destroy(&self->texture);
 }
 
 #endif //__MY__FONT__H__
