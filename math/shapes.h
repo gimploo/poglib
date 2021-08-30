@@ -20,8 +20,20 @@ typedef struct trif_t { vec2f_t vertex[3]; } trif_t;
 
 typedef struct quadf_t { vec2f_t vertex[4]; } quadf_t;
 
-#define QUAD_FMT    VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT "\n" 
-#define QUAD_ARG(q) VEC2F_ARG(&(q.vertex[0])), VEC2F_ARG(&(q.vertex[1])), VEC2F_ARG(&(q.vertex[2])), VEC2F_ARG(&(q.vertex[3])) 
+#define QUAD_FMT        VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT "\n" 
+#define QUAD_ARG(quad) VEC2F_ARG(&(quad.vertex[0])), VEC2F_ARG(&(quad.vertex[1])), VEC2F_ARG(&(quad.vertex[2])), VEC2F_ARG(&(quad.vertex[3]))
+
+void quadf_print(quadf_t quad)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        printf(VEC2F_FMT", ", VEC2F_ARG(&quad.vertex[0]));
+        printf(VEC2F_FMT", ", VEC2F_ARG(&quad.vertex[1]));
+        printf(VEC2F_FMT", ", VEC2F_ARG(&quad.vertex[2]));
+        printf(VEC2F_FMT", ", VEC2F_ARG(&quad.vertex[3]));
+    }
+    printf("\n");
+}
 
 static inline quadf_t quadf(f32 x)
 {

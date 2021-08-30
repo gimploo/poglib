@@ -20,7 +20,7 @@ int oldmain(void)
     };                      
 
     gl_shader_t shader = gl_shader_default_init();
-    gl_texture2d_t texture = texture_init("./wall.jpg");
+    gl_texture2d_t texture = gl_texture2d_init("./wall.jpg");
 
     vao_t vao = vao_init(1);
     vbo_t vbo = vbo_init(&quad, sizeof(quad));
@@ -32,11 +32,11 @@ int oldmain(void)
     vao_set_attributes(&vao, 0, 2, GL_FLOAT, false, 8 * sizeof(float), 6 * sizeof(float));
 
 
-    while (window.is_open)
+    window_while_is_open(&window)
     {
         window_gl_render_begin(&window);
             gl_shader_bind(&shader);
-            texture_bind(&texture, 1);
+            gl_texture2d_bind(&texture, 1);
             vao_draw(&vao);
         window_gl_render_end(&window);
     }
@@ -53,13 +53,13 @@ int main(void)
 
     const gl_quad_t quad[2] = {    
                         // positon,            // color            // texture
-        (gl_vertex_t) {0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,   1.0f, 1.0f},
-        (gl_vertex_t) {0.5f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,   1.0f, 0.0f},
+        (gl_vertex_t) {0.0f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 1.0f},
+        (gl_vertex_t) {0.5f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 0.0f},
         (gl_vertex_t) {0.5f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 0.0f},
         (gl_vertex_t) {0.0f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 1.0f},
 
-        (gl_vertex_t) {-0.5f, 0.0f, 1.0f,  0.0f, 1.0f, 0.0f,   1.0f, 0.0f},
-        (gl_vertex_t) {0.0f, 0.0f, 1.0f,  1.0f, 0.0f, 0.0f,   1.0f, 1.0f} ,
+        (gl_vertex_t) {-0.5f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 0.0f},
+        (gl_vertex_t) {0.0f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 1.0f} ,
         (gl_vertex_t) {0.0f, -0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 0.0f},
         (gl_vertex_t) {-0.5f, -0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 1.0f},
 
@@ -74,19 +74,20 @@ int main(void)
     };
 
     gl_shader_t shader = gl_shader_from_file_init("./wood.vs", "./wood.fs");
-    gl_texture2d_t texture = texture_init("./wall.jpg");
+    gl_texture2d_t texture = gl_texture2d_init("./wall.jpg");
     gl_renderer2d_t renderer = gl_renderer2d_init(&shader, &texture);
     /*gl_renderer2d_t renderer = gl_renderer2d_init(&shader,NULL);*/
 
 
-    while (window.is_open)
+    window_while_is_open(&window)
     {
         window_gl_render_begin(&window);
-            gl_renderer2d_draw_from_batch(&renderer, &batch);
+            /*gl_renderer2d_draw_from_batch(&renderer, &batch);*/
+            gl_renderer2d_draw_quad(&renderer, quad[0]);
         window_gl_render_end(&window);
     }
 
-    gl_render2d_destroy(&renderer);
+    gl_renderer2d_destroy(&renderer);
     window_destroy(&window);
 
     return 0;
