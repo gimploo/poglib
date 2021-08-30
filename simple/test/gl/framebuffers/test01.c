@@ -41,13 +41,14 @@ int main(void)
 
     gl_shader_t shader02 = gl_shader_from_file_init("./wood.vs", "./wood.fs");
     gl_framebuffer_t fbo = gl_framebuffer_init(1080, 920);
+
     gl_framebuffer_attach_color_buffer_texture(&fbo, shader02, "u_texture01");
     gl_framebuffer_attach_render_buffer(&fbo);
 
     const gl_quad_t fbo_quad = gl_quad(
-            quadf_init((vec2f_t ){-1.0f, 1.0f}, 1.0f, 1.0f), 
-            vec3f(0.0f), 
-            quadf_init((vec2f_t ){0.0f, 1.0f}, 1.0f, 1.0f));
+            quadf_init((vec2f_t ){-1.0f, 1.0f}, 1.0f, 1.0f), // position
+            vec3f(1.0f),  // color
+            quadf_init((vec2f_t ){0.0f, 1.0f}, 1.0f, 1.0f)); // texture_coord
 
     window_while_is_open(&window)
     {
