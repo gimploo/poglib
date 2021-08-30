@@ -35,25 +35,28 @@ int main(void)
     };
 
     gl_shader_t shader = gl_shader_from_file_init("./wood.vs", "./wood.fs");
+
     gl_texture2d_t texture = gl_texture_init("./wall.jpg");
     gl_renderer2d_t renderer = gl_renderer2d_init(&shader, &texture);
 
-    gl_framebuffer_t fbo = gl_framebuffer_init(1080, 920);
     gl_shader_t shader02 = gl_shader_from_file_init("./wood.vs", "./wood.fs");
-    gl_framebuffer_attach_color_texture(&fbo, shader02, "u_texture01");
+    gl_framebuffer_t fbo = gl_framebuffer_init(1080, 920);
+    gl_framebuffer_attach_color_buffer_texture(&fbo, shader02, "u_texture01");
     gl_framebuffer_attach_render_buffer(&fbo);
 
     const gl_quad_t fbo_quad = gl_quad(
-            quadf_init((vec2f_t ){-1.0f, -0.2f}, 0.4f, 0.4f), 
-            vec3f(1.0f), 
-            quadf_init((vec2f_t ){-1.0f, 1.0f}, 2.0f, 2.0f));
+            quadf_init((vec2f_t ){-1.0f, 1.0f}, 1.0f, 1.0f), 
+            vec3f(0.0f), 
+            quadf_init((vec2f_t ){0.0f, 1.0f}, 1.0f, 1.0f));
 
     window_while_is_open(&window)
     {
+        //NOTE: draws the quads to an offscreen buffer
         gl_framebuffer_begin_scene(&fbo);
             gl_renderer2d_draw_from_batch(&renderer, &batch);
         gl_framebuffer_end_scene(&fbo);
 
+        //NOTE: what u see on screen
         window_gl_render_begin(&window);
             gl_renderer2d_draw_from_batch(&renderer, &batch);
             gl_framebuffer_draw_quad(&fbo, fbo_quad);
