@@ -24,6 +24,14 @@ int main(void)
     {
         frame_begin(&frame01);
             
+            button_draw(&gui, &button01);
+            slider_draw(&gui, &slider01);
+            label_draw(&gui, &label01);
+    
+        frame_end(&frame01);
+
+        crapgui_begin_ui(&gui);
+
             if (button_is_mouse_over(&frame01, &button01)) {
                 printf("mouse_over\n"); 
                 button_update_color(&button01, ((vec3f_t){0.0f, 0.0f,1.0f}));
@@ -39,17 +47,9 @@ int main(void)
                 button_update_color(&button01, ((vec3f_t){0.0f, 1.0f, 0.0f}));
                 button_update_label(&button01, "mouse drag");
             }
-            button_draw(&gui, &button01);
 
             if (slider_box_is_mouse_dragging(&frame01, &slider01))
                 printf("slider\n");
-            slider_draw(&gui, &slider01);
-
-            label_draw(&gui, &label01);
-    
-        frame_end(&frame01);
-
-        crapgui_begin_ui(&gui);
 
             frame_draw(&frame01);
 

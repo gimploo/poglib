@@ -33,16 +33,32 @@ const char *const GUI_FS_SHADER_CODE =
     "}";
 
 
+//NOTE: gui header
 typedef struct crapgui_t {
     
     window_t        *window_handler;
     gl_ascii_font_t *font_handler;
     gl_renderer2d_t renderer_handler;
 
-    stack_t         frames;
-
 } crapgui_t;
 
+//NOTE: the type of ui components currently supported
+typedef enum ui_component_type {
+
+    UI_FRAME = 0,
+    UI_BUTTON,
+    UI_SLIDER,
+    UI_LABEL,
+    UI_COUNT
+
+} ui_component_type;
+
+typedef struct ui_component_t {
+
+    void                *component_addr;
+    ui_component_type   type;
+
+} ui_component_t;
 
 /*--------------------------------------------------------------------------------------
  // Declarations
@@ -101,7 +117,8 @@ void crapgui_destroy(crapgui_t *gui)
  // Frame
 =================================================================================*/
 
-#define FRAME_DEFAULT_COLOR (vec3f_t ){0.2f, 0.2f, 0.2f}
+#define FRAME_DEFAULT_COLOR                 (vec3f_t ){0.2f, 0.2f, 0.2f}
+#define FRAME_DEFAULT_UI_COMPONENT_COUNT    10 
 
 typedef struct frame_t {
 
@@ -114,21 +131,26 @@ typedef struct frame_t {
     gl_framebuffer_t    fbo;
 
     bool                is_open;
-    u32                 ui_components_count; //TODO: not used yet
+    stack_t             ui_components;
 
 } frame_t;
 
+
+//NOTE: this array holds the address of the ui components and not the components itself
+
+ui_component_t FRAME_STACK_ARRAY[FRAME_DEFAULT_UI_COMPONENT_COUNT];
 
 /*-------------------------------------------------------------------------------
  // Declarations
 -------------------------------------------------------------------------------*/
 
 frame_t         frame_init(crapgui_t *gui, vec2f_t norm_position, f32 norm_width, f32 norm_height);
-void            frame_draw(frame_t *frame);
-void            frame_destroy(frame_t *frame);
 
 void            frame_begin(frame_t *frame);
 void            frame_end(frame_t *frame);
+
+void            frame_draw(frame_t *frame);
+void            frame_destroy(frame_t *frame);
 
 /*-------------------------------------------------------------------------------
  // Implementation
@@ -169,7 +191,7 @@ frame_t frame_init(crapgui_t *gui, vec2f_t norm_position, f32 norm_width, f32 no
         .__quad_vertices = quadf_init(norm_position, norm_width, norm_height),
         .fbo =  gl_framebuffer_init(gui->window_handler->width, gui->window_handler->height),
         .is_open = true,
-        .ui_components_count = 0,
+        .ui_components = stack_init((void **)FRAME_STACK_ARRAY, FRAME_DEFAULT_UI_COMPONENT_COUNT),
     };
 }
 
@@ -248,7 +270,7 @@ bool            button_is_mouse_dragging(frame_t *frame, button_t *button);
 
 button_t button_init(const char *label, vec2f_t norm_position)
 {
-    return (button_t ) {
+    return (button_t ){
         .label = label,
         .norm_position = norm_position,
         .width = BUTTON_DEFAULT_WIDTH,
@@ -434,8 +456,6 @@ bool slider_box_is_mouse_dragging(frame_t *frame, slider_t *slider)
     } 
     return is_mouse_dragging;
 }
-
-
 
 void slider_draw(crapgui_t *gui, slider_t *slider)
 {
