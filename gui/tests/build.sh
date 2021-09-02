@@ -29,6 +29,7 @@ function cleanup_envirnoment {
 function compile {
 
     local CC="gcc"
+    local FLAGS="-g -pedantic -Wall -Wno-missing-braces"
     local LINKERS="-lSDL2 -lGLEW -lGLU -lGL -lm"
 
     local FILE_PATH="$1"
@@ -51,9 +52,7 @@ function gdb_debug {
     fi
 
     echo "${blue}"
-        sed "5p;d" $TMP
-    echo "${red}"
-        sed "6p;d" $TMP
+    cat "$TMP"
     echo "${reset}"
 
     rm $TMP
