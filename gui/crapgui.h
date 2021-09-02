@@ -5,7 +5,7 @@
 #include "./../simple/font/gl_ascii_font.h"
 
 /*===================================================================
- // Immediate style gui library
+ // crapgui is an immediate style gui library
 ===================================================================*/
 
 const char *const GUI_VS_SHADER_CODE = 
@@ -35,10 +35,11 @@ const char *const GUI_FS_SHADER_CODE =
 
 typedef struct crapgui_t {
     
-    window_t        *window_handle;
-    gl_ascii_font_t *font_handle;
-    gl_renderer2d_t renderer_handle;
+    window_t        *window_handler;
+    gl_ascii_font_t *font_handler;
+    gl_renderer2d_t renderer_handler;
 
+    stack_t         frames;
 
 } crapgui_t;
 
@@ -48,8 +49,8 @@ typedef struct crapgui_t {
 --------------------------------------------------------------------------------------*/
 
 crapgui_t       crapgui_init(window_t *window, gl_ascii_font_t *font);
-void            crapgui_begin(crapgui_t *gui);
-void            crapgui_end(crapgui_t *gui); 
+void            crapgui_begin_ui(crapgui_t *gui);
+void            crapgui_end_ui(crapgui_t *gui); 
 void            crapgui_destroy(crapgui_t *gui);
 
 
@@ -67,37 +68,143 @@ crapgui_t crapgui_init(window_t *window, gl_ascii_font_t *font)
     *gui_shader = gl_shader_from_cstr_init(GUI_VS_SHADER_CODE, GUI_FS_SHADER_CODE);
 
     return (crapgui_t ) {
-        .window_handle      = window,
-        .font_handle        = font,
-        .renderer_handle    = gl_renderer2d_init(gui_shader, NULL),
+        .window_handler      = window,
+        .font_handler        = font,
+        .renderer_handler    = gl_renderer2d_init(gui_shader, NULL),
     };
 }
 
-void crapgui_begin(crapgui_t *gui)
+void crapgui_begin_ui(crapgui_t *gui)
 {
-    window_gl_render_begin(gui->window_handle);
+    window_gl_render_begin(gui->window_handler);
 }
 
-void crapgui_end(crapgui_t *gui)
+void crapgui_end_ui(crapgui_t *gui)
 {
-    window_gl_render_end(gui->window_handle);
+    window_gl_render_end(gui->window_handler);
 }
 
 void crapgui_destroy(crapgui_t *gui)
 {
     // shader
-    gl_shader_destroy(gui->renderer_handle.shader);
-    free(gui->renderer_handle.shader);
+    gl_shader_destroy(gui->renderer_handler.shader);
+    free(gui->renderer_handler.shader);
 
     // renderer
-    gl_renderer2d_destroy(&gui->renderer_handle);
+    gl_renderer2d_destroy(&gui->renderer_handler);
 }
 
-INTERNAL bool __is_mouse_over_quad(window_t *window, quadf_t norm_quad)
+
+
+
+/*=================================================================================
+ // Frame
+=================================================================================*/
+
+#define FRAME_DEFAULT_COLOR (vec3f_t ){0.2f, 0.2f, 0.2f}
+
+typedef struct frame_t {
+
+    crapgui_t           *gui_handler; 
+    vec2f_t             norm_position;
+    f32                 norm_width;
+    f32                 norm_height;
+    vec3f_t             norm_color;
+    quadf_t             __quad_vertices;
+    gl_framebuffer_t    fbo;
+
+    bool                is_open;
+    u32                 ui_components_count; //TODO: not used yet
+
+} frame_t;
+
+
+/*-------------------------------------------------------------------------------
+ // Declarations
+-------------------------------------------------------------------------------*/
+
+frame_t         frame_init(crapgui_t *gui, vec2f_t norm_position, f32 norm_width, f32 norm_height);
+void            frame_draw(frame_t *frame);
+void            frame_destroy(frame_t *frame);
+
+void            frame_begin(frame_t *frame);
+void            frame_end(frame_t *frame);
+
+/*-------------------------------------------------------------------------------
+ // Implementation
+-------------------------------------------------------------------------------*/
+
+INTERNAL bool __frame_is_mouse_over(frame_t *frame)
 {
-    vec2f_t mouse_position = window_mouse_get_norm_position(window);
-    return quadf_is_point_in_quad(norm_quad, mouse_position);
+    vec2f_t norm_mouse_position = window_mouse_get_norm_position(frame->gui_handler->window_handler);
+    return quadf_is_point_in_quad(frame->__quad_vertices, norm_mouse_position);
 }
+
+INTERNAL vec2f_t __frame_get_mouse_position_relative_to_frame_coordinate_axis(frame_t *frame)
+{
+    //NOTE: here we convert the mouse position in the frame to the window position, 
+    //because all the ui components holds the quad vertices relative to the window and not to the frame 
+
+    vec2i_t mouse_position = window_mouse_get_position(frame->gui_handler->window_handler);
+
+    u32 frame_width = ((frame->norm_width)/2.0f) * frame->gui_handler->window_handler->width;
+    u32 frame_height = ((frame->norm_height)/2.0f) * frame->gui_handler->window_handler->height;
+
+    vec2f_t output = {
+         .cmp[X] = (f32) (-1.0 + 2.0 *  (f32) mouse_position.cmp[X] / frame_width),
+         .cmp[Y] = (f32) (1.0 - 2.0 * (f32) mouse_position.cmp[Y] / frame_height),
+    };
+
+    return output;
+}
+
+frame_t frame_init(crapgui_t *gui, vec2f_t norm_position, f32 norm_width, f32 norm_height)
+{
+    return (frame_t) {
+        .gui_handler = gui,
+        .norm_position = norm_position,
+        .norm_width = norm_width,
+        .norm_height = norm_height,
+        .norm_color  = FRAME_DEFAULT_COLOR,
+        .__quad_vertices = quadf_init(norm_position, norm_width, norm_height),
+        .fbo =  gl_framebuffer_init(gui->window_handler->width, gui->window_handler->height),
+        .is_open = true,
+        .ui_components_count = 0,
+    };
+}
+
+
+void frame_begin(frame_t *frame)
+{
+    glClearColor(
+            frame->norm_color.cmp[X], 
+            frame->norm_color.cmp[Y],
+            frame->norm_color.cmp[Z],
+            0.0f);
+    gl_framebuffer_begin_scene(&frame->fbo);
+}
+
+
+void frame_end(frame_t *frame)
+{
+    gl_framebuffer_end_scene(&frame->fbo);
+}
+
+void frame_draw(frame_t *frame)
+{
+    gl_quad_t quad = gl_quad(
+            quadf_init(frame->norm_position, frame->norm_width, frame->norm_height),
+            frame->norm_color, 
+            quadf_init((vec2f_t ){0.0f, 1.0f}, 1.0f, 1.0f));
+
+    gl_renderer2d_draw_frame_buffer(&frame->fbo, quad); 
+}
+
+void frame_destroy(frame_t *frame)
+{
+    gl_framebuffer_destroy(&frame->fbo);
+}
+
 
 
 /*================================================================================================
@@ -131,9 +238,9 @@ void            button_draw(crapgui_t *gui, button_t *button);
 //NOTE:(macro)  button_update_label(button_t *, const char *) -> void
 //NOTE:(macro)  button_update_norm_position(button_t *, vec2f_t) -> void
 
-bool            button_is_mouse_over(crapgui_t *gui, button_t *button);
-bool            button_is_mouse_clicked(crapgui_t *gui, button_t *button);
-bool            button_is_mouse_dragging(crapgui_t *gui, button_t *button);
+bool            button_is_mouse_over(frame_t *frame, button_t *button);
+bool            button_is_mouse_clicked(frame_t *frame, button_t *button);
+bool            button_is_mouse_dragging(frame_t *frame, button_t *button);
 
 /*------------------------------------------------------------------------
  // Implementation
@@ -162,9 +269,9 @@ button_t button_init(const char *label, vec2f_t norm_position)
 void button_draw(crapgui_t *gui, button_t *button) 
 {
     const gl_quad_t quad= gl_quad(button->__quad_vertices, button->norm_color, quadf(0));
-    gl_renderer2d_draw_quad(&gui->renderer_handle, quad); 
+    gl_renderer2d_draw_quad(&gui->renderer_handler, quad); 
     gl_ascii_font_render_text(
-            gui->font_handle, 
+            gui->font_handler, 
             button->label, 
             vec2f_add(
                 button->norm_position, 
@@ -173,25 +280,28 @@ void button_draw(crapgui_t *gui, button_t *button)
 }
 
 
-bool button_is_mouse_over(crapgui_t *gui, button_t *button)
+bool button_is_mouse_over(frame_t *frame, button_t *button)
 {
-    vec2f_t mouse_position = window_mouse_get_norm_position(gui->window_handle);
+    //NOTE: this checks if the mouse is over the frame 
+    if (!__frame_is_mouse_over(frame)) return false;
+
+    vec2f_t mouse_position = __frame_get_mouse_position_relative_to_frame_coordinate_axis(frame);
     return quadf_is_point_in_quad(button->__quad_vertices, mouse_position);
 }
 
-bool button_is_mouse_clicked(crapgui_t *gui, button_t *button)
+bool button_is_mouse_clicked(frame_t *frame, button_t *button)
 {
-    return (window_mouse_button_just_pressed(gui->window_handle) && button_is_mouse_over(gui, button));
+    return (window_mouse_button_just_pressed(frame->gui_handler->window_handler) && button_is_mouse_over(frame, button));
 }
 
-bool button_is_mouse_dragging(crapgui_t *gui, button_t *button)
+bool button_is_mouse_dragging(frame_t *frame, button_t *button)
 {
     // NOTE: this code will have the button rendererd as the mouse at the center
-    bool is_drag = (window_mouse_button_is_held(gui->window_handle) && button_is_mouse_over(gui, button));
+    bool is_drag = (window_mouse_button_is_held(frame->gui_handler->window_handler) && button_is_mouse_over(frame, button));
 
     if (is_drag) 
     {
-        vec2f_t mouse_position = window_mouse_get_norm_position(gui->window_handle);
+        vec2f_t mouse_position = __frame_get_mouse_position_relative_to_frame_coordinate_axis(frame);
         vec2f_t mouse_at_center_offset_position = {
             .cmp[X] = (mouse_position.cmp[X] - (BUTTON_DEFAULT_WIDTH/2)),
             .cmp[Y] = (mouse_position.cmp[Y] + (BUTTON_DEFAULT_HEIGHT/2))
@@ -239,18 +349,25 @@ typedef struct slider_t {
 ---------------------------------------------------------------*/
 
 slider_t        slider_init(vec2f_t range, vec2f_t norm_position);
-//NOTE:(macro)  slider_get_value(slider_t *) -> f32
 void            slider_draw(crapgui_t *gui, slider_t *slider);
-bool            slider_box_is_mouse_dragging(crapgui_t *gui, slider_t *slider);
+
+//NOTE:(macro)  slider_get_value(slider_t *) -> f32
+//NOTE:(macro)  slider_body_update_color(slider_t *, vec3f_t) -> f32
+//NOTE:(macro)  slider_box_update_color(slider_t *, vec3f_t) -> f32
+
+bool            slider_box_is_mouse_dragging(frame_t *frame, slider_t *slider);
 
 
 /*---------------------------------------------------------------
  // Implementation
 ---------------------------------------------------------------*/
 
-INTERNAL bool __box_is_mouse_over(crapgui_t *gui, slider_t *slider)
-{
-    vec2f_t mouse_position = window_mouse_get_norm_position(gui->window_handle);
+INTERNAL bool __box_is_mouse_over(frame_t *frame, slider_t *slider)
+{    
+    //NOTE: this checks if the mouse is over the frame 
+    if (!__frame_is_mouse_over(frame)) return false;
+
+    vec2f_t mouse_position = __frame_get_mouse_position_relative_to_frame_coordinate_axis(frame);
     return quadf_is_point_in_quad(slider->__box_vertices, mouse_position);
 }
 
@@ -281,11 +398,11 @@ slider_t slider_init(vec2f_t range, vec2f_t norm_position)
     };
 }
 
-bool slider_box_is_mouse_dragging(crapgui_t *gui, slider_t *slider)
+bool slider_box_is_mouse_dragging(frame_t *frame, slider_t *slider)
 {
-    bool is_mouse_dragging  = (window_mouse_button_is_held(gui->window_handle) && __box_is_mouse_over(gui, slider));
+    bool is_mouse_dragging  = (window_mouse_button_is_held(frame->gui_handler->window_handler) && __box_is_mouse_over(frame, slider));
 
-    vec2f_t mouse_position  = window_mouse_get_norm_position(gui->window_handle);
+    vec2f_t mouse_position  = __frame_get_mouse_position_relative_to_frame_coordinate_axis(frame);
 
     // NOTE: checks if the box goes out of the body of the slider
     if (mouse_position.cmp[X] <= (slider->__body_vertices.vertex[TOP_LEFT].cmp[X] + SLIDER_BOX_DEFAULT_WIDTH/2))
@@ -334,13 +451,13 @@ void slider_draw(crapgui_t *gui, slider_t *slider)
         .vertex_buffer_size = sizeof(buffer)
     };
 
-    gl_renderer2d_draw_from_batch(&gui->renderer_handle, &batch);
+    gl_renderer2d_draw_from_batch(&gui->renderer_handler, &batch);
 
     char text[(int )slider->range.cmp[Y]];
     snprintf(text, sizeof(text), "%f", slider->value);
     const f32 font_size = SLIDER_BOX_DEFAULT_WIDTH / 4;
 
-    gl_ascii_font_render_text(gui->font_handle, text, vec2f_add(slider->box_norm_position, (vec2f_t ){0.0f, -1 * SLIDER_BOX_DEFAULT_HEIGHT/ 2}), font_size);
+    gl_ascii_font_render_text(gui->font_handler, text, vec2f_add(slider->box_norm_position, (vec2f_t ){0.0f, -1 * SLIDER_BOX_DEFAULT_HEIGHT/ 2}), font_size);
 }
 
 
@@ -362,8 +479,9 @@ typedef struct label_t {
 -------------------------------------------------------------------------------------------------*/
 
 label_t         label_init(const char *value, vec2f_t norm_position, f32 norm_font_size);
-//NOTE:(macro)  label_update_value(label_t *, const char *) -> void
 void            label_draw(crapgui_t *gui, label_t *label);
+
+//NOTE:(macro)  label_update_value(label_t *, const char *) -> void
 
 
 /*-------------------------------------------------------------------------------------------------
@@ -386,94 +504,12 @@ label_t label_init(const char *value, vec2f_t norm_position, f32 norm_font_size)
     };
 }
 
-bool label_is_mouse_dragging(crapgui_t *gui, label_t *label)
-{
-    vec2f_t norm_mouse_position  = window_mouse_get_norm_position(gui->window_handle);
-    quadf_t quad = quadf_init(label->norm_position, label->norm_font_size * label->string_len, label->norm_font_size);
-
-    bool is_mouse_dragging  = (window_mouse_button_is_held(gui->window_handle) && quadf_is_point_in_quad(quad, norm_mouse_position));
-
-    if (is_mouse_dragging) 
-    {
-        vec2f_t mouse_at_center_offset_position = {
-            .cmp[X] = norm_mouse_position.cmp[X] - (label->norm_font_size * label->string_len)/2,
-            .cmp[Y] = norm_mouse_position.cmp[Y] + label->norm_font_size/2
-        };
-
-        // NOTE: updates the label position
-        label->norm_position = mouse_at_center_offset_position;
-    } 
-    return is_mouse_dragging;
-}
-
 void label_draw(crapgui_t *gui, label_t *label)
 {
-    gl_ascii_font_render_text(gui->font_handle, label->string, label->norm_position, label->norm_font_size);
+    gl_ascii_font_render_text(gui->font_handler, label->string, label->norm_position, label->norm_font_size);
 }
 
 
-/*=================================================================================
- // Frame
-=================================================================================*/
-
-#define FRAME_DEFAULT_COLOR (vec3f_t ){0.2f, 0.2f, 0.2f}
-
-typedef struct frame_t {
-    
-    vec2f_t             norm_position;
-    f32                 norm_width;
-    f32                 norm_height;
-    vec3f_t             norm_color;
-    quadf_t             __quad_vertices;
-    gl_framebuffer_t    fbo;
-
-    bool                is_open;
-
-} frame_t;
-
-
-frame_t frame_init(crapgui_t *gui, vec2f_t norm_position, f32 norm_width, f32 norm_height)
-{
-    return (frame_t) {
-        .norm_position = norm_position,
-        .norm_width = norm_width,
-        .norm_height = norm_height,
-        .norm_color  = FRAME_DEFAULT_COLOR,
-        .__quad_vertices = quadf_init(norm_position, norm_width, norm_height),
-        .fbo =  gl_framebuffer_init(gui->window_handle->width, gui->window_handle->height),
-        .is_open = true,
-    };
-}
-
-void frame_begin(frame_t *frame)
-{
-    glClearColor(
-            frame->norm_color.cmp[X], 
-            frame->norm_color.cmp[Y],
-            frame->norm_color.cmp[Z],
-            1.0f);
-    gl_framebuffer_begin_scene(&frame->fbo);
-}
-
-void frame_end(frame_t *frame)
-{
-    gl_framebuffer_end_scene(&frame->fbo);
-}
-
-void frame_draw(frame_t *frame)
-{
-    gl_quad_t quad = gl_quad(
-            quadf_init(frame->norm_position, frame->norm_width, frame->norm_height),
-            frame->norm_color, 
-            quadf_init((vec2f_t ){0.0f, 1.0f}, 1.0f, 1.0f));
-
-    gl_renderer2d_draw_frame_buffer(&frame->fbo, quad); 
-}
-
-void frame_destroy(frame_t *frame)
-{
-    gl_framebuffer_destroy(&frame->fbo);
-}
 
 
 

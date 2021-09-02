@@ -7,6 +7,9 @@
 #define normalize(x, min, max)   (((x) - (min))/((max) - (min)))
 #define denormalize(x, min, max) ((x) * ((max) - (min)) + (min))
 
+//From a random on discord
+#define map(value, from_low, from_high, to_low, to_high) ((value - from_low) * (to_high - to_low) / (from_high - from_low) + to_low)
+
 #define X 0
 #define Y 1
 #define Z 2

@@ -10,7 +10,7 @@ void empty(void *arg){}
 int main(void)
 {
     window_t window = window_init("TEST", 1080, 920, SDL_INIT_VIDEO);
-    window_set_background(&window, (vec4f_t) {1.0f, 1.0f, 1.0f, 1.0f});
+    window_set_background(&window, (vec4f_t) {0.0f, 0.0f, 1.0f, 1.0f});
 
     gl_ascii_font_t font = gl_ascii_font_init("./../../res/ascii_fonts/charmap-oldschool_black.png", 18, 7);
     crapgui_t gui = crapgui_init(&window, &font);
@@ -22,42 +22,38 @@ int main(void)
 
     window_while_is_open(&window)
     {
-
-        //TODO: Make all compoenets take in the frame instead of gui as argument and have frame take 
-        //gui as argument instead. Since we would need take mouse position relative to the frame
-        //instead of the window
-
         frame_begin(&frame01);
             
-            if (button_is_mouse_over(&gui, &button01)) {
+            if (button_is_mouse_over(&frame01, &button01)) {
+                printf("mouse_over\n"); 
                 button_update_color(&button01, ((vec3f_t){0.0f, 0.0f,1.0f}));
                 button_update_label(&button01, "mouse over");
             }
-            if (button_is_mouse_clicked(&gui, &button01)) {
+            if (button_is_mouse_clicked(&frame01, &button01)) {
+                printf("mouse_clicked\n"); 
                 button_update_color(&button01, ((vec3f_t){0.0f, 1.0f,0.0f}));
                 button_update_label(&button01, "mouse clicked");
             }
-            if (button_is_mouse_dragging(&gui, &button01)) {
-                button_update_color(&button01, ((vec3f_t){0.0f, 1.0f,0.0f}));
+            if (button_is_mouse_dragging(&frame01, &button01)) {
+                printf("mouse_drag\n"); 
+                button_update_color(&button01, ((vec3f_t){0.0f, 1.0f, 0.0f}));
                 button_update_label(&button01, "mouse drag");
             }
             button_draw(&gui, &button01);
 
-            if (slider_box_is_mouse_dragging(&gui, &slider01))
-                printf("sadge\n"); 
+            if (slider_box_is_mouse_dragging(&frame01, &slider01))
+                printf("slider\n");
             slider_draw(&gui, &slider01);
 
-            if(label_is_mouse_dragging(&gui, &label01))
-                label_update_value(&label01, "Among us");
             label_draw(&gui, &label01);
     
         frame_end(&frame01);
 
-        crapgui_begin(&gui);
+        crapgui_begin_ui(&gui);
 
             frame_draw(&frame01);
 
-        crapgui_end(&gui);
+        crapgui_end_ui(&gui);
 
     }
 

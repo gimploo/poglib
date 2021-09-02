@@ -99,6 +99,8 @@ void            window_update_title(window_t *window, const char *title_name);
 // Input ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 //NOTE:(macro)  window_mouse_get_norm_position(window_t *window) -> vec2f_t
+//NOTE:(macro)  window_mouse_get_position(window_t *window) -> vec2ui_t
+//
 //NOTE:(macro)  window_mouse_button_just_pressed(window_t *window) -> bool
 //NOTE:(macro)  window_mouse_button_is_held(window_t *window) -> bool
 
@@ -129,8 +131,8 @@ void            window_sub_window_destroy(window_t *sub_window);
 /*-------------------------------------------------------------------------
  // Implementations
 -------------------------------------------------------------------------*/
-
-#define window_mouse_get_norm_position(pwindow)        (pwindow)->mouse_handler.norm_position
+#define window_mouse_get_norm_position(pwindow)         (pwindow)->mouse_handler.norm_position
+#define window_mouse_get_position(pwindow)              (pwindow)->mouse_handler.position
 #define window_mouse_button_just_pressed(pwindow)      (pwindow)->mouse_handler.just_pressed
 #define window_mouse_button_is_held(pwindow)           (pwindow)->mouse_handler.is_held
 
