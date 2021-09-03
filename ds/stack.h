@@ -6,39 +6,65 @@
 
 #include "../basic.h"
 
-typedef struct stack_t stack_t;
-struct stack_t {
+/*============================================================
+ // Stack data structure
+============================================================*/
+
+typedef struct stack_t {
+
     void **array;
     i64 top;
     u64 capacity;
-};
+    u64 size_of_each_elem;
 
-static inline void stack_dump(stack_t *stack)
-{
-    if (stack == NULL) eprint("stack_dump: stack argument is null");
+} stack_t;
 
-    fprintf(stderr, "[ERROR] DUMPING STACK\n");
-    for (u64 i = 0; i < stack->capacity; i++)
-        fprintf(stdout, "%p ", stack->array[i]);
-    printf("\n");
-}
+
+/*---------------------------------------------------------------
+ // Declaration
+---------------------------------------------------------------*/
+
+//The 2 init methods are for two different cases, if your planning on passing a static array use the first one and 
+//if your planning on passing a dynamic array (i.e. malloced pointers) use the second
+//NOTE:(macro)      stack_static_array_init(array[], array_capacity) -> stack_t
+//                  (or)
+//NOTE:(macro)      stack_dynamic_array_init(array[], array_size_in_bytes, array_capacity) -> stack_t
+
+//NOTE:(macro)      stack_is_empty(stack_t *) -> bool
+//NOTE:(macro)      stack_is_full(stack_t *) -> bool
+void                stack_print(stack_t *stack, void (*print_elem)(void *));
+
+//NOTE:(macro)      stack_push(stack_t *, elem) -> void
+void *              stack_pop(stack_t *);
+void                stack_delete(stack_t *);
+
+
+/*---------------------------------------------------------------
+ // Implementation
+---------------------------------------------------------------*/
 
 #define stack_is_empty(pstack) ((pstack)->top == -1 ? true : false)
+#define stack_is_full(pstack)  ((pstack)->top == ((pstack)->capacity - 1) ? true : false)
 
 
-static inline stack_t stack_init(void **array, size_t capacity)
+static inline stack_t __impl_stack_init(void **array, size_t arr_size_in_bytes, size_t capacity)
 {
     if (array == NULL) eprint("stack_init: array argument is null");
-    if (capacity == 0) eprint("stack_init: capacity not greater than zero");
+    if(arr_size_in_bytes == 8 && capacity == 0) eprint("passed in a pointer not a static array");
 
-    for (u64 i = 0; i < capacity; i++) array[i] = NULL;
+    // Checks if passed in array is actually an array or a pointer
+
+    memset(array, 0, arr_size_in_bytes);
 
     return (stack_t) {
         .array = array,
         .top = -1,
-        .capacity = capacity
+        .capacity = capacity,
+        .size_of_each_elem = arr_size_in_bytes / capacity
     };
 }
+#define stack_static_array_init(arr, capacity) __impl_stack_init((void **)(arr), sizeof(arr), capacity)
+#define stack_dynamic_array_init(arr, bytes, capacity) __impl_stack_init((void **)(arr), (bytes), capacity)
 
 
 static void __impl_stack_push(stack_t *stack, void *elem_ref, u64 elem_size)
@@ -53,7 +79,6 @@ static void __impl_stack_push(stack_t *stack, void *elem_ref, u64 elem_size)
     if (elem_ref == NULL) eprint("stack_push: elem argument is null");
 
     if (stack->top == (i64)stack->capacity-1) {
-        stack_dump(stack);
         eprint("stack_push: overflow");
     }
 
@@ -63,36 +88,34 @@ static void __impl_stack_push(stack_t *stack, void *elem_ref, u64 elem_size)
 
     } else {
 
-        u8 *arr = (u8 *)stack->array; 
-        u64 offset = (++stack->top * elem_size);
-        memcpy((arr + offset), elem_ref, elem_size);
+        u8 *arr = (u8 *)stack->array + (++stack->top * elem_size); 
+        memcpy(arr, elem_ref, elem_size);
 
     }
 
 }
 
-#define stack_push(pstack, elem) __impl_stack_push((pstack), &(elem), sizeof (elem) )
+#define stack_push(pstack, elem) __impl_stack_push((pstack), &(elem), sizeof(elem))
 
 
-static inline void * stack_pop(stack_t *stack)
+void * stack_pop(stack_t *stack)
 {
     if (stack == NULL) eprint("stack_push: stack argument is null");
     if (stack->top == -1) return NULL;
 
-    void *elem = stack->array[stack->top];
+    void *elem = (stack->array + (stack->top * stack->size_of_each_elem));
 
-    stack->array[stack->top] = NULL;
+    *(stack->array + (stack->top * stack->size_of_each_elem)) = NULL;
     stack->top--;
 
     return elem;
 }
 
-static inline void stack_delete(stack_t *stack)
+void stack_delete(stack_t *stack)
 {
     if (stack == NULL) eprint("stack_push: stack argument is null");
     
     if (stack->top == -1) {
-        stack_dump(stack);
         eprint("stack_push: underflow");
     }
 
@@ -102,7 +125,7 @@ static inline void stack_delete(stack_t *stack)
 
 #define for_i_in_stack(pstack) for(int i = 0; i <= (pstack)->top; i++)
 
-static inline void stack_print(stack_t *stack, void (*print_elem)(void *))
+void stack_print(stack_t *stack, void (*print_elem)(void *))
 {
     if (stack == NULL) eprint("stack_print: stack argument is null");
 

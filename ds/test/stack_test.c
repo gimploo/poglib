@@ -39,17 +39,15 @@ int oldmain(void)
 
     stack_t stack = stack_init(foo, 10);
 
-    stack_dump(&stack);
     for (int i = 1; i <= 10; i++)
         stack_push(&stack, i);
-    stack_dump(&stack);
 
     stack_print(&stack, print_int);
 
 }
 
 
-int main(void)
+int oldermain(void)
 {
     void ** foo[10] = {0};
 
@@ -57,7 +55,6 @@ int main(void)
 
     stack_t stack01 = stack_init(foo, 10);
     stack_t stack02 = stack_init(vecs, 10);
-    stack_dump(&stack01);
 
     vec4f_t data[10] = {
 
@@ -100,6 +97,55 @@ int main(void)
 
 
     return 0;
+}
+
+int main(void)
+{
+    typedef struct foo {
+        const char *label;
+        int list[5];
+    } foo;
+
+    typedef struct mega_array {
+        foo array[5];
+    } mega_array;
+
+    foo a = {
+        .label = "a",
+        .list = {1,2,3,4,5}
+    };
+    foo b = {
+        .label = "b",
+        .list = {6,7,8,9,10}
+    };
+
+    foo c = {
+        .label = "c",
+        .list = {11,12,13,14,15}
+    };
+
+    mega_array array;
+
+
+    stack_t stack = stack_init(array.array, 5);
+
+
+    stack_push(&stack, a);
+    stack_push(&stack, b);
+    stack_push(&stack, c);
+
+
+
+    for (u64 i = 0; i <= stack.top; i++)
+    {
+        foo *tmp = (foo *)stack.array + i;
+        printf("%s\n", tmp->label);
+        printf("%i ", tmp->list[0]);
+        printf("%i ", tmp->list[1]);
+        printf("%i ", tmp->list[2]);
+        printf("%i ", tmp->list[3]);
+        printf("%i\n", tmp->list[4]);
+    }
 }
 
 
