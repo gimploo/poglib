@@ -188,7 +188,10 @@ gl_shader_t  gl_shader_from_file_init(const char *file_vs, const char *file_fs)
     __uniform_meta_data_t *array = (__uniform_meta_data_t *)malloc(MAX_UNIFORM_ARRAY_CAPACITY * sizeof(__uniform_meta_data_t));
     if (array == NULL) eprint("malloc failed");
 
-    shader.uniforms = stack_init((void **)array, MAX_UNIFORM_ARRAY_CAPACITY);
+    shader.uniforms = stack_dynamic_array_init(
+            (void **)array, 
+            (MAX_UNIFORM_ARRAY_CAPACITY * sizeof(__uniform_meta_data_t)), 
+            MAX_UNIFORM_ARRAY_CAPACITY);
 
     return shader;
 }
@@ -207,7 +210,10 @@ gl_shader_t  gl_shader_from_cstr_init(const char *vs_code, const char *fs_code)
     __uniform_meta_data_t *array = (__uniform_meta_data_t *)malloc(MAX_UNIFORM_ARRAY_CAPACITY * sizeof(__uniform_meta_data_t));
     if (array == NULL) eprint("malloc failed");
 
-    shader.uniforms = stack_init((void **)array, MAX_UNIFORM_ARRAY_CAPACITY);
+    shader.uniforms = stack_dynamic_array_init(
+            (void **)array, 
+            (MAX_UNIFORM_ARRAY_CAPACITY * sizeof(__uniform_meta_data_t)), 
+            MAX_UNIFORM_ARRAY_CAPACITY);
 
     return shader;
 }
