@@ -26,7 +26,7 @@ static inline vao_t vao_init(u32 vbo_count)
     
     vbo_t **vbos_array = (vbo_t **)malloc(sizeof(vbo_t*) * vbo_count);
 
-    vao.vbos = stack_init((void **)vbos_array, vbo_count);
+    vao.vbos = stack_dynamic_array_init((void **)vbos_array, sizeof(vbo_t *) * vbo_count, vbo_count);
 
     GL_LOG("VAO `%i` created", vao.id);
 
