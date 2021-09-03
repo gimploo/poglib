@@ -39,12 +39,12 @@ typedef double          f64;
 
 #define ERROR {\
     fprintf(stderr, "[(%s:%d): %s] %s\n",__FILE__, __LINE__, __func__, strerror(errno)); \
-    exit(1);                                    \
+    exit(0);                                    \
 }
 
 #define eprint(fmt, ...) {\
     fprintf(stderr, "[(%s:%d): %s] " fmt "\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__); \
-    exit(1);                                    \
+    exit(0);                                    \
 }
 
 //  Buffer type (hopefully this will help in avoiding buffer overflows)
