@@ -24,9 +24,9 @@ static inline vao_t vao_init(u32 vbo_count)
     GL_CHECK(glGenVertexArrays(1, &vao.id)); 
     GL_CHECK(glBindVertexArray(vao.id)); 
     
-    vbo_t **vbos_array = (vbo_t **)malloc(sizeof(vbo_t*) * vbo_count);
+    vbo_t *vbos_array = (vbo_t *)malloc(sizeof(void *) * vbo_count);
 
-    vao.vbos = stack_dynamic_array_init((void **)vbos_array, sizeof(vbo_t *) * vbo_count, vbo_count);
+    vao.vbos = stack_dynamic_array_init(vbos_array, sizeof(void *) * vbo_count, vbo_count);
 
     GL_LOG("VAO `%i` created", vao.id);
 
@@ -41,7 +41,7 @@ static inline void vao_push(vao_t *vao, vbo_t *vbo)
     if (vao->vbos.array == NULL) eprint("vao is not initialized");
 
     vao_bind(vao);
-        stack_push(&vao->vbos, vbo);
+        stack_push_by_ref(&vao->vbos, vbo);
     vao_unbind();
 }
 

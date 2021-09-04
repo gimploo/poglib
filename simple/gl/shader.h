@@ -312,7 +312,7 @@ void gl_shader_set_uniform(gl_shader_t *shader, const char *uniform_name, void *
             value_size, 
             type);
 
-    stack_push(&shader->uniforms, data);
+    stack_push_by_value(&shader->uniforms, data);
 }
 
 void __gl_shader_pop_uniform(gl_shader_t *shader)
