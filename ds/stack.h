@@ -34,7 +34,10 @@ typedef struct stack_t {
 //NOTE:(macro)      stack_is_full(stack_t *) -> bool
 void                stack_print(stack_t *stack, void (*print_elem)(void *));
 
-//NOTE:(macro)      stack_push(stack_t *, elem) -> void
+//NOTE:(macro)      stack_push_by_value(stack_t *, elem) -> void
+//                  (or)
+//NOTE:(macro)      stack_push_by_ref(stack_t *, elem) -> void
+
 void *              stack_pop(stack_t *);
 void                stack_delete(stack_t *);
 
@@ -67,36 +70,34 @@ static inline stack_t __impl_stack_init(void **array, size_t arr_size_in_bytes, 
 #define stack_dynamic_array_init(arr, bytes, capacity) __impl_stack_init((void **)(arr), (bytes), capacity)
 
 
-static void __impl_stack_push(stack_t *stack, void *elem_ref, u64 elem_size)
+static inline void __impl_stack_push_by_value(stack_t *stack, void *elem_ref, u64 elem_size)
 {
-
     // NOTE: since sizeof void * is 8 bytes and maximum size of a primitive data type 
     // available in c is also 8 bytes, having the array hold it by value is enough,
     // but if the value passed exceeds 8 bytes, a deep copy of the value is made 
     // into the array- hoping the array has enough space to accomodate and not overflow.
 
-    if (stack == NULL) eprint("stack_push: stack argument is null");
-    if (elem_ref == NULL) eprint("stack_push: elem argument is null");
+    if (stack == NULL)                          eprint("stack_push: stack argument is null");
+    if (elem_ref == NULL)                       eprint("stack_push: elem argument is null");
+    if (stack->top == (i64)stack->capacity-1)   eprint("stack_push: overflow");
 
-    if (stack->top == (i64)stack->capacity-1) {
-        eprint("stack_push: overflow");
-    }
-
-    if (elem_size <= 8) {
-
-        memcpy(&stack->array[++stack->top], elem_ref, elem_size);
-
-    } else {
-
-        u8 *arr = (u8 *)stack->array + (++stack->top * elem_size); 
-        memcpy(arr, elem_ref, elem_size);
-
-    }
+    u8 *arr = (u8 *)stack->array + (++stack->top * elem_size); 
+    memcpy(arr, elem_ref, elem_size);
 
 }
 
-#define stack_push(pstack, elem) __impl_stack_push((pstack), &(elem), sizeof(elem))
+static inline void __impl_stack_push_by_ref(stack_t *stack, void *elem_ref, u64 elem_size)
+{
+    if (stack == NULL)                          eprint("stack_push: stack argument is null");
+    if (elem_ref == NULL)                       eprint("stack_push: elem argument is null");
+    if (stack->top == (i64)stack->capacity-1)   eprint("stack_push: overflow");
+    if (elem_size != 8)                         eprint("pushing value that is not a pointer");
 
+    stack->array[++stack->top] = elem_ref;
+}
+
+#define stack_push_by_value(pstack, elem) __impl_stack_push_by_value((pstack), &(elem), sizeof(elem))
+#define stack_push_by_ref(pstack, elem) __impl_stack_push_by_ref((pstack), elem, sizeof(elem))
 
 void * stack_pop(stack_t *stack)
 {
