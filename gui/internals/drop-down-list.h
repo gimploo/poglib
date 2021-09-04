@@ -38,7 +38,7 @@ void drop_down_list_push_button(drop_down_list_t *list, const char *label)
             button.norm_width, 
             button.norm_height);
 
-    stack_push(&list->buttons, button); 
+    stack_push_by_value(&list->buttons, button); 
 }
 
 bool drop_down_list_is_mouse_over(frame_t *frame, drop_down_list_t *list)
@@ -51,6 +51,8 @@ bool drop_down_list_is_mouse_over(frame_t *frame, drop_down_list_t *list)
 
 INTERNAL void __drop_down_list_update_buttons(frame_t *frame, drop_down_list_t *list)
 {
+    //NOTE: this updates the color of the button
+    
     button_t *button = NULL;
     if (list->is_drop_down)
     {
@@ -93,7 +95,7 @@ void drop_down_list_draw(crapgui_t *gui, drop_down_list_t *list)
                     button->__quad_vertices,
                     button->norm_color,
                     quadf(0.0f));
-            //printf(QUAD_FMT"\n", QUAD_ARG(button->__quad_vertices));
+            printf(QUAD_FMT"\n", QUAD_ARG(button->__quad_vertices));
         }
 
         gl_batch_t batch = {
@@ -110,11 +112,11 @@ void drop_down_list_draw(crapgui_t *gui, drop_down_list_t *list)
 
     }
 
-    gl_ascii_font_render_text(
-            gui->font_handler,
-            list->label, 
-            vec2f_add(
-                list->norm_position, 
-                (vec2f_t ){ 0, (-list->norm_height/2)}), 
-            list->norm_height/6);
+    //gl_ascii_font_render_text(
+            //gui->font_handler,
+            //list->label, 
+            //vec2f_add(
+                //list->norm_position, 
+                //(vec2f_t ){ 0, (-list->norm_height/2)}), 
+            //list->norm_height/6);
 }

@@ -1,7 +1,7 @@
 #pragma once
 
-//TODO: menu bar
 //TODO: memory manage the allocated stack array in drop down list
+//TODO: memory manage the allocated stack array in menu bar
 
 
 #include "./../../simple/gl_renderer2d.h"
@@ -219,7 +219,8 @@ void                drop_down_list_draw(crapgui_t *gui, drop_down_list_t *list);
  // Menu bar
 =================================================================================*/
 
-#define MENU_BAR_MAX_DROP_DOWN_LIST_COUNT 10
+#define MENU_BAR_DEFAULT_WIDTH              2.0f
+#define MENU_BAR_DEFAULT_HEIGHT             0.1f
 
 typedef struct menu_bar_t {
 
@@ -229,34 +230,17 @@ typedef struct menu_bar_t {
     vec3f_t             norm_color;
     quadf_t             __quad_vertices;
     
-    drop_down_list_t    *array;
+    drop_down_list_t    *__stack_array;
     stack_t             drop_down_lists;
 
 } menu_bar_t;
 
+menu_bar_t      menu_bar_init(vec2f_t norm_position, u32 drop_down_list_count);
 
-menu_bar_t menu_bar_init(vec2f_t norm_position, f32 norm_width,  f32 norm_height, vec3f_t norm_color)
-{
-    menu_bar_t bar = {
-        .norm_position = norm_position,
-        .norm_width = norm_width,
-        .norm_height = norm_height,
-        .norm_color = norm_color,
-    };
+void            menu_bar_push_drop_down_list(menu_bar_t *menu_bar, drop_down_list_t *list);
+bool            menu_bar_is_mouse_over(frame_t *frame, menu_bar_t *menu_bar);
+bool            menu_bar_is_clicked(frame_t *frame, menu_bar_t *menu_bar);
 
-    //bar.drop_down_lists = stack_static_array_init((void **)bar.__STACK_ARRAY, MENU_BAR_MAX_DROP_DOWN_LIST_COUNT);
-    bar.__quad_vertices = quadf_init(norm_position, norm_width, norm_height);
+menu_bar_t      menu_bar_draw(crapgui_t *gui, menu_bar_t *menu_bar);
 
-    return bar;
-}
-
-menu_bar_t menu_bar_draw(crapgui_t *gui, menu_bar_t *menu)
-{
-    gl_quad_t quads[menu->drop_down_lists.top+1];
-
-    for(int i = 0; i <= menu->drop_down_lists.top; i++)
-    {
-         
-    }
-}
 
