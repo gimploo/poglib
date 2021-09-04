@@ -11,4 +11,4 @@
 #include "./internals/label.h"
 #include "./internals/slider.h"
 #include "./internals/drop-down-list.h"
-
+#include "./internals/menu-bar.h"
