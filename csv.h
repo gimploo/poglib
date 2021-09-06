@@ -560,7 +560,7 @@ void csv_get_all_line_nums_of_string_restricted_to_a_header_field(CSV *csv, stac
 
         if (str_is_string_in_buffer(find_word, str_field)) {
             line_num_list_index = i+1;
-            stack_push(buffer, line_num_list_index);
+            stack_push_by_value(buffer, line_num_list_index);
         }
 
     }
