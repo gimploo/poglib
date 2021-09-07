@@ -26,13 +26,14 @@ void menu_bar_push_drop_down_list(menu_bar_t *menu_bar, drop_down_list_t *list)
 {
     i64 offset = menu_bar->drop_down_lists.top + 1;
 
-    list->norm_width        = list->norm_width / menu_bar->drop_down_lists.capacity;
+    list->norm_width        = list->norm_width;
     list->norm_height       = menu_bar->norm_height;
 
-    list->norm_position     = vec2f_add(
-                            menu_bar->norm_position, 
-                            (vec2f_t ){ (list->norm_width * offset), 0.0f });
-    list->__quad_vertices   = quadf_init(list->norm_position, list->norm_width, list->norm_height);
+    list->norm_position = vec2f_add(
+            menu_bar->norm_position, 
+            (vec2f_t ){ (list->norm_width * offset), 0.0f });
+
+    list->__quad_vertices  = quadf_init(list->norm_position, list->norm_width, list->norm_height);
 
     stack_push_by_ref(&menu_bar->drop_down_lists, list); 
 }
@@ -45,7 +46,9 @@ bool menu_bar_is_mouse_over(frame_t *frame, menu_bar_t *menu_bar)
     {
         drop_down_list_t *drop_down = (drop_down_list_t *)menu_bar->drop_down_lists.array[i];
         if (drop_down_list_is_mouse_over(frame, drop_down))
-            printf("sadge\n");
+        {
+            // ...
+        }
     }
 }
 
@@ -57,7 +60,9 @@ bool menu_bar_is_clicked(frame_t *frame, menu_bar_t *menu_bar)
     {
         drop_down_list_t *drop_down = (drop_down_list_t *)menu_bar->drop_down_lists.array[i];
         if (drop_down_list_is_clicked(frame, drop_down))
-            printf("sadge\n");
+        {
+            // ...
+        }
     }
     
 }

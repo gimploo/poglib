@@ -67,10 +67,13 @@ INTERNAL void __drop_down_list_update_buttons(frame_t *frame, drop_down_list_t *
 
 bool drop_down_list_is_clicked(frame_t *frame, drop_down_list_t *list)
 {
-    bool output = (window_mouse_button_just_pressed(frame->gui_handler->window_handler) && drop_down_list_is_mouse_over(frame, list));
-    if (output)
-        list->is_drop_down = !list->is_drop_down;
+    bool output = ( window_mouse_button_just_pressed(frame->gui_handler->window_handler) 
+            && drop_down_list_is_mouse_over(frame, list));
 
+    if (output) {
+        printf("drop_down_list pressed\n");
+        list->is_drop_down = !list->is_drop_down;
+    } 
     __drop_down_list_update_buttons(frame, list);
 
     return output;
@@ -95,7 +98,7 @@ void drop_down_list_draw(crapgui_t *gui, drop_down_list_t *list)
                     button->__quad_vertices,
                     button->norm_color,
                     quadf(0.0f));
-            printf(QUAD_FMT"\n", QUAD_ARG(button->__quad_vertices));
+            //printf(QUAD_FMT"\n", QUAD_ARG(button->__quad_vertices));
         }
 
         gl_batch_t batch = {
