@@ -537,6 +537,7 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
     {
         case SDL_KEYDOWN:
             if (window->is_sub_window_active) {
+
                 SDL_Log("Window (%s) KEY_DOWN: %s\n", window->sub_window_handle->title_name, SDL_GetScancodeName(key));
 
                 if (window->sub_window_handle->keyboard_handler.keystate[key] == true) { 
@@ -610,15 +611,16 @@ INTERNAL bool __window_update_user_input(window_t *window)
                 window->is_open = false;
             break;
 
-            //NOTE: Here a mouse held down is triggered if its just pressed and the mouse moved after.
+            //NOTE: Here a mouse held down state is triggered if its just pressed and the mouse moved after.
             case SDL_MOUSEMOTION:
                 __mouse_update_position(window);
-                if(window->mouse_handler.just_pressed == true && window->mouse_handler.is_held == false) 
-                {
+                if(window->mouse_handler.just_pressed == true && window->mouse_handler.is_held == false) {
+
                     SDL_Log("Window (%s) MOUSE_HELD_DOWN\n", window->title_name);
                     window->mouse_handler.is_held       = true;
                     window->mouse_handler.just_pressed  = false;
-                }
+                } 
+
             break;
 
             case SDL_MOUSEBUTTONDOWN:
@@ -627,7 +629,7 @@ INTERNAL bool __window_update_user_input(window_t *window)
                 {
                     SDL_Log("Window (%s) MOUSE_JUST_DOWN\n", window->title_name);
                     window->mouse_handler.just_pressed  = true;
-                } 
+                }
             break;
 
             case SDL_MOUSEBUTTONUP:

@@ -45,18 +45,11 @@ function gdb_debug {
     if [ -f "core" ] 
     then
         echo -e "[*] ${blue}Core dump found, running with core dump ... ${reset}"
-        echo q | gdb --core=core --silent "$EXE_PATH" > $TMP
+        gdb --core=core --silent "$EXE_PATH" > $TMP
     else 
         echo -e "[*] ${blue}Core Dump not found, running without core dump ... ${reset}"
-        echo run | gdb --silent "$EXE_PATH" > $TMP
+        gdb --silent "$EXE_PATH" > $TMP
     fi
-
-    echo "${blue}"
-    cat "$TMP"
-    echo "${reset}"
-
-    rm $TMP
-
 }
 
 function run_profiler {
