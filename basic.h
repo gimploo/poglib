@@ -2,6 +2,7 @@
 #define _BASIC_H_
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -17,10 +18,10 @@
 
 typedef unsigned char   u8;
 typedef char            i8;
-typedef u_int16_t       u16;
+typedef uint16_t        u16;
 typedef int16_t         i16;
-typedef u_int32_t       u32;
-typedef u_int64_t       u64;
+typedef uint32_t        u32;
+typedef uint64_t        u64;
 typedef int             i32;
 typedef long            i64;
 typedef float           f32;
