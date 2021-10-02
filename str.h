@@ -18,7 +18,7 @@ typedef struct {
 } str_t;
 
 #define STR_FMT "%.*s"
-#define STR_ARG(pstr) (int)(pstr->len+1),pstr->buf
+#define STR_ARG(pstr) (int)((pstr)->len+1),(pstr)->buf
 
 
 static inline str_t new_str(char *buffer) 
