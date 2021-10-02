@@ -14,18 +14,18 @@ extern dbg_t debug;
 
 typedef struct {
     char *buf;
-    size_t size;
+    size_t len;
 } str_t;
 
 #define STR_FMT "%.*s"
-#define STR_ARG(pstr) (int)(pstr->size+1),pstr->buf
+#define STR_ARG(pstr) (int)(pstr->len+1),pstr->buf
 
 
 static inline str_t new_str(char *buffer) 
 {
     return (str_t) {
         .buf = buffer,
-        .size = strlen(buffer),
+        .len = strlen(buffer),
     };
 }
 
@@ -62,7 +62,7 @@ static str_t * new_pstr(char *buffer)
     strncpy(str->buf, buffer, buffer_size-1);
 
 
-    str->size = buffer_size - 1;
+    str->len = buffer_size - 1;
 
     return str;
 }
@@ -72,9 +72,9 @@ static inline void str_cpy(str_t *dest, str_t *source)
     assert(dest);
     assert(source);
 
-    memcpy(dest->buf, source->buf, source->size);
-    dest->buf[source->size+1] = '\0';
-    dest->size = source->size;
+    memcpy(dest->buf, source->buf, source->len);
+    dest->buf[source->len+1] = '\0';
+    dest->len = source->len;
 }
 
 static inline bool str_cmp(str_t *a, str_t *b) 
@@ -82,9 +82,9 @@ static inline bool str_cmp(str_t *a, str_t *b)
     assert(a);
     assert(b);
 
-    if (a->size != b->size) return false;
+    if (a->len != b->len) return false;
 
-    for (size_t i = 0; i < a->size; i++) 
+    for (size_t i = 0; i < a->len; i++) 
         if (a->buf[i] != b->buf[i]) 
             return false;
     return true;
@@ -99,7 +99,7 @@ static inline str_t str_cpy_delimiter(str_t *buffer, char ch)
     while((bc = buffer->buf[i]) != ch)
         word.buf[i++] = bc;
     word.buf[i] = '\0';
-    word.size = i;
+    word.len = i;
 
     return word;
 }
@@ -148,7 +148,7 @@ static inline str_t * str_read_file_to_str(const char *file_path)
 
     str_t *str_file = (str_t *)malloc(sizeof(str_t));
     str_file->buf = buffer;
-    str_file->size = size;
+    str_file->len = size;
 
     return str_file;
 }
@@ -161,16 +161,16 @@ static inline int str_where_is_string_in_buffer(str_t *word, str_t *buffer)
     assert(word);
     assert(buffer);
     size_t i = 0;
-    while (i < buffer->size) {
+    while (i < buffer->len) {
 
         if (buffer->buf[i] == word->buf[0]) {
 
             for (size_t j = 0, tmp = i; 
-                    j < word->size; 
+                    j < word->len; 
                     j++, tmp++)
             {
                 if (word->buf[j] != buffer->buf[tmp]) break;
-                else if (j == (word->size - 1)) return i;
+                else if (j == (word->len - 1)) return i;
             }
         }
         i++;
@@ -184,18 +184,18 @@ static inline int str_is_string_in_buffer(str_t *word, str_t *buffer)
     
     assert(word);
     assert(buffer);
-    if (buffer->size < word->size) return false;
+    if (buffer->len < word->len) return false;
     size_t i = 0;
-    while (i < buffer->size) {
+    while (i < buffer->len) {
 
         if (buffer->buf[i] == word->buf[0]) {
 
             for (size_t j = 0, tmp = i; 
-                    j < word->size; 
+                    j < word->len; 
                     j++, tmp++)
             {
                 if (word->buf[j] != buffer->buf[tmp]) break;
-                else if (j == (word->size - 1)) return true;
+                else if (j == (word->len - 1)) return true;
             }
         }
         i++;
