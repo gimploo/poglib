@@ -265,11 +265,8 @@ void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *
     ebo_t ebo;
     vbo_t vbo;
 
-    u32 indices_buffer[
-        batch->shape_count * (
-                    batch->shape_type == BT_QUAD ?  
-                    DEFAULT_QUAD_INDICES_CAPACITY : DEFAULT_TRI_INDICES_CAPACITY)
-    ]; 
+    // Here msvc gave an error, from batch->shape_count * ( batch->shape_type == BT_QUAD ?  DEFAULT_QUAD_INDICES_CAPACITY : DEFAULT_TRI_INDICES_CAPACITY) this to KB
+    u32 indices_buffer[KB]; 
     memset(indices_buffer, 0, sizeof(indices_buffer));
 
     GL_LOG("Batch size: %li\n", batch->vertex_buffer_size);

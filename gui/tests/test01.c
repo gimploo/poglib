@@ -7,7 +7,7 @@ void stuff(void *arg)
 
 void empty(void *arg){}
 
-int main(void)
+int main(int argc, char *argv[])
 {
     window_t window = window_init("TEST", 1080, 920, SDL_INIT_VIDEO);
     window_set_background(&window, (vec4f_t) {0.0f, 0.0f, 1.0f, 1.0f});
