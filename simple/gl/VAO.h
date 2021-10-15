@@ -69,7 +69,7 @@ static inline void vao_set_attributes(
 {
     if (vao == NULL) eprint("vao_set_attribute: vao argument is null");
 
-    if (stack_vbo_index > vao->vbos.top) eprint("vao_set_attribute: index out of bound");
+    if (stack_vbo_index > (u32)vao->vbos.top) eprint("vao_set_attribute: index out of bound");
     
     vao_bind(vao);
 

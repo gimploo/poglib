@@ -90,7 +90,9 @@ void slider_draw(crapgui_t *gui, slider_t *slider)
 
     gl_renderer2d_draw_from_batch(&gui->renderer_handler, &batch);
 
-    char text[(int )slider->range.cmp[Y]];
+    // Here it was supposed to be (int )slider->range.cmp[Y], but msvc gave an error. So i did this instead
+    char text[KB];
+
     snprintf(text, sizeof(text), "%f", slider->value);
     const f32 font_size = SLIDER_BOX_DEFAULT_WIDTH / 4;
 

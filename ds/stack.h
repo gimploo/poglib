@@ -13,9 +13,9 @@
 typedef struct stack_t {
 
     void **array;
-    i64 top;
-    u64 capacity;
-    u64 size_of_each_elem;
+    i32 top;
+    u32 capacity;
+    u32 size_of_each_elem;
 
 } stack_t;
 
@@ -50,7 +50,7 @@ void                stack_delete(stack_t *);
 #define stack_is_full(pstack)  ((pstack)->top == ((pstack)->capacity - 1) ? true : false)
 
 
-static inline stack_t __impl_stack_init(void **array, size_t arr_size_in_bytes, size_t capacity)
+static inline stack_t __impl_stack_init(void **array, u32 arr_size_in_bytes, u32 capacity)
 {
     if (array == NULL) eprint("stack_init: array argument is null");
     if(arr_size_in_bytes == 8 && capacity == 0) eprint("passed in a pointer not a static array");
