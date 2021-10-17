@@ -74,8 +74,9 @@ static inline void vao_set_attributes(
     vao_bind(vao);
 
     vbo_t *vbo = (vbo_t *)vao->vbos.array[stack_vbo_index]; 
-    vbo_bind(vbo); {
 
+    vbo_bind(vbo); 
+    {
         GL_CHECK(glEnableVertexAttribArray(++vbo->attribute_index));
 
         GL_CHECK(glVertexAttribPointer(
@@ -87,8 +88,8 @@ static inline void vao_set_attributes(
                     (void *)offset));
 
         ++vbo->attribute_count;
-
-    } vbo_unbind();
+    } 
+    vbo_unbind();
 
     vao_unbind();
     
