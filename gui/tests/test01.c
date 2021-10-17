@@ -20,7 +20,6 @@ int main(int argc, char *argv[])
     slider_t slider01 = slider_init((vec2f_t ){0.0f, 5.0f}, (vec2f_t ){-0.5f, 0.2f});
     label_t label01 = label_init("label01", (vec2f_t ){-0.2f, 0.8f}, 0.1f);
 
-    //FIXME: the drop downs doesnt render at the correct place
     drop_down_list_t list01 = drop_down_list_init("YO",(vec2f_t ){0.3f, 0.0f}, 0.2f, 0.1f, GREEN_COLOR);
     drop_down_list_t list02 = drop_down_list_init("Whats",(vec2f_t ){0.3f, 0.0f}, 0.2f, 0.1f, BLUE_COLOR);
     drop_down_list_t list03 = drop_down_list_init("GOOD",(vec2f_t ){0.3f, 0.0f}, 0.2f, 0.1f, RED_COLOR);

@@ -172,8 +172,8 @@ void            window_sub_window_destroy(window_t *sub_window);
 
 #define window_keyboard_is_key_just_pressed(pwindow, KEY)   ((pwindow)->keyboard_handler.just_pressed[SDL_GetScancodeFromKey(KEY)] == true)
 #define window_keyboard_is_key_held(pwindow, KEY)           ((pwindow)->keyboard_handler.is_held[SDL_GetScancodeFromKey(KEY)] == true)
-#define window_keyboard_is_key_pressed(pwindow, KEY)        ((pwindow)->keyboard_handler.key_state[SDL_GetScancodeFromKey(KEY)] == true)
-#define window_keyboard_is_key_released(pwindow, KEY)       ((pwindow)->keyboard_handler.key_state[SDL_GetScancodeFromKey(KEY)] == false)
+#define window_keyboard_is_key_pressed(pwindow, KEY)        ((pwindow)->keyboard_handler.keystate[SDL_GetScancodeFromKey(KEY)] == true)
+#define window_keyboard_is_key_released(pwindow, KEY)       ((pwindow)->keyboard_handler.keystate[SDL_GetScancodeFromKey(KEY)] == false)
 
 void window_update_title(window_t *window, const char *title_name)
 {
