@@ -84,7 +84,7 @@ void drop_down_list_draw(crapgui_t *gui, drop_down_list_t *list)
     u32 total_quads = list->buttons.top + 2;
 
     // Here it was supposed to be of total_quads size but in msvc gives an error, so i did this instead
-    gl_quad_t quads[KB];
+    gl_quad_t quads[KB] = {0};
 
     //NOTE: the drop list header
     quads[0] = gl_quad( list->__quad_vertices, list->norm_color, quadf(0.0f));

@@ -13,7 +13,7 @@ void stuff (void *arg)
     gl_shader_t shader = gl_shader_default_init();
     gl_renderer2d_t renderer = gl_renderer2d_init(&shader, NULL);
     gl_renderer2d_draw_quad(&renderer, qua);
-    gl_render2d_destroy(&renderer);
+    gl_renderer2d_destroy(&renderer);
 
 }
 
@@ -25,7 +25,7 @@ int main(void)
     window_set_background(&window, (vec4f_t) {1.0f, 0.0f, 0.0f, 1.0f});
     window_set_background(sub_window, (vec4f_t) {0.0f, 0.0f, 1.0f, 1.0f});
 
-    while (window.is_open)
+    window_while_is_open(&window)
     {
         window_render_stuff(&window, stuff, NULL);
         window_sub_window_render_stuff(sub_window, stuff, NULL);

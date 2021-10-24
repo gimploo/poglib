@@ -37,6 +37,9 @@ int main(int argc, char *argv[])
 
     window_while_is_open(&window)
     {
+        // Cap the fps
+        window_cap_fps(&window, 1);
+
         frame_begin(&frame01);
             
             button_draw(&gui, &button01);
@@ -72,6 +75,9 @@ int main(int argc, char *argv[])
             frame_draw(&frame01);
 
         crapgui_end_ui(&gui);
+
+        SDL_Log("DT:    %f\n", window_get_dt(&window));
+        SDL_Log("FPS:   %f\n", window_get_fps(&window));
 
     }
 

@@ -48,7 +48,10 @@ typedef double          f64;
     exit(0);                                    \
 }
 
+#define ARRAY_LEN(arr) sizeof((arr)) / sizeof(*(arr))
+
 //  Buffer type (hopefully this will help in avoiding buffer overflows)
+//
 typedef struct {
 
     void *array;
@@ -56,7 +59,8 @@ typedef struct {
 
 } buffer_t;
 
-#define buffer_init(parray, capacity) { .array = parray, .capacity = capacity}
+#define buffer_init(arr) (buffer_t ){.array = arr, .capacity = ARRAY_LEN(arr)}
+
 
 int randint(int min, int max)
 {
