@@ -14,7 +14,7 @@
 #endif
 
 #include "../math/la.h"
-#include "window/delta_time.h"
+#include "window/clock.h"
 
 #define DEFAULT_BACKGROUND_COLOR (vec4f_t){{ 0.0f, 1.0f, 0.0f, 0.0f}}
 #define SDL_FLAGS u32
@@ -57,14 +57,13 @@ typedef struct window_t {
     __keyboard_t    keyboard_handler;
     vec4f_t         background_color;
 
-
 #ifndef __gl_h_                                     // initializes the renderer
     SDL_Surface    *surface_handle;
 #else 
     SDL_GLContext   gl_context;
 #endif 
 
-    game_loop_time_t    time;
+    window_clock_t  timer;
 
     //TODO: this approach was to have a debug window, but at the moment can only hold one sub window at a time. In the future lets implement a list of sub windows 
     // Sub window logic
@@ -94,7 +93,7 @@ void            window_set_background(window_t *window, vec4f_t color);
 void            window_update_title(window_t *window, const char *title_name);
 
 //NOTE:(macro)  window_grab_dt(window_t *window) -> f64
-//NOTE:(macro)  window_grab_fps(window_t *window) -> f64
+//NOTE:(macro)  window_cap_fps(window_t *window, u32 fps_count) -> void
 
 // Input ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -136,14 +135,23 @@ void            window_sub_window_destroy(window_t *sub_window);
 #define window_mouse_button_just_pressed(pwindow)      (pwindow)->mouse_handler.just_pressed
 #define window_mouse_button_is_held(pwindow)           (pwindow)->mouse_handler.is_held
 
-#define window_while_is_open(pwindow)           while((pwindow)->is_open && __window_update_user_input(pwindow))
-#define window_game_while_is_open(pwindow)      while((pwindow)->is_open && __window_update_user_input(pwindow) && game_loop_time_calculate(&(pwindow)->time))
+#define window_while_is_open(pwindow)           while((pwindow)->is_open && window_clock_update(&(pwindow)->timer) && __window_update_user_input(pwindow))
 
 // FIXME: This function doesnt work
-#define window_cap_fps(pwindow)     SDL_Delay(floor(16.666f - (pwindow)->time.elapsed_in_ms))
 
-#define window_grab_dt(pwindow)      (pwindow)->time.dt_value
-#define window_grab_fps(pwindow)     (pwindow)->time.fps_value
+#define window_get_dt(pwindow)      (pwindow)->timer.elapsed_in_ms
+#define window_get_fps(pwindow)      (pwindow)->timer.fps_value
+
+#define window_cap_fps(pwindow, fps) do {\
+\
+    f64 desired_delta = 1000.0f / (fps);\
+    if ((pwindow)->timer.elapsed_in_ms < desired_delta) {\
+    \
+        SDL_Delay(floor(desired_delta - (pwindow)->timer.elapsed_in_ms));\
+    \
+    }\
+\
+} while(0)
 
 #define window_gl_render_begin(pwindow) {\
     glClearColor(\
@@ -234,7 +242,7 @@ INTERNAL window_t __sub_window_init(const char *title_name, size_t width, size_t
     output.height           = height;
     output.background_color = DEFAULT_BACKGROUND_COLOR;
     output.mouse_handler    = __mouse_init(&output);
-    output.time             = game_loop_time_init();
+    output.timer            = window_clock_init();
 
     output.keyboard_handler = (__keyboard_t ) {
         .keystate       = {false},
@@ -308,7 +316,7 @@ window_t window_init(const char *title_name, size_t width, size_t height, SDL_FL
     output.height           = height;
     output.background_color = DEFAULT_BACKGROUND_COLOR;
     output.mouse_handler    = __mouse_init(&output);
-    output.time             = game_loop_time_init();
+    output.timer            = window_clock_init();
 
     output.keyboard_handler = (__keyboard_t ) {
         .keystate       = {false},
