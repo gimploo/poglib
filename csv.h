@@ -97,7 +97,7 @@ size_t _get_total_entries(str_t *a)
     //NOTE: fixed dont change!
     
     size_t count = 0;
-    for (size_t i = 0; i < a->size; i++)
+    for (size_t i = 0; i < a->len; i++)
         if (a->buf[i] == '\n')
             count++;
     return count;
@@ -128,7 +128,7 @@ EntryMeta _csv_entry_list_init(str_t *a)
 
     size_t entry_pos = 0;
     size_t count = 0;
-    for (size_t i = 0; i < a->size; i++)
+    for (size_t i = 0; i < a->len; i++)
     {
         entry_pos = i + 1; 
         if (a->buf[i] == '\n' &&  a->buf[i] != '\0') {// entry_pos < (a->size-1) ) {
@@ -157,7 +157,7 @@ Header _csv_header_init(str_t *buffer)
 
     char word[KB] = {0};
     char c;
-    for (size_t i = 0, word_pos = 0, header_count = 0; i <= buffer->size; i++) {
+    for (size_t i = 0, word_pos = 0, header_count = 0; i <= buffer->len; i++) {
 
         c = buffer->buf[i];
 
@@ -235,7 +235,7 @@ void csv_print_entry_from_line_num(CSV *csv, size_t lnum)
 
     str_t *buffer = csv->buffer;
     char ch;
-    for(size_t i = buf_pos; i < buffer->size; i++)
+    for(size_t i = buf_pos; i < buffer->len; i++)
     {
         ch = buffer->buf[i];
         if (ch == '\n') {
@@ -344,7 +344,7 @@ Row * csv_get_row_from_line_number(const CSV *csv, size_t line_num)
     char word[KB] = {0};
 
     size_t lcount = 0;
-    for (size_t i = epos, wcount = 0; i <= csv->buffer->size; i++) {
+    for (size_t i = epos, wcount = 0; i <= csv->buffer->len; i++) {
 
         if (tmp->buf[i] == '"') { 
 
@@ -372,7 +372,7 @@ Row * csv_get_row_from_line_number(const CSV *csv, size_t line_num)
             memset(word, 0, KB);
             continue;
 
-        } else if (tmp->buf[i] == '\n' || i == csv->buffer->size) {
+        } else if (tmp->buf[i] == '\n' || i == csv->buffer->len) {
 
             word[wcount] = '\0';
 
