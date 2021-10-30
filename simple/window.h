@@ -41,7 +41,7 @@ typedef struct __keyboard_t {
     bool keystate[SDL_NUM_SCANCODES]; 
 
     bool just_pressed[SDL_NUM_SCANCODES]; 
-    bool is_held[SDL_NUM_SCANCODES]; 
+    bool is_held[SDL_NUM_SCANCODES];
 
 } __keyboard_t;
 
@@ -92,7 +92,8 @@ window_t *      window_sub_window_init(window_t *parent, const char *title_name,
 void            window_set_background(window_t *window, vec4f_t color);
 void            window_update_title(window_t *window, const char *title_name);
 
-//NOTE:(macro)  window_grab_dt(window_t *window) -> f64
+//NOTE:(macro)  window_get_dt(window_t *window) -> f64
+//NOTE:(macro)  window_get_fps(window_t *window) -> f64
 //NOTE:(macro)  window_cap_fps(window_t *window, u32 fps_count) -> void
 
 // Input ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -144,7 +145,7 @@ void            window_sub_window_destroy(window_t *sub_window);
 
 #define window_cap_fps(pwindow, fps) do {\
 \
-    f64 desired_delta = 1000.0f / (fps);\
+    const f64 desired_delta = 1000.0f / (fps);\
     if ((pwindow)->timer.elapsed_in_ms < desired_delta) {\
     \
         SDL_Delay(floor(desired_delta - (pwindow)->timer.elapsed_in_ms));\
@@ -222,7 +223,7 @@ INTERNAL void __mouse_update_position(window_t *window)
 }
 
 
-INTERNAL __mouse_t __mouse_init(window_t *window)
+static inline __mouse_t __mouse_init(window_t *window)
 {
     __mouse_t mouse = {
         .just_pressed = false,
@@ -233,7 +234,7 @@ INTERNAL __mouse_t __mouse_init(window_t *window)
     return mouse;
 }
 
-INTERNAL window_t __sub_window_init(const char *title_name, size_t width, size_t height, SDL_FLAGS flags) 
+static inline window_t __sub_window_init(const char *title_name, size_t width, size_t height, SDL_FLAGS flags) 
 {   
     window_t output         = {0};
     output.title_name       = title_name;
