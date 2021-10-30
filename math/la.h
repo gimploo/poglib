@@ -114,6 +114,9 @@ vec4f_t vec4f(float x)
 
 
 #define vec2f_translate(x, y) vec2f_add(x, y)
+#define vec3f_translate(x, y) vec3f_add(x, y)
+#define vec4f_translate(x, y) vec4f_add(x, y)
+
 vec2f_t vec2f_add(vec2f_t x, vec2f_t y)
 {
     vec2f_t output;
@@ -128,6 +131,48 @@ vec2f_t vec2f_scale(vec2f_t x, f32 scale)
     vec2f_t output;
     output.cmp[X] = x.cmp[X] * scale;
     output.cmp[Y] = x.cmp[Y] * scale;
+    return output;
+}
+
+vec3f_t vec3f_add(vec3f_t x, vec3f_t y)
+{
+    vec3f_t output;
+    output.cmp[X] = x.cmp[X] + y.cmp[X];
+    output.cmp[Y] = x.cmp[Y] + y.cmp[Y];
+    output.cmp[Z] = x.cmp[Z] + y.cmp[Z];
+
+    return output;
+}
+
+vec3f_t vec3f_scale(vec3f_t x, f32 scale)
+{
+    vec3f_t output;
+    output.cmp[X] = x.cmp[X] * scale;
+    output.cmp[Y] = x.cmp[Y] * scale;
+    output.cmp[Z] = x.cmp[Z] * scale;
+
+    return output;
+}
+
+vec4f_t vec4f_add(vec4f_t x, vec4f_t y)
+{
+    vec4f_t output;
+    output.cmp[X] = x.cmp[X] + y.cmp[X];
+    output.cmp[Y] = x.cmp[Y] + y.cmp[Y];
+    output.cmp[Z] = x.cmp[Z] + y.cmp[Z];
+    output.cmp[W] = x.cmp[W] + y.cmp[W];
+
+    return output;
+}
+
+vec4f_t vec4f_scale(vec4f_t x, f32 scale)
+{
+    vec4f_t output;
+    output.cmp[X] = x.cmp[X] * scale;
+    output.cmp[Y] = x.cmp[Y] * scale;
+    output.cmp[Z] = x.cmp[Z] * scale;
+    output.cmp[W] = x.cmp[W] * scale;
+
     return output;
 }
 

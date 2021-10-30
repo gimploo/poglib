@@ -1,0 +1,10 @@
+
+*.lib
+*.obj
+**/external/*
+*.pdb
+*.ilk
+*.exe
+*.dll
+*.html
+*.txt
