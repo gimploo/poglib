@@ -83,9 +83,7 @@ typedef void (*render_func) (void*);
 window_t        window_init(const char *title, size_t width, size_t height, SDL_FLAGS flags);
 window_t *      window_sub_window_init(window_t *parent, const char *title_name, size_t width, size_t height, SDL_FLAGS flags);
 
-//NOTE:(macro)  window_while_is_open(window_t *window) -> while loop
-//              (or)
-//NOTE:(macro)  window_game_while_is_open(window_t *window) -> while loop
+//NOTE:(macro)  window_while_is_open(window_t *window)
 
 // Helper ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -94,9 +92,10 @@ void            window_update_title(window_t *window, const char *title_name);
 
 //NOTE:(macro)  window_get_dt(window_t *window) -> f64
 //NOTE:(macro)  window_get_fps(window_t *window) -> f64
-//NOTE:(macro)  window_cap_fps(window_t *window, u32 fps_count) -> void
 
 // Input ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+void            window_update_user_input(window_t *window);
 
 //NOTE:(macro)  window_mouse_get_norm_position(window_t *window) -> vec2f_t
 //NOTE:(macro)  window_mouse_get_position(window_t *window) -> vec2ui_t
@@ -131,28 +130,21 @@ void            window_sub_window_destroy(window_t *sub_window);
 /*-------------------------------------------------------------------------
  // Implementations
 -------------------------------------------------------------------------*/
-#define window_mouse_get_norm_position(pwindow)         (pwindow)->mouse_handler.norm_position
-#define window_mouse_get_position(pwindow)              (pwindow)->mouse_handler.position
-#define window_mouse_button_just_pressed(pwindow)      (pwindow)->mouse_handler.just_pressed
-#define window_mouse_button_is_held(pwindow)           (pwindow)->mouse_handler.is_held
+#define window_mouse_get_norm_position(pwindow)     (pwindow)->mouse_handler.norm_position
+#define window_mouse_get_position(pwindow)          (pwindow)->mouse_handler.position
+#define window_mouse_button_just_pressed(pwindow)   (pwindow)->mouse_handler.just_pressed
+#define window_mouse_button_is_held(pwindow)        (pwindow)->mouse_handler.is_held
 
-#define window_while_is_open(pwindow)           while((pwindow)->is_open && window_clock_update(&(pwindow)->timer) && __window_update_user_input(pwindow))
+#define window_get_dt(pwindow)  (pwindow)->timer.dt_value
+#define window_get_fps(pwindow) (pwindow)->timer.fps_value
 
-// FIXME: This function doesnt work
-
-#define window_get_dt(pwindow)      (pwindow)->timer.elapsed_in_ms
-#define window_get_fps(pwindow)      (pwindow)->timer.fps_value
-
-#define window_cap_fps(pwindow, fps) do {\
+#define window_cap_fps(pwindow, FPS) do {\
 \
-    const f64 desired_delta = 1000.0f / (fps);\
-    if ((pwindow)->timer.elapsed_in_ms < desired_delta) {\
-    \
-        SDL_Delay(floor(desired_delta - (pwindow)->timer.elapsed_in_ms));\
-    \
-    }\
+    if ((pwindow)->timer.dt_value < 1000.0f/ FPS) SDL_Delay(1000.0f / FPS - (pwindow)->timer.dt_value);\
 \
 } while(0)
+
+#define window_while_is_open(pwindow)   while((pwindow)->is_open && window_clock_update(&(pwindow)->timer))
 
 #define window_gl_render_begin(pwindow) {\
     glClearColor(\
@@ -604,7 +596,7 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
     }
 }
 
-INTERNAL bool __window_update_user_input(window_t *window)
+void window_update_user_input(window_t *window)
 {
     SDL_Event event;
     while(SDL_PollEvent(&event) > 0) 
@@ -661,7 +653,6 @@ INTERNAL bool __window_update_user_input(window_t *window)
                 //window->is_open = false;
         }
     }
-    return true;
 }
 
 
@@ -706,7 +697,7 @@ void window_render_stuff(window_t *window, render_func render, void *arg)
 {
     if (window == NULL) eprint("window argument is null");
 
-    __window_update_user_input(window);
+    window_update_user_input(window);
 
 #ifdef __gl_h_
     SDL_GL_MakeCurrent(window->window_handle, window->gl_context);
@@ -787,7 +778,6 @@ void window_destroy(window_t *window)
     window = NULL;
     
 }
-
 
 
 #endif // __SIMPLE_WINDOW_H_
