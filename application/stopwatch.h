@@ -1,31 +1,33 @@
 #pragma once
 
 #include <SDL2/SDL.h>
-#include "../../basic.h"
+#include "../basic.h"
 #include <math.h>
 #include <limits.h>
 
 //FIXME: the fps is twice the actual value and i am not sure whether its the elapsed_in_ms
 // calculations fault or not, probably it might be. 
+//
 
-typedef struct window_clock_t {
+typedef struct stopwatch_t stopwatch_t;
+
+struct stopwatch_t {
 
     f32 __now;
     f32 __last;
-    u32 __frame_counter;
-    f32 __accumulator;
+    f32 accumulator;
 
-    f32 dt_value; // delta time in seconds
-    f32 fps_value;
+    f32 dt; // delta time in seconds
+    f32 fps;
 
-} window_clock_t;
+};
 
 
-window_clock_t window_clock_init(void)
+stopwatch_t stopwatch_init(void)
 {
-    window_clock_t output = {0};
-    output.__now = SDL_GetTicks();
-    output.dt_value = 0.01f;
+    stopwatch_t output = {0};
+    output.__now = (f32)SDL_GetTicks();
+    output.dt = 0.01f;
     return output;
 }
 
@@ -66,24 +68,18 @@ window_clock_t window_clock_init(void)
     } 
  */ 
 
-bool window_clock_update(window_clock_t *timer)
+void stopwatch_update(stopwatch_t *timer)
 {
     if (timer == NULL) eprint("dt argument is null");
 
     timer->__last   = timer->__now;
-    timer->__now    = SDL_GetTicks();
-    timer->dt_value = (timer->__now - timer->__last) / 100.0f;
+    timer->__now    = (f32)SDL_GetTicks();
+    timer->dt = (timer->__now - timer->__last) / 1000.0f;
 
-    if (timer->dt_value > 0.25f) timer->dt_value = 0.25f;
+    if (timer->dt > 0.25f) timer->dt = 0.25f;
 
-    timer->__accumulator += timer->dt_value;
-    timer->__frame_counter++;
+    timer->accumulator += timer->dt;
 
-    timer->fps_value = timer->__frame_counter / (timer->__now / 1000.0f) ;
-
-    if(timer->__frame_counter == (UINT32_MAX - 1)) timer->__frame_counter = 0;
-
-    return true;
 }
 
 

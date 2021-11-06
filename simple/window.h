@@ -14,7 +14,6 @@
 #endif
 
 #include "../math/la.h"
-#include "window/clock.h"
 
 #define DEFAULT_BACKGROUND_COLOR (vec4f_t){{ 0.0f, 1.0f, 0.0f, 0.0f}}
 #define SDL_FLAGS u32
@@ -63,8 +62,6 @@ typedef struct window_t {
     SDL_GLContext   gl_context;
 #endif 
 
-    window_clock_t  timer;
-
     //TODO: this approach was to have a debug window, but at the moment can only hold one sub window at a time. In the future lets implement a list of sub windows 
     // Sub window logic
     struct window_t     *sub_window_handle;             // Holds sub_window address
@@ -95,7 +92,7 @@ void            window_update_title(window_t *window, const char *title_name);
 
 // Input ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-void            window_update_user_input(window_t *window);
+bool            window_update_user_input(window_t *window);
 
 //NOTE:(macro)  window_mouse_get_norm_position(window_t *window) -> vec2f_t
 //NOTE:(macro)  window_mouse_get_position(window_t *window) -> vec2ui_t
@@ -135,16 +132,6 @@ void            window_sub_window_destroy(window_t *sub_window);
 #define window_mouse_button_just_pressed(pwindow)   (pwindow)->mouse_handler.just_pressed
 #define window_mouse_button_is_held(pwindow)        (pwindow)->mouse_handler.is_held
 
-#define window_get_dt(pwindow)  (pwindow)->timer.dt_value
-#define window_get_fps(pwindow) (pwindow)->timer.fps_value
-
-#define window_cap_fps(pwindow, FPS) do {\
-\
-    if ((pwindow)->timer.dt_value < 1000.0f/ FPS) SDL_Delay(1000.0f / FPS - (pwindow)->timer.dt_value);\
-\
-} while(0)
-
-#define window_while_is_open(pwindow)   while((pwindow)->is_open && window_clock_update(&(pwindow)->timer))
 
 #define window_gl_render_begin(pwindow) {\
     glClearColor(\
@@ -181,6 +168,7 @@ void window_update_title(window_t *window, const char *title_name)
     if (window == NULL) eprint("window argument is null");
 
     window->title_name = title_name;
+    SDL_SetWindowTitle(window, title_name);
 }
 
 void window_set_background(window_t *window, vec4f_t color) 
@@ -235,7 +223,6 @@ static inline window_t __sub_window_init(const char *title_name, size_t width, s
     output.height           = height;
     output.background_color = DEFAULT_BACKGROUND_COLOR;
     output.mouse_handler    = __mouse_init(&output);
-    output.timer            = window_clock_init();
 
     output.keyboard_handler = (__keyboard_t ) {
         .keystate       = {false},
@@ -309,7 +296,6 @@ window_t window_init(const char *title_name, size_t width, size_t height, SDL_FL
     output.height           = height;
     output.background_color = DEFAULT_BACKGROUND_COLOR;
     output.mouse_handler    = __mouse_init(&output);
-    output.timer            = window_clock_init();
 
     output.keyboard_handler = (__keyboard_t ) {
         .keystate       = {false},
@@ -596,7 +582,45 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
     }
 }
 
-void window_update_user_input(window_t *window)
+
+void window_sub_window_render_stuff(window_t *sub_window, render_func stuff, void *arg)
+{
+#ifdef __gl_h_
+        SDL_GL_MakeCurrent(sub_window->window_handle, sub_window->gl_context);
+        glClearColor(
+                sub_window->background_color.cmp[0], 
+                sub_window->background_color.cmp[1],
+                sub_window->background_color.cmp[2],
+                sub_window->background_color.cmp[3]
+        );
+        glClear(GL_COLOR_BUFFER_BIT);
+#else 
+        u8 color[3] = {
+            (u8) denormalize(sub_window->background_color.cmp[X], 0, 255),
+            (u8) denormalize(sub_window->background_color.cmp[Y], 0, 255),
+            (u8) denormalize(sub_window->background_color.cmp[Z], 0, 255)
+        };
+
+        SDL_FillRect(
+                sub_window->surface_handle, 
+                NULL, 
+                SDL_MapRGB(
+                    sub_window->surface_handle->format, 
+                    color[0], color[1], color[2])
+                );
+#endif 
+
+        stuff(arg);
+
+#ifdef __gl_h_
+        SDL_GL_SwapWindow(sub_window->window_handle);
+#else
+        SDL_UpdateWindowSurface(sub_window->window_handle);
+#endif
+    
+}
+
+bool window_update_user_input(window_t *window)
 {
     SDL_Event event;
     while(SDL_PollEvent(&event) > 0) 
@@ -653,45 +677,9 @@ void window_update_user_input(window_t *window)
                 //window->is_open = false;
         }
     }
+    return true;
 }
 
-
-void window_sub_window_render_stuff(window_t *sub_window, render_func stuff, void *arg)
-{
-#ifdef __gl_h_
-        SDL_GL_MakeCurrent(sub_window->window_handle, sub_window->gl_context);
-        glClearColor(
-                sub_window->background_color.cmp[0], 
-                sub_window->background_color.cmp[1],
-                sub_window->background_color.cmp[2],
-                sub_window->background_color.cmp[3]
-        );
-        glClear(GL_COLOR_BUFFER_BIT);
-#else 
-        u8 color[3] = {
-            (u8) denormalize(sub_window->background_color.cmp[X], 0, 255),
-            (u8) denormalize(sub_window->background_color.cmp[Y], 0, 255),
-            (u8) denormalize(sub_window->background_color.cmp[Z], 0, 255)
-        };
-
-        SDL_FillRect(
-                sub_window->surface_handle, 
-                NULL, 
-                SDL_MapRGB(
-                    sub_window->surface_handle->format, 
-                    color[0], color[1], color[2])
-                );
-#endif 
-
-        stuff(arg);
-
-#ifdef __gl_h_
-        SDL_GL_SwapWindow(sub_window->window_handle);
-#else
-        SDL_UpdateWindowSurface(sub_window->window_handle);
-#endif
-    
-}
 
 void window_render_stuff(window_t *window, render_func render, void *arg)
 {
