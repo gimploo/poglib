@@ -91,7 +91,7 @@ struct hashtable_t {
     const u64           __array_size; 
     const u64           len;
     __key_value_pair_t  *const __array;
-    data_type           __elem_type;
+    data_type           __value_type;
     bool                *const __index_table;
 };
 
@@ -130,7 +130,7 @@ hashtable_t __impl_hashtable_init(const u64 array_capacity, const data_type type
         .__array_size = array_capacity * sizeof(__key_value_pair_t),
         .len = array_capacity,
         .__array = (__key_value_pair_t *)calloc(array_capacity, sizeof(__key_value_pair_t)),
-        .__elem_type = type,
+        .__value_type = type,
         .__index_table = (bool *)calloc(array_capacity, sizeof(bool)),
     };
 }
@@ -144,6 +144,7 @@ void __impl_hashtable_insert_key_value_pair_by_value(hashtable_t *table, const _
 {
     if (table == NULL) eprint("table argument is null");
     if (kv == NULL) eprint("key value pair address is null");
+    if (kv->value_type != table->__value_type) eprint("hashtable value type conflict")
 
     u64 index = 0;
 
