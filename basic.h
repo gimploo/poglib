@@ -27,6 +27,30 @@ typedef long            i64;
 typedef float           f32;
 typedef double          f64;
 
+
+//NOTE: Data types enum 
+
+#define DT_type(TYPE) DT_ ## TYPE
+
+typedef enum 
+{
+    DT_str_t,
+    DT_char,
+
+    DT_u8,
+    DT_i8,
+    DT_u16,
+    DT_i16,
+    DT_u32,
+    DT_i32,
+    DT_u64,
+    DT_i64,
+    DT_f32,
+    DT_f64,
+
+
+} data_type;
+
 #define WORD    512
 #define KB      (WORD * 2)
 #define MB      (KB * 1024)
