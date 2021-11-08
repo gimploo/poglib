@@ -15,7 +15,11 @@ int main(void)
     hashtable_t table = hashtable_init(100, str_t );
 
     hashtable_insert(&table, "jo", str_t, &names[0], str_t);
+    hashtable_delete(&table, "jo", str_t);
     hashtable_insert(&table, "jo", str_t, &names[2], str_t);
+
+    hashtable_insert(&table, 32, u64, &names[1], str_t);
+    hashtable_delete(&table, 32, u64);
     hashtable_insert(&table, 32, u64, &names[1], str_t);
 
 
