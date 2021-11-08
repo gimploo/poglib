@@ -21,7 +21,20 @@ typedef struct hashtable_t hashtable_t;
 } while(0)
 
 
-
+#define hashtable_delete(PTABLE, KEY, KEY_TYPE) do {\
+\
+    switch(DT_type(KEY_TYPE))\
+    {\
+        case DT_str_t:\
+            __impl_hashtable_delete_key_value_pair(PTABLE, (const void *)KEY, strlen((const char *)KEY), DT_str_t );\
+        break;\
+        case DT_u64:\
+            __impl_hashtable_delete_key_value_pair(PTABLE, (const void *)KEY, 0, DT_u64 );\
+        break;\
+        default: eprint("type not accounted for");\
+    }\
+\
+} while(0)
 
 
 
@@ -170,5 +183,28 @@ void __impl_hashtable_insert_key_value_pair_by_value(hashtable_t *table, const _
     } else {
         eprint("hashtable %li index collision found", index);
     } 
+}
+
+void __impl_hashtable_delete_key_value_pair(hashtable_t *table, const void * key_value, const u64 key_size, const data_type key_type)
+{
+    if (table == NULL) eprint("table argument is null");
+    if (key_value == NULL) eprint("key argument is null");
+
+    u64 index_ulong = 0;
+    u64 index_cstr = 0;
+
+    switch(key_type)
+    {
+        case DT_str_t:
+            index_cstr = hash_cstr((const char *)key_value, key_size) % table->len;
+            table->__index_table[index_cstr] = false;
+        break;
+        case DT_u64:
+            index_ulong = hash_u64((u64)key_value) % table->len;
+            table->__index_table[index_ulong] = false;
+        break;
+        default: eprint("type not accounted for");
+    }
+
 }
 #endif

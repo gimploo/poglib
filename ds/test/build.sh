@@ -1,4 +1,4 @@
 #!/bin/bash
 
 
-gcc -g $1 && gdb --silent ./a.out
+gcc -g $1 && ./a.out
