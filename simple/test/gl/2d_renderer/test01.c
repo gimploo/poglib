@@ -6,6 +6,7 @@
 
 #include "../../../window.h"
 
+#if 0
 int oldmain(void)
 {
     u32 FLAGS = SDL_INIT_VIDEO;
@@ -45,6 +46,7 @@ int oldmain(void)
 
     return 0;
 }
+#endif
 
 int main(void)
 {
@@ -53,40 +55,47 @@ int main(void)
 
     const gl_quad_t quad[2] = {    
                         // positon,            // color            // texture
-        (gl_vertex_t) {0.0f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 1.0f},
-        (gl_vertex_t) {0.5f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 0.0f},
-        (gl_vertex_t) {0.5f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 0.0f},
-        (gl_vertex_t) {0.0f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 1.0f},
+        (gl_vertex_t) {0.0f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 1.0f, 0.0f},
+        (gl_vertex_t) {0.5f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 0.0f, 0.0f},
+        (gl_vertex_t) {0.5f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 0.0f, 0.0f},
+        (gl_vertex_t) {0.0f, 0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 1.0f, 0.0f},
 
-        (gl_vertex_t) {-0.5f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 0.0f},
-        (gl_vertex_t) {0.0f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 1.0f} ,
-        (gl_vertex_t) {0.0f, -0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 0.0f},
-        (gl_vertex_t) {-0.5f, -0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 1.0f},
+        (gl_vertex_t) {-0.5f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 0.0f, 0.0f},
+        (gl_vertex_t) {0.0f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 1.0f, 0.0f} ,
+        (gl_vertex_t) {0.0f, -0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 0.0f, 0.0f},
+        (gl_vertex_t) {-0.5f, -0.5f, 1.0f,  0.0f, 0.0f, 0.0f,   0.0f, 1.0f, 0.0f},
 
     };                      
 
-    gl_batch_t batch = { 
+    /*gl_batch_t batch = { */
 
-        .shape_type = BT_QUAD,
-        .shape_count = 2,
-        .vertex_buffer= (gl_vertex_t *)quad,
-        .vertex_buffer_size= sizeof(quad),
-    };
+        /*.shape_type = BT_gl_quad_t,*/
+        /*.shape_count = 2,*/
+        /*.vertex_buffer= (gl_vertex_t *)quad,*/
+        /*.vertex_buffer_size= sizeof(quad),*/
+    /*};*/
+
+
+    gl_batch_t batch = gl_batch_init(quad, gl_quad_t );
+    SDL_Log("Yah\n");
 
     gl_shader_t shader = gl_shader_from_file_init("./wood.vs", "./wood.fs");
     gl_texture2d_t texture = gl_texture2d_init("./wall.jpg");
     gl_renderer2d_t renderer = gl_renderer2d_init(&shader, &texture);
-    /*gl_renderer2d_t renderer = gl_renderer2d_init(&shader,NULL);*/
 
 
-    window_while_is_open(&window)
+    SDL_Log("Yah\n");
+    while(window.is_open)
     {
+        window_update_user_input(&window);
         window_gl_render_begin(&window);
-            /*gl_renderer2d_draw_from_batch(&renderer, &batch);*/
-            gl_renderer2d_draw_quad(&renderer, quad[0]);
+            gl_renderer2d_draw_from_batch(&renderer, &batch);
+            /*gl_renderer2d_draw_quad(&renderer, quad[0]);*/
         window_gl_render_end(&window);
     }
+    SDL_Log("Nah\n");
 
+    gl_batch_destroy(&batch);
     gl_renderer2d_destroy(&renderer);
     window_destroy(&window);
 

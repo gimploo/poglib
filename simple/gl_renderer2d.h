@@ -86,13 +86,18 @@ gl_tri_t gl_tri(trif_t tri, vec3f_t color, quadf_t tex_coord)
 
 typedef enum {
 
-    BT_TRI = 0,
-    BT_QUAD,
+    BT_gl_tri_t = 0,
+    BT_gl_quad_t,
     BT_COUNT
 
 } gl_batch_type;
 
+#define BT_type(TYPE) BT_##TYPE
+
 typedef struct gl_batch_t {
+
+
+    u32 __indices_buffer[KB];
 
     const gl_batch_type shape_type;
     const u64           shape_count;
@@ -101,9 +106,19 @@ typedef struct gl_batch_t {
     const u64           vertex_buffer_size;
 
 
+    ebo_t ebo;
+    vbo_t vbo;
+
+
 } gl_batch_t;
 
-
+#define gl_batch_init(VERTEX_ARRAY, TYPE) __impl_gl_batch_init((gl_vertex_t *)VERTEX_ARRAY, sizeof(VERTEX_ARRAY), ARRAY_LEN(VERTEX_ARRAY) / 4, BT_type(TYPE))
+#define gl_batch_destroy(PBATCH) do {\
+\
+    ebo_destroy(&(PBATCH)->ebo);\
+    vbo_destroy(&(PBATCH)->vbo);\
+\
+} while(0)
 
 /*==================================================
  // OpenGL 2D renderer
@@ -187,7 +202,8 @@ void gl_renderer2d_draw_triangle(gl_renderer2d_t *renderer, const gl_tri_t tri)
     vao_bind(&renderer->vao);
 
         vbo = vbo_init(&tri, sizeof(gl_tri_t));
-        ebo = ebo_init(&vbo, DEFAULT_TRI_INDICES, DEFAULT_TRI_INDICES_CAPACITY);
+        ebo = ebo_init(DEFAULT_TRI_INDICES, DEFAULT_TRI_INDICES_CAPACITY);
+        vbo.indices_count = ebo_get_count(&ebo);
 
         vao_push(&renderer->vao, &vbo);
             vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position));
@@ -233,7 +249,8 @@ void gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_quad_t quad)
     vao_bind(&renderer->vao);
 
         vbo = vbo_init(&quad, sizeof(gl_quad_t));
-        ebo = ebo_init(&vbo, DEFAULT_QUAD_INDICES, DEFAULT_QUAD_INDICES_CAPACITY);
+        ebo = ebo_init(DEFAULT_QUAD_INDICES, DEFAULT_QUAD_INDICES_CAPACITY);
+        vbo.indices_count = ebo_get_count(&ebo);
 
         vao_push(&renderer->vao, &vbo);
             vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position));
@@ -257,39 +274,52 @@ void gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_quad_t quad)
 }
 
 
+gl_batch_t __impl_gl_batch_init(gl_vertex_t vertices[], const u64 vertices_size, const u64 shape_count, gl_batch_type type)
+{
+
+    gl_batch_t batch = {
+        .shape_type         = type,
+        .shape_count        = shape_count,
+        .vertex_buffer      = vertices,
+        .vertex_buffer_size = vertices_size,
+    };
+
+
+    switch(type)
+    {
+        case BT_gl_quad_t:
+            __gen_quad_indices(batch.__indices_buffer, shape_count);
+            batch.ebo = ebo_init(batch.__indices_buffer, DEFAULT_QUAD_INDICES_CAPACITY * shape_count);
+            break;
+        case BT_gl_tri_t:
+            __gen_tri_indices(batch.__indices_buffer, shape_count);
+            batch.ebo = ebo_init(batch.__indices_buffer, DEFAULT_TRI_INDICES_CAPACITY * shape_count);
+            break;
+        default:
+            eprint("gl_batch_type: TYPE = (%i) unknown\n", type);
+    }
+
+    batch.vbo = vbo_init(vertices, vertices_size);
+    batch.vbo.indices_count = ebo_get_count(&batch.ebo);
+
+    return batch;
+}
+
 void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *batch) 
 {
     if (renderer == NULL) eprint("renderer argument is null");
     if (batch == NULL) eprint("batch argument is null");
 
-    ebo_t ebo;
-    vbo_t vbo;
+    vbo_t *vbo = (vbo_t *)&batch->vbo;
+    ebo_t *ebo = (ebo_t *)&batch->ebo;
 
     // Here msvc gave an error, from batch->shape_count * ( batch->shape_type == BT_QUAD ?  DEFAULT_QUAD_INDICES_CAPACITY : DEFAULT_TRI_INDICES_CAPACITY) this to KB
-    u32 indices_buffer[KB]; 
-    memset(indices_buffer, 0, sizeof(indices_buffer));
 
     GL_LOG("Batch size: %li\n", batch->vertex_buffer_size);
 
     vao_bind(&renderer->vao);
 
-        vbo = vbo_init(batch->vertex_buffer, batch->vertex_buffer_size);
-
-        switch(batch->shape_type)
-        {
-            case BT_QUAD:
-                __gen_quad_indices(indices_buffer, batch->shape_count);
-                ebo = ebo_init(&vbo, indices_buffer, DEFAULT_QUAD_INDICES_CAPACITY * batch->shape_count);
-                break;
-            case BT_TRI:
-                __gen_tri_indices(indices_buffer, batch->shape_count);
-                ebo = ebo_init(&vbo, indices_buffer, DEFAULT_TRI_INDICES_CAPACITY * batch->shape_count);
-                break;
-            default:
-                eprint("gl_batch_type: TYPE = (%i) unknown\n", batch->shape_type);
-        }
-
-        vao_push(&renderer->vao, &vbo);
+        vao_push(&renderer->vao, vbo);
 
             vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position));
             vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, color));
@@ -305,9 +335,6 @@ void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *
         vao_pop(&renderer->vao);
 
     vao_unbind();
-
-    ebo_destroy(&ebo);
-    vbo_destroy(&vbo);
 }
 
 

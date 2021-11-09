@@ -17,26 +17,28 @@ set CC_DEFAULT_FLAGS=/std:c11 /W4 /wd4244 /wd4996 /wd5105 /FC /TC /Zi
 set CC_DEFAULT_LIBS=User32.lib Gdi32.lib Shell32.lib
 
 REM Source and executalble path (default)
-set EXE_DEFAULT_PATH=.\bin
-set SRC_DEFAULT_PATH=.
+set EXE_FOLDER_DEFAULT_PATH=.\bin
+set SRC_FOLDER_DEFAULT_PATH=.
 set DEPENDENCY_DEFAULT_PATH=.\external
 
 REM Source files and exe name
-set SRC_FILES=%1
-set EXE=test.exe
+set SRC_FILE_NAME=test01.c
+set EXE_FILE_NAME=test.exe
 
 
 
 :main
-    if "%1" == "deepclean" (
-        call :deepcleanup
-        goto :end
-    )
 
     if "%1" == "clean" (
         call :cleanup
         goto :end
     )
+
+    if "%1" == "deepclean" (
+        call :deepcleanup
+        goto :end
+    )
+
 
     cls
     echo [*] Running build script for windows...
@@ -54,7 +56,6 @@ set EXE=test.exe
     )
 
     echo [*] Checking dependenices ...
-    call :check_dependencies_are_installed || goto :end
     echo [!] Dependencies all found!
 
     if exist bin (
@@ -70,11 +71,11 @@ set EXE=test.exe
 
     if %errorlevel% == 0 (
         echo [*] Running executable ...
-        call :run_executable || goto :end
+
+            call :run_executable_with_debugger || goto :end
 
         if %errorlevel% neq 0 (
             echo [*] Running executable through the debugger ...
-            call :run_executable_with_debugger || goto :end
         )
     )
     
@@ -90,7 +91,6 @@ REM (change whats in here to ) -
 REM                            |
 REM                            v
 :build_project_with_msvc
-    SETLOCAL
 
     set INCLUDES=/I %DEPENDENCY_DEFAULT_PATH%\SDL2\include ^
                     /I %DEPENDENCY_DEFAULT_PATH%\GLEW\include
@@ -104,12 +104,14 @@ REM                            v
 
     cl %CC_DEFAULT_FLAGS% %FLAGS%^
         %INCLUDES% ^
-        /Fe%EXE_DEFAULT_PATH%\%EXE% ^
-        %SRC_DEFAULT_PATH%\%SRC_FILES% ^
+        /Fe%EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME% ^
+        %SRC_FOLDER_DEFAULT_PATH%\%SRC_FILE_NAME% ^
         /link %CC_DEFAULT_LIBS% %LIBS% -SUBSYSTEM:windows
 
+    move *.pdb %EXE_FOLDER_DEFAULT_PATH% >nul
+    move *.obj %EXE_FOLDER_DEFAULT_PATH% >nul
 
-    ENDLOCAL
+
     exit /b %errorlevel%
 
 
@@ -119,31 +121,10 @@ REM ============================================================================
 REM                             -- HELPER FUNCTIONS --
 REM =======================================================================================
     
-:run_executable
-    %EXE_DEFAULT_PATH%\%EXE%
-    exit /b %errorlevel% 
-
 :run_executable_with_debugger
-    devenv /DebugExe %EXE_DEFAULT_PATH%\%EXE%
+    devenv /DebugExe %EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME%
     exit /b 0
 
-:deepcleanup
-    echo [*] Cleanup in progress ...
-    if exist "%DEPENDENCY_DEFAULT_PATH%" (
-        rd /s /q "%DEPENDENCY_DEFAULT_PATH%"
-        echo [!] %DEPENDENCY_DEFAULT_PATH% directory deleted!
-    )
-    call :cleanup
-    echo [!] Cleanup done!
-    exit /b 0
-
-:cleanup
-    if exist bin (
-        rd /s /q bin
-        echo [!] bin directory deleted!
-    )
-    del /s *.pdb *.obj 2>nul
-    exit /b 0
 
 :check_dependencies_are_installed
     pushd %DEPENDENCY_DEFAULT_PATH%
@@ -182,6 +163,24 @@ REM ============================================================================
     echo [!] Successfully installed %~1!
     exit /b 0
 
-:end
-    ENDLOCAL
+:cleanup
+    if exist bin (
+        rd /s /q bin
+        echo [!] bin directory deleted!
+    )
     exit /b 0
+
+:deepcleanup
+    echo [*] Cleanup in progress ...
+    if exist "%DEPENDENCY_DEFAULT_PATH%" (
+        rd /s /q "%DEPENDENCY_DEFAULT_PATH%"
+        echo [!] %DEPENDENCY_DEFAULT_PATH% directory deleted!
+    )
+    call :cleanup
+    echo [!] Cleanup done!
+    exit /b 0
+
+
+:end
+    echo [!] Script exiting!
+    ENDLOCAL
