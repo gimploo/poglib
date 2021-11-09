@@ -17,13 +17,13 @@ set CC_DEFAULT_FLAGS=/std:c11 /W4 /wd4244 /wd4996 /wd5105 /FC /TC /Zi
 set CC_DEFAULT_LIBS=User32.lib Gdi32.lib Shell32.lib
 
 REM Source and executalble path (default)
-set EXE_FOLDER_DEFAULT_PATH=.\bin
+set EXE_FOLDER_DEFAULT_PATH=.
 set SRC_FOLDER_DEFAULT_PATH=.
 set DEPENDENCY_DEFAULT_PATH=.\external
 
 REM Source files and exe name
-set SRC_FILE_NAME=test01.c
-set EXE_FILE_NAME=test.exe
+set SRC_FILE_NAME=main.c
+set EXE_FILE_NAME=flappy-bird.exe
 
 
 
@@ -56,13 +56,14 @@ set EXE_FILE_NAME=test.exe
     )
 
     echo [*] Checking dependenices ...
+    call :check_dependencies_are_installed || goto :end
     echo [!] Dependencies all found!
 
-    if exist bin (
+    if exist "%EXE_FOLDER_DEFAULT_PATH%" (
         echo [!] Bin directory found!
     ) else (
         echo [!] Bin directory not found!
-        mkdir bin
+        mkdir "%EXE_FOLDER_DEFAULT_PATH%"
         echo [!] Bin directory made!
     )
 
@@ -71,11 +72,11 @@ set EXE_FILE_NAME=test.exe
 
     if %errorlevel% == 0 (
         echo [*] Running executable ...
-
-            call :run_executable_with_debugger || goto :end
+        call :run_executable || goto :end
 
         if %errorlevel% neq 0 (
             echo [*] Running executable through the debugger ...
+            call :run_executable_with_debugger || goto :end
         )
     )
     
@@ -121,6 +122,10 @@ REM ============================================================================
 REM                             -- HELPER FUNCTIONS --
 REM =======================================================================================
     
+:run_executable
+    %EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME%
+    exit /b %errorlevel% 
+
 :run_executable_with_debugger
     devenv /DebugExe %EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME%
     exit /b 0
