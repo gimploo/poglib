@@ -53,7 +53,7 @@ int main(void)
     u32 FLAGS = SDL_INIT_VIDEO;
     window_t window = window_init("new_main", 1080, 920, FLAGS);
 
-    const gl_quad_t quad[2] = {    
+    const gl_quad_t quads[2] = {    
                         // positon,            // color            // texture
         (gl_vertex_t) {0.0f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 1.0f, 0.0f},
         (gl_vertex_t) {0.5f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f,   1.0f, 0.0f, 0.0f},
@@ -67,24 +67,14 @@ int main(void)
 
     };                      
 
-    /*gl_batch_t batch = { */
 
-        /*.shape_type = BT_gl_quad_t,*/
-        /*.shape_count = 2,*/
-        /*.vertex_buffer= (gl_vertex_t *)quad,*/
-        /*.vertex_buffer_size= sizeof(quad),*/
-    /*};*/
-
-
-    gl_batch_t batch = gl_batch_init(quad, gl_quad_t );
-    SDL_Log("Yah\n");
+    gl_batch_t batch = gl_batch_init(quads, gl_quad_t );
 
     gl_shader_t shader = gl_shader_from_file_init("./wood.vs", "./wood.fs");
     gl_texture2d_t texture = gl_texture2d_init("./wall.jpg");
     gl_renderer2d_t renderer = gl_renderer2d_init(&shader, &texture);
 
 
-    SDL_Log("Yah\n");
     while(window.is_open)
     {
         window_update_user_input(&window);

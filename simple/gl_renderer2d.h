@@ -100,7 +100,7 @@ typedef struct gl_batch_t {
     u32 __indices_buffer[KB];
 
     const gl_batch_type shape_type;
-    const u64           shape_count;
+    u64                 shape_count;
 
     const gl_vertex_t   *vertex_buffer;
     const u64           vertex_buffer_size;
@@ -108,15 +108,17 @@ typedef struct gl_batch_t {
 
     ebo_t ebo;
     vbo_t vbo;
+    vao_t vao;
 
 
 } gl_batch_t;
 
-#define gl_batch_init(VERTEX_ARRAY, TYPE) __impl_gl_batch_init((gl_vertex_t *)VERTEX_ARRAY, sizeof(VERTEX_ARRAY), ARRAY_LEN(VERTEX_ARRAY) / 4, BT_type(TYPE))
+#define gl_batch_init(VERTEX_ARRAY, TYPE) __impl_gl_batch_init((gl_vertex_t *)VERTEX_ARRAY, sizeof(VERTEX_ARRAY), BT_type(TYPE))
 #define gl_batch_destroy(PBATCH) do {\
 \
     ebo_destroy(&(PBATCH)->ebo);\
     vbo_destroy(&(PBATCH)->vbo);\
+    vao_destroy(&(PBATCH)->vao);\
 \
 } while(0)
 
@@ -205,19 +207,17 @@ void gl_renderer2d_draw_triangle(gl_renderer2d_t *renderer, const gl_tri_t tri)
         ebo = ebo_init(DEFAULT_TRI_INDICES, DEFAULT_TRI_INDICES_CAPACITY);
         vbo.indices_count = ebo_get_count(&ebo);
 
-        vao_push(&renderer->vao, &vbo);
-            vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position));
-            vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, color));
+            vao_set_attributes(&renderer->vao, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position), &vbo);
+            vao_set_attributes(&renderer->vao, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, color), &vbo);
 
             if (renderer->texture != NULL) {
-                vao_set_attributes(&renderer->vao, 0, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord));
-                vao_set_attributes(&renderer->vao, 0, 1, GL_UNSIGNED_INT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_id));
+                vao_set_attributes(&renderer->vao, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord), &vbo);
+                vao_set_attributes(&renderer->vao, 1, GL_UNSIGNED_INT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_id), &vbo);
                 gl_texture2d_bind(renderer->texture, 0);
             }
 
             gl_shader_bind(renderer->shader);
-            vao_draw(&renderer->vao);
-        vao_pop(&renderer->vao);
+            vao_draw(&renderer->vao, &vbo);
 
     vao_unbind();
 
@@ -232,7 +232,7 @@ gl_renderer2d_t gl_renderer2d_init(gl_shader_t *shader, const gl_texture2d_t *te
 {
     if (shader == NULL) eprint("shader argument is null");
     return (gl_renderer2d_t) {
-        .vao = vao_init(1),
+        .vao = vao_init(),
         .shader = shader,
         .texture = texture
     };
@@ -252,19 +252,18 @@ void gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_quad_t quad)
         ebo = ebo_init(DEFAULT_QUAD_INDICES, DEFAULT_QUAD_INDICES_CAPACITY);
         vbo.indices_count = ebo_get_count(&ebo);
 
-        vao_push(&renderer->vao, &vbo);
-            vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position));
-            vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, color));
+        vbo_bind(&vbo);
+        vao_set_attributes(&renderer->vao, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position), &vbo);
+        vao_set_attributes(&renderer->vao, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, color), &vbo);
 
-            if (renderer->texture != NULL) {
-                vao_set_attributes(&renderer->vao, 0, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord));
-                vao_set_attributes(&renderer->vao, 0, 1, GL_UNSIGNED_INT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_id));
-                gl_texture2d_bind(renderer->texture, 0);
-            }
+        if (renderer->texture != NULL) {
+            vao_set_attributes(&renderer->vao, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord), &vbo);
+            vao_set_attributes(&renderer->vao, 1, GL_UNSIGNED_INT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_id), &vbo);
+            gl_texture2d_bind(renderer->texture, 0);
+        }
 
-            gl_shader_bind(renderer->shader);
-            vao_draw(&renderer->vao);
-        vao_pop(&renderer->vao);
+        gl_shader_bind(renderer->shader);
+        vao_draw(&renderer->vao, &vbo);
 
     vao_unbind();
 
@@ -274,33 +273,43 @@ void gl_renderer2d_draw_quad(gl_renderer2d_t *renderer, const gl_quad_t quad)
 }
 
 
-gl_batch_t __impl_gl_batch_init(gl_vertex_t vertices[], const u64 vertices_size, const u64 shape_count, gl_batch_type type)
+gl_batch_t __impl_gl_batch_init(gl_vertex_t vertices[], const u64 vertices_size, gl_batch_type type)
 {
 
     gl_batch_t batch = {
         .shape_type         = type,
-        .shape_count        = shape_count,
         .vertex_buffer      = vertices,
         .vertex_buffer_size = vertices_size,
     };
 
 
+    batch.vao = vao_init();
+    vao_bind(&batch.vao);
+
     switch(type)
     {
         case BT_gl_quad_t:
-            __gen_quad_indices(batch.__indices_buffer, shape_count);
-            batch.ebo = ebo_init(batch.__indices_buffer, DEFAULT_QUAD_INDICES_CAPACITY * shape_count);
+            batch.shape_count = (vertices_size / (sizeof(gl_vertex_t))) / 4;
+            __gen_quad_indices(batch.__indices_buffer, batch.shape_count);
+            batch.ebo = ebo_init(batch.__indices_buffer, DEFAULT_QUAD_INDICES_CAPACITY * batch.shape_count);
             break;
         case BT_gl_tri_t:
-            __gen_tri_indices(batch.__indices_buffer, shape_count);
-            batch.ebo = ebo_init(batch.__indices_buffer, DEFAULT_TRI_INDICES_CAPACITY * shape_count);
+            batch.shape_count = (vertices_size / (sizeof(gl_vertex_t))) / 3;
+            __gen_tri_indices(batch.__indices_buffer, batch.shape_count);
+            batch.ebo = ebo_init(batch.__indices_buffer, DEFAULT_TRI_INDICES_CAPACITY * batch.shape_count);
             break;
         default:
             eprint("gl_batch_type: TYPE = (%i) unknown\n", type);
     }
 
+
     batch.vbo = vbo_init(vertices, vertices_size);
     batch.vbo.indices_count = ebo_get_count(&batch.ebo);
+
+    vao_set_attributes(&batch.vao, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position), &batch.vbo);
+    vao_set_attributes(&batch.vao, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, color), &batch.vbo);
+    vao_set_attributes(&batch.vao, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord), &batch.vbo);
+    vao_set_attributes(&batch.vao, 1, GL_UNSIGNED_INT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_id), &batch.vbo);
 
     return batch;
 }
@@ -310,29 +319,19 @@ void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *
     if (renderer == NULL) eprint("renderer argument is null");
     if (batch == NULL) eprint("batch argument is null");
 
+    vao_t *vao = (vao_t *)&batch->vao;
     vbo_t *vbo = (vbo_t *)&batch->vbo;
     ebo_t *ebo = (ebo_t *)&batch->ebo;
 
-    // Here msvc gave an error, from batch->shape_count * ( batch->shape_type == BT_QUAD ?  DEFAULT_QUAD_INDICES_CAPACITY : DEFAULT_TRI_INDICES_CAPACITY) this to KB
-
     GL_LOG("Batch size: %li\n", batch->vertex_buffer_size);
 
-    vao_bind(&renderer->vao);
+    vao_bind(vao);
 
-        vao_push(&renderer->vao, vbo);
-
-            vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, position));
-            vao_set_attributes(&renderer->vao, 0, 3, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, color));
-
-            if (renderer->texture != NULL) {
-                vao_set_attributes(&renderer->vao, 0, 2, GL_FLOAT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_coord));
-                vao_set_attributes(&renderer->vao, 0, 1, GL_UNSIGNED_INT, false, sizeof(gl_vertex_t), offsetof(gl_vertex_t, texture_id));
-                gl_texture2d_bind(renderer->texture, 0);
-            }
-            gl_shader_bind(renderer->shader);
-            vao_draw(&renderer->vao);
-
-        vao_pop(&renderer->vao);
+        if (renderer->texture != NULL) {
+            gl_texture2d_bind(renderer->texture, 0);
+        }
+        gl_shader_bind(renderer->shader);
+        vao_draw(vao, vbo);
 
     vao_unbind();
 }

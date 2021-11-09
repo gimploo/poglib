@@ -10,26 +10,30 @@ reset=$(tput sgr0)
 #              |
 #              v
 
-SRC_PATH="./test01.c"
-EXE_PATH="./a.out"
+SRC_PATH="test01.c"
+EXE_PATH="./test"
 BIN_DIR="./"
 
 #=====================================================================
 
 
 function setup_envirnoment {
+
     rm -rf core
     ulimit -c unlimited
+
 }
 
 function cleanup_envirnoment {
+
     ulimit -c 0
 }
 
-function compile {
+
+function compile_in_linux {
 
     local CC="gcc"
-    local FLAGS="-g"
+    local FLAGS="-std=c11 -g -W -Wall -Wextra -Wno-missing-braces -Wno-variadic-macros"
     local LINKERS="-lSDL2 -lGLEW -lGLU -lGL -lm"
 
     local FILE_PATH="$1"
@@ -45,20 +49,13 @@ function gdb_debug {
     if [ -f "core" ] 
     then
         echo -e "[*] ${blue}Core dump found, running with core dump ... ${reset}"
-        echo q | gdb --core=core --silent "$EXE_PATH" > $TMP
+        gdb --core=core --silent --tui "$EXE_PATH"
     else 
         echo -e "[*] ${blue}Core Dump not found, running without core dump ... ${reset}"
-        echo run | gdb --silent "$EXE_PATH" > $TMP
+        gdb --silent --tui "$EXE_PATH"
     fi
 
-    echo "${blue}"
-        sed "5p;d" $TMP
-    echo "${red}"
-        sed "6p;d" $TMP
-    echo "${reset}"
-
-    rm $TMP
-
+    return 0
 }
 
 function run_profiler {
@@ -93,11 +90,10 @@ function main {
         echo -e "[!] ${green}Found directory ${reset}\`$BIN_DIR\`" 
     fi
 
-
     # Compiling source files
     echo -e "[*] ${blue}Compiling source file ...${reset}\n"
 
-    if ! compile $SRC_PATH ;
+    if ! compile_in_linux $SRC_PATH ;
     then 
         echo -e "[!] ${red}Compilation Failed ${reset}"
         exit $LINENO
