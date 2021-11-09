@@ -25,7 +25,7 @@ struct ebo_t {
 
 #define ebo_get_count(PEBO) (PEBO)->count
 
-#define ebo_bind(pebo)  GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (pebo)->id));
+#define ebo_bind(pebo)  GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (pebo)->id))
 
 static inline ebo_t ebo_init(const u32 *indices, const u32 count)
 {

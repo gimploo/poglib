@@ -60,6 +60,7 @@ static inline vbo_t vbo_static_init(const void *vertices, const size_t vsize)
     VBO.attribute_count = 0;
 
     GL_LOG("VBO (STATIC)\t `%i` created", VBO.id);
+    vbo_unbind();
     return VBO;
 }
 
@@ -79,6 +80,8 @@ static inline vbo_t vbo_dynamic_init(const size_t vsize)
     VBO.attribute_count = 0;
 
     GL_LOG("VBO (DYNAMIC)\t `%i` created", VBO.id);
+
+    vbo_unbind();
     return VBO;
 }
 
