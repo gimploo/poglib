@@ -53,7 +53,7 @@ static inline void vao_set_attributes(
                         type, 
                         normalized == false ? GL_FALSE : GL_TRUE, 
                         stride, 
-                        (void *)offset));
+                        (const void *)offset));
 
             ++vbo->attribute_count;
         } 

@@ -21,7 +21,7 @@ set SRC_DEFAULT_PATH=.
 set DEPENDENCY_DEFAULT_PATH=.\external
 
 REM Source files and exe name
-set SRC_FILES=test01.c
+set SRC_FILES="main.c"
 set EXE=test.exe
 
 
