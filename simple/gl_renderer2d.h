@@ -321,7 +321,6 @@ void gl_renderer2d_draw_from_batch(gl_renderer2d_t *renderer, const gl_batch_t *
 
     vao_t *vao = (vao_t *)&batch->vao;
     vbo_t *vbo = (vbo_t *)&batch->vbo;
-    ebo_t *ebo = (ebo_t *)&batch->ebo;
 
     GL_LOG("Batch size: %li\n", batch->vertex_buffer_size);
 

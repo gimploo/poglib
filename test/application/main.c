@@ -25,7 +25,8 @@ void update(void *arg)
     dt = application_get_dt(&game);
 
     snprintf(buff, sizeof(buff), "FPS: %f | dt: %f", fps, dt);
-    SDL_Log("%s\n", buff);
+    printf("%s\n", buff);
+
 
     window_set_background(&win, color);
     color = vec4f_add(color, inc_color);
