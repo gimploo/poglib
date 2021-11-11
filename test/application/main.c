@@ -1,53 +1,36 @@
 #include "../../simple/gl_renderer2d.h"
 #include "../../application.h"
 
-window_t win;
-application_t game;
-vec4f_t color, inc_color;
-char buff[1024];
+global vec4f_t color, inc_color;
+global char buff[1024];
 
-f32 dt, fps;
-
-void init(void *arg)
+void init(application_t *app)
 {
-    color = vec4f(0.0f);
-
-    inc_color = (vec4f_t ) {
-        .cmp[X] = 0.01f,
-        .cmp[Y] = 0.0f,
-        .cmp[Z] = 0.02f,
-    };
 }
 
-void update(void *arg)
+void update(application_t *app)
 {
-    fps = application_get_fps(&game);
-    dt = application_get_dt(&game);
+    f32 fps = application_get_fps(app);
+    f32 dt = application_get_dt(app);
 
     snprintf(buff, sizeof(buff), "FPS: %f | dt: %f", fps, dt);
     printf("%s\n", buff);
 
-
-    window_set_background(&win, color);
-    color = vec4f_add(color, inc_color);
-    color = (vec4f_t ){ 
-        .cmp[X] = fmod(color.cmp[X], 1.0f),
-        .cmp[Y] = fmod(color.cmp[Y], 1.0f),
-        .cmp[Z] = fmod(color.cmp[Z], 1.0f),
-        .cmp[W] = 1.0f
-    }; 
 }
 
-void render(void *arg)
+void render(application_t *app)
 {
-    window_gl_render_begin(&win);
-    window_gl_render_end(&win);
+    window_t *win = application_get_whandle(app);
+
+    window_gl_render_begin(win);
+
+    window_gl_render_end(win);
 }
 
 int main(void)
 {
-    win = window_init("Flappy Birds", 700, 800, SDL_INIT_VIDEO);
-    game = application_init(&win, init, update, render);
+    window_t win = window_init("Flappy Birds", 700, 800, SDL_INIT_VIDEO);
+    application_t game = application_init(&win, (const void *)init, (const void *)update,(const void *)render);
 
     application_run(&game);
 }
