@@ -68,6 +68,7 @@ typedef enum
     #include <SDL2/SDL.h>
     #define printf(FMT, ...)            SDL_Log(FMT, ##__VA_ARGS__)
     #define fprintf(stderr, FMT, ...)   SDL_Log(FMT, ##__VA_ARGS__) 
+    #define fprintf(stdout, FMT, ...)   SDL_Log(FMT, ##__VA_ARGS__) 
 #endif
 
 // Eprint for for both linux and windows
