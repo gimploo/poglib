@@ -30,7 +30,7 @@ int main(void)
 
     while (window.is_open)
     {
-        window_render(&window, loop, &font); 
+        window_render_stuff(&window, loop, &font); 
     }
 
     gl_ascii_font_destroy(&font);
