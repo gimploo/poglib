@@ -26,9 +26,9 @@ typedef struct character_info_t  {
 
 typedef struct gl_ascii_font_t {
     
-    vao_t               vao;
     gl_shader_t         shader;
     gl_texture2d_t      texture;
+
     u32                 font_count_width;
     u32                 font_count_height;
     character_info_t    font_atlas[MAX_ASCII_TILES_COUNT];
@@ -78,7 +78,7 @@ void            gl_ascii_font_destroy(gl_ascii_font_t *);
  // Implementation
 ----------------------------------------------------------------*/
 
-INTERNAL gl_texture2d_t __ascii_load_texture(const char *file_path)
+static inline gl_texture2d_t __ascii_load_texture(const char *file_path)
 {
     if (file_path == NULL) eprint("file argument is null");
 
@@ -134,7 +134,7 @@ gl_ascii_font_t gl_ascii_font_init(const char *file_path, u32 tile_count_width, 
     if (file_path == NULL) eprint("file_path argument is null");
 
     gl_ascii_font_t output = {
-        .vao        = vao_init(1),
+
         .shader     = gl_shader_from_cstr_init(ascii_font_vs, ascii_font_fs),
         .texture    = __ascii_load_texture(file_path),
     };
@@ -206,102 +206,59 @@ void gl_ascii_font_render_text(
 {
     if (handler == NULL)    eprint("handler argument is null");
     if (text == NULL)       eprint("text argument is null");
+    if(strlen(text) > KB) eprint("text is too big exceeded 1024 bytes");
 
 
     const character_info_t    *atlas   = handler->font_atlas;
 
-    quadf_t quad                = {0};
     u32     tile_index          = ' ';
     f32     norm_font_width     = norm_font_size;
     f32     norm_font_height    = norm_font_size;
+    vec2f_t x_offset            = {0};
 
-    unsigned int indices[] = {          
-        0, 1, 2, // first triangle  
-        2, 3, 0  // second triangle 
-    };                                  
-
-    vao_bind(&handler->vao);
-    vec2f_t x_offset = {0};
+    glquad_t vertices[KB];
+    stack_t stack = stack_static_array_init(vertices, KB);
 
     for (int i = 0; text[i] != '\0'; i++) 
     {
         tile_index = text[i] - ' ';
 
-        quad = quadf_init(
+        quadf_t quad = quadf_init(
                 vec2f_add(position, x_offset), 
                 norm_font_width,
                 norm_font_height
         );
 
-
-#if 0
-        gl_ascii_font_t *output = handler; // NOTE: delete this line later
-        printf("Tile index %i\n", tile_index);
-        printf("Character = %c \n", output->font_atlas[tile_index].character);
-        printf("norm font width = %f\n", output->font_atlas[tile_index].norm_font_width);
-        printf("norm font height = %f\n", output->font_atlas[tile_index].norm_font_height);
-        printf("font height = %f\n", output->font_atlas[tile_index].font_height);
-        printf("font width = %f\n", output->font_atlas[tile_index].font_width);
-        printf("TexCoord: " VEC2F_FMT "\n",VEC2F_ARG(&output->font_atlas[tile_index].texture_coord[0])); 
-        printf("TexCoord: " VEC2F_FMT "\n",VEC2F_ARG(&output->font_atlas[tile_index].texture_coord[1])); 
-        printf("TexCoord: " VEC2F_FMT "\n",VEC2F_ARG(&output->font_atlas[tile_index].texture_coord[2])); 
-        printf("TexCoord: " VEC2F_FMT "\n",VEC2F_ARG(&output->font_atlas[tile_index].texture_coord[3])); 
-#endif 
-
-        
-
-        float vertices[] = {                           
-
-            quad.vertex[0].cmp[X], quad.vertex[0].cmp[Y], 0.0f,
-            quad.vertex[1].cmp[X], quad.vertex[1].cmp[Y], 0.0f,
-            quad.vertex[2].cmp[X], quad.vertex[2].cmp[Y], 0.0f,
-            quad.vertex[3].cmp[X], quad.vertex[3].cmp[Y], 0.0f,
-
+        quadf_t tex_coord = {
             atlas[tile_index].texture_coord[0].cmp[X], atlas[tile_index].texture_coord[0].cmp[Y],
             atlas[tile_index].texture_coord[1].cmp[X], atlas[tile_index].texture_coord[1].cmp[Y],
             atlas[tile_index].texture_coord[2].cmp[X], atlas[tile_index].texture_coord[2].cmp[Y],
             atlas[tile_index].texture_coord[3].cmp[X], atlas[tile_index].texture_coord[3].cmp[Y],
+        };
 
-        };                                             
+        glquad_t textquad = glquad_init(quad, vec3f(0.0f), tex_coord, 0);
 
-#if 0
-        printf("Position: " VEC2F_FMT"\n", vertices[0], vertices[1]);
-        printf("--------- " VEC2F_FMT"\n", vertices[3], vertices[4]); 
-        printf("          " VEC2F_FMT"\n", vertices[6], vertices[7]); 
-        printf("          " VEC2F_FMT"\n", vertices[9], vertices[10]); 
-#endif
-
-
-        vbo_t vbo = vbo_init(vertices, sizeof(vertices)); 
-        ebo_t ebo = ebo_init(&vbo, indices, 6);
-
-        vao_push(&handler->vao, &vbo);
-            vao_set_attributes(&handler->vao, 0, 3, GL_FLOAT, false, 3 * sizeof(float), 0);      
-            vao_set_attributes(&handler->vao, 0, 2, GL_FLOAT, false, 2 * sizeof(float), 12 * sizeof(float));
-            gl_texture2d_bind(&handler->texture, 0);
-            gl_shader_bind(&handler->shader);
-            vao_draw(&handler->vao); 
-        vao_pop(&handler->vao);
-
-        ebo_destroy(&ebo);
-        vbo_destroy(&vbo);
+        stack_push_by_value(&stack, textquad);
 
         x_offset = vec2f_add(
                 x_offset, 
                 (vec2f_t) {norm_font_width, 0.0f}
         );
-
-
     }
 
-    vao_unbind();
+    glrenderer2d_t textrenderer    = glrenderer2d_init(&handler->shader, &handler->texture);
+    glbatch_t batch                = glbatch_init(vertices, glquad_t );
+
+    glrenderer2d_draw_from_batch(&textrenderer, &batch);
+
+    glbatch_destroy(&batch);
+    glrenderer2d_destroy(&textrenderer);
 }
 
 void gl_ascii_font_destroy(gl_ascii_font_t *self)
 {
     if (self == NULL) eprint("argument is null");
 
-    vao_destroy(&self->vao);
     gl_shader_destroy(&self->shader);
     gl_texture2d_destroy(&self->texture);
 }

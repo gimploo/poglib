@@ -5,16 +5,11 @@
 #include "application/stopwatch.h"
 #include "simple/gl_renderer2d.h"
 
-
-
-
-
-
 typedef struct application_t application_t;
 
 typedef u8 state_t;
 
-#define         application_init(PWIN, PRENDERER) __impl_application_init((PWIN), (PRENDERER))
+#define         application_init(PWIN) __impl_application_init((PWIN))
 void            application_run(application_t *app);
 
 #define         application_update_state(PAPP, STATE) (PAPP)->state = STATE
@@ -31,7 +26,6 @@ void            application_run(application_t *app);
 struct application_t {
 
     window_t *__window_handle;
-    gl_renderer2d_t *__renderer2d;
     
     stopwatch_t timer;
 
@@ -43,11 +37,10 @@ struct application_t {
 };
 
 
-application_t __impl_application_init(window_t *window, gl_renderer2d_t *renderer)
+application_t __impl_application_init(window_t *window)
 {
     return (application_t) {
         .__window_handle = window,
-        .__renderer2d = renderer,
         .timer = stopwatch_init(), 
         .state = 0,
         .init = NULL,

@@ -3,19 +3,11 @@
 #include "../../math/shapes.h"
 
 
-
-
-
-
 typedef struct boxcollider2d_t boxcollider2d_t;
 
 boxcollider2d_t     boxcollider2d_init(quadf_t *vertices);
 #define             boxcollider2d_update(PBOX1, PBOX2)      __impl_boxcollider2d_collision_using_AABB((PBOX1), (PBOX2))
 #define             boxcollider2d_is_collide(PBOX1)         (PBOX1)->is_collide
-
-
-
-
 
 
 struct boxcollider2d_t {
