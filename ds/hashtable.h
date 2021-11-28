@@ -37,6 +37,10 @@ typedef struct hashtable_t hashtable_t;
 } while(0)
 
 
+#define hashtable_destroy(PTABLE) __impl_hashtable_destroy(PTABLE)
+
+
+
 
 
 
@@ -206,5 +210,13 @@ void __impl_hashtable_delete_key_value_pair(hashtable_t *table, const void * key
         default: eprint("type not accounted for");
     }
 
+}
+
+void __impl_hashtable_destroy(hashtable_t *table)
+{
+    if (table == NULL) eprint("table arguemnt is null")
+
+    free(table->__array);
+    free(table->__index_table);
 }
 #endif
