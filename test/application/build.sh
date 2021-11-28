@@ -49,10 +49,10 @@ function gdb_debug {
     if [ -f "core" ] 
     then
         echo -e "[*] ${blue}Core dump found, running with core dump ... ${reset}"
-        gdb --core=core --silent "$EXE_PATH"
+        gdb --core=core --silent --tui "$EXE_PATH"
     else 
         echo -e "[*] ${blue}Core Dump not found, running without core dump ... ${reset}"
-        gdb --silent "$EXE_PATH"
+        gdb --silent --tui "$EXE_PATH"
     fi
 
     return 0
