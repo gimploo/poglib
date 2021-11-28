@@ -10,7 +10,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../external/stb_image.h"
 
-typedef struct gl_texture2d_t {
+typedef struct gltexture2d_t {
     
     GLuint          id; 
     const char      *file_path;
@@ -19,7 +19,7 @@ typedef struct gl_texture2d_t {
     int             height;
     int             bpp;        //BytesPerPixel
 
-} gl_texture2d_t;
+} gltexture2d_t;
 
 
 /*-----------------------------------------------------
@@ -27,27 +27,27 @@ typedef struct gl_texture2d_t {
 -----------------------------------------------------*/
 
 
-gl_texture2d_t              gl_texture2d_init(const char * file_path);
-gl_texture2d_t              gl_texture2d_empty_init(u32 width, u32 height);
-void                        gl_texture2d_destroy(const gl_texture2d_t *texture);
-//NOTE:(macro)              gl_texture2d_bind(gl_texture2d_t *, u32 slot) --> void
-//NOTE:(macro)              gl_texture2d_unbind(void) --> void
-void                        gl_texture2d_dump(const gl_texture2d_t *texture);
+gltexture2d_t              gltexture2d_init(const char * file_path);
+gltexture2d_t              gltexture2d_empty_init(u32 width, u32 height);
+void                        gltexture2d_destroy(const gltexture2d_t *texture);
+//NOTE:(macro)              gltexture2d_bind(gltexture2d_t *, u32 slot) --> void
+//NOTE:(macro)              gltexture2d_unbind(void) --> void
+void                        gltexture2d_dump(const gltexture2d_t *texture);
 
 
 /*------------------------------------------------------
  // Implementation
 ------------------------------------------------------*/
 
-#define gl_texture2d_bind(ptex, slot) {\
+#define gltexture2d_bind(ptex, slot) {\
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + (slot)));\
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, (ptex)->id));\
 }
-#define gl_texture2d_unbind()    (GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
+#define gltexture2d_unbind()    (GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
 
 
 //NOTE: this function was created for framebuffers since they use color textures also the data is stored in RGB not RGBA8
-gl_texture2d_t gl_texture2d_empty_init(u32 width, u32 height)
+gltexture2d_t gltexture2d_empty_init(u32 width, u32 height)
 {   
     GLuint id;
 
@@ -75,7 +75,7 @@ gl_texture2d_t gl_texture2d_empty_init(u32 width, u32 height)
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
     GL_LOG("Texture `%i` successfully created", id);
 
-    return (gl_texture2d_t) {
+    return (gltexture2d_t) {
         .id        = id,
         .file_path = NULL,
         .buf       = NULL,
@@ -86,7 +86,7 @@ gl_texture2d_t gl_texture2d_empty_init(u32 width, u32 height)
 
 }
 
-gl_texture2d_t gl_texture2d_init(const char *file_path)
+gltexture2d_t gltexture2d_init(const char *file_path)
 {
     if (file_path == NULL) eprint("file argument is null");
 
@@ -145,7 +145,7 @@ gl_texture2d_t gl_texture2d_init(const char *file_path)
     
     GL_LOG("Texture `%i` successfully created", id);
 
-    return (gl_texture2d_t) {
+    return (gltexture2d_t) {
         .id        = id,
         .file_path = file_path,
         .buf       = buf,
@@ -155,7 +155,7 @@ gl_texture2d_t gl_texture2d_init(const char *file_path)
     };
 }
 
-void gl_texture2d_destroy(const gl_texture2d_t *texture)
+void gltexture2d_destroy(const gltexture2d_t *texture)
 {
     if (texture == NULL) eprint("texture argument is null");
 
@@ -164,7 +164,7 @@ void gl_texture2d_destroy(const gl_texture2d_t *texture)
     stbi_image_free(texture->buf);
 }
 
-void gl_texture2d_dump(const gl_texture2d_t *texture)
+void gltexture2d_dump(const gltexture2d_t *texture)
 {
     if (texture == NULL) eprint("texture argument is null");
 

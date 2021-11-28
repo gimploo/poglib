@@ -9,7 +9,7 @@ typedef struct application_t application_t;
 
 typedef u8 state_t;
 
-#define         application_init(PWIN) __impl_application_init((PWIN))
+#define         application_init(PWIN, INIT, UPDATE, RENDER) __impl_application_init((PWIN), (INIT), (UPDATE), (RENDER))
 void            application_run(application_t *app);
 
 #define         application_update_state(PAPP, STATE) (PAPP)->state = STATE
@@ -37,15 +37,15 @@ struct application_t {
 };
 
 
-application_t __impl_application_init(window_t *window)
+application_t __impl_application_init(window_t *window, void (* init)(struct application_t*), void (*update)(struct application_t*), void (*render)(struct application_t*))
 {
     return (application_t) {
         .__window_handle = window,
         .timer = stopwatch_init(), 
         .state = 0,
-        .init = NULL,
-        .update = NULL,
-        .render = NULL
+        .init = init,
+        .update = update,
+        .render = render
     };
 }
 
@@ -54,6 +54,7 @@ application_t __impl_application_init(window_t *window)
 void application_run(application_t *app)
 {
     if (app == NULL) eprint("application argument is null");
+    if(app->__window_handle == NULL) eprint("application doesnt have a window handle");
     
     window_t *win = app->__window_handle;
     stopwatch_t *timer = &app->timer;
