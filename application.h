@@ -3,20 +3,25 @@
 
 #include "simple/window.h"
 #include "application/stopwatch.h"
-
+#include "simple/gl_renderer2d.h"
 
 typedef struct application_t application_t;
 
 typedef u8 state_t;
 
-application_t   application_init(window_t *window, void (*init)(void*), void (*update)(void*), void (*render)(void*));
+#define         application_init(PWIN) __impl_application_init((PWIN))
 void            application_run(application_t *app);
-void            application_destroy(application_t *app);
 
-#define application_update_state(PAPP, STATE) (PAPP)->state = STATE
+#define         application_update_state(PAPP, STATE) (PAPP)->state = STATE
+#define         application_get_dt(PAPP)  (PAPP)->timer.dt
+#define         application_get_fps(PAPP) (PAPP)->timer.fps
+#define         application_get_whandle(PAPP) (PAPP)->__window_handle
 
-#define application_get_dt(PAPP)  (PAPP)->timer.dt
-#define application_get_fps(PAPP) (PAPP)->timer.fps
+
+
+
+
+#ifndef IGNORE_APPLICATION_IMPLEMENTATION
 
 struct application_t {
 
@@ -26,25 +31,21 @@ struct application_t {
 
     state_t state;
 
-    void (*init)(void*);
-    void (*update)(void*);
-    void (*render)(void*);
+    void (* init)(struct application_t*);
+    void (*update)(struct application_t*);
+    void (*render)(struct application_t*);
 };
 
 
-application_t application_init(window_t *window, void (*init)(void*), void (*update)(void*), void (*render)(void*))
+application_t __impl_application_init(window_t *window)
 {
-    if (window == NULL) eprint("window argument is null");
-    if (init == NULL) eprint("init function pointer is null");
-    if (update == NULL) eprint("update function pointer is null");
-
     return (application_t) {
         .__window_handle = window,
         .timer = stopwatch_init(), 
         .state = 0,
-        .init = init,
-        .update = update,
-        .render = render
+        .init = NULL,
+        .update = NULL,
+        .render = NULL
     };
 }
 
@@ -58,7 +59,7 @@ void application_run(application_t *app)
     stopwatch_t *timer = &app->timer;
 
     // Initialize the content in the application
-    app->init(NULL);
+    app->init(app);
 
     // states
     state_t st_current  = app->state, 
@@ -84,7 +85,7 @@ void application_run(application_t *app)
             application_update_state(app, st_current);
             window_update_user_input(win);
 
-            app->update(NULL);
+            app->update(app);
 
             timer->accumulator -= timer->dt;
         }
@@ -96,7 +97,7 @@ void application_run(application_t *app)
         application_update_state(app, state);
 
 
-        app->render(NULL);
+        app->render(app);
 
 
         // NOTE: for now i am capping at 60 fps 
@@ -111,13 +112,6 @@ void application_run(application_t *app)
         timer->fps = 1.0f / timer->dt;
         SDL_Delay(floor(1000/60 - timer->dt));
     }
-    application_destroy(app);
 }
 
-void application_destroy(application_t *app)
-{
-    if (app == NULL) eprint("application argument is null");
-
-    window_destroy(app->__window_handle);
-
-}
+#endif 

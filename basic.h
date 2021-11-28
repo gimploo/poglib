@@ -12,7 +12,7 @@
 #include <time.h>
 
 #define global      static 
-#define internal    static 
+#define local       static 
 
 #define INTERNAL    static inline
 
@@ -62,14 +62,19 @@ typedef enum
 // Used with function declaration to force inlining
 #define FORCEINLINE __attribute__((always_inline))
 
-#define ERROR {\
-    fprintf(stderr, "[(%s:%d): %s] %s\n",__FILE__, __LINE__, __func__, strerror(errno)); \
-    exit(0);                                    \
-}
+// NOTE: Normal printf doesnt work in windows when used along with sdl, 
+// so this is quick and dirty fix to the problem 
+#if defined(_WIN32)
+    #include <SDL2/SDL.h>
+    #define printf(FMT, ...)            SDL_Log(FMT, ##__VA_ARGS__)
+    #define fprintf(stderr, FMT, ...)   SDL_Log(FMT, ##__VA_ARGS__) 
+    #define fprintf(stdout, FMT, ...)   SDL_Log(FMT, ##__VA_ARGS__) 
+#endif
 
+// Eprint for for both linux and windows
 #define eprint(fmt, ...) {\
-    fprintf(stderr, "[(%s:%d): %s] " fmt "\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__); \
-    exit(0);                                    \
+    fprintf(stderr, "[(%s:%d): %s] " fmt "\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
+    exit(0);\
 }
 
 #define ARRAY_LEN(arr) sizeof((arr)) / sizeof(*(arr))
