@@ -3,7 +3,7 @@
 
 #include "simple/window.h"
 #include "application/stopwatch.h"
-#include "simple/gl_renderer2d.h"
+#include "simple/glrenderer2d.h"
 
 typedef struct application_t application_t;
 
