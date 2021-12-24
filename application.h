@@ -36,16 +36,18 @@ struct application_t {
     void (*render)(struct application_t*);
 };
 
+    
 
-application_t __impl_application_init(window_t *window)
+
+application_t __impl_application_init(window_t *window, void (* init)(struct application_t*), void (*update)(struct application_t*), void (*render)(struct application_t*))
 {
     return (application_t) {
         .__window_handle = window,
         .timer = stopwatch_init(), 
         .state = 0,
-        .init = NULL,
-        .update = NULL,
-        .render = NULL
+        .init = init,
+        .update = update,
+        .render = render
     };
 }
 
