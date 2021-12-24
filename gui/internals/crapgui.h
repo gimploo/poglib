@@ -40,7 +40,7 @@ crapgui_t crapgui_init(window_t *window, gl_ascii_font_t *font)
     return (crapgui_t ) {
         .window_handler      = window,
         .font_handler        = font,
-        .renderer_handler    = gl_renderer2d_init(gui_shader, NULL),
+        .renderer_handler    = glrenderer2d_init(gui_shader, NULL),
     };
 }
 
@@ -61,6 +61,6 @@ void crapgui_destroy(crapgui_t *gui)
     free(gui->renderer_handler.shader);
 
     // renderer
-    gl_renderer2d_destroy(&gui->renderer_handler);
+    glrenderer2d_destroy(&gui->renderer_handler);
 }
 
