@@ -1,7 +1,7 @@
 #ifndef __MY__SHAPES__H__
 #define __MY__SHAPES__H__
 
-#include "la.h"
+#include "vec.h"
 
 #define TOP_LEFT     0
 #define TOP_RIGHT    1

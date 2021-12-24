@@ -107,7 +107,7 @@ REM                            v
         %INCLUDES% ^
         /Fe%EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME% ^
         %SRC_FOLDER_DEFAULT_PATH%\%SRC_FILE_NAME% ^
-        /link %CC_DEFAULT_LIBS% %LIBS% -SUBSYSTEM:windows
+        /link %CC_DEFAULT_LIBS% %LIBS% -SUBSYSTEM:console
 
     move *.pdb %EXE_FOLDER_DEFAULT_PATH% >nul
     move *.obj %EXE_FOLDER_DEFAULT_PATH% >nul
