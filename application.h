@@ -9,7 +9,7 @@ typedef struct application_t application_t;
 
 typedef u8 state_t;
 
-#define         application_init(PWIN) __impl_application_init((PWIN))
+#define         application_init(PWIN) __impl_application_init((PWIN), (void *)init, (void *)update, (void *)render)
 void            application_run(application_t *app);
 
 #define         application_update_state(PAPP, STATE) (PAPP)->state = STATE

@@ -41,7 +41,7 @@ typedef struct crapgui_t {
     
     window_t        *window_handler;
     gl_ascii_font_t *font_handler;
-    gl_renderer2d_t renderer_handler;
+    glrenderer2d_t renderer_handler;
 
 } crapgui_t;
 
