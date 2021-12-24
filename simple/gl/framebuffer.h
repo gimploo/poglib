@@ -34,26 +34,26 @@ const char * const GL_FRAMEBUFFER_FS =
         "FragColor = texture(u_color_texture, tex_coord) + vec4(color, 1.0f);\n"
     "}";
 
-typedef struct gl_framebuffer_t {
+typedef struct glframebuffer_t {
 
     GLuint id; // Frame buffer object id
     const u32 screen_width;
     const u32 screen_height;
 
     GLuint          rbo_id; // Render buffer object id
-    gl_texture2d_t  color_texture; // Color attachment texture
-    gl_shader_t     color_shader; // Color attachemnt shader 
+    gltexture2d_t  color_texture; // Color attachment texture
+    glshader_t     color_shader; // Color attachemnt shader 
 
-} gl_framebuffer_t;
+} glframebuffer_t;
 
 /*------------------------------------------------------------
  // Declarations
 ------------------------------------------------------------*/
 
-gl_framebuffer_t    gl_framebuffer_init(u32 screen_width, u32 screen_height);
-//NOTE:(macro)      gl_framebuffer_begin_scene(gl_framebuffer_t *) -> void
-//NOTE:(macro)      gl_framebuffer_end_scene(gl_framebuffer_t *) -> void
-void                gl_framebuffer_destroy(gl_framebuffer_t *);
+glframebuffer_t    glframebuffer_init(u32 screen_width, u32 screen_height);
+//NOTE:(macro)      glframebuffer_begin_scene(glframebuffer_t *) -> void
+//NOTE:(macro)      glframebuffer_end_scene(glframebuffer_t *) -> void
+void                glframebuffer_destroy(glframebuffer_t *);
 
 /*------------------------------------------------------------
  // Implementation 
@@ -62,12 +62,12 @@ void                gl_framebuffer_destroy(gl_framebuffer_t *);
 #define __framebuffer_bind(pfbo)    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, (pfbo)->id))
 #define __framebuffer_unbind(pfbo)  GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0))
 
-#define gl_framebuffer_begin_scene(pfbo) do {\
+#define glframebuffer_begin_scene(pfbo) do {\
         __framebuffer_bind(pfbo);\
         GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));\
 } while(0)
 
-#define gl_framebuffer_end_scene(pfbo) do {\
+#define glframebuffer_end_scene(pfbo) do {\
         __framebuffer_unbind(pfbo);\
         GL_CHECK(glDisable(GL_DEPTH_TEST));\
 } while(0)
@@ -75,7 +75,7 @@ void                gl_framebuffer_destroy(gl_framebuffer_t *);
 
 //NOTE: this constructor creates the color attachemnt as the texture and both the depth and stencil buffer as render buffer object
 
-gl_framebuffer_t gl_framebuffer_init(u32 screen_width, u32 screen_height)
+glframebuffer_t glframebuffer_init(u32 screen_width, u32 screen_height)
 {
     // Initializing the framebuffer
     GLuint fbo_id;
@@ -83,11 +83,11 @@ gl_framebuffer_t gl_framebuffer_init(u32 screen_width, u32 screen_height)
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_id));
 
     // Color attachemnt (texture)
-    gl_texture2d_t color_texture = gl_texture2d_empty_init(screen_width, screen_height);
+    gltexture2d_t color_texture = gltexture2d_empty_init(screen_width, screen_height);
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color_texture.id, 0));
 
     // Color attachemnt (shader)
-    gl_shader_t color_shader = gl_shader_from_cstr_init(GL_FRAMEBUFFER_VS, GL_FRAMEBUFFER_FS);
+    glshader_t color_shader = glshader_from_cstr_init(GL_FRAMEBUFFER_VS, GL_FRAMEBUFFER_FS);
 
     // Depth and stencil buffer attachement (render buffer)
     GLuint rbo_id;
@@ -102,7 +102,7 @@ gl_framebuffer_t gl_framebuffer_init(u32 screen_width, u32 screen_height)
 
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 
-    return (gl_framebuffer_t ) {
+    return (glframebuffer_t ) {
         .id            = fbo_id,
         .screen_width  = screen_width,
         .screen_height = screen_height,
@@ -112,11 +112,11 @@ gl_framebuffer_t gl_framebuffer_init(u32 screen_width, u32 screen_height)
     };
 }
 
-void gl_framebuffer_destroy(gl_framebuffer_t *fbo)
+void glframebuffer_destroy(glframebuffer_t *fbo)
 {
     GL_CHECK(glDeleteFramebuffers(1, &fbo->id));
-    gl_texture2d_destroy(&fbo->color_texture);
-    gl_shader_destroy(&fbo->color_shader);
+    gltexture2d_destroy(&fbo->color_texture);
+    glshader_destroy(&fbo->color_shader);
 }
 
 #endif //__MY_GL_FRAMEBUFFER_H__

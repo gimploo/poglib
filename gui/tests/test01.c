@@ -35,10 +35,9 @@ int main(int argc, char *argv[])
     drop_down_list_push_button(&list01, "bruh");
 
 
-    window_while_is_open(&window)
+    while(window.is_open)
     {
         // Cap the fps
-        window_cap_fps(&window, 1);
 
         frame_begin(&frame01);
             
