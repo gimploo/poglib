@@ -5,15 +5,19 @@
 typedef struct list_t list_t;
 
 
-#define list_init(CAPACITY) __impl_list_init(CAPACITY)
-#define list_append(PLIST, VALUE) __impl_list_append((PLIST), (VALUE)) 
-void    list_delete(list_t *list, const u64 index);
-void    list_free(list_t *list);
+#define     list_init(CAPACITY) __impl_list_init(CAPACITY)
+#define     list_append(PLIST, VALUE) __impl_list_append((PLIST), (VALUE)) 
+void        list_delete(list_t *list, const u64 index);
+void        list_destroy(list_t *list);
 
-void list_dump(list_t *list);
-void list_print(list_t *list, void (*print)(void*));
+void        list_dump(const list_t *list);
+void        list_print(const list_t *list, void (*print)(void*));
 
-#define list_len(PLIST) (PLIST)->__top + 1
+#define     list_len(PLIST) (PLIST)->__top + 1
+
+
+
+
 
 
 
@@ -74,7 +78,7 @@ void list_delete(list_t *list, const u64 index)
 
 } 
 
-void list_print(list_t *list, void (*print)(void*))
+void list_print(const list_t *list, void (*print)(void*))
 {
     assert(list);
     if (list->__top == -1) {
@@ -88,7 +92,7 @@ void list_print(list_t *list, void (*print)(void*))
     printf("\n");
 }
 
-void list_dump(list_t *list)
+void list_dump(const list_t *list)
 {
     assert(list);
     if (list->__top == -1) {
@@ -103,7 +107,7 @@ void list_dump(list_t *list)
 
 }
 
-void list_free(list_t *list)
+void list_destroy(list_t *list)
 {
     free(list->__array);
     list->__array = NULL;
