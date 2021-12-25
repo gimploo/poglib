@@ -63,9 +63,12 @@ entity_manager_t entity_manager_init(const u64 total_entity_types)
 {
     assert(total_entity_types > 0);
 
+    list_t *tmp = (list_t *)calloc(total_entity_types, sizeof(list_t ));
+    assert(tmp);
+
     return (entity_manager_t ) {
         .entities = list_init(10),
-        .entitymap = (list_t *)calloc(total_entity_types, sizeof(list_t )),
+        .entitymap = tmp,
         .total_entities = 0
     };
 }
@@ -96,6 +99,7 @@ void entity_manager_destroy(entity_manager_t *manager)
 
     list_destroy(&manager->entities);
     free(manager->entitymap);
+    manager->entitymap = NULL;
     manager->total_entities = 0;
 }
 #endif
