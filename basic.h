@@ -35,8 +35,8 @@ typedef double          f64;
 typedef enum 
 {
     DT_str_t,
-    DT_char,
 
+    DT_char,
     DT_u8,
     DT_i8,
     DT_u16,
@@ -48,6 +48,9 @@ typedef enum
     DT_f32,
     DT_f64,
 
+    DT_ptr,
+
+    DT_COUNT
 
 } data_type;
 

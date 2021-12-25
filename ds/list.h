@@ -1,296 +1,113 @@
-#ifndef _LIST_H_
-#define _LIST_H_
+#pragma once
+#include "../basic.h"
 
-#include "../str.h"
 
-#ifdef DEBUG
-#include "dbg/dbg.h"
-extern dbg_t debug;
-#endif
+typedef struct list_t list_t;
 
-typedef enum ValType {
 
-    VT_PSTR,  
-    VT_ADDR,
-    VT_COUNT
+#define list_init(CAPACITY) __impl_list_init(CAPACITY)
+#define list_append(PLIST, VALUE) __impl_list_append((PLIST), (VALUE)) 
+void    list_delete(list_t *list, const u64 index);
+void    list_free(list_t *list);
 
-} ValType;
+void list_dump(list_t *list);
+void list_print(list_t *list, void (*print)(void*));
 
-typedef struct node {
+#define list_len(PLIST) (PLIST)->__top + 1
 
-    void * value;
-    ValType type;
-    struct node *next;
-    struct node *prev;
 
-} Node;
 
-typedef struct {
+#ifndef IGNORE_LIST_IMPLEMENTATION
 
-    struct node *head;
-    struct node *tail;
-    size_t count;
+struct list_t {
 
-} List;
+    void **__array;
+    i64 __top;
+    u64 __capacity;
+};
 
-static inline List list_init(void)
+
+list_t __impl_list_init(const u64 capacity) 
 {
-    return (List) {
-        .head = NULL,
-        .tail = NULL,
-        .count = 0
+    return (list_t)
+    {
+        .__array = (void **)calloc(capacity, sizeof(u64)),
+        .__top = -1,
+        .__capacity = capacity,
     };
 }
 
-
-
-typedef void (*list_print_func)(void*);
-
-Node *  node_init(void *value, ValType type);
-
-void    list_print(List *list);
-bool    list_append_node(List *list, Node *node);
-bool    list_delete_node(List *list, Node *node);
-bool    list_delete_node_by_value(List *list, void *pointer);
-void    list_destory(List *list);
-
-
-/*
- *
- * FUNCTION DEFINITION -
- * ------------------- |
- *                     v
- */
-
-Node * node_init(void *value, ValType type)
+void __impl_list_append(list_t *list, void *value)
 {
+    assert(list);
+    assert(value);
 
-    Node *node = (Node *) malloc(sizeof(Node));
-    if (node == NULL) {
-        fprintf(stderr, "%s: malloc failed\n", __func__);
-        return NULL;
+    if (list->__top == (list->__capacity - 1)) {
+
+        list->__capacity = list->__capacity * 2;
+        void **tmp = (void **)realloc(list->__array, list->__capacity * sizeof(u64));
+        assert(tmp);
+        list->__array = tmp;
     }
 
-    if (value == NULL) {
-        fprintf(stderr, "%s: value argument is null\n", __func__);
-        exit(1);
-    }
-
-    switch(type) {
-        case VT_ADDR:
-            node->value = value;
-            node->type = VT_ADDR;
-            break;
-        case VT_PSTR:
-            node->value = new_pstr((char *)value);
-            node->type = VT_PSTR;
-            break;
-        default:
-            fprintf(stderr, "%s: type not accounted for \n", __func__);
-            exit(1);
-    }
-
-    node->next = node->prev = NULL;
-
-    return node;
+    list->__array[++list->__top] = value;
 }
-bool list_append_node(List *list, Node *node)
+
+
+void list_delete(list_t *list, const u64 index)
 {
-    if (list == NULL) {
-        fprintf(stderr, "%s: list argument is null\n", __func__);
-        return false;
-    }
+    assert(list);
+    assert(list->__top != -1);
+    assert(index >= 0);
+    assert(index <= list->__top);
 
-    if (node == NULL) {
-        fprintf(stderr, "%s: node argument is null\n", __func__);
-        return false;
-    }
 
-    if (list->head == NULL) {
-
-        list->head = node;
-        list->tail = node;
-        list->count++;
-        return true;
+    if (index != list->__top) {
+        memcpy(&list->__array[index], 
+                &list->__array[index + 1], 
+                sizeof(void *) * list->__top); 
     } 
 
-    node->prev = list->tail;
-    list->tail->next = node;
-    list->tail = node;
-    list->count++;
-    return true;
-}
+    list->__array[list->__top] = NULL;
 
-void node_destory(Node *del)
+    --list->__top;
+
+} 
+
+void list_print(list_t *list, void (*print)(void*))
 {
-    switch(del->type) {
-        case VT_PSTR: 
-            pstr_free((str_t *)del->value);
-            free(del);
-            break;
-        case VT_ADDR:
-            free(del);
-            break;
-        default:
-            fprintf(stderr, "%s: type not accounted for\n", __func__);
-            exit(1);
+    assert(list);
+    if (list->__top == -1) {
+        printf("list is empty\n");
+        return ;
     }
-
-    del = NULL;
+    for (u64 i = 0; i <= list->__top; i++)
+    {
+        print(list->__array[i]);
+    }
+    printf("\n");
 }
 
-
-
-bool list_delete_node(List *list, Node *node)
+void list_dump(list_t *list)
 {
-    if (list == NULL) {
-        fprintf(stderr, "%s: list argument is null\n", __func__);
-        return false;
+    assert(list);
+    if (list->__top == -1) {
+        printf("list is empty\n");
+        return ;
     }
-
-    if (node == NULL) {
-        fprintf(stderr, "%s: node argument is null\n", __func__);
-        return false;
+    for (u64 i = 0; i < list->__capacity; i++)
+    {
+        printf("%p ", list->__array[i]);
     }
+    printf("\n");
 
-    Node *del = NULL;
-    if (list->head == node) {
-
-        del = list->head; 
-
-        list->head = list->head->next;
-        if (list->head != NULL)
-            list->head->prev = NULL;
-
-        list->count--;
-        node_destory(del);
-        return true;
-
-    } else if (list->tail == node) {
-
-        del = list->tail; 
-
-        list->tail = list->tail->prev;
-        if (list->tail != NULL)
-            list->tail->next = NULL;
-        list->count--;
-        node_destory(del);
-        return true;
-    }
-
-    Node *tmp = list->head->next;
-    while (tmp != NULL) {
-        if (tmp == node) {
-            del = tmp;
-            tmp->prev->next = tmp->next;
-            tmp->next->prev = tmp->prev;
-            list->count--;
-            node_destory(del);
-            return true;
-        }
-        tmp = tmp->next;
-    }
-
-    return false;
 }
 
-
-
-void list_print(List *list)
+void list_free(list_t *list)
 {
-    if (list == NULL) {
-        fprintf(stderr, "%s: list argument is null\n", __func__);
-        exit(1);
-    } else if (list->head == NULL) {
-        fprintf(stderr, "%s: list is empty\n", __func__);
-        exit(1);
-    }
-
-    Node *track = list->head;
-    while (track != NULL) {
-        switch(track->type) {
-            case VT_ADDR:
-                printf("%p", track->value);
-                break;
-            case VT_PSTR:
-                str_print((str_t *)track->value);
-                break;
-            default:
-                fprintf(stderr, "%s: type not accounted for\n", __func__);
-                exit(1);
-        }
-        track = track->next;
-    }
+    free(list->__array);
+    list->__array = NULL;
+    list->__capacity = 0;
+    list->__top = -1;
 }
-
-void list_destory(List *list)
-{
-    if (list == NULL) {
-        fprintf(stderr ,"%s: list argument is null\n", __func__);
-        exit(1);
-    }
-    Node *tmp = list->head;
-    Node *del = NULL;
-    while (tmp != NULL) {
-        del = tmp;
-        tmp = tmp->next;
-        node_destory(del);
-    }
-}
-
-bool list_delete_node_by_value(List *list, void *value)
-{
-    if (list == NULL) {
-        fprintf(stderr, "%s: list argument is null\n", __func__);
-        exit(1);
-    } else if (value == NULL) {
-        fprintf(stderr, "%s: value argument is null\n", __func__);
-        exit(1);
-    }
-
-    Node *del = NULL;
-    if (list->head->value == value) {
-
-        del = list->head; 
-
-        list->head = list->head->next;
-        if (list->head != NULL)
-            list->head->prev = NULL;
-
-        list->count--;
-        node_destory(del);
-        return true;
-
-    } else if (list->tail->value == value) {
-
-        del = list->tail; 
-
-        list->tail = list->tail->prev;
-        if (list->tail != NULL)
-            list->tail->next = NULL;
-
-        list->count--;
-        node_destory(del);
-        return true;
-    }
-
-    Node *tmp = list->head->next;
-    while (tmp != NULL) {
-        if (tmp->value == value) {
-            del = tmp;
-            tmp->prev->next = tmp->next;
-            tmp->next->prev = tmp->prev;
-            list->count--;
-            node_destory(del);
-            return true;
-        }
-        tmp = tmp->next;
-    }
-
-    return false;
-
-
-}
-
-
-#endif //_LIST_H_
+#endif
