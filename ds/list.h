@@ -13,8 +13,9 @@ void        list_destroy(list_t *list);
 void        list_dump(const list_t *list);
 void        list_print(const list_t *list, void (*print)(void*));
 
-#define     list_len(PLIST) (PLIST)->__top + 1
-
+#define     list_get_element_by_index(PLIST, INDEX) (PLIST)->__array[(INDEX)]
+#define     list_get_length(PLIST) (u64)(PLIST)->__top + 1
+#define     list_clear(PLIST) __impl_list_clear(PLIST)
 
 
 
@@ -30,6 +31,13 @@ struct list_t {
     u64 __capacity;
 };
 
+
+void __impl_list_clear(list_t *list)
+{
+    assert(list);
+    list->__top = -1;
+    memset(list->__array, 0, sizeof(void *) * list->__capacity);
+}
 
 list_t __impl_list_init(const u64 capacity) 
 {
