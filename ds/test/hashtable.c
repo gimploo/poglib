@@ -2,6 +2,12 @@
 #include "../hashtable.h"
 
 
+void print_str(void *arg)
+{
+    str_t *str = (str_t *)arg;
+    printf(STR_FMT" ", STR_ARG(str));
+}
+
 int main(void)
 {
     str_t names[5] = {
@@ -12,16 +18,33 @@ int main(void)
         new_str("][yopi.,m;lhj;hl]")
     };
 
-    hashtable_t table = hashtable_init(100, str_t );
+    const char *keys[5] = {
+        "jo",
+        "jomama",
+        "sigma",
+        "deez",
+        "forsencd"
+    };
 
-    hashtable_insert(&table, "jo", str_t, &names[0], str_t);
-    hashtable_delete(&table, "jo", str_t);
-    hashtable_insert(&table, "jo", str_t, &names[2], str_t);
+    hashtable_t table = hashtable_init(100);
 
-    hashtable_insert(&table, 32, u64, &names[1], str_t);
-    hashtable_delete(&table, 32, u64);
-    hashtable_insert(&table, 32, u64, &names[1], str_t);
+    for (int i = 4; i >= 0; i--)
+    {
+        hashtable_insert(&table, keys[i], &names[i], str_t);
+        hashtable_print(&table, print_str);
+    }
+    hashtable_dump(&table);
 
+    for (int i = 4; i >= 0; i--)
+    {
+        hashtable_delete(&table, keys[i]);
+        hashtable_print(&table, print_str);
+    }
+
+    hashtable_print(&table, print_str);
+    hashtable_dump(&table);
+
+    hashtable_destroy(&table);
 
     return 0;
 }
