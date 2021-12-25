@@ -66,23 +66,12 @@ typedef enum
 #define FORCEINLINE __attribute__((always_inline))
 
 // Eprint for for both linux and windows
-#define eprint(fmt, ...) {\
+#define eprint(fmt, ...) do {\
     fprintf(stderr, "[(%s:%d): %s] " fmt "\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
     exit(0);\
-}
+} while (0)
 
 #define ARRAY_LEN(arr) sizeof((arr)) / sizeof(*(arr))
-
-//  Buffer type (hopefully this will help in avoiding buffer overflows)
-//
-typedef struct {
-
-    void *array;
-    u64 capacity;
-
-} buffer_t;
-
-#define buffer_init(arr) (buffer_t ){.array = arr, .capacity = ARRAY_LEN(arr)}
 
 
 int randint(int min, int max)
