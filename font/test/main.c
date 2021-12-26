@@ -8,7 +8,18 @@ int main(void)
 
     glbitmapfont_t font = glbitmapfont_init("../../res/ascii_fonts/glyph_atlas.png", 16, 6);
 
-    const char *text01 = "BRUH";
+    const char *text[] = 
+    {
+        "Bruh",
+        "dio",
+        "pepga",
+        "12345"
+    };
+
+    glbitmapfont_set_text(&font, text[0], (vec2f_t ){-1.0f, 1.0f});
+    glbitmapfont_set_text(&font, text[2], (vec2f_t ){-0.5f, 0.5f});
+    glbitmapfont_set_text(&font, text[1], (vec2f_t ){-0.5f, -0.5f});
+    glbitmapfont_set_text(&font, text[3], (vec2f_t ){-0.75f,-0.75});
 
     while(win.is_open)
     {
@@ -16,7 +27,7 @@ int main(void)
 
         window_gl_render_begin(&win);
 
-            glbitmapfont_render_text(&font, text01, (vec2f_t ){-1.0f, 1.0f}, 0.25f);
+            glbitmapfont_draw(&font);
 
         window_gl_render_end(&win);
 
