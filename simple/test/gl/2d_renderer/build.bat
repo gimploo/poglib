@@ -22,7 +22,7 @@ set SRC_FOLDER_DEFAULT_PATH=.
 set DEPENDENCY_DEFAULT_PATH=.\external
 
 REM Source files and exe name
-set SRC_FILE_NAME=test01.c
+set SRC_FILE_NAME=test02.c
 set EXE_FILE_NAME=test.exe
 
 
@@ -56,6 +56,7 @@ set EXE_FILE_NAME=test.exe
     )
 
     echo [*] Checking dependenices ...
+    call :check_dependencies_are_installed || goto :end
     echo [!] Dependencies all found!
 
     if exist bin (
@@ -66,16 +67,16 @@ set EXE_FILE_NAME=test.exe
         echo [!] Bin directory made!
     )
 
-    echo [*] Building project ...
+    echo [*] Building project (DEBUG BUILD)...
     call :build_project_with_msvc || goto :end
 
     if %errorlevel% == 0 (
         echo [*] Running executable ...
-
-            call :run_executable_with_debugger || goto :end
+        call :run_executable || goto :end
 
         if %errorlevel% neq 0 (
             echo [*] Running executable through the debugger ...
+            call :run_executable_with_debugger || goto :end
         )
     )
     
@@ -106,7 +107,7 @@ REM                            v
         %INCLUDES% ^
         /Fe%EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME% ^
         %SRC_FOLDER_DEFAULT_PATH%\%SRC_FILE_NAME% ^
-        /link %CC_DEFAULT_LIBS% %LIBS% -SUBSYSTEM:windows
+        /link %CC_DEFAULT_LIBS% %LIBS% -SUBSYSTEM:console
 
     move *.pdb %EXE_FOLDER_DEFAULT_PATH% >nul
     move *.obj %EXE_FOLDER_DEFAULT_PATH% >nul
@@ -121,6 +122,10 @@ REM ============================================================================
 REM                             -- HELPER FUNCTIONS --
 REM =======================================================================================
     
+:run_executable
+    %EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME%
+    exit /b %errorlevel% 
+
 :run_executable_with_debugger
     devenv /DebugExe %EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME%
     exit /b 0

@@ -92,7 +92,7 @@ void            window_update_title(window_t *window, const char *title_name);
 
 // Input ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-bool            window_update_user_input(window_t *window);
+void            window_update_user_input(window_t *window);
 
 //NOTE:(macro)  window_mouse_get_norm_position(window_t *window) -> vec2f_t
 //NOTE:(macro)  window_mouse_get_position(window_t *window) -> vec2ui_t
@@ -168,7 +168,7 @@ void window_update_title(window_t *window, const char *title_name)
     if (window == NULL) eprint("window argument is null");
 
     window->title_name = title_name;
-    SDL_SetWindowTitle(window, title_name);
+    SDL_SetWindowTitle(window->window_handle, title_name);
 }
 
 void window_set_background(window_t *window, vec4f_t color) 
@@ -620,7 +620,7 @@ void window_sub_window_render_stuff(window_t *sub_window, render_func stuff, voi
     
 }
 
-bool window_update_user_input(window_t *window)
+void window_update_user_input(window_t *window)
 {
     SDL_Event event;
     while(SDL_PollEvent(&event) > 0) 
@@ -677,7 +677,6 @@ bool window_update_user_input(window_t *window)
                 //window->is_open = false;
         }
     }
-    return true;
 }
 
 
