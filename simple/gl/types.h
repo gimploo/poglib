@@ -23,7 +23,7 @@ typedef enum {
 gltri_t     gltri_init(trif_t tri, vec3f_t color, quadf_t tex_coord);
 glquad_t    glquad_init(quadf_t positions, vec3f_t color, quadf_t tex_coord, u8 tex_id);
 
-#define     glbatch_init(VERTEX_ARRAY, TYPE) __impl_gl_batch_init((glvertex_t *)VERTEX_ARRAY, sizeof(VERTEX_ARRAY), BT_type(TYPE))
+#define     glbatch_init(PVERTICES, SIZE, TYPE) __impl_gl_batch_init((glvertex_t *)PVERTICES, SIZE, BT_type(TYPE))
 #define     glbatch_destroy(PBATCH) do {\
 \
     ebo_destroy(&(PBATCH)->ebo);\
@@ -224,4 +224,5 @@ glbatch_t __impl_gl_batch_init(glvertex_t vertices[], const u64 vertices_size, g
 
     return batch;
 }
+
 #endif

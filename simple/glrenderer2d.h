@@ -34,7 +34,7 @@ typedef struct glrenderer2d_t {
 glrenderer2d_t      glrenderer2d_init(glshader_t *shader, gltexture2d_t *texture);
 void                glrenderer2d_draw_quad(glrenderer2d_t *renderer, const glquad_t quad);
 void                glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri);
-void                glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *batch);
+void                glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_t *batch);
 
 void                glrenderer2d_draw_frame_buffer(glframebuffer_t *fbo, const glquad_t quad);
 
@@ -133,7 +133,7 @@ void glrenderer2d_draw_quad(glrenderer2d_t *renderer, const glquad_t quad)
 
 
 
-void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *batch) 
+void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_t *batch) 
 {
     if (renderer == NULL) eprint("renderer argument is null");
     if (batch == NULL) eprint("batch argument is null");
