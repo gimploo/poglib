@@ -13,7 +13,7 @@ set GLEW_URL=https://github.com/nigels-com/glew/releases/download/glew-2.2.0/gle
 REM Include compiler of choice (here its msvc)
 set CC=cl
 set CC_PATH="C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
-set CC_DEFAULT_FLAGS=/std:c11 /W4 /wd4244 /wd4996 /wd5105 /FC /TC /Zi 
+set CC_DEFAULT_FLAGS=/std:c11 /W4 /wd4244 /wd4996 /wd5105 /wd4267 /FC /TC /Zi 
 set CC_DEFAULT_LIBS=User32.lib Gdi32.lib Shell32.lib
 
 REM Source and executalble path (default)
@@ -22,7 +22,7 @@ set SRC_FOLDER_DEFAULT_PATH=.
 set DEPENDENCY_DEFAULT_PATH=.\external
 
 REM Source files and exe name
-set SRC_FILE_NAME=test02.c
+set SRC_FILE_NAME=main.c
 set EXE_FILE_NAME=test.exe
 
 

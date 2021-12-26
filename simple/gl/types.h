@@ -36,6 +36,13 @@ glquad_t    glquad_init(quadf_t positions, vec3f_t color, quadf_t tex_coord, u8 
 
 
 
+
+
+
+
+
+
+
 #ifndef IGNORE_GL_TYPE_IMPLEMENTATION
 
 #define DEFAULT_TRI_INDICES_CAPACITY 3
@@ -110,19 +117,19 @@ gltri_t gltri_init(trif_t tri, vec3f_t color, quadf_t tex_coord)
         .vertex[0] = (glvertex_t ){ 
             tri.vertex[0].cmp[X], tri.vertex[0].cmp[Y], 0.0f, 
             color, 
-            0.0f, 0.0f,
+            tex_coord.vertex[0].cmp[X], tex_coord.vertex[0].cmp[Y],
             0
         }, 
         .vertex[1] = (glvertex_t ){ 
             tri.vertex[1].cmp[X], tri.vertex[1].cmp[Y], 0.0f, 
             color, 
-            0.0f, 0.0f,
+            tex_coord.vertex[1].cmp[X], tex_coord.vertex[1].cmp[Y],
             0
         }, 
         .vertex[2] = (glvertex_t ) { 
             tri.vertex[2].cmp[X], tri.vertex[2].cmp[Y], 0.0f, 
             color, 
-            0.0f, 0.0f,
+            tex_coord.vertex[2].cmp[X], tex_coord.vertex[2].cmp[Y],
             0
         }, 
     };
