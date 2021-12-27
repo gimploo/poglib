@@ -8,18 +8,25 @@
 typedef struct stack_t stack_t ;
 
 
-#define             stack_init(ARR, SIZE, CAPACITY) __impl_stack_init((void **)(ARR), (SIZE), CAPACITY)
 
-#define             stack_push(PSTACK, ELEM) __impl_stack_push((PSTACK), ELEM, &(ELEM), sizeof(ELEM))
+#define             stack_init(ARR, SIZE, CAPACITY)     __impl_stack_init((void **)(ARR), (SIZE), CAPACITY)
+
+#define             stack_push(PSTACK, ELEM)            __impl_stack_push((PSTACK), ELEM, &(ELEM), sizeof(ELEM))
+
+//NOTE: if the value exceeds 8 bytes in size, the stack returns a buffer holding the value 
+//      so to be copied to someother place else it just returns the value itself if its 
+//      less than 8 bytes
 void *              stack_pop(stack_t *);
 void                stack_delete(stack_t *);
 
-#define             stack_is_empty(pstack) ((pstack)->top == -1 ? true : false)
-#define             stack_is_full(pstack)  ((pstack)->top == ((pstack)->capacity - 1) ? true : false)
+void                stack_destroy(stack_t *);
+
+#define             stack_is_empty(pstack)              ((pstack)->top == -1 ? true : false)
+#define             stack_is_full(pstack)               ((pstack)->top == ((pstack)->capacity - 1) ? true : false)
 
 void                stack_print(stack_t *stack, void (*print_elem)(void *));
 
-#define             stack_loop(PSTACK, VAR) for(i32 VAR = 0; VAR <= (PSTACK)->top; VAR++)
+#define             stack_loop(PSTACK, VAR)             for(i32 VAR = 0; VAR <= (PSTACK)->top; VAR++)
 
 
 
@@ -40,6 +47,10 @@ struct stack_t {
     u32 capacity;
     u32 size_of_each_elem;
 
+    // Buffer that stores the get values from queue_get calls instead of having to pass 
+    // a buffer to have it store the output
+    void *buffer;
+
 };
 
 
@@ -56,7 +67,8 @@ static inline stack_t __impl_stack_init(void **array, u32 arr_size_in_bytes, u32
         .array = array,
         .top = -1,
         .capacity = capacity,
-        .size_of_each_elem = arr_size_in_bytes / capacity
+        .size_of_each_elem = arr_size_in_bytes / capacity,
+        .buffer = (void *)calloc(1, arr_size_in_bytes/ capacity)
     };
 }
 
@@ -90,12 +102,19 @@ void * stack_pop(stack_t *stack)
     if (stack == NULL) eprint("stack_push: stack argument is null");
     if (stack->top == -1) return NULL;
 
-    void *elem = (stack->array + (stack->top * stack->size_of_each_elem));
+    if (stack->size_of_each_elem <= 8)
+    {
+        void *elem = stack->array[stack->top];
+        stack->top--;
+        return elem;
+    }
 
-    *(stack->array + (stack->top * stack->size_of_each_elem)) = NULL;
+    void *elem_pos = stack->array + stack->top * stack->size_of_each_elem;
     stack->top--;
 
-    return elem;
+    memcpy(stack->buffer, elem_pos, stack->size_of_each_elem);
+
+    return stack->buffer;
 }
 
 void stack_delete(stack_t *stack)
@@ -106,7 +125,11 @@ void stack_delete(stack_t *stack)
         eprint("stack_push: underflow");
     }
 
-    stack->array[stack->top] = NULL;
+    if (stack->size_of_each_elem <= 8)
+        stack->array[stack->top] = NULL;
+    else
+        memset(stack->array + stack->top * stack->size_of_each_elem, 0, stack->size_of_each_elem);
+
     stack->top--;
 }
 
@@ -121,5 +144,17 @@ void stack_print(stack_t *stack, void (*print_elem)(void *))
     printf("\n");
 }
 
+void stack_destroy(stack_t *stack)
+{
+    assert(stack);
+
+    free(stack->buffer);
+    stack->buffer = NULL;
+
+    stack->array = NULL;
+    stack->top = -1;
+    stack->capacity = 0;
+    stack->size_of_each_elem = 0;
+}
 
 #endif 
