@@ -37,13 +37,14 @@ int oldmain(void)
 {
     int foo[10];
 
-    stack_t stack = stack_init(foo, 10);
+    stack_t stack = stack_init(foo, sizeof(foo), 10);
 
     for (int i = 1; i <= 10; i++)
         stack_push(&stack, i);
 
     stack_print(&stack, print_int);
 
+    return 0;
 }
 
 
@@ -53,8 +54,8 @@ int oldermain(void)
 
     vec4f_t vecs[10] = {0}; 
 
-    stack_t stack01 = stack_init(foo, 10);
-    stack_t stack02 = stack_init(vecs, 10);
+    stack_t stack01 = stack_init(foo, sizeof(foo), 10);
+    stack_t stack02 = stack_init(vecs, sizeof(vecs), 10);
 
     vec4f_t data[10] = {
 
@@ -85,7 +86,7 @@ int oldermain(void)
     }
     /*printf("\n");*/
 
-    for_i_in_stack(&stack02)
+    stack_loop(&stack02, i)
     {
         vec4f_t *vec = ((vec4f_t *)stack02.array + i);
         printf(VEC4F_FMT"\n", VEC4F_ARG(vec));
@@ -127,7 +128,7 @@ int main(void)
     mega_array array;
 
 
-    stack_t stack = stack_init(array.array, 5);
+    stack_t stack = stack_init(array.array,sizeof(array.array), 5);
 
 
     stack_push(&stack, a);
