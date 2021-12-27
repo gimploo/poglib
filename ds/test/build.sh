@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-gcc $1 -g && ./a.out
+gcc -Wno-int-conversion $1 -g && ./a.out
 
 if [ $? -eq 139 ]
 then
