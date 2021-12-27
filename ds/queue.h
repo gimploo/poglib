@@ -8,21 +8,24 @@
 
 typedef struct queue_t queue_t ;
 
-#define     queue_init(PARR, SIZE, CAPACITY) __impl_queue_init((void **)PARR, SIZE, CAPACITY)
-#define     queue_put(PQUEUE, ELEM) __impl_queue_put((PQUEUE), (ELEM), &(ELEM), sizeof(ELEM))
+
+
+#define             queue_init(PARR, SIZE, CAPACITY)    __impl_queue_init((void **)PARR, SIZE, CAPACITY)
+
+#define             queue_put(PQUEUE, ELEM)             __impl_queue_put((PQUEUE), (ELEM), &(ELEM), sizeof(ELEM))
 
 //NOTE: if the value exceeds 8 bytes in size, the queue returns a buffer holding the value 
 //      so to be copied to someother place else it just returns the value itself if its 
 //      less than 8 bytes
-#define     queue_get(PQUEUE) __impl_queue_get((PQUEUE)) 
+#define             queue_get(PQUEUE)                   __impl_queue_get((PQUEUE)) 
 
-#define     queue_is_empty(pqueue)  ((pqueue)->len == 0) ? true : false
-#define     queue_is_full(pqueue)   ((pqueue)->len == (pqueue)->capacity) ? true : false
+#define             queue_is_empty(pqueue)              ((pqueue)->len == 0) ? true : false
+#define             queue_is_full(pqueue)               ((pqueue)->len == (pqueue)->capacity) ? true : false
 
-void        queue_destroy(queue_t *queue);
+void                queue_destroy(queue_t *queue);
 
-void        queue_print(queue_t *queue, void (*print)(void *));
-void        queue_dump(queue_t *queue);
+void                queue_print(queue_t *queue, void (*print)(void *));
+void                queue_dump(queue_t *queue);
 
 
 
