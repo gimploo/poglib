@@ -1,21 +1,25 @@
 #pragma once
-
-
 #include "simple/window.h"
 #include "application/stopwatch.h"
 #include "simple/glrenderer2d.h"
+
+
+
 
 typedef struct application_t application_t;
 
 typedef u8 state_t;
 
-#define         application_init(PWIN) __impl_application_init((PWIN), (void *)init, (void *)update, (void *)render)
+#define         application_init(PWIN) __impl_application_init((PWIN), (void *)init, (void *)update, (void *)render, (void *)shutdown)
 void            application_run(application_t *app);
 
 #define         application_update_state(PAPP, STATE) (PAPP)->state = STATE
 #define         application_get_dt(PAPP)  (PAPP)->timer.dt
 #define         application_get_fps(PAPP) (PAPP)->timer.fps
 #define         application_get_whandle(PAPP) (PAPP)->__window_handle
+
+
+
 
 
 
@@ -33,13 +37,14 @@ struct application_t {
 
     void (* init)(struct application_t*);
     void (*update)(struct application_t*);
-    void (*render)(struct application_t*);
+    void (*render)(struct application_t *);
+    void (*shutdown)(struct application_t*);
 };
 
     
 
 
-application_t __impl_application_init(window_t *window, void (* init)(struct application_t*), void (*update)(struct application_t*), void (*render)(struct application_t*))
+application_t __impl_application_init(window_t *window, void (* init)(struct application_t*), void (*update)(struct application_t*),void (*render)(struct application_t*), void (*shutdown)(struct application_t*))
 {
     return (application_t) {
         .__window_handle = window,
@@ -47,7 +52,8 @@ application_t __impl_application_init(window_t *window, void (* init)(struct app
         .state = 0,
         .init = init,
         .update = update,
-        .render = render
+        .render = render,
+        .shutdown = shutdown
     };
 }
 
@@ -114,6 +120,8 @@ void application_run(application_t *app)
         timer->fps = 1.0f / timer->dt;
         SDL_Delay(floor(1000/60 - timer->dt));
     }
+
+    app->shutdown(app);
 }
 
 #endif 
