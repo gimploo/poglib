@@ -8,7 +8,7 @@ typedef struct c_shape_t c_shape_t ;
 
 
 
-c_shape_t c_shape_init(f32 radius, vec4f_t fill, vec3f_t origin);
+c_shape_t c_shape_init(u64 sides, f32 radius, vec4f_t fill, vec3f_t origin);
 
 
 
@@ -21,17 +21,16 @@ struct c_shape_t {
 
     f32 radius;
     vec4f_t fill;
-    vec3f_t origin;
+    u64 sides;
 
 };
 
 
-c_shape_t c_shape_init(f32 radius, vec4f_t fill, vec3f_t origin)
+c_shape_t c_shape_init(u64 sides, f32 radius, vec4f_t fill)
 {
     return (c_shape_t ) {
         .radius = radius,
         .fill = fill,
-        .origin = origin
     };
 }
 

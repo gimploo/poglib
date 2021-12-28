@@ -1,12 +1,12 @@
 #pragma once 
-#include "../../math/la.h"
+#include "../../simple/gl/types.h"
 
 
 
 typedef struct c_transform_t c_transform_t ;
 
 
-c_transform_t c_transform_init(vec3f_t pos, vec3f_t vec, f32 angle);
+c_transform_t c_transform_init(vec3f_t value, f32 angle);
 
 
 
@@ -19,15 +19,16 @@ c_transform_t c_transform_init(vec3f_t pos, vec3f_t vec, f32 angle);
 
 struct c_transform_t {
 
-    vec3f_t position;
     vec3f_t speed;
     f32 angle;
+
 };
 
-c_transform_t c_transform_init(vec3f_t pos, vec3f_t vec, f32 angle)
+c_transform_t c_transform_init(vec3f_t vec, f32 angle)
 {
     return (c_transform_t ) {
-        pos, vec, angle
+        .speed = vec,
+        .angle = angle
     };
 }
 
