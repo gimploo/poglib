@@ -1,7 +1,5 @@
 #pragma once
-
 #include <GL/glew.h>
-
 #include "../math/shapes.h"
 #include "gl/shader.h"
 #include "gl/texture2d.h"
@@ -12,23 +10,9 @@
 #include "gl/types.h"
 
 
-/*==================================================
- // OpenGL 2D renderer
-==================================================*/
 
-#define MAX_QUAD_CAPACITY_PER_DRAW_CALL 10000
 
-typedef struct glrenderer2d_t {
-
-    vao_t         __vao;
-    glshader_t    *__shader;
-    gltexture2d_t *__texture;
-
-} glrenderer2d_t;
-
-/*--------------------------------------------------------
- // Declarations
---------------------------------------------------------*/
+typedef struct glrenderer2d_t glrenderer2d_t ; 
 
 
 glrenderer2d_t      glrenderer2d_init(glshader_t *shader, gltexture2d_t *texture);
@@ -38,16 +22,27 @@ void                glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer,
 
 void                glrenderer2d_draw_frame_buffer(glframebuffer_t *fbo, const glquad_t quad);
 
-//NOTE: renderer destroy only frees the vao in it and not the shaders and textures passed to it
-void                glrenderer2d_destroy(glrenderer2d_t *renderer);
+#define             glrenderer2d_destroy(PREND)    vao_destroy(&(PREND)->__vao)
 
-#define glrenderer2d_set_shader(PREND, PSHADER) (PREND)->__shader = PSHADER
-#define glrenderer2d_set_texture2d(PREND, PTEX) (PREND)->__texture = PTEX
 
-/*----------------------------------------------------------
- // Implementations
-----------------------------------------------------------*/
 
+
+
+
+
+
+
+#ifndef IGNORE_GLRENDERER2D_IMPLEMENTATION
+
+#define MAX_QUAD_CAPACITY_PER_DRAW_CALL 10000
+
+struct glrenderer2d_t {
+
+    vao_t         __vao;
+    glshader_t    *__shader;
+    gltexture2d_t *__texture;
+
+};
 
 
 void glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri)
@@ -158,13 +153,6 @@ void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_
 }
 
 
-void glrenderer2d_destroy(glrenderer2d_t *renderer)
-{
-    if (renderer == NULL) eprint("renderer argument is null");
-
-    // vao
-    vao_destroy(&renderer->__vao);
-}
 
 void glrenderer2d_draw_frame_buffer(glframebuffer_t *fbo, const glquad_t quad)
 {
@@ -172,4 +160,6 @@ void glrenderer2d_draw_frame_buffer(glframebuffer_t *fbo, const glquad_t quad)
     glrenderer2d_draw_quad(&rd, quad);
     glrenderer2d_destroy(&rd);
 }
+
+#endif
 

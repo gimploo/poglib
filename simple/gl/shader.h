@@ -185,13 +185,7 @@ glshader_t  glshader_from_file_init(const char *file_vs, const char *file_fs)
 
     __shader_load_from_file(&shader, file_vs, file_fs);
 
-    __uniform_meta_data_t *array = (__uniform_meta_data_t *)malloc(MAX_UNIFORM_ARRAY_CAPACITY * sizeof(__uniform_meta_data_t));
-    if (array == NULL) eprint("malloc failed");
-
-    shader.uniforms = stack_init(
-            (void **)array, 
-            (MAX_UNIFORM_ARRAY_CAPACITY * sizeof(__uniform_meta_data_t)), 
-            MAX_UNIFORM_ARRAY_CAPACITY);
+    shader.uniforms = stack_init(MAX_UNIFORM_ARRAY_CAPACITY, __uniform_meta_data_t );
 
     return shader;
 }
@@ -207,13 +201,7 @@ glshader_t  glshader_from_cstr_init(const char *vs_code, const char *fs_code)
 
     __shader_load_code(&shader, vs_code, fs_code);
 
-    __uniform_meta_data_t *array = (__uniform_meta_data_t *)malloc(MAX_UNIFORM_ARRAY_CAPACITY * sizeof(__uniform_meta_data_t));
-    if (array == NULL) eprint("malloc failed");
-
-    shader.uniforms = stack_init(
-            (void **)array, 
-            (MAX_UNIFORM_ARRAY_CAPACITY * sizeof(__uniform_meta_data_t)), 
-            MAX_UNIFORM_ARRAY_CAPACITY);
+    shader.uniforms = stack_init(MAX_UNIFORM_ARRAY_CAPACITY, __uniform_meta_data_t );
 
     return shader;
 }
@@ -275,7 +263,9 @@ void glshader_destroy(const glshader_t *shader)
     if (shader == NULL) eprint("shader argument is null");
 
     GL_CHECK(glDeleteProgram(shader->id));
-    free(shader->uniforms.array);
+
+    stack_t *stack =(stack_t *) &shader->uniforms;
+    stack_destroy(stack);
 
     GL_LOG("Shader `%i` successfully deleted", shader->id);
 }
