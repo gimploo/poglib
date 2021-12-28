@@ -9,16 +9,14 @@ typedef struct list_t list_t;
 
 #define         list_append(PLIST, VALUE)                       __impl_list_append((PLIST), &(VALUE), sizeof(VALUE)) 
 void            list_delete(list_t *list, const u64 index);
+
 void            list_destroy(list_t *list);
 
 void            list_dump(const list_t *list);
 void            list_print(const list_t *list, void (*print)(void*));
 
-#define         list_get_element_by_index(PLIST, INDEX)         (PLIST)->__array[(INDEX)]
-#define         list_get_length(PLIST)                          (u64)(PLIST)->__top + 1
+#define         list_get_element_by_index(PLIST, INDEX)         (PLIST)->__array + (INDEX) * (PLIST)->__elem_size
 #define         list_clear(PLIST)                               __impl_list_clear(PLIST)
-
-
 
 
 
@@ -28,6 +26,9 @@ void            list_print(const list_t *list, void (*print)(void*));
 #ifndef IGNORE_LIST_IMPLEMENTATION
 
 struct list_t {
+
+    // length of the list
+    u64 len;
 
     u8 *__array;
     i64 __top;
@@ -40,6 +41,7 @@ void __impl_list_clear(list_t *list)
 {
     assert(list);
     list->__top = -1;
+    list->len = 0;
     memset(list->__array, 0, list->__elem_size * list->__capacity);
 }
 
@@ -47,6 +49,7 @@ list_t __impl_list_init(const u64 capacity, u64 elem_size)
 {
     return (list_t )
     {
+        .len = 0,
         .__array = (u8 *)calloc(capacity, elem_size),
         .__top = -1,
         .__capacity = capacity,
@@ -74,7 +77,7 @@ void __impl_list_append(list_t *list, void *value_addr, u64 value_size)
         list->__array = tmp;
     }
 
-    list->__top++;
+    list->len = ++list->__top + 1;
 
     memcpy(list->__array + list->__top * list->__elem_size, value_addr, list->__elem_size);
 }
@@ -95,7 +98,7 @@ void list_delete(list_t *list, const u64 index)
                 list->__elem_size * (list->__top - index)); 
     } 
 
-    --list->__top;
+    list->len = --list->__top - 1;
 
 } 
 
@@ -106,7 +109,7 @@ void list_print(const list_t *list, void (*print)(void*))
         printf("list is empty\n");
         return ;
     }
-    for (u64 i = 0; i <= list->__top; i++)
+    for (u64 i = 0; i < list->len; i++)
     {
         print(list->__array + i * list->__elem_size);
     }
@@ -131,6 +134,7 @@ void list_destroy(list_t *list)
     list->__array = NULL;
     list->__capacity = 0;
     list->__top = -1;
+    list->len = 0;
     list->__elem_size = 0;
 }
 #endif
