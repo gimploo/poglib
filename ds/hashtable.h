@@ -26,6 +26,32 @@ typedef struct hashtable_t hashtable_t;
 
 #define HT_MAX_KEY_SIZE 64
 
+
+typedef struct __key_value_pair_t {
+
+    union {
+        char      str[HT_MAX_KEY_SIZE];
+        u64       ulong;
+    } key;
+
+    const void * const  value;
+    const u32           __key_str_len;
+    const data_type     key_type;
+    const data_type     value_type;
+
+} __key_value_pair_t;
+
+
+struct hashtable_t {
+
+    u64 len;
+    __key_value_pair_t  *const __array;
+    const u64           __capacity;
+    const data_type     __value_type;
+    bool                *const __index_table;
+};
+
+
 //NOTE: hashfunction from python3 docs
 u64 hash_cstr(const char *word, const u64 word_len)
 {
@@ -68,35 +94,12 @@ u64 unhash_u64(u64 x)
     return x;
 }
 
-typedef struct __key_value_pair_t __key_value_pair_t;
-
-struct __key_value_pair_t {
-
-    union {
-        char      str[HT_MAX_KEY_SIZE];
-        u64       ulong;
-    } key;
-
-    const void * const  value;
-    const u32           __key_str_len;
-    const data_type     key_type;
-    const data_type     value_type;
-};
-
-struct hashtable_t {
-
-    __key_value_pair_t  *const __array;
-    const u64           __capacity;
-    const data_type     __value_type;
-    bool                *const __index_table;
-};
-
-
 
 
 hashtable_t __impl_hashtable_init(const u64 array_capacity, const data_type type)
 {
     return (hashtable_t ) {
+        .len = 0,
         .__array = (__key_value_pair_t *)calloc(array_capacity, sizeof(__key_value_pair_t)),
         .__capacity = array_capacity,
         .__value_type = type,
@@ -157,6 +160,8 @@ void __impl_hashtable_insert_key_value_pair_by_value(
         eprint("hashtable %li index collision found", index);
 
     } 
+
+    table->len++;
 }
 
 void __impl_hashtable_delete_key_value_pair(hashtable_t *table, const void * key_value, const u64 key_size, const data_type key_type)
@@ -168,11 +173,12 @@ void __impl_hashtable_delete_key_value_pair(hashtable_t *table, const void * key
     u64 index_cstr = hash_cstr((const char *)key_value, key_size) % table->__capacity;
     table->__index_table[index_cstr] = false;
 
+    table->len--;
 }
 
 void __impl_hashtable_destroy(hashtable_t *table)
 {
-    if (table == NULL) eprint("table arguemnt is null")
+    if (table == NULL) eprint("table arguemnt is null");
 
     free(table->__array);
     free(table->__index_table);

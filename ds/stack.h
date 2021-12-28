@@ -40,6 +40,7 @@ void                stack_print(stack_t *stack, void (*print_elem)(void *));
 
 struct stack_t {
 
+    u64 len;
     u8 *array;
     i64 top;
     u64 capacity;
@@ -56,6 +57,7 @@ static inline stack_t __impl_stack_init(u64 capacity, u64 elem_size)
 {
 
     return (stack_t) {
+        .len = 0,
         .array = (u8 *)calloc(capacity, elem_size),
         .top = -1,
         .capacity = capacity,
@@ -81,6 +83,8 @@ static inline void __impl_stack_push(stack_t *stack, void *elem_ref, u64 elem_si
     u8 *arr = (u8 *)stack->array + (++stack->top * elem_size); 
     memcpy(arr, elem_ref, elem_size);
 
+    stack->len = stack->top + 1;
+
 }
 
 void * stack_pop(stack_t *stack)
@@ -89,7 +93,7 @@ void * stack_pop(stack_t *stack)
     if (stack->top == -1) eprint("underflow");
 
     u8 *elem_pos = (u8 *)stack->array + stack->top * stack->elem_size;
-    stack->top--;
+    stack->len = --stack->top - 1;
 
     memcpy(stack->buffer, elem_pos, stack->elem_size);
 
@@ -126,6 +130,7 @@ void stack_destroy(stack_t *stack)
     stack->top = -1;
     stack->capacity = 0;
     stack->elem_size = 0;
+    stack->len = 0;
 }
 
 #endif 
