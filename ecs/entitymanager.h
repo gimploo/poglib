@@ -1,5 +1,5 @@
 #pragma once
-#include "ecs/entity.h"
+#include "entity.h"
 
 
 
@@ -60,7 +60,7 @@ entity_t * entitymanager_add_entity(entitymanager_t *manager, entity_type tag)
     assert(manager);
 
     // creating an entity
-    entity_t *e = entity_init(tag, vec3f(0.0f));
+    entity_t *e = entity_init(tag);
     assert(e);
 
     //appending to entities list
@@ -79,6 +79,10 @@ entity_t * entitymanager_add_entity(entitymanager_t *manager, entity_type tag)
 
 void entitymanager_update(entitymanager_t *manager)
 {
+
+    //TODO: UPDATE each entity
+    
+
     // Remove dead entities from entities list and entitymap
     
     list_t *map = &manager->entitymap;
