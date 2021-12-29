@@ -29,11 +29,13 @@ int main(void)
         0.0f, 0.5f,  
     };
 
-    trif_t triangle = {
-        0.0f, 0.0f,  
-        -0.5f, 0.0f,  
-        -0.5f, 0.5f,  
-    };
+    /*trif_t triangle = {*/
+        /*0.0f, 0.0f,  */
+        /*-0.5f, 0.0f,  */
+        /*-0.5f, 0.5f,  */
+    /*};*/
+
+    trif_t triangle = trif_init(vec2f(0.0f), 0.5f);
 
 
     const glquad_t qua = glquad_init(rectangle, (vec3f_t ) {1.0f, 0.0f, 0.0f}, quadf_init(vec2f(0.0f), 1.0f, 1.0f), 0);

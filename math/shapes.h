@@ -14,6 +14,21 @@
 
 typedef struct trif_t { vec2f_t vertex[3]; } trif_t; 
 
+#define TRI_FMT         VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n"
+#define TRI_ARG(TRI)    VEC2F_ARG(&(TRI.vertex[0])), VEC2F_ARG(&(TRI.vertex[1])), VEC2F_ARG(&(TRI.vertex[2]))
+
+trif_t trif_init(vec2f_t pos, f32 side)
+{
+    const f32 side_half = side / 2;
+    const f32 height = 1.732050807568877f * side_half; 
+
+    return (trif_t ) {
+        .vertex[0] = pos,
+        .vertex[1] = { pos.cmp[X] - side_half, pos.cmp[Y] - height },
+        .vertex[2] = { pos.cmp[X] + side_half, pos.cmp[Y] - height }
+    };
+}
+
 /*---------------------------------------------------------
  // QUAD (float type)
 ---------------------------------------------------------*/
