@@ -9,7 +9,7 @@ typedef struct entitymanager_t entitymanager_t;
 
 entitymanager_t     entitymanager_init(const u64 total_entity_types);
 
-entity_t *          entitymanager_add_entity(entitymanager_t *manager, entity_type tag);
+entity_t *          entitymanager_add_entity(entitymanager_t *manager, entity_t * e);
 void                entitymanager_update(entitymanager_t *manager);
 
 void                entitymanager_destroy(entitymanager_t *manager);
@@ -55,19 +55,16 @@ entitymanager_t entitymanager_init(const u64 total_entity_types)
     };
 }
 
-entity_t * entitymanager_add_entity(entitymanager_t *manager, entity_type tag)
+entity_t * entitymanager_add_entity(entitymanager_t *manager, entity_t *e)
 {
     assert(manager);
-
-    // creating an entity
-    entity_t *e = entity_init(tag);
     assert(e);
 
     //appending to entities list
     list_append(&manager->entities, e);
 
     // appending to map
-    list_t *entitylist = entitymanager_get_all_entities_by_tag(manager, tag);
+    list_t *entitylist = entitymanager_get_all_entities_by_tag(manager, e->tag);
     list_append(entitylist, e);
 
 
@@ -79,12 +76,10 @@ entity_t * entitymanager_add_entity(entitymanager_t *manager, entity_type tag)
 
 void entitymanager_update(entitymanager_t *manager)
 {
+    assert(manager);
 
-    //TODO: UPDATE each entity
-    
 
     // Remove dead entities from entities list and entitymap
-    
     list_t *map = &manager->entitymap;
     list_t *entities = &manager->entities;
     for (u64 i = 0; i < entities->len; i++)
