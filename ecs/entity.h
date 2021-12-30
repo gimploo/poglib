@@ -16,11 +16,12 @@ typedef struct entitycomponent_t entitycomponent_t ;
 
 typedef enum entitycomponent_type {
 
-    ECT_c_transform_t,
     ECT_c_boxcollider2d_t, 
-    ECT_c_lifespan_t,
     ECT_c_input_t,
+    ECT_c_lifespan_t,
     ECT_c_shape_t,
+    ECT_c_sprite_t,
+    ECT_c_transform_t,
 
     // Add new component types here
 
@@ -45,7 +46,7 @@ void *          entity_get_component(entity_t *e, entitycomponent_type type);
 #ifndef IGNORE_ENTITY_IMPLEMENTATION
 
 
-static_assert(ECT_COUNT == 5, "U FORGOR 💀 TO UPDATE THE STATIC ASSERT IN `entity.h` ");
+static_assert(ECT_COUNT == 6, "U FORGOR 💀 TO UPDATE THE STATIC ASSERT IN `entity.h` ");
 
 
 #define ECT_type(TYPE) ECT_ ## TYPE
@@ -53,18 +54,15 @@ static_assert(ECT_COUNT == 5, "U FORGOR 💀 TO UPDATE THE STATIC ASSERT IN `ent
 struct entity_t {
 
     // Members
-    const u64   id;
+    i64         id;
     entity_type tag; 
     bool        is_alive;
 
     // dynamic list that holds pointers to components
     list_t      components;
 
-    // opengl data (cache)
-    glvertex_t *__vertices;
-    
     // index buffer for grabbing components of the list
-    u64        __indices[ECT_COUNT];
+    i64        __indices[ECT_COUNT];
 };
 
 
@@ -96,12 +94,12 @@ void entity_destroy(entity_t *e)
     list_destroy(cmps);
     cmps = NULL;
 
-    // Freeing glvertices pointer 
-    free(e->__vertices);
-    e->__vertices = NULL;
 
     // Zeroing in the indices buffer
     memset(e->__indices, 0, sizeof(e->__indices));
+
+    e->is_alive = false;
+    e->id = -1;
 
     // Freeing the entity itself 
     free(e);
@@ -110,19 +108,16 @@ void entity_destroy(entity_t *e)
 
 entity_t * entity_init(entity_type tag)
 {
-    entity_t *e = (entity_t *)malloc(1 * sizeof(entity_t));
+    entity_t *e = (entity_t *)calloc(1, sizeof(entity_t));
     assert(e);
 
-    entity_t tmp = (entity_t ) {
-        .id = (u64)e,
+    *e = (entity_t ) {
+        .id = (i64)e,
         .tag = tag,
         .is_alive = true,
         .components = list_init(4, entitycomponent_t ),
-        .__vertices = NULL,
-        .__indices = {0}
+        .__indices = {-1}
     };
-
-    memcpy(e, &tmp, sizeof(tmp));
 
     return e;
 }
@@ -153,12 +148,15 @@ void __impl_entity_add_component(entity_t *e, void * ecmp_ref, u64 ecmp_size, en
 }
 
 
-void *entity_get_component(entity_t *e, entitycomponent_type type)
+void * entity_get_component(entity_t *e, entitycomponent_type type)
 {
     assert(e);
 
     u64 index = e->__indices[type];
     assert(index < e->components.len);
+
+    // No component found
+    if (index == -1) return NULL;
 
     entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(&e->components, index);
     assert(ec);

@@ -5,7 +5,7 @@
 
 typedef struct c_boxcollider2d_t c_boxcollider2d_t ;
 
-c_boxcollider2d_t     c_boxcollider2d_init(f32 radius);
+c_boxcollider2d_t     c_boxcollider2d_init(vec3f_t *pos, f32 side);
 
 
 
@@ -14,14 +14,18 @@ c_boxcollider2d_t     c_boxcollider2d_init(f32 radius);
 #ifndef IGNORE_C_COLLISION_IMPLEMENTATION
 
 struct c_boxcollider2d_t {
-    f32 radius;
+
+    f32 side;
+    vec3f_t *position;
+
 };
 
 
-c_boxcollider2d_t c_collision_init(f32 radius)
+c_boxcollider2d_t c_collision_init(vec3f_t *pos, f32 side)
 {
     return (c_boxcollider2d_t ) {
-        .radius = radius
+        .side = side,
+        .position = pos
     };
 }
 
