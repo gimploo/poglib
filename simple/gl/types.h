@@ -13,9 +13,9 @@ typedef struct glbatch_t    glbatch_t;
 
 typedef enum {
 
-    BT_gltri_t = 0,
-    BT_glquad_t,
-    BT_COUNT
+    GLBT_gltri_t = 0,
+    GLBT_glquad_t,
+    GLBT_COUNT
 
 } glbatch_type;
 
@@ -23,7 +23,7 @@ typedef enum {
 gltri_t     gltri_init(trif_t tri, vec3f_t color, quadf_t tex_coord);
 glquad_t    glquad_init(quadf_t positions, vec3f_t color, quadf_t tex_coord, u8 tex_id);
 
-#define     glbatch_init(PVERTICES, SIZE, TYPE) __impl_gl_batch_init((glvertex_t *)PVERTICES, SIZE, BT_type(TYPE))
+#define     glbatch_init(PVERTICES, SIZE, TYPE) __impl_gl_batch_init((glvertex_t *)PVERTICES, SIZE, GLBT_type(TYPE))
 #define     glbatch_destroy(PBATCH) do {\
 \
     ebo_destroy(&(PBATCH)->ebo);\
@@ -136,7 +136,7 @@ gltri_t gltri_init(trif_t tri, vec3f_t color, quadf_t tex_coord)
 }
 
 
-#define BT_type(TYPE) BT_##TYPE
+#define GLBT_type(TYPE) GLBT_##TYPE
 
 struct glbatch_t {
 
@@ -199,12 +199,12 @@ glbatch_t __impl_gl_batch_init(glvertex_t vertices[], const u64 vertices_size, g
 
     switch(type)
     {
-        case BT_glquad_t:
+        case GLBT_glquad_t:
             batch.shape_count = (vertices_size / (sizeof(glvertex_t))) / 4;
             __gen_quad_indices(batch.__indices_buffer, batch.shape_count);
             batch.ebo = ebo_init(batch.__indices_buffer, DEFAULT_QUAD_INDICES_CAPACITY * batch.shape_count);
             break;
-        case BT_gltri_t:
+        case GLBT_gltri_t:
             batch.shape_count = (vertices_size / (sizeof(glvertex_t))) / 3;
             __gen_tri_indices(batch.__indices_buffer, batch.shape_count);
             batch.ebo = ebo_init(batch.__indices_buffer, DEFAULT_TRI_INDICES_CAPACITY * batch.shape_count);

@@ -133,6 +133,7 @@ void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_
     if (renderer == NULL) eprint("renderer argument is null");
     if (batch == NULL) eprint("batch argument is null");
 
+    assert(batch->shape_count != MAX_QUAD_CAPACITY_PER_DRAW_CALL);
 
     assert(renderer->__shader);
 

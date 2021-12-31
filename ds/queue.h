@@ -46,7 +46,7 @@ struct queue_t {
     u64 len;
 
     // Buffer that stores the get values from queue_get calls instead of having to pass 
-    // a buffer to have it store the output
+    // a buffer as argument to store the output
     void *buffer; 
 
 };
@@ -113,7 +113,6 @@ void __impl_queue_put(queue_t *queue, void *elemaddr, u64 elem_size)
 
     }
 
-
     // pass by value
     memcpy(queue->array + (queue->end * queue->elem_size), 
             elemaddr, queue->elem_size);
@@ -136,8 +135,11 @@ void * __impl_queue_get(queue_t *queue)
     queue->start = ++queue->start % queue->capacity;
     queue->len--;
 
-    memcpy(queue->buffer, elem_pos, queue->elem_size);
+    // if the value is a pointer or have size less than a pointer, returns the value
+    if (queue->elem_size <= 8) return elem_pos;
 
+    // else it returns in a buffer
+    memcpy(queue->buffer, elem_pos, queue->elem_size);
     return queue->buffer;
 
 }
