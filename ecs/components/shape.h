@@ -1,6 +1,7 @@
 #pragma once
 #include "../../math/la.h"
 #include "../../simple/gl/types.h"
+#include "../components/transform.h"
 
 
 
@@ -9,12 +10,12 @@
 
 //TODO: Outline, thickness
 
-typedef struct c_shape_t c_shape_t ;
+typedef struct c_shape2d_t c_shape2d_t ;
 
 
 
-#define         c_shape_init(VEC3F, TYPE, RADIUS, FILL)   __impl_c_shape_init((VEC3F), CST_ ## TYPE, (RADIUS), (FILL))
-
+#define         c_shape2d_init(PCTRANSFORM, TYPE, RADIUS, FILL)     __impl_c_shape2d_init((PCTRANSFORM), CST_ ## TYPE, (RADIUS), (FILL))
+#define         c_shape2d_update(PCS2D)                             (PCS2D)->update(PCS2D)
 
 
 
@@ -24,6 +25,7 @@ typedef struct c_shape_t c_shape_t ;
 
 #ifndef IGNORE_C_SHAPE_IMPLEMENTATION
 
+#define MAX_TOTAL_CIRCLE_SIDES 10
 
 typedef enum c_shape_type {
 
@@ -35,27 +37,38 @@ typedef enum c_shape_type {
 
 } c_shape_type;
 
-struct c_shape_t {
+struct c_shape2d_t {
 
-    c_shape_type type;
-    vec3f_t position;
-    f32 radius;
-    vec4f_t fill;
+    vec3f_t         *position;
+    c_shape_type    type;
+    f32             radius;
+    vec4f_t         fill;
+
+    void (*update)(c_shape2d_t *);
 
     // buffer to hold all the vertices
     u8 __vertices[KB];
 
+
 };
 
-void __setup_vertices(vec3f_t pos, u8 __vertices[], c_shape_type type, f32 radius)
+void __c_shape2d_update(c_shape2d_t *cs)
 {
-    vec2f_t pos2d = { pos.cmp[X], pos.cmp[Y] };
+    assert(cs);
+
+    vec3f_t pos         = *cs->position;
+    c_shape_type type   = cs->type;
+    f32 radius          = cs->radius;
+    u8 *__vertices      = cs->__vertices;
+    vec2f_t pos2d       = { pos.cmp[X], pos.cmp[Y] };
+
     switch(type)
     {
         //Circle
         case CST_CIRCLE:
         {
-            u32 sides = 10;
+            u64 sides = MAX_TOTAL_CIRCLE_SIDES;
+
             u8 buffer[sizeof(vec3f_t) * 10] = {0};
             for(int ii = 0; ii < sides; ii++)
             {
@@ -91,15 +104,20 @@ void __setup_vertices(vec3f_t pos, u8 __vertices[], c_shape_type type, f32 radiu
     }
 }
 
-c_shape_t __impl_c_shape_init(vec3f_t position, c_shape_type type, f32 radius, vec4f_t fill)
+
+c_shape2d_t __impl_c_shape2d_init(c_transform_t *ct, c_shape_type type, f32 radius, vec4f_t fill)
 {
-    c_shape_t o =  {
+    assert(ct);
+
+    c_shape2d_t o =  {
+        .position = &ct->position,
         .type = type,
         .radius = radius,
         .fill = fill,
+        .update = __c_shape2d_update
     };
 
-    __setup_vertices(position, o.__vertices, type, radius);
+    __c_shape2d_update(&o);
 
     return o;
 }

@@ -6,22 +6,24 @@
 #include "../simple/gl/types.h"
 
 
-
 typedef struct entity_t entity_t ;
-typedef struct entitycomponent_t entitycomponent_t ;
-
 #ifndef entity_type
     typedef u64 entity_type;
 #endif
 
+
+typedef struct entitycomponent_t entitycomponent_t ;
+
 typedef enum entitycomponent_type {
 
-    ECT_c_boxcollider2d_t, 
-    ECT_c_input_t,
+    ECT_c_boxcollider2d_t , 
+    ECT_c_input_t ,
     ECT_c_lifespan_t,
-    ECT_c_shape_t,
+    ECT_c_shape2d_t,
     ECT_c_sprite_t,
     ECT_c_transform_t,
+    ECT_c_shader_t,
+    ECT_c_texture2d_t,
 
     // Add new component types here
 
@@ -31,11 +33,16 @@ typedef enum entitycomponent_type {
 
 
 
-entity_t *      entity_init(entity_type tag);
+// API CALLS
+#define         entity_kill(PENTITY)                                    (PENTITY)->is_alive = false
 #define         entity_add_component(PENTITY, COMPONENT, TYPE)          __impl_entity_add_component((PENTITY), &(COMPONENT), sizeof(COMPONENT), ECT_type(TYPE), sizeof(TYPE))
-void            entity_destroy(entity_t *e);
+#define         entity_get_component(PENTITY, TYPE)                     __impl_entity_get_component((PENTITY), ECT_type(TYPE))
 
-void *          entity_get_component(entity_t *e, entitycomponent_type type);
+
+//NOTE: These functions can only be called by the entity manager and not alone
+entity_t *      __entity_init(entity_type tag);
+void            __entity_destroy(entity_t *e);
+
 
 
 
@@ -45,8 +52,6 @@ void *          entity_get_component(entity_t *e, entitycomponent_type type);
 
 #ifndef IGNORE_ENTITY_IMPLEMENTATION
 
-
-static_assert(ECT_COUNT == 6, "U FORGOR 💀 TO UPDATE THE STATIC ASSERT IN `entity.h` ");
 
 
 #define ECT_type(TYPE) ECT_ ## TYPE
@@ -73,7 +78,7 @@ struct entitycomponent_t {
 };
 
 
-void entity_destroy(entity_t *e)
+void __entity_destroy(entity_t *e)
 {
     assert(e);
 
@@ -98,7 +103,6 @@ void entity_destroy(entity_t *e)
     // Zeroing in the indices buffer
     memset(e->__indices, 0, sizeof(e->__indices));
 
-    e->is_alive = false;
     e->id = -1;
 
     // Freeing the entity itself 
@@ -106,7 +110,7 @@ void entity_destroy(entity_t *e)
     e = NULL;
 }
 
-entity_t * entity_init(entity_type tag)
+entity_t * __entity_init(entity_type tag)
 {
     entity_t *e = (entity_t *)calloc(1, sizeof(entity_t));
     assert(e);
@@ -148,7 +152,7 @@ void __impl_entity_add_component(entity_t *e, void * ecmp_ref, u64 ecmp_size, en
 }
 
 
-void * entity_get_component(entity_t *e, entitycomponent_type type)
+void * __impl_entity_get_component(entity_t *e, entitycomponent_type type)
 {
     assert(e);
 
@@ -160,7 +164,6 @@ void * entity_get_component(entity_t *e, entitycomponent_type type)
 
     entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(&e->components, index);
     assert(ec);
-
     return ec->cmp;
 }
 
