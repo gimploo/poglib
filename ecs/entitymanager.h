@@ -14,9 +14,8 @@ void                entitymanager_update(entitymanager_t *manager);
 
 void                entitymanager_destroy(entitymanager_t *manager);
 
-#define             entitymanager_get_all_entities_by_tag(PMANAGER, TAG)   (list_t *)list_get_element_by_index(&(PMANAGER)->entitymap, (TAG))
 #define             entitymanager_get_all_entities(PMANAGER)               &(PMANAGER)->entities
-
+#define             entitymanager_get_all_entities_by_tag(PMANAGER, TAG)   (list_t *)list_get_element_by_index(&(PMANAGER)->entitymap, (TAG))
 
 
 
@@ -32,6 +31,7 @@ struct entitymanager_t {
     //An list of list of entites differentiated by types
     list_t      entitymap; 
 
+    // Total entites
     u64         total_entities;
 
 };
@@ -95,7 +95,10 @@ void entitymanager_update(entitymanager_t *manager)
             list_delete(entitylist, i);
 
             entity_destroy(e);
+
+            manager->total_entities--;
         }
+        e = NULL;
     }
 }
 
