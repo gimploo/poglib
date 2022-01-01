@@ -1,13 +1,14 @@
 #pragma once
 #include "../../basic.h"
 #include "../../simple/gl/types.h"
+#include "../components/transform.h"
 
 
 typedef struct c_boxcollider2d_t c_boxcollider2d_t ;
 
 
 
-c_boxcollider2d_t     c_boxcollider2d_init(vec3f_t *pos, f32 side);
+c_boxcollider2d_t     c_boxcollider2d_init(c_transform_t *t, f32 side);
 #define               c_boxcollider2d_update(PBOX) (PBOX)->update(PBOX)
 
 
@@ -32,11 +33,11 @@ void __c_box_collider2d_update(c_boxcollider2d_t *cmp)
 }
 
 
-c_boxcollider2d_t c_collision_init(vec3f_t *pos, f32 side)
+c_boxcollider2d_t c_collision_init(c_transform_t *t, f32 side)
 {
     return (c_boxcollider2d_t ) {
         .side = side,
-        .position = pos,
+        .position = &t->position,
         .update = __c_box_collider2d_update
     };
 }

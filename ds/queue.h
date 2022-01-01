@@ -41,8 +41,8 @@ struct queue_t {
     u8 *array;
     i64 start;
     i64 end;
-    const u64 capacity;
-    const u64 elem_size;
+    u64 capacity;
+    u64 elem_size;
     u64 len;
 
     // Buffer that stores the get values from queue_get calls instead of having to pass 

@@ -4,40 +4,22 @@
 #include "../ds/hashtable.h"
 #include "../ds/list.h"
 #include "../simple/gl/types.h"
+#include "./components.h"
+
+
 
 
 typedef struct entity_t entity_t ;
-#ifndef entity_type
-    typedef u64 entity_type;
-#endif
+typedef u64 entity_type;
 
-
-typedef struct entitycomponent_t entitycomponent_t ;
-
-typedef enum entitycomponent_type {
-
-    ECT_c_boxcollider2d_t , 
-    ECT_c_input_t ,
-    ECT_c_lifespan_t,
-    ECT_c_shape2d_t,
-    ECT_c_sprite_t,
-    ECT_c_transform_t,
-    ECT_c_shader_t,
-    ECT_c_texture2d_t,
-
-    // Add new component types here
-
-    ECT_COUNT
-
-} entitycomponent_type;
 
 
 
 // API CALLS
-#define         entity_kill(PENTITY)                                    (PENTITY)->is_alive = false
-#define         entity_add_component(PENTITY, COMPONENT, TYPE)          __impl_entity_add_component((PENTITY), &(COMPONENT), sizeof(COMPONENT), ECT_type(TYPE), sizeof(TYPE))
+#define         entity_destroy(PENTITY)                                    (PENTITY)->is_alive = false
+#define         entity_add_component(PENTITY, PCOMPONENT, TYPE)          __impl_entity_add_component((PENTITY), (PCOMPONENT), ECT_type(TYPE))
 #define         entity_get_component(PENTITY, TYPE)                     __impl_entity_get_component((PENTITY), ECT_type(TYPE))
-
+#define         entity_has_component(PENTITY, TYPE)                     ((PENTITY)->__indices[ECT_type(TYPE)] == -1 ? false : true)
 
 //NOTE: These functions can only be called by the entity manager and not alone
 entity_t *      __entity_init(entity_type tag);
@@ -59,7 +41,7 @@ void            __entity_destroy(entity_t *e);
 struct entity_t {
 
     // Members
-    i64         id;
+    u64         *id;
     entity_type tag; 
     bool        is_alive;
 
@@ -103,7 +85,7 @@ void __entity_destroy(entity_t *e)
     // Zeroing in the indices buffer
     memset(e->__indices, 0, sizeof(e->__indices));
 
-    e->id = -1;
+    e->id = NULL;
 
     // Freeing the entity itself 
     free(e);
@@ -116,7 +98,7 @@ entity_t * __entity_init(entity_type tag)
     assert(e);
 
     *e = (entity_t ) {
-        .id = (i64)e,
+        .id = (u64 *)e,
         .tag = tag,
         .is_alive = true,
         .components = list_init(4, entitycomponent_t ),
@@ -126,21 +108,15 @@ entity_t * __entity_init(entity_type tag)
     return e;
 }
 
-void __impl_entity_add_component(entity_t *e, void * ecmp_ref, u64 ecmp_size, entitycomponent_type type, u64 type_size)
+void __impl_entity_add_component(entity_t *e, void * ecmp_ref, entitycomponent_type type)
 {
     assert(e);
     assert(ecmp_ref);
-    assert(ecmp_size == type_size);
-
-    // Heap allocated component
-    void *cmp = calloc(1, ecmp_size);
-    assert(cmp);
-    memcpy(cmp, ecmp_ref, ecmp_size);
 
     // Wrapping the component into a entitycomponent_t type for better safety
     entitycomponent_t ec = (entitycomponent_t ) {
         .type = type,
-        .cmp = cmp
+        .cmp = ecmp_ref
     };
 
     // Appending the wrapper to the entity components list
@@ -152,18 +128,19 @@ void __impl_entity_add_component(entity_t *e, void * ecmp_ref, u64 ecmp_size, en
 }
 
 
-void * __impl_entity_get_component(entity_t *e, entitycomponent_type type)
+const void * __impl_entity_get_component(const entity_t *e, const entitycomponent_type type)
 {
     assert(e);
 
     u64 index = e->__indices[type];
-    assert(index < e->components.len);
+    if(index < e->components.len) eprint("index = %li and len = %li", index, e->components.len);
 
     // No component found
     if (index == -1) return NULL;
 
-    entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(&e->components, index);
-    assert(ec);
+    const entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(&e->components, index);
+    if (ec == NULL) return NULL;
+
     return ec->cmp;
 }
 

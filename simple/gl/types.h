@@ -20,7 +20,7 @@ typedef enum {
 } glbatch_type;
 
 
-gltri_t     gltri_init(trif_t tri, vec3f_t color, quadf_t tex_coord);
+gltri_t     gltri_init(trif_t tri, vec3f_t color, quadf_t tex_coord, u8 texid);
 glquad_t    glquad_init(quadf_t positions, vec3f_t color, quadf_t tex_coord, u8 tex_id);
 
 #define     glbatch_init(PVERTICES, SIZE, TYPE) __impl_gl_batch_init((glvertex_t *)PVERTICES, SIZE, GLBT_type(TYPE))
@@ -110,7 +110,7 @@ glquad_t glquad_init(quadf_t positions, vec3f_t color, quadf_t tex_coord, u8 tex
     };
 }
 
-gltri_t gltri_init(trif_t tri, vec3f_t color, quadf_t tex_coord)
+gltri_t gltri_init(trif_t tri, vec3f_t color, quadf_t tex_coord, u8 texid)
 {
     return (gltri_t) {
 
@@ -118,19 +118,19 @@ gltri_t gltri_init(trif_t tri, vec3f_t color, quadf_t tex_coord)
             tri.vertex[0].cmp[X], tri.vertex[0].cmp[Y], 0.0f, 
             color, 
             tex_coord.vertex[0].cmp[X], tex_coord.vertex[0].cmp[Y],
-            0
+            texid
         }, 
         .vertex[1] = (glvertex_t ){ 
             tri.vertex[1].cmp[X], tri.vertex[1].cmp[Y], 0.0f, 
             color, 
             tex_coord.vertex[1].cmp[X], tex_coord.vertex[1].cmp[Y],
-            0
+            texid
         }, 
         .vertex[2] = (glvertex_t ) { 
             tri.vertex[2].cmp[X], tri.vertex[2].cmp[Y], 0.0f, 
             color, 
             tex_coord.vertex[2].cmp[X], tex_coord.vertex[2].cmp[Y],
-            0
+            texid
         }, 
     };
 }
@@ -175,11 +175,12 @@ INTERNAL void __gen_quad_indices(u32 indices[], const u32 shape_count)
 
 INTERNAL void __gen_tri_indices(u32 indices[], const u32 shape_count)
 {
-    for (u32 i = 0; i < shape_count; i++)
+    memcpy(indices, DEFAULT_TRI_INDICES, sizeof(DEFAULT_TRI_INDICES));
+    for (u32 i = 1; i < shape_count; i++)
     {
-        indices[i] = 3 * i;
-        indices[i+1] = indices[i] + 1;
-        indices[i+2] = indices[i+1] + 1;
+        indices[(i*3) + 0]   = DEFAULT_TRI_INDICES[0] + (3 * i); 
+        indices[(i*3) + 1]   = DEFAULT_TRI_INDICES[1] + (3 * i);
+        indices[(i*3) + 2]   = DEFAULT_TRI_INDICES[2] + (3 * i);
     }
 
 }

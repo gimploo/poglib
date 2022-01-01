@@ -1,7 +1,8 @@
 #pragma once
+#include "simple/glrenderer2d.h"
 #include "simple/window.h"
 #include "application/stopwatch.h"
-#include "simple/glrenderer2d.h"
+#include "./ecs/entitymanager.h"
 
 
 
@@ -19,7 +20,7 @@ void            application_run(application_t *app);
 #define         application_get_whandle(PAPP) (PAPP)->__window_handle
 
 
-
+#define         application_pass_game(PAPP, PGAME) (PAPP)->game = PGAME
 
 
 
@@ -29,16 +30,15 @@ void            application_run(application_t *app);
 
 struct application_t {
 
-    window_t *__window_handle;
-    
-    stopwatch_t timer;
+    window_t        *const __window_handle;
+    stopwatch_t     timer;
+    state_t         state;
+    void            *game;
 
-    state_t state;
-
-    void (* init)(struct application_t*);
-    void (*update)(struct application_t*);
+    void (* init)(struct application_t *);
+    void (*update)(struct application_t *);
     void (*render)(struct application_t *);
-    void (*shutdown)(struct application_t*);
+    void (*shutdown)(struct application_t *);
 };
 
     
@@ -50,6 +50,7 @@ application_t __impl_application_init(window_t *window, void (* init)(struct app
         .__window_handle = window,
         .timer = stopwatch_init(), 
         .state = 0,
+        .game = NULL,
         .init = init,
         .update = update,
         .render = render,
@@ -76,7 +77,7 @@ void application_run(application_t *app)
     // Update the content in the application
     while(win->is_open)
     {
-        u64 perf_start  = SDL_GetPerformanceCounter();
+        //u64 perf_start  = SDL_GetPerformanceCounter();
 
         timer->__last   = timer->__now;
         timer->__now    = (f32)SDL_GetTicks();
@@ -105,7 +106,11 @@ void application_run(application_t *app)
         application_update_state(app, state);
 
 
-        app->render(app);
+        window_gl_render_begin(win);
+
+            app->render(app);
+
+        window_gl_render_end(win);
 
 
         // NOTE: for now i am capping at 60 fps 

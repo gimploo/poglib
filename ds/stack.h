@@ -95,8 +95,9 @@ void * stack_pop(stack_t *stack)
     u8 *elem_pos = (u8 *)stack->array + stack->top * stack->elem_size;
     stack->len = --stack->top - 1;
 
-    memcpy(stack->buffer, elem_pos, stack->elem_size);
+    if (stack->elem_size <= 8) return (void *)elem_pos;
 
+    memcpy(stack->buffer, elem_pos, stack->elem_size);
     return stack->buffer;
 }
 

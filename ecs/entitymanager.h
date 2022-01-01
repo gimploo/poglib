@@ -3,13 +3,11 @@
 #include "../ds/queue.h"
 
 
-//FIXME: a solution for iterator invalidation, either being mindfull of it or having all
-// the list be static and not dynamic. As of now i dont know and its something for future
-// me to figure out.
-
 
 
 typedef struct entitymanager_t entitymanager_t;
+
+
 
 entitymanager_t     entitymanager_init(const u64 total_entity_types);
 
@@ -40,7 +38,7 @@ struct entitymanager_t {
     //An list of list of entites differentiated by types
     list_t      entitymap; 
 
-    // A queue of newly created entities ready to be added
+    // A queue of newly created entities ready to be added (solution to fix iterator invalidation)
     queue_t     __newly_added_entities;
 
 };
@@ -50,7 +48,7 @@ entitymanager_t entitymanager_init(const u64 total_entity_types)
 {
     assert(total_entity_types > 0);
 
-    list_t map = list_init(total_entity_types, sizeof(list_t ));
+    list_t map = list_init(total_entity_types, list_t );
     for (int i = 0; i < total_entity_types; i++)
     {
         list_t tmp = list_init(4, entity_t *);
@@ -82,7 +80,6 @@ void entitymanager_update(entitymanager_t *manager)
     assert(manager);
 
     // Remove dead entities from entities list and entitymap
-    list_t *map         = &manager->entitymap;
     list_t *entities    = &manager->entities;
     for (u64 i = 0; i < entities->len; i++)
     {
@@ -124,6 +121,7 @@ void entitymanager_destroy(entitymanager_t *manager)
     assert(manager);
 
     // Deleting the queue
+    assert(queue_is_empty(&manager->__newly_added_entities));
     queue_destroy(&manager->__newly_added_entities);
 
     // Deleting all entities from entities list

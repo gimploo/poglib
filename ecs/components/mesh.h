@@ -14,6 +14,8 @@ typedef struct c_mesh_t c_mesh_t ;
 
 struct c_mesh_t {
 
+    int x;
+
 };
 
 
