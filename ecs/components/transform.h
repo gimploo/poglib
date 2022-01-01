@@ -6,7 +6,7 @@
 typedef struct c_transform_t c_transform_t ;
 
 
-c_transform_t c_transform_init(vec3f_t pos, vec3f_t vec, f32 angle);
+c_transform_t * c_transform_init(vec3f_t pos, vec3f_t vec, f32 angle);
 
 
 
@@ -25,13 +25,15 @@ struct c_transform_t {
 
 };
 
-c_transform_t c_transform_init(vec3f_t pos, vec3f_t vec, f32 angle)
+c_transform_t * c_transform_init(vec3f_t pos, vec3f_t vec, f32 angle)
 {
-    return (c_transform_t ) {
+    c_transform_t * o = (c_transform_t *)calloc(1, sizeof(c_transform_t ));
+    *o = (c_transform_t ) {
         .position = pos,
         .scale = vec,
         .angle = angle
     };
+    return o;
 }
 
 #endif

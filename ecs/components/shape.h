@@ -14,7 +14,7 @@ typedef struct c_shape2d_t c_shape2d_t ;
 
 
 
-#define         c_shape2d_init(PCTRANSFORM, TYPE, RADIUS, FILL)     __impl_c_shape2d_init((PCTRANSFORM), CST_ ## TYPE, (RADIUS), (FILL))
+#define         c_shape2d_init(PCTRANSFORM, TYPE, RADIUS, FILL)     __impl_c_shape2d_init((PCTRANSFORM), (CST_ ## TYPE), (RADIUS), (FILL))
 #define         c_shape2d_update(PCS2D)                             (PCS2D)->update(PCS2D)
 
 
@@ -69,10 +69,11 @@ void __c_shape2d_update(c_shape2d_t *cs)
         {
             u64 sides = MAX_TOTAL_CIRCLE_SIDES;
 
-            u8 buffer[sizeof(vec3f_t) * 10] = {0};
+            u8 buffer[sizeof(vec3f_t ) * 10] = {0};
+
             for(int ii = 0; ii < sides; ii++)
             {
-                f32 theta = 2.0f * 3.1415926f * float(ii) / float(sides);//get the current angle
+                f32 theta = 2.0f * 3.1415926f * (float)ii / (float)sides;//get the current angle
 
                 f32 x = radius * cosf(theta);//calculate the x component
                 f32 y = radius * sinf(theta);//calculate the y component
@@ -105,11 +106,12 @@ void __c_shape2d_update(c_shape2d_t *cs)
 }
 
 
-c_shape2d_t __impl_c_shape2d_init(c_transform_t *ct, c_shape_type type, f32 radius, vec4f_t fill)
+c_shape2d_t * __impl_c_shape2d_init(c_transform_t *ct, c_shape_type type, f32 radius, vec4f_t fill)
 {
     assert(ct);
 
-    c_shape2d_t o =  {
+    c_shape2d_t *o = (c_shape2d_t *)calloc(1, sizeof(c_shape2d_t));
+    *o = (c_shape2d_t ){
         .position = &ct->position,
         .type = type,
         .radius = radius,
@@ -117,7 +119,7 @@ c_shape2d_t __impl_c_shape2d_init(c_transform_t *ct, c_shape_type type, f32 radi
         .update = __c_shape2d_update
     };
 
-    __c_shape2d_update(&o);
+    __c_shape2d_update(o);
 
     return o;
 }

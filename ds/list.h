@@ -87,7 +87,6 @@ void list_delete(list_t *list, const u64 index)
 {
     assert(list);
     assert(list->__top != -1);
-    assert(index >= 0);
     assert(index <= list->__top);
 
 

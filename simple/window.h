@@ -10,7 +10,6 @@
 #include <SDL2/SDL_opengl.h>
 #else 
 #include <SDL2/SDL_render.h>
-#define GL_LOG
 #endif
 
 #include "../math/la.h"
@@ -77,8 +76,8 @@ typedef void (*render_func) (void*);
 
 // Initializing +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-window_t        window_init(const char *title, size_t width, size_t height, SDL_FLAGS flags);
-window_t *      window_sub_window_init(window_t *parent, const char *title_name, size_t width, size_t height, SDL_FLAGS flags);
+window_t        window_init(const char *title, u64 width, u64 height, SDL_FLAGS flags);
+window_t *      window_sub_window_init(window_t *parent, const char *title_name, u64 width, u64 height, SDL_FLAGS flags);
 
 //NOTE:(macro)  window_while_is_open(window_t *window)
 
@@ -214,7 +213,7 @@ static inline __mouse_t __mouse_init(window_t *window)
     return mouse;
 }
 
-static inline window_t __sub_window_init(const char *title_name, size_t width, size_t height, SDL_FLAGS flags) 
+static inline window_t __sub_window_init(const char *title_name, u64 width, u64 height, SDL_FLAGS flags) 
 {   
     window_t output         = {0};
     output.title_name       = title_name;
@@ -273,7 +272,7 @@ static inline window_t __sub_window_init(const char *title_name, size_t width, s
 
 }
 
-window_t * window_sub_window_init(window_t *parent, const char *title_name, size_t width, size_t height, SDL_FLAGS flags)
+window_t * window_sub_window_init(window_t *parent, const char *title_name, u64 width, u64 height, SDL_FLAGS flags)
 {
     if (parent == NULL) eprint("parent window argument is null");
 
@@ -287,7 +286,7 @@ window_t * window_sub_window_init(window_t *parent, const char *title_name, size
 }
 
 
-window_t window_init(const char *title_name, size_t width, size_t height, SDL_FLAGS flags)
+window_t window_init(const char *title_name, u64 width, u64 height, SDL_FLAGS flags)
 {
     window_t output         = {0};
     output.title_name       = title_name;
