@@ -49,7 +49,7 @@ entitymanager_t entitymanager_init(const u64 total_entity_types)
     assert(total_entity_types > 0);
 
     list_t map = list_init(total_entity_types, list_t );
-    for (int i = 0; i < total_entity_types; i++)
+    for (u64 i = 0; i < total_entity_types; i++)
     {
         list_t tmp = list_init(4, entity_t *);
         list_append(&map, tmp);
