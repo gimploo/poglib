@@ -139,8 +139,8 @@ const void * __impl_entity_get_component(const entity_t *e, const entitycomponen
     // No component found
     if ((i64)index == -1) return NULL;
 
-    // FIXME: heres the issue
-    const entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(&e->components, index);
+    entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(&e->components, index);
+    assert(ec);
 
     return ec->cmp;
 }

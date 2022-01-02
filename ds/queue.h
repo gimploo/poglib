@@ -98,7 +98,7 @@ void __impl_queue_put(queue_t *queue, void *elemaddr, u64 elem_size)
     queue->len++;
 
     u64 oldpos = queue->end;
-    queue->end = (++queue->end) % queue->capacity;
+    queue->end = (queue->end + 1) % queue->capacity;
     if (queue->end == queue->start) queue->end = oldpos;
 }
 
@@ -109,7 +109,7 @@ void * __impl_queue_get(queue_t *queue)
     if (queue_is_empty(queue)) eprint("underflow");
 
     void *elem_pos = queue->array + queue->start * queue->elem_size;
-    queue->start = ++queue->start % queue->capacity;
+    queue->start = (queue->start + 1) % queue->capacity;
     queue->len--;
 
     return elem_pos;
@@ -124,7 +124,7 @@ void queue_print(queue_t *queue, void (*print_elem)(void *))
         return;
     } 
 
-    for (u64 i = queue->start, j = 0; j < queue->len; i = (++i) % queue->capacity, j++)
+    for (u64 i = queue->start, j = 0; j < queue->len; i = (i + 1) % queue->capacity, j++)
     {
         print_elem(queue->array + i * queue->elem_size);
     }

@@ -47,7 +47,7 @@ static inline void pstr_free(str_t *str)
 }
 
 
-static str_t * new_pstr(char *buffer) 
+static inline str_t * new_pstr(char *buffer) 
 {
     str_t *str = (str_t *)malloc(sizeof(str_t));
     assert(str);

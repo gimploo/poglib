@@ -61,6 +61,11 @@ void s_renderer2d_draw(const entitymanager_t *manager)
                         uv, 0);
                 memcpy(&quads[++quad_count], &glquad, sizeof(glquad_t ));
             } break;
+
+            case CST_CIRCLE: {
+                 eprint("TODO : CST_CIRCLE RENDERING");
+            } break;
+
             case CST_TRIANGLE: {
                 gltri_t gltri = gltri_init(
                         *(trif_t *)shape->__vertices, 
@@ -82,11 +87,11 @@ void s_renderer2d_draw(const entitymanager_t *manager)
     glrenderer2d_t rd = glrenderer2d_init(shader, texture);
 
         if(quad_count != -1) {
-            glbatch_t tmp = glbatch_init(quads, sizeof(quads), glquad_t);
+            glbatch_t tmp = glbatch_init(quads, quad_count * sizeof(glquad_t ) + 1 , glquad_t);
                 glrenderer2d_draw_from_batch(&rd, &tmp);
             glbatch_destroy(&tmp);
         } else if (tri_count != -1) {
-            glbatch_t tmp = glbatch_init(tris, sizeof(tris), gltri_t);
+            glbatch_t tmp = glbatch_init(tris, tri_count * sizeof(gltri_t ) + 1, gltri_t);
                 glrenderer2d_draw_from_batch(&rd, &tmp);
             glbatch_destroy(&tmp);
         } else {

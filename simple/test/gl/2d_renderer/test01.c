@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <GL/glew.h>
 
-#include "../../../gl_renderer2d.h"
+#include "../../../glrenderer2d.h"
 
 #include "../../../window.h"
 

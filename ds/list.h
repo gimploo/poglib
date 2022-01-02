@@ -15,7 +15,7 @@ void            list_destroy(list_t *list);
 void            list_dump(const list_t *list);
 void            list_print(const list_t *list, void (*print)(void*));
 
-#define         list_get_element_by_index(PLIST, INDEX)         (PLIST)->__array + (INDEX) * (PLIST)->__elem_size
+#define         list_get_element_by_index(PLIST, INDEX)         ((PLIST)->__array + (INDEX) * (PLIST)->__elem_size)
 #define         list_clear(PLIST)                               __impl_list_clear(PLIST)
 
 
