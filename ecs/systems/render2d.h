@@ -35,13 +35,14 @@ void s_renderer2d_draw(const entitymanager_t *manager)
 
     for (u64 i = 0; i < entities->len; i++)
     {
-        const entity_t *e = (entity_t *)list_get_element_by_index(entities, i);
+        const entity_t *e = *(entity_t **)list_get_element_by_index(entities, i);
         assert(e);
 
         if (!entity_has_component(e, c_shape2d_t )) continue;
 
         // VERTICES
         const c_shape2d_t *shape = (c_shape2d_t *)entity_get_component(e, c_shape2d_t );
+        assert(shape);
 
         // SHADER
         c_shader_t *cshader = (c_shader_t *)entity_get_component(e , c_shader_t );

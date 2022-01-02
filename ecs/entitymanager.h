@@ -56,9 +56,10 @@ entitymanager_t entitymanager_init(const u64 total_entity_types)
     }
 
     return (entitymanager_t ) {
-        .entities = list_init(8, entity_t *),
-        .entitymap = map,
-        .__newly_added_entities = queue_init(MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME, entity_t *)
+        .entities               = list_init(8, entity_t *),
+        .entitymap              = map,
+        .__newly_added_entities = queue_init( 
+                MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME, entity_t *)
     };
 }
 
@@ -83,7 +84,7 @@ void entitymanager_update(entitymanager_t *manager)
     list_t *entities    = &manager->entities;
     for (u64 i = 0; i < entities->len; i++)
     {
-        entity_t *e = (entity_t *)list_get_element_by_index(entities, i);
+        entity_t *e = *(entity_t **)list_get_element_by_index(entities, i);
         assert(e);
         if (!e->is_alive) {
 
@@ -103,7 +104,7 @@ void entitymanager_update(entitymanager_t *manager)
     queue_t *queue = &manager->__newly_added_entities;
     while (!queue_is_empty(queue))
     {
-        entity_t *e = (entity_t *)queue_get(queue);
+        entity_t *e = *(entity_t **)queue_get(queue);
 
         //appending to entities list
         list_append(&manager->entities, e);
@@ -128,7 +129,7 @@ void entitymanager_destroy(entitymanager_t *manager)
     list_t *entities = &manager->entities;
     for (u64 i = 0; i < entities->len; i++)
     {
-        entity_t *e = (entity_t *)list_get_element_by_index(entities, i);
+        entity_t *e = *(entity_t **)list_get_element_by_index(entities, i);
         __entity_destroy(e);
     }
     list_destroy(entities);
