@@ -190,7 +190,7 @@ void hashtable_print(const hashtable_t *table, void (*print)(void*))
     assert(print);
 
     printf("{\n");
-    for (int i = 0; i < table->__capacity; i++)
+    for (u64 i = 0; i < table->__capacity; i++)
     {
         if (table->__index_table[i]) {
 
@@ -212,9 +212,9 @@ void hashtable_dump(const hashtable_t *table)
         "=====================\n";
 
     printf("%s", output);
-    for (int i = 0; i < table->__capacity; i++)
+    for (u64 i = 0; i < table->__capacity; i++)
     {
-        printf("       %02i | %s \n", i, table->__index_table[i] ? "TRUE" : "FALSE");
+        printf("       %02li | %s \n", i, table->__index_table[i] ? "TRUE" : "FALSE");
     }
     printf("=====================\n");
 }

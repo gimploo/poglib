@@ -11,7 +11,7 @@ typedef struct application_t application_t;
 
 typedef u8 state_t;
 
-#define         application_init(PWIN) __impl_application_init((PWIN), (void *)init, (void *)update, (void *)render, (void *)shutdown)
+#define         application_init(PWIN) __impl_application_init((PWIN), (void *)app_init, (void *)app_update, (void *)app_render, (void *)app_shutdown)
 void            application_run(application_t *app);
 
 #define         application_update_state(PAPP, STATE) (PAPP)->state = STATE
@@ -63,6 +63,7 @@ application_t __impl_application_init(window_t *window, void (* init)(struct app
 void application_run(application_t *app)
 {
     if (app == NULL) eprint("application argument is null");
+    assert(app->__window_handle);
     
     window_t *win = app->__window_handle;
     stopwatch_t *timer = &app->timer;

@@ -71,7 +71,7 @@ void __c_shape2d_update(c_shape2d_t *cs)
 
             u8 buffer[sizeof(vec3f_t ) * 10] = {0};
 
-            for(int ii = 0; ii < sides; ii++)
+            for(u64 ii = 0; ii < sides; ii++)
             {
                 f32 theta = 2.0f * 3.1415926f * (float)ii / (float)sides;//get the current angle
 

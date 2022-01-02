@@ -60,12 +60,14 @@ list_t __impl_list_init(const u64 capacity, u64 elem_size)
 void __impl_list_append(list_t *list, void *value_addr, u64 value_size)
 {
     assert(list);
+    assert(value_addr);
+    assert(value_size == list->__elem_size);
 
     if (value_size != list->__elem_size) 
         eprint("trying to push a value of size %lu to slot of size %lu", 
                 value_size, list->__elem_size);
 
-    if (list->__top == (list->__capacity - 1)) {
+    if (list->__top == (i64)(list->__capacity - 1)) {
 
         list->__capacity = list->__capacity * 2;
 
@@ -87,10 +89,10 @@ void list_delete(list_t *list, const u64 index)
 {
     assert(list);
     assert(list->__top != -1);
-    assert(index <= list->__top);
+    assert((i64)index <= list->__top);
 
 
-    if (index != list->__top) {
+    if ((i64)index != list->__top) {
 
         memcpy(list->__array + index * list->__elem_size, 
                 list->__array + (index + 1) * list->__elem_size, 

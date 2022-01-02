@@ -66,7 +66,7 @@ void __entity_destroy(entity_t *e)
 
     // Freeing the component list of all its component before destroying the list
     list_t *cmps = &e->components;
-    for (int i = 0; i < cmps->len; i++)
+    for (u64 i = 0; i < cmps->len; i++)
     {
         entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(cmps, i);
         assert(ec);
@@ -102,8 +102,9 @@ entity_t * __entity_init(entity_type tag)
         .tag = tag,
         .is_alive = true,
         .components = list_init(4, entitycomponent_t ),
-        .__indices = {-1}
     };
+
+    memset(e->__indices, -1, sizeof(e->__indices));
 
     return e;
 }
@@ -133,13 +134,13 @@ const void * __impl_entity_get_component(const entity_t *e, const entitycomponen
     assert(e);
 
     u64 index = e->__indices[type];
-    if(index < e->components.len) eprint("index = %li and len = %li", index, e->components.len);
+    if(index > e->components.len) eprint("index = %li and len = %li", index, e->components.len);
 
     // No component found
-    if (index == -1) return NULL;
+    if ((i64)index == -1) return NULL;
 
+    // FIXME: heres the issue
     const entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(&e->components, index);
-    if (ec == NULL) return NULL;
 
     return ec->cmp;
 }
