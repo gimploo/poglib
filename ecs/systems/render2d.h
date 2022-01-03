@@ -26,7 +26,6 @@ void s_renderer2d_draw(const entitymanager_t *manager)
     gltri_t tris[MAX_QUAD_CAPACITY_PER_DRAW_CALL / 4] = {0};
     i64 tri_count = 0;
 
-
     bool ready_to_draw      = false;
     glshader_t *shader      = NULL;
     gltexture2d_t *texture  = NULL;
