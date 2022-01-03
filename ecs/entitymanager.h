@@ -59,7 +59,8 @@ entitymanager_t entitymanager_init(const u64 total_entity_types)
         .entities               = list_init(8, entity_t *),
         .entitymap              = map,
         .__newly_added_entities = queue_init( 
-                MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME, entity_t *)
+                MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME, 
+                entity_t *)
     };
 }
 
