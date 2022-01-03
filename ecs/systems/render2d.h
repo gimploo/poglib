@@ -21,10 +21,10 @@ void s_renderer2d_draw(const entitymanager_t *manager)
     assert(manager);
 
     glquad_t quads[MAX_QUAD_CAPACITY_PER_DRAW_CALL / 4] = {0};
-    i64 quad_count = -1;
+    i64 quad_count = 0;
 
     gltri_t tris[MAX_QUAD_CAPACITY_PER_DRAW_CALL / 4] = {0};
-    i64 tri_count = -1;
+    i64 tri_count = 0;
 
 
     bool ready_to_draw      = false;
@@ -41,7 +41,7 @@ void s_renderer2d_draw(const entitymanager_t *manager)
         if (!entity_has_component(e, c_shape2d_t )) continue;
 
         // VERTICES
-        const c_shape2d_t *shape = (c_shape2d_t *)entity_get_component(e, c_shape2d_t );
+        c_shape2d_t *shape = (c_shape2d_t *)entity_get_component(e, c_shape2d_t );
         assert(shape);
 
         // SHADER
@@ -55,11 +55,13 @@ void s_renderer2d_draw(const entitymanager_t *manager)
         switch(shape->type)
         {
             case CST_SQUARE: {
+
                 glquad_t glquad = glquad_init(
                         *(quadf_t *)shape->__vertices, 
-                        (vec3f_t ) { shape->fill.cmp[X], shape->fill.cmp[Y] },
+                        shape->fill,
                         uv, 0);
-                memcpy(&quads[++quad_count], &glquad, sizeof(glquad_t ));
+                memcpy(&quads[quad_count++], &glquad, sizeof(glquad_t ));
+
             } break;
 
             case CST_CIRCLE: {
@@ -67,11 +69,13 @@ void s_renderer2d_draw(const entitymanager_t *manager)
             } break;
 
             case CST_TRIANGLE: {
+
                 gltri_t gltri = gltri_init(
                         *(trif_t *)shape->__vertices, 
-                        (vec3f_t ) { shape->fill.cmp[X], shape->fill.cmp[Y] },
+                        shape->fill,
                         uv, 0);
-                memcpy(&tris[++tri_count], &gltri, sizeof(gltri_t ));
+                memcpy(&tris[tri_count++], &gltri, sizeof(gltri_t ));
+
             } break;
             default: eprint("shape not accounted for");
         }
@@ -87,7 +91,7 @@ void s_renderer2d_draw(const entitymanager_t *manager)
     glrenderer2d_t rd = glrenderer2d_init(shader, texture);
 
         if(quad_count != -1) {
-            glbatch_t tmp = glbatch_init(quads, quad_count * sizeof(glquad_t ) + 1 , glquad_t);
+            glbatch_t tmp = glbatch_init(quads, quad_count * sizeof(glquad_t )+ 1 , glquad_t);
                 glrenderer2d_draw_from_batch(&rd, &tmp);
             glbatch_destroy(&tmp);
         } else if (tri_count != -1) {
