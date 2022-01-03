@@ -42,7 +42,7 @@ struct c_shape2d_t {
     vec3f_t         *position;
     c_shape_type    type;
     f32             radius;
-    vec4f_t         fill;
+    vec3f_t         fill;
 
     void (*update)(c_shape2d_t *);
 
@@ -82,7 +82,7 @@ void __c_shape2d_update(c_shape2d_t *cs)
 
                 memcpy(buffer + ii * sizeof(vec3f_t ), &tmp, sizeof(vec3f_t ));
             }
-            memcpy(__vertices, buffer, KB);
+            memcpy(__vertices, buffer, sizeof(buffer));
         }
         break;
 
@@ -90,7 +90,7 @@ void __c_shape2d_update(c_shape2d_t *cs)
         case CST_TRIANGLE:
         {
             trif_t tri = trif_init(pos2d, (f32)radius);
-            memcpy(__vertices, &tri, sizeof(trif_t ));
+            memcpy(__vertices, &tri, sizeof(tri));
         }
         break;
 
@@ -98,7 +98,7 @@ void __c_shape2d_update(c_shape2d_t *cs)
         case CST_SQUARE:
         {
             quadf_t tmp = quadf_init(pos2d, radius, radius);
-            memcpy(__vertices, &tmp, sizeof(quadf_t ));
+            memcpy(__vertices, &tmp, sizeof(tmp));
         }
         break;
         default: eprint("side unaccounted for");
@@ -106,7 +106,7 @@ void __c_shape2d_update(c_shape2d_t *cs)
 }
 
 
-c_shape2d_t * __impl_c_shape2d_init(c_transform_t *ct, c_shape_type type, f32 radius, vec4f_t fill)
+c_shape2d_t * __impl_c_shape2d_init(c_transform_t *ct, c_shape_type type, f32 radius, vec3f_t fill)
 {
     assert(ct);
 
