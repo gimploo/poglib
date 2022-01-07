@@ -17,7 +17,7 @@ typedef struct trif_t { vec2f_t vertex[3]; } trif_t;
 #define TRI_FMT         VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n"
 #define TRI_ARG(TRI)    VEC2F_ARG(&(TRI.vertex[0])), VEC2F_ARG(&(TRI.vertex[1])), VEC2F_ARG(&(TRI.vertex[2]))
 
-trif_t trif_init(vec2f_t pos, f32 side)
+trif_t trif_init(vec2f_t pos, f32 side, f32 angle)
 {
     const f32 side_half = side / 2;
     const f32 height = 1.732050807568877f * side_half; 
@@ -99,5 +99,44 @@ bool quadf_is_point_in_quad(quadf_t quad, vec2f_t point)
             && quad.vertex[BOTTOM_LEFT].cmp[Y] <  point.cmp[Y]);
 }
 
+/*---------------------------------------------------------
+ // Circle (float type)
+---------------------------------------------------------*/
 
+#define MAX_VERTICES_PER_CIRCLE 60
+
+typedef struct circle_t {
+
+    vec3f_t     points[MAX_VERTICES_PER_CIRCLE];
+    u64         radius;
+
+} circle_t;
+
+circle_t circle_init(vec3f_t pos, f32 radius)
+{
+    circle_t output;
+    output.radius = radius; 
+
+    const f32 twicepi = 2.0f * PI;
+    const u64 sides = MAX_VERTICES_PER_CIRCLE - 2;
+
+    output.points[0] = vec3f(0.0f);
+    for (u64 i = 1; i < MAX_VERTICES_PER_CIRCLE; i++)
+    {
+        if (i%3 == 0) {
+            output.points[i] = vec3f(0.0f);
+            continue;
+        }
+        f32 angle = i * twicepi / sides;
+
+        vec3f_t point = {
+            .cmp[X] = pos.cmp[X] + (f32)cos(angle) * radius,
+            .cmp[Y] = pos.cmp[Y] + (f32)sin(angle) * radius,
+            .cmp[Z] = pos.cmp[Z]
+        };
+        output.points[i] = point; 
+
+    }
+    return output;
+}
 #endif //__MY__SHAPES__H__

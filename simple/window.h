@@ -96,6 +96,7 @@ void            window_update_user_input(window_t *window);
 //NOTE:(macro)  window_mouse_get_norm_position(window_t *window) -> vec2f_t
 //NOTE:(macro)  window_mouse_get_position(window_t *window) -> vec2ui_t
 //
+#//NOTE:(macro) window_mouse_button_is_pressed(window_t *window) -> bool     
 //NOTE:(macro)  window_mouse_button_just_pressed(window_t *window) -> bool
 //NOTE:(macro)  window_mouse_button_is_held(window_t *window) -> bool
 
@@ -130,6 +131,7 @@ void            window_sub_window_destroy(window_t *sub_window);
 #define window_mouse_get_position(pwindow)          (pwindow)->mouse_handler.position
 #define window_mouse_button_just_pressed(pwindow)   (pwindow)->mouse_handler.just_pressed
 #define window_mouse_button_is_held(pwindow)        (pwindow)->mouse_handler.is_held
+#define window_mouse_button_is_pressed(PWINDOW)     (window_mouse_button_just_pressed(PWINDOW) || window_mouse_button_is_held(PWINDOW))
 
 
 #define window_gl_render_begin(pwindow) {\
@@ -142,7 +144,11 @@ void            window_sub_window_destroy(window_t *sub_window);
     glClear(GL_COLOR_BUFFER_BIT);\
 }
 
-#define window_gl_render_end(pwindow) SDL_GL_SwapWindow((pwindow)->window_handle)
+#define window_gl_render_end(pwindow) do {\
+\
+    SDL_GL_SwapWindow((pwindow)->window_handle);\
+\
+} while(0)
 
 #define window_sub_window_gl_render_begin(pwindow) {\
     SDL_GL_MakeCurrent((pwindow)->window_handle, (pwindow)->gl_context);\

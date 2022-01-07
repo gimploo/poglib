@@ -17,6 +17,7 @@ typedef struct glrenderer2d_t glrenderer2d_t ;
 
 glrenderer2d_t      glrenderer2d_init(glshader_t *shader, gltexture2d_t *texture);
 void                glrenderer2d_draw_quad(glrenderer2d_t *renderer, const glquad_t quad);
+void                glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle);
 void                glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri);
 void                glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_t *batch);
 
@@ -59,7 +60,7 @@ void glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri)
         vbo.indices_count = ebo_get_count(&ebo);
 
             vao_set_attributes(&renderer->__vao, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, position), &vbo);
-            vao_set_attributes(&renderer->__vao, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color), &vbo);
+            vao_set_attributes(&renderer->__vao, 4, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color), &vbo);
 
             if (renderer->__texture != NULL) {
                 vao_set_attributes(&renderer->__vao, 2, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_coord), &vbo);
@@ -108,7 +109,7 @@ void glrenderer2d_draw_quad(glrenderer2d_t *renderer, const glquad_t quad)
 
         vbo_bind(&vbo);
         vao_set_attributes(&renderer->__vao, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, position), &vbo);
-        vao_set_attributes(&renderer->__vao, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color), &vbo);
+        vao_set_attributes(&renderer->__vao, 4, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color), &vbo);
 
         if (renderer->__texture != NULL) {
             vao_set_attributes(&renderer->__vao, 2, GL_FLOAT, false, sizeof(glvertex_t ), offsetof(glvertex_t, texture_coord), &vbo);
@@ -162,5 +163,38 @@ void glrenderer2d_draw_frame_buffer(glframebuffer_t *fbo, const glquad_t quad)
     glrenderer2d_destroy(&rd);
 }
 
+void glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle)
+{    
+    if (renderer == NULL) eprint("renderer argument is null");
+
+    vbo_t vbo; 
+    ebo_t ebo;
+
+    vao_bind(&renderer->__vao);
+        ebo = ebo_init(circle.indices, MAX_VERTICES_PER_CIRCLE);
+        vbo = vbo_init(circle.vertices, sizeof(circle.vertices));
+        vbo.indices_count = ebo_get_count(&ebo);
+
+        vao_set_attributes(&renderer->__vao, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, position), &vbo);
+        vao_set_attributes(&renderer->__vao, 4, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color), &vbo);
+
+        if (renderer->__texture) {
+
+            vao_set_attributes(&renderer->__vao, 2, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_coord), &vbo);
+            vao_set_attributes(&renderer->__vao, 1, GL_UNSIGNED_INT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_id), &vbo);
+            gltexture2d_bind(renderer->__texture, 0);
+        }
+
+        glshader_bind((glshader_t *)renderer->__shader);
+        //vao_draw_in_mode(&renderer->__vao, &vbo, GL_TRIANGLE_FAN);
+        vao_draw(&renderer->__vao, &vbo); 
+
+    vao_unbind();
+
+    ebo_destroy(&ebo);
+    vbo_destroy(&vbo);
+
+
+}
 #endif
 

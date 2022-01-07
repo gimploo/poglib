@@ -59,6 +59,8 @@ typedef enum
 #define MB      (KB * 1024)
 #define GB      (MB * 1024)
 
+#define PI 3.141592653589793238463
+
 // Used with struct declaration to avoid padding
 #define NOPADDING __attribute__((packed)) 
 

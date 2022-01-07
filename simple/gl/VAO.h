@@ -63,8 +63,9 @@ static inline void vao_set_attributes(
     
 }
 
-
-static inline void vao_draw(const vao_t *vao, vbo_t *vbo)
+#define vao_draw(PVAO, PVBO)                __impl_vao_draw(PVAO, PVBO, GL_TRIANGLES)
+#define vao_draw_in_mode(PVAO, PVBO, MODE) __impl_vao_draw(PVAO, PVBO, MODE)
+void __impl_vao_draw(const vao_t *vao, vbo_t *vbo, u64 gldraw_mode)
 {
     if (vao == NULL) eprint("vao_draw: vao argument is null");
 
@@ -74,7 +75,7 @@ static inline void vao_draw(const vao_t *vao, vbo_t *vbo)
         {
             if (vbo->indices_count == 0) eprint("vao_draw: vbo`s indices_count is %i", vbo->indices_count);
 
-            glDrawElements(GL_TRIANGLES, vbo->indices_count, GL_UNSIGNED_INT, 0);
+            GL_CHECK(glDrawElements(gldraw_mode, vbo->indices_count, GL_UNSIGNED_INT, 0));
 
         } 
         vbo_unbind();
