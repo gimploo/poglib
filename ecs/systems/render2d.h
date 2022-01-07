@@ -89,20 +89,16 @@ void s_renderer2d_draw(const entitymanager_t *manager)
 
     glrenderer2d_t rd = glrenderer2d_init(shader, texture);
 
-        if(quad_count != -1) {
+        if(quad_count != 0) {
             glbatch_t tmp = glbatch_init(quads, quad_count * sizeof(glquad_t )+ 1 , glquad_t);
                 glrenderer2d_draw_from_batch(&rd, &tmp);
             glbatch_destroy(&tmp);
-        } else if (tri_count != -1) {
+        } 
+        if (tri_count != 0) {
             glbatch_t tmp = glbatch_init(tris, tri_count * sizeof(gltri_t ) + 1, gltri_t);
                 glrenderer2d_draw_from_batch(&rd, &tmp);
             glbatch_destroy(&tmp);
-        } else {
-            printf("quad_count %li\n", quad_count);
-            printf("tri_count  %li\n", tri_count);
-            eprint("Error, nothings drawn");
-        }
-
+        } 
     glrenderer2d_destroy(&rd);
 }
 

@@ -21,15 +21,15 @@ void s_movement2d(entitymanager_t *manager, entity_t *player, f32 dt)
     window_t *win = input->win;
     assert(win);
 
-    if (window_keyboard_is_key_pressed(win, SDLK_d))
-    {
+    if (window_keyboard_is_key_pressed(win, SDLK_d)) {
+
         transform->position = vec3f_add(
                 transform->position, 
                 (vec3f_t ){ transform->scale.cmp[X] * dt, 0.0f, 0.0f });
     }
 
-    if (window_keyboard_is_key_pressed(win, SDLK_a))
-    {
+    if (window_keyboard_is_key_pressed(win, SDLK_a)) {
+
         transform->position = vec3f_add(
                 transform->position, 
                 (vec3f_t ){ -transform->scale.cmp[X] *dt , 0.0f, 0.0f });
@@ -50,7 +50,6 @@ void s_movement2d(entitymanager_t *manager, entity_t *player, f32 dt)
                 (vec3f_t ){ 0.0f, -transform->scale.cmp[Y] *dt, 0.0f });
     } 
     
-
 
     c_shape2d_update(shape);
 }
