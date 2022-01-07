@@ -89,7 +89,7 @@ void __c_shape2d_update(c_shape2d_t *cs)
         //Triangle
         case CST_TRIANGLE:
         {
-            trif_t tri = trif_init(pos2d, (f32)radius);
+            trif_t tri = trif_init(pos2d, radius);
             memcpy(__vertices, &tri, sizeof(tri));
         }
         break;

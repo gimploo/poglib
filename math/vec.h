@@ -145,6 +145,15 @@ vec2f_t vec2f_add(const vec2f_t x, const vec2f_t y)
     return output;
 }
 
+vec2f_t vec2f_sub(const vec2f_t x, const vec2f_t y)
+{
+    vec2f_t output;
+    output.cmp[X] = x.cmp[X] - y.cmp[X];
+    output.cmp[Y] = x.cmp[Y] - y.cmp[Y];
+
+    return output;
+}
+
 vec2f_t vec2f_scale(const vec2f_t x, const f32 scale)
 {
     vec2f_t output;
