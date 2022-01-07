@@ -8,6 +8,7 @@
 
 typedef struct glvertex_t   glvertex_t;
 typedef struct gltri_t      gltri_t;
+typedef struct glcircle_t   glcircle_t; 
 typedef struct glquad_t     glquad_t;
 typedef struct glbatch_t    glbatch_t;
 
@@ -15,13 +16,15 @@ typedef enum {
 
     GLBT_gltri_t = 0,
     GLBT_glquad_t,
+    GLBT_glcircle_t,
     GLBT_COUNT
 
 } glbatch_type;
 
 
-gltri_t     gltri_init(trif_t tri, vec3f_t color, quadf_t tex_coord, u8 texid);
-glquad_t    glquad_init(quadf_t positions, vec3f_t color, quadf_t tex_coord, u8 tex_id);
+gltri_t     gltri_init(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid);
+glquad_t    glquad_init(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id);
+glcircle_t  glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
 
 #define     glbatch_init(PVERTICES, SIZE, TYPE) __impl_gl_batch_init((glvertex_t *)PVERTICES, SIZE, GLBT_type(TYPE))
 #define     glbatch_destroy(PBATCH) do {\
@@ -52,6 +55,7 @@ const u32 DEFAULT_TRI_INDICES[] = {
     0, 1, 2
 };
 
+
 const u32 DEFAULT_QUAD_INDICES[] = {
     0, 1, 2,
     2, 3, 0
@@ -60,11 +64,12 @@ const u32 DEFAULT_QUAD_INDICES[] = {
 struct glvertex_t {
 
     vec3f_t position;
-    vec3f_t color;
+    vec4f_t color;
     vec2f_t texture_coord;
     u8      texture_id;
 
 } ;
+
 
 struct gltri_t { 
 
@@ -78,8 +83,14 @@ struct glquad_t {
 
 };
 
+struct glcircle_t {
+
+    glvertex_t  vertices[MAX_VERTICES_PER_CIRCLE];
+    u32 indices[MAX_VERTICES_PER_CIRCLE];
+};
+
 // Creates a quad suited for OpenGL
-glquad_t glquad_init(quadf_t positions, vec3f_t color, quadf_t tex_coord, u8 tex_id)
+glquad_t glquad_init(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id)
 {
     return (glquad_t) {
 
@@ -110,7 +121,7 @@ glquad_t glquad_init(quadf_t positions, vec3f_t color, quadf_t tex_coord, u8 tex
     };
 }
 
-gltri_t gltri_init(trif_t tri, vec3f_t color, quadf_t tex_coord, u8 texid)
+gltri_t gltri_init(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid)
 {
     return (gltri_t) {
 
@@ -219,11 +230,31 @@ glbatch_t __impl_gl_batch_init(glvertex_t vertices[], const u64 vertices_size, g
     batch.vbo.indices_count = ebo_get_count(&batch.ebo);
 
     vao_set_attributes(&batch.vao, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, position), &batch.vbo);
-    vao_set_attributes(&batch.vao, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color), &batch.vbo);
+    vao_set_attributes(&batch.vao, 4, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color), &batch.vbo);
     vao_set_attributes(&batch.vao, 2, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_coord), &batch.vbo);
     vao_set_attributes(&batch.vao, 1, GL_UNSIGNED_INT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_id), &batch.vbo);
 
     return batch;
+}
+
+glcircle_t glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
+{
+    glcircle_t output = {0} ;
+
+    glvertex_t *vertices = output.vertices;
+    vec3f_t center = circle.points[0];
+
+    for (u64 i = 0; i < MAX_VERTICES_PER_CIRCLE; i++)
+    {
+        vertices[i].position = circle.points[i]; 
+        vertices[i].color = color; 
+        vertices[i].texture_coord = vec2f(0.0f);
+        vertices[i].texture_id = 0;
+    }
+
+    __gen_tri_indices(output.indices, MAX_VERTICES_PER_CIRCLE / 3);
+
+    return output;
 }
 
 #endif
