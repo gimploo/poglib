@@ -20,10 +20,10 @@ void s_renderer2d_draw(const entitymanager_t *manager)
 {
     assert(manager);
 
-    glquad_t quads[MAX_QUAD_CAPACITY_PER_DRAW_CALL / 4] = {0};
+    glquad_t quads[MAX_QUAD_CAPACITY_PER_DRAW_CALL / 3] = {0};
     i64 quad_count = 0;
 
-    gltri_t tris[MAX_QUAD_CAPACITY_PER_DRAW_CALL / 4] = {0};
+    gltri_t tris[MAX_QUAD_CAPACITY_PER_DRAW_CALL / 3] = {0};
     i64 tri_count = 0;
 
     bool ready_to_draw      = false;

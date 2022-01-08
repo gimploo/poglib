@@ -21,8 +21,8 @@ typedef char            i8;
 typedef uint16_t        u16;
 typedef int16_t         i16;
 typedef uint32_t        u32;
-typedef uint64_t        u64;
 typedef int             i32;
+typedef uint64_t        u64;
 typedef long            i64;
 typedef float           f32;
 typedef double          f64;
@@ -73,7 +73,7 @@ typedef enum
     exit(1);\
 } while (0)
 
-#define ARRAY_LEN(arr) sizeof((arr)) / sizeof(*(arr))
+#define ARRAY_LEN(ARR) sizeof((ARR)) / sizeof(*(ARR))
 
 
 int randint(int min, int max)

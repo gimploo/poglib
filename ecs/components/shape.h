@@ -42,7 +42,7 @@ struct c_shape2d_t {
     vec3f_t         *position;
     c_shape_type    type;
     f32             radius;
-    vec3f_t         fill;
+    vec4f_t         fill;
 
     void (*update)(c_shape2d_t *);
 
@@ -106,7 +106,7 @@ void __c_shape2d_update(c_shape2d_t *cs)
 }
 
 
-c_shape2d_t * __impl_c_shape2d_init(c_transform_t *ct, c_shape_type type, f32 radius, vec3f_t fill)
+c_shape2d_t * __impl_c_shape2d_init(c_transform_t *ct, c_shape_type type, f32 radius, vec4f_t fill)
 {
     assert(ct);
 
