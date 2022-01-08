@@ -221,6 +221,11 @@ glbatch_t __impl_gl_batch_init(glvertex_t vertices[], const u64 vertices_size, g
             __gen_tri_indices(batch.__indices_buffer, batch.shape_count);
             batch.ebo = ebo_init(batch.__indices_buffer, DEFAULT_TRI_INDICES_CAPACITY * batch.shape_count);
             break;
+        case GLBT_glcircle_t:
+            batch.shape_count = (vertices_size / (sizeof(glvertex_t))) / MAX_VERTICES_PER_CIRCLE;
+            __gen_tri_indices(batch.__indices_buffer, batch.shape_count);
+            batch.ebo = ebo_init(batch.__indices_buffer, MAX_VERTICES_PER_CIRCLE * batch.shape_count);
+            break;
         default:
             eprint("glbatch_type: TYPE = (%i) unknown\n", type);
     }
