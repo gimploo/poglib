@@ -186,8 +186,8 @@ void glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle)
         }
 
         glshader_bind((glshader_t *)renderer->__shader);
-        //vao_draw_in_mode(&renderer->__vao, &vbo, GL_TRIANGLE_FAN);
-        vao_draw(&renderer->__vao, &vbo); 
+        vao_draw_in_mode(&renderer->__vao, &vbo, GL_TRIANGLE_FAN);
+        //vao_draw(&renderer->__vao, &vbo); 
 
     vao_unbind();
 
