@@ -86,7 +86,7 @@ struct glquad_t {
 struct glcircle_t {
 
     glvertex_t  vertices[MAX_VERTICES_PER_CIRCLE];
-    u32 indices[MAX_VERTICES_PER_CIRCLE];
+    u64         indices[MAX_VERTICES_PER_CIRCLE];
 };
 
 // Creates a quad suited for OpenGL
