@@ -121,13 +121,15 @@ circle_t circle_init(vec3f_t pos, f32 radius)
     const u64 sides = MAX_VERTICES_PER_CIRCLE - 2;
 
     output.points[0] = vec3f(0.0f);
-    for (u64 i = 1; i < MAX_VERTICES_PER_CIRCLE; i++)
+    for (u64 i = 1, count = 1; i < MAX_VERTICES_PER_CIRCLE; i++, count++)
     {
-        if (i%3 == 0) {
+        if (count == 3) {
             output.points[i] = vec3f(0.0f);
+            count = 0;
             continue;
         }
-        f32 angle = i * twicepi / sides;
+
+        f32 angle = i * twicepi / MAX_VERTICES_PER_CIRCLE;
 
         vec3f_t point = {
             .cmp[X] = pos.cmp[X] + (f32)cos(angle) * radius,
