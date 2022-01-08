@@ -17,7 +17,7 @@ typedef struct trif_t { vec2f_t vertex[3]; } trif_t;
 #define TRI_FMT         VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n"
 #define TRI_ARG(TRI)    VEC2F_ARG(&(TRI.vertex[0])), VEC2F_ARG(&(TRI.vertex[1])), VEC2F_ARG(&(TRI.vertex[2]))
 
-trif_t trif_init(vec2f_t pos, f32 side, f32 angle)
+trif_t trif_init(vec2f_t pos, f32 side)
 {
     const f32 side_half = side / 2;
     const f32 height = 1.732050807568877f * side_half; 
