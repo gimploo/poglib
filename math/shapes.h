@@ -118,11 +118,16 @@ circle_t circle_init(vec3f_t pos, f32 radius)
     output.radius = radius; 
 
     const f32 twicepi = 2.0f * PI;
-    const u64 sides = MAX_VERTICES_PER_CIRCLE - 2;
+    const u64 sides = MAX_VERTICES_PER_CIRCLE / 3;
 
-    output.points[0] = vec3f(0.0f);
+    output.points[0] = pos;
     for (u64 i = 1; i < MAX_VERTICES_PER_CIRCLE; i++)
     {
+        if (i%3 == 0) {
+            output.points[i] = pos;
+            continue;
+        }
+
         f32 angle = i * twicepi / sides;
 
         vec3f_t point = {
@@ -131,6 +136,7 @@ circle_t circle_init(vec3f_t pos, f32 radius)
             .cmp[Z] = pos.cmp[Z]
         };
         output.points[i] = point; 
+
 
     }
     return output;

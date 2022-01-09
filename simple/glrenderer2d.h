@@ -3,7 +3,7 @@
 #include "../math/shapes.h"
 #include "gl/shader.h"
 #include "gl/texture2d.h"
-#include "gl/VAO.h"
+#include "gl/globjects.h"
 #include "gl/framebuffer.h"
 #include "gl/types.h"
 
@@ -14,10 +14,12 @@ typedef struct glrenderer2d_t glrenderer2d_t ;
 
 
 glrenderer2d_t      glrenderer2d_init(glshader_t *shader, gltexture2d_t *texture);
+
 void                glrenderer2d_draw_quad(glrenderer2d_t *renderer, const glquad_t quad);
 void                glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri);
-void                glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *batch);
+void                glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle);
 
+void                glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *batch);
 void                glrenderer2d_draw_frame_buffer(glframebuffer_t *fbo, const glquad_t quad);
 
 #define             glrenderer2d_destroy(PREND)    vao_destroy(&(PREND)->__vao)
@@ -44,6 +46,17 @@ struct glrenderer2d_t {
 
 };
 
+
+//NOTE: make sure to not have texture uniform if your passing NULL as texture argument
+glrenderer2d_t glrenderer2d_init(glshader_t *shader, gltexture2d_t *texture)
+{
+    return (glrenderer2d_t ) {
+        .__vao = vao_init(),
+        .__shader = shader,
+        .__texture = texture,
+    };
+
+}
 
 void glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri)
 {    
@@ -73,15 +86,31 @@ void glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri)
 
 }
 
+void glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle)
+{    
+    if (renderer == NULL) eprint("renderer argument is null");
 
-//NOTE: make sure to not have texture uniform if your passing NULL as texture argument
-glrenderer2d_t glrenderer2d_init(glshader_t *shader, gltexture2d_t *texture)
-{
-    return (glrenderer2d_t ) {
-        .__vao = vao_init(),
-        .__shader = shader,
-        .__texture = texture,
-    };
+    vao_t *vao = &renderer->__vao;
+    vbo_t vbo; 
+
+    vao_bind(vao);
+
+            vbo = vbo_init(circle.vertex);
+            vao_set_attributes(vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, position));
+            vao_set_attributes(vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color));
+
+            if (renderer->__texture != NULL) {
+                vao_set_attributes(vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_coord));
+                vao_set_attributes(vao, &vbo,1, GL_UNSIGNED_INT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_id));
+                gltexture2d_bind(renderer->__texture, 0);
+            }
+
+            glshader_bind((glshader_t *)renderer->__shader);
+            vao_draw_with_vbo_in_mode(&renderer->__vao, &vbo, GL_TRIANGLE_FAN);
+
+    vao_unbind();
+
+    vbo_destroy(&vbo);
 
 }
 
@@ -137,7 +166,10 @@ void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *bat
         break;
 
         case GLBT_glquad_t:
-            vertices_count = 4 * batch->vertices.len;
+            vertices_count = 6 * batch->vertices.len;
+        break;
+        case GLBT_glcircle_t:
+            vertices_count = MAX_VERTICES_PER_CIRCLE * batch->vertices.len;
         break;
 
         default: eprint("batch type not accounted for");
@@ -148,10 +180,30 @@ void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *bat
                     batch->vertices.array, 
                     batch->vertices.len * batch->vertices.elem_size, 
                     vertices_count);
-
-    //GL_LOG("Batch size: %li\n", batch->vertex_buffer_size);
+    ebo_t ebo;
 
     vao_bind(vao);
+
+        // Ebo setup
+        switch(batch->type)
+        {
+            case GLBT_glcircle_t:
+            case GLBT_gltri_t:
+                // skipping ...
+            break;
+
+            case GLBT_glquad_t:
+
+                memset(GLOBAL_QUAD_INDICIES_BUFFER, 0, sizeof(GLOBAL_QUAD_INDICIES_BUFFER));
+                __gen_quad_indices(GLOBAL_QUAD_INDICIES_BUFFER, batch->vertices.len);
+                ebo = ebo_init(&vbo, GLOBAL_QUAD_INDICIES_BUFFER, vertices_count);
+
+            break;
+
+            default: eprint("batch type not accounted for");
+        }
+
+        // Attributes setup
         vao_set_attributes(vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, position));
         vao_set_attributes(vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color));
 
@@ -160,30 +212,47 @@ void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *bat
             vao_set_attributes(vao, &vbo, 1, GL_UNSIGNED_INT, false, sizeof(glvertex_t ), offsetof(glvertex_t, texture_id));
             gltexture2d_bind(renderer->__texture, 0);
         }
+
         glshader_bind((glshader_t *)renderer->__shader);
 
+        // Draw calls
         switch(batch->type)
         {
-            case GLBT_gltri_t: {
+            case GLBT_gltri_t:
                 vao_draw_with_vbo(vao, &vbo);
-            }break;
+            break;
 
-            case GLBT_glquad_t: {
+            case GLBT_glquad_t: 
+                vao_draw_with_ebo(vao, &ebo);
+            break;
 
-                //FIXME: the problem is here
-                memset(GLOBAL_QUAD_INDICIES_BUFFER, 0, sizeof(GLOBAL_QUAD_INDICIES_BUFFER));
-                __gen_quad_indices(GLOBAL_QUAD_INDICIES_BUFFER, batch->vertices.len);
-                ebo_t ebo   = ebo_init(&vbo, GLOBAL_QUAD_INDICIES_BUFFER, vertices_count);
-                    vao_draw_with_ebo(vao, &ebo);
-                ebo_destroy(&ebo);
-
-
-            } break;
+            case GLBT_glcircle_t:
+                //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+                vao_draw_with_vbo(vao, &vbo);
+            break;
 
             default: eprint("batch type not accounted for");
         }
 
     vao_unbind();
+
+
+    // Deleting ebo
+    switch(batch->type)
+    {
+        case GLBT_glcircle_t:
+        case GLBT_gltri_t:
+            // skipping
+        break;
+
+        case GLBT_glquad_t: 
+            ebo_destroy(&ebo);
+        break;
+
+
+        default: eprint("batch type not accounted for");
+    }
+
     vbo_destroy(&vbo);
 }
 

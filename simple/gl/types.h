@@ -1,31 +1,33 @@
 #pragma once
 
-#include "../../math/shapes.h"
-#include "VAO.h"
-#include "./_common.h"
+#include "./globjects.h"
+#include "./common.h"
 
 
 typedef struct glvertex_t   glvertex_t;
 typedef struct gltri_t      gltri_t;
 typedef struct glquad_t     glquad_t;
+typedef struct glcircle_t   glcircle_t;
 typedef struct glbatch_t    glbatch_t;
 
 typedef enum {
 
     GLBT_gltri_t = 0,
     GLBT_glquad_t,
+    GLBT_glcircle_t,
     GLBT_COUNT
 
 } glbatch_type;
 
 
-gltri_t     gltri_init(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid);
-glquad_t    glquad_init(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id);
+gltri_t         gltri_init(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid);
+glquad_t        glquad_init(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id);
+glcircle_t      glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
 
 
-#define     glbatch_init(CAPACITY, TYPE)    __impl_glbatch_init((CAPACITY), GLBT_type(TYPE), sizeof(TYPE))
-#define     glbatch_put(PBATCH, ELEM)       queue_put(&(PBATCH)->vertices, (ELEM))
-void        glbatch_destroy(glbatch_t *batch);
+#define         glbatch_init(CAPACITY, TYPE)    __impl_glbatch_init((CAPACITY), GLBT_type(TYPE), sizeof(TYPE))
+#define         glbatch_put(PBATCH, ELEM)       queue_put(&(PBATCH)->vertices, (ELEM))
+void            glbatch_destroy(glbatch_t *batch);
 
 
 
@@ -139,6 +141,24 @@ gltri_t gltri_init(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid)
     };
 }
 
+glcircle_t glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
+{
+    glcircle_t output = {0} ;
+
+    glvertex_t *vertices = output.vertex;
+    vec3f_t center = circle.points[0];
+
+    for (u64 i = 0; i < MAX_VERTICES_PER_CIRCLE; i++)
+    {
+        vertices[i].position = circle.points[i]; 
+        vertices[i].color = color; 
+        vertices[i].texture_coord = vec2f(0.0f);
+        vertices[i].texture_id = 0;
+    }
+
+    return output;
+}
+
 
 #define GLBT_type(TYPE) GLBT_##TYPE
 
@@ -183,6 +203,7 @@ glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, u64 type_size)
         .type = type
     };
 }
+
 
 
 void glbatch_destroy(glbatch_t *batch) 
