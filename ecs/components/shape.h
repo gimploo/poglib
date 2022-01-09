@@ -29,9 +29,9 @@ typedef struct c_shape2d_t c_shape2d_t ;
 
 typedef enum c_shape_type {
 
-    CST_CIRCLE      = 0,
-    CST_TRIANGLE    = 3,
-    CST_SQUARE      = 4,
+    CST_TRIANGLE = 0,
+    CST_SQUARE,
+    CST_CIRCLE,
 
     CST_COUNT
 
@@ -65,26 +65,12 @@ void __c_shape2d_update(c_shape2d_t *cs)
     switch(type)
     {
         //Circle
-        case CST_CIRCLE:
-        {
-            u64 sides = MAX_TOTAL_CIRCLE_SIDES;
+        case CST_CIRCLE: {
+            
+            circle_t circle = circle_init(pos, radius);
+            memcpy(__vertices, circle.points, sizeof(circle.points));
 
-            u8 buffer[sizeof(vec3f_t ) * 10] = {0};
-
-            for(u64 ii = 0; ii < sides; ii++)
-            {
-                f32 theta = 2.0f * 3.1415926f * (float)ii / (float)sides;//get the current angle
-
-                f32 x = radius * cosf(theta);//calculate the x component
-                f32 y = radius * sinf(theta);//calculate the y component
-
-                vec3f_t tmp = { x + pos.cmp[X],  y + pos.cmp[Y], 0.0f };
-
-                memcpy(buffer + ii * sizeof(vec3f_t ), &tmp, sizeof(vec3f_t ));
-            }
-            memcpy(__vertices, buffer, sizeof(buffer));
-        }
-        break;
+        } break;
 
         //Triangle
         case CST_TRIANGLE:
