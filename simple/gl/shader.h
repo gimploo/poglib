@@ -6,8 +6,7 @@
 =======================================================*/
 
 #include <string.h>
-#include "_common.h"
-#include "../../generics.h"
+#include "common.h"
 
 #define MAX_UNIFORM_ARRAY_CAPACITY 10
 #define MAX_UNIFORM_VALUE_SIZE (4 * sizeof(f32))

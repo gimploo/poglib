@@ -8,6 +8,7 @@
 #include "../../ds/queue.h"
 #include "../../file.h"
 #include "../../math/la.h"
+#include "../../math/shapes.h"
 
 #ifdef GL_LOG_ENABLE
 #   define GL_LOG(fmt, ...) fprintf(stderr, "[LOG]\t " fmt "\n", ##__VA_ARGS__)
