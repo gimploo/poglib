@@ -103,14 +103,15 @@ bool quadf_is_point_in_quad(quadf_t quad, vec2f_t point)
  // Circle (float type)
 ---------------------------------------------------------*/
 
-#define MAX_VERTICES_PER_CIRCLE 60
+#define MAX_VERTICES_PER_CIRCLE     60
+#define MAX_TRIANGLES_PER_CIRCLE    (MAX_VERTICES_PER_CIRCLE / 3)
 
 typedef struct circle_t {
 
     vec3f_t     points[MAX_VERTICES_PER_CIRCLE];
     u64         radius;
 
-} circle_t;
+} circle_t ;
 
 circle_t circle_init(vec3f_t pos, f32 radius)
 {
@@ -118,7 +119,6 @@ circle_t circle_init(vec3f_t pos, f32 radius)
     output.radius = radius; 
 
     const f32 twicepi = 2.0f * PI;
-    const u64 sides = MAX_VERTICES_PER_CIRCLE / 3;
 
     output.points[0] = pos;
     for (u64 i = 1; i < MAX_VERTICES_PER_CIRCLE; i++)
@@ -128,7 +128,7 @@ circle_t circle_init(vec3f_t pos, f32 radius)
             continue;
         }
 
-        f32 angle = i * twicepi / sides;
+        f32 angle = i * twicepi / MAX_TRIANGLES_PER_CIRCLE;
 
         vec3f_t point = {
             .cmp[X] = pos.cmp[X] + (f32)cos(angle) * radius,

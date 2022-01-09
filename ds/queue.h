@@ -14,13 +14,15 @@ typedef struct queue_t queue_t ;
 
 #define             queue_put(PQUEUE, ELEM)             __impl_queue_put((PQUEUE), &(ELEM), sizeof(ELEM))
 
-//NOTE: if the value exceeds 8 bytes in size, the queue returns a buffer holding the value 
-//      so to be copied to someother place else it just returns the value itself if its 
-//      less than 8 bytes
 #define             queue_get(PQUEUE)                   __impl_queue_get((PQUEUE)) 
+#define             queue_get_in_buffer(PQUEUE, BUFFER)  __impl_queue_get_in_buffer((PQUEUE), &BUFFER, sizeof(BUFFER))
 
 #define             queue_is_empty(PQUEUE)              ((PQUEUE)->start == (PQUEUE)->end) 
 #define             queue_is_full(PQUEUE)               ((PQUEUE)->len == (PQUEUE)->capacity) ? true : false
+
+#define             queue_peek_element_at_index(PQUEUE, INDEX)            ((PQUEUE)->array + (INDEX) * (PQUEUE)->elem_size)
+
+void                queue_clear(queue_t *queue);
 
 void                queue_destroy(queue_t *queue);
 
@@ -72,7 +74,7 @@ void queue_dump(queue_t *queue)
 queue_t __impl_queue_init(u64 capacity, u64 elem_size)
 {
     if (capacity == 0) eprint("queue_init: capacity not greater than zero");
-
+    assert(elem_size != 0);
 
     return (queue_t) {
         .array = (u8 *)calloc(capacity, elem_size),
@@ -82,6 +84,14 @@ queue_t __impl_queue_init(u64 capacity, u64 elem_size)
         .elem_size = elem_size,
         .len = 0 ,
     };
+}
+
+void queue_clear(queue_t *queue)
+{
+    assert(queue);
+
+    queue->start = queue->len = queue->end = 0;
+
 }
 
 void __impl_queue_put(queue_t *queue, void *elemaddr, u64 elem_size)
@@ -105,6 +115,7 @@ void __impl_queue_put(queue_t *queue, void *elemaddr, u64 elem_size)
 void * __impl_queue_get(queue_t *queue)
 {
     if (queue == NULL) eprint("queue_get: queue argument is null");
+    if (queue->elem_size > 8) eprint("element size exceeds 8 bytes, use queue_get_in_buffer() instead");
 
     if (queue_is_empty(queue)) eprint("underflow");
 
@@ -114,6 +125,22 @@ void * __impl_queue_get(queue_t *queue)
 
     return elem_pos;
 }
+
+void __impl_queue_get_in_buffer(queue_t *queue, void *buffer, u64 buffer_size)
+{
+    if (queue == NULL)                  eprint("queue_get: queue argument is null");
+    if (queue_is_empty(queue))          eprint("underflow");
+    if(queue->elem_size <= 8)           eprint("Use normal queue_get() instead");
+    if(buffer_size < queue->elem_size)  eprint("buffer is too smol, expected %lu but given %lu", queue->elem_size, buffer_size);
+    if(buffer_size == 8)                eprint("passed in buffer is a pointer");
+
+    void *elem_pos = queue->array + queue->start * queue->elem_size;
+    queue->start = (queue->start + 1) % queue->capacity;
+    queue->len--;
+
+    memcpy(buffer, elem_pos, queue->elem_size);
+}
+
 
 void queue_print(queue_t *queue, void (*print_elem)(void *))
 {

@@ -27,6 +27,8 @@ glcircle_t      glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 tex
 
 #define         glbatch_init(CAPACITY, TYPE)    __impl_glbatch_init((CAPACITY), GLBT_type(TYPE), sizeof(TYPE))
 #define         glbatch_put(PBATCH, ELEM)       queue_put(&(PBATCH)->vertices, (ELEM))
+#define         glbatch_is_empty(PBATCH)        queue_is_empty(&(PBATCH)->vertices)
+#define         glbatch_clear(PBATCH)           queue_clear(&(PBATCH)->vertices)
 void            glbatch_destroy(glbatch_t *batch);
 
 
