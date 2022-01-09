@@ -25,21 +25,21 @@ void s_movement2d(entitymanager_t *manager, entity_t *player, f32 dt)
 
         transform->position = vec3f_add(
                 transform->position, 
-                (vec3f_t ){ transform->scale.cmp[X] * dt, 0.0f, 0.0f });
+                (vec3f_t ){ transform->velocity.cmp[X] * dt, 0.0f, 0.0f });
     }
 
     if (window_keyboard_is_key_pressed(win, SDLK_a)) {
 
         transform->position = vec3f_add(
                 transform->position, 
-                (vec3f_t ){ -transform->scale.cmp[X] *dt , 0.0f, 0.0f });
+                (vec3f_t ){ -transform->velocity.cmp[X] *dt , 0.0f, 0.0f });
     }
 
     if (window_keyboard_is_key_pressed(win, SDLK_w)) {
 
         transform->position = vec3f_add(
                 transform->position, 
-                (vec3f_t ){ 0.0f, transform->scale.cmp[Y] *dt, 0.0f });
+                (vec3f_t ){ 0.0f, transform->velocity.cmp[Y] *dt, 0.0f });
 
     }
 
@@ -47,7 +47,7 @@ void s_movement2d(entitymanager_t *manager, entity_t *player, f32 dt)
 
         transform->position = vec3f_add(
                 transform->position, 
-                (vec3f_t ){ 0.0f, -transform->scale.cmp[Y] *dt, 0.0f });
+                (vec3f_t ){ 0.0f, -transform->velocity.cmp[Y] *dt, 0.0f });
     } 
     
 

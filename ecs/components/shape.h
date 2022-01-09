@@ -44,6 +44,7 @@ struct c_shape2d_t {
     f32             radius;
     vec4f_t         fill;
 
+
     void (*update)(c_shape2d_t *);
 
     // buffer to hold all the vertices
