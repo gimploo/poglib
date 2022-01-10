@@ -643,28 +643,28 @@ void window_update_user_input(window_t *window)
 
             //NOTE: Here a mouse held down state is triggered if its just pressed and the mouse moved after.
             case SDL_MOUSEMOTION:
+            
                 __mouse_update_position(window);
-                if(window->mouse_handler.just_pressed == true && window->mouse_handler.is_held == false) {
-
-                    SDL_Log("Window (%s) MOUSE_HELD_DOWN\n", window->title_name);
-                    window->mouse_handler.is_held       = true;
-                    window->mouse_handler.just_pressed  = false;
-                } 
 
             break;
 
             case SDL_MOUSEBUTTONDOWN:
-                __mouse_update_position(window);
-                if (window->mouse_handler.just_pressed == false && window->mouse_handler.is_held == false) 
-                {
-                    SDL_Log("Window (%s) MOUSE_JUST_DOWN\n", window->title_name);
+                if (window->mouse_handler.just_pressed == false && window->mouse_handler.is_held == false) {
+
+                    SDL_Log("Window (%s) MOUSE_DOWN\n", window->title_name);
                     window->mouse_handler.just_pressed  = true;
-                }
+
+                } else if (window->mouse_handler.just_pressed == true && window->mouse_handler.is_held == false) {
+
+                    SDL_Log("Window (%s) MOUSE_HELD_DOWN\n", window->title_name);
+                    window->mouse_handler.just_pressed  = false;
+                    window->mouse_handler.is_held = true;
+                } 
             break;
 
             case SDL_MOUSEBUTTONUP:
+
                 SDL_Log("Window (%s) MOUSE_UP\n", window->title_name);
-                __mouse_update_position(window);
                 window->mouse_handler.just_pressed  = false;
                 window->mouse_handler.is_held       = false;
             break;
