@@ -44,8 +44,8 @@ void            glbatch_destroy(glbatch_t *batch);
 
 #ifndef IGNORE_GL_TYPE_IMPLEMENTATION
 
-#define DEFAULT_TRI_INDICES_CAPACITY 3
-#define DEFAULT_QUAD_INDICES_CAPACITY 6
+#define MAX_TRI_INDICES_CAPACITY 3
+#define MAX_QUAD_INDICES_CAPACITY 6
 
 const u32 DEFAULT_TRI_INDICES[] = {
     0, 1, 2
@@ -148,11 +148,11 @@ glcircle_t glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
     glcircle_t output = {0} ;
 
     glvertex_t *vertices = output.vertex;
-    vec3f_t center = circle.points[0];
+    vec2f_t center = circle.points[0];
 
     for (u64 i = 0; i < MAX_VERTICES_PER_CIRCLE; i++)
     {
-        vertices[i].position = circle.points[i]; 
+        vertices[i].position = (vec3f_t ){ circle.points[i].cmp[X], circle.points[i].cmp[Y], 0.0f }; 
         vertices[i].color = color; 
         vertices[i].texture_coord = vec2f(0.0f);
         vertices[i].texture_id = 0;
@@ -187,17 +187,17 @@ void __gen_quad_indices(u32 indices[], const u32 shape_count)
 
 }
 
-void __gen_tri_indices(u32 indices[], const u32 shape_count)
-{
-    memcpy(indices, DEFAULT_TRI_INDICES, sizeof(DEFAULT_TRI_INDICES));
-    for (u64 i = 1; i < shape_count; i++)
-    {
-        indices[(i*3) + 0]   = DEFAULT_TRI_INDICES[0] + (3 * i); 
-        indices[(i*3) + 1]   = DEFAULT_TRI_INDICES[1] + (3 * i);
-        indices[(i*3) + 2]   = DEFAULT_TRI_INDICES[2] + (3 * i);
-    }
+//void __gen_tri_indices(u32 indices[], const u32 shape_count)
+//{
+    //memcpy(indices, DEFAULT_TRI_INDICES, sizeof(DEFAULT_TRI_INDICES));
+    //for (u64 i = 1; i < shape_count; i++)
+    //{
+        //indices[(i*3) + 0]   = DEFAULT_TRI_INDICES[0] + (3 * i); 
+        //indices[(i*3) + 1]   = DEFAULT_TRI_INDICES[1] + (3 * i);
+        //indices[(i*3) + 2]   = DEFAULT_TRI_INDICES[2] + (3 * i);
+    //}
 
-}
+//}
 glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, u64 type_size)
 {
     return (glbatch_t ) {

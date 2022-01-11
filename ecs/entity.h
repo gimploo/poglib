@@ -143,6 +143,7 @@ const void * __impl_entity_get_component(const entity_t *e, const entitycomponen
 
     entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(&e->components, index);
     assert(ec);
+    assert(ec->cmp);
 
     return ec->cmp;
 }

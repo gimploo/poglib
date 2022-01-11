@@ -5,6 +5,7 @@
 typedef struct c_lifespan_t c_lifespan_t ;
 
 c_lifespan_t * c_lifespan_init(u64 total);
+#define c_lifespan_update(PCLIFESPAN) (PCLIFESPAN)->update(PCLIFESPAN)
 
 
 

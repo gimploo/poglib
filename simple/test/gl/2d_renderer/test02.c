@@ -21,8 +21,8 @@ int main(void)
     quadf_t quad02 = quadf_init(vec2f(0.0f), 0.2f, 0.2f);
     quadf_t quad03 = quadf_init(vec2f(0.5f), 0.2f, 0.2f);
 
-    circle_t circle01 = circle_init(vec3f(0.0f), 0.2f);
-    circle_t circle02 = circle_init(vec3f(0.5f), 0.2f);
+    circle_t circle01 = circle_init(vec2f(0.0f), 0.2f);
+    circle_t circle02 = circle_init(vec2f(0.5f), 0.2f);
 
 
     gltri_t tri01 = gltri_init(triangle01, (vec4f_t ) {1.0f, 1.0f, 0.0f, 1.0f}, quadf_init(vec2f(0.0f), 1.0f, 1.0f), 0);
@@ -56,9 +56,9 @@ int main(void)
         window_gl_render_begin(&window);
             /*glrenderer2d_draw_quad(&renderer, glquad01);*/
             /*glrenderer2d_draw_triangle(&renderer, tri01);*/
-            /*glrenderer2d_draw_circle(&renderer, glcircle);*/
-            glrenderer2d_draw_from_batch(&renderer, &batchtri);
-            glrenderer2d_draw_from_batch(&renderer, &batchquads);
+            /*glrenderer2d_draw_circle(&renderer, glcircle01);*/
+            /*glrenderer2d_draw_from_batch(&renderer, &batchtri);*/
+            /*glrenderer2d_draw_from_batch(&renderer, &batchquads);*/
             glrenderer2d_draw_from_batch(&renderer, &batchcircles);
         window_gl_render_end(&window);
     }

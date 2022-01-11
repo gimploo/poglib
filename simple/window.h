@@ -364,7 +364,7 @@ window_t window_init(const char *title_name, u64 width, u64 height, SDL_FLAGS fl
 
 }
 
-INTERNAL void __window_sub_window_handle_window_event(window_t *window, SDL_Event *event)
+INTERNAL void __window_handle_window_event(window_t *window, SDL_Event *event)
 {
     if (window->SDL_Window_ID == event->window.windowID) {
 
@@ -412,11 +412,16 @@ INTERNAL void __window_sub_window_handle_window_event(window_t *window, SDL_Even
             break;
 
             case SDL_WINDOWEVENT_ENTER:
-                SDL_Log("Mouse entered window (%s)", window->title_name);
+                SDL_Log("Mouse entered main window (%s)", window->title_name);
             break;
 
             case SDL_WINDOWEVENT_LEAVE:
-                SDL_Log("Mouse left window (%s)", window->title_name);
+                SDL_Log("Mouse left main window (%s)", window->title_name);
+                window->mouse_handler.is_held = false;
+                window->mouse_handler.just_pressed = false;
+                memset(window->keyboard_handler.is_held, false, sizeof(window->keyboard_handler.is_held));
+                memset(window->keyboard_handler.just_pressed, false, sizeof(window->keyboard_handler.just_pressed));
+                memset(window->keyboard_handler.keystate, false, sizeof(window->keyboard_handler.keystate));
             break;
 
             case SDL_WINDOWEVENT_FOCUS_GAINED:
@@ -563,9 +568,8 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
                     window->keyboard_handler.just_pressed[key]   = true;
                     window->keyboard_handler.is_held[key]        = false;
 
+                    window->keyboard_handler.keystate[key] = true;
                 }
-
-                window->keyboard_handler.keystate[key] = true;
 
             }
         break;
@@ -633,8 +637,7 @@ void window_update_user_input(window_t *window)
         switch (event.type) 
         {
             case SDL_WINDOWEVENT:
-                // This event is triggered if more than one window is initialized
-                __window_sub_window_handle_window_event(window, &event);
+                __window_handle_window_event(window, &event);
             break;
 
             case SDL_QUIT:
@@ -643,9 +646,7 @@ void window_update_user_input(window_t *window)
 
             //NOTE: Here a mouse held down state is triggered if its just pressed and the mouse moved after.
             case SDL_MOUSEMOTION:
-            
                 __mouse_update_position(window);
-
             break;
 
             case SDL_MOUSEBUTTONDOWN:

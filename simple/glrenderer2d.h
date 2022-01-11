@@ -36,7 +36,9 @@ void                glrenderer2d_draw_frame_buffer(glframebuffer_t *fbo, const g
 
 #define MAX_QUAD_CAPACITY_PER_DRAW_CALL 10000
 
-global u32 GLOBAL_QUAD_INDICIES_BUFFER[MAX_QUAD_CAPACITY_PER_DRAW_CALL];
+global u32 GLOBAL_BATCH_POLY_INDICIES_BUFFER[MAX_QUAD_CAPACITY_PER_DRAW_CALL * MAX_VERTICES_PER_CIRCLE];
+
+global u32 GLOBAL_POLY_INDICIES_BUFFER[MAX_VERTICES_PER_CIRCLE];
 
 struct glrenderer2d_t {
 
@@ -92,6 +94,7 @@ void glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle)
 
     vao_t *vao = &renderer->__vao;
     vbo_t vbo; 
+    ebo_t ebo;
 
     vao_bind(vao);
 
@@ -106,7 +109,7 @@ void glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle)
             }
 
             glshader_bind((glshader_t *)renderer->__shader);
-            vao_draw_with_vbo_in_mode(&renderer->__vao, &vbo, GL_TRIANGLE_FAN);
+            vao_draw_with_vbo(&renderer->__vao, &vbo);
 
     vao_unbind();
 
@@ -127,7 +130,7 @@ void glrenderer2d_draw_quad(glrenderer2d_t *renderer, const glquad_t quad)
     vao_bind(vao);
 
         vbo = vbo_init(quad.vertex);
-        ebo_t ebo = ebo_init(&vbo, DEFAULT_QUAD_INDICES, DEFAULT_QUAD_INDICES_CAPACITY);
+        ebo_t ebo = ebo_init(&vbo, DEFAULT_QUAD_INDICES, MAX_QUAD_INDICES_CAPACITY);
 
         vao_set_attributes(vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, position));
         vao_set_attributes(vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color));
@@ -187,16 +190,16 @@ void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *bat
         // Ebo setup
         switch(batch->type)
         {
-            case GLBT_glcircle_t:
             case GLBT_gltri_t:
+            case GLBT_glcircle_t:
                 // skipping ...
             break;
 
             case GLBT_glquad_t:
 
-                memset(GLOBAL_QUAD_INDICIES_BUFFER, 0, sizeof(GLOBAL_QUAD_INDICIES_BUFFER));
-                __gen_quad_indices(GLOBAL_QUAD_INDICIES_BUFFER, batch->vertices.len);
-                ebo = ebo_init(&vbo, GLOBAL_QUAD_INDICIES_BUFFER, vertices_count);
+                memset(GLOBAL_BATCH_POLY_INDICIES_BUFFER, 0, sizeof(GLOBAL_BATCH_POLY_INDICIES_BUFFER));
+                __gen_quad_indices(GLOBAL_BATCH_POLY_INDICIES_BUFFER, batch->vertices.len);
+                ebo = ebo_init(&vbo, GLOBAL_BATCH_POLY_INDICIES_BUFFER, vertices_count);
 
             break;
 

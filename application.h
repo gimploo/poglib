@@ -93,8 +93,8 @@ void application_run(application_t *app)
             st_previous = st_current;
 
             application_update_state(app, st_current);
-            window_update_user_input(win);
 
+            window_update_user_input(win);
             app->update(app);
 
             timer->accumulator -= timer->dt;
