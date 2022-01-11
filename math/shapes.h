@@ -108,12 +108,12 @@ bool quadf_is_point_in_quad(quadf_t quad, vec2f_t point)
 
 typedef struct circle_t {
 
-    vec3f_t     points[MAX_VERTICES_PER_CIRCLE];
+    vec2f_t     points[MAX_VERTICES_PER_CIRCLE];
     u64         radius;
 
 } circle_t ;
 
-circle_t circle_init(vec3f_t pos, f32 radius)
+circle_t circle_init(vec2f_t pos, f32 radius)
 {
     circle_t output;
     output.radius = radius; 
@@ -130,10 +130,9 @@ circle_t circle_init(vec3f_t pos, f32 radius)
 
         f32 angle = i * twicepi / MAX_TRIANGLES_PER_CIRCLE;
 
-        vec3f_t point = {
+        vec2f_t point = {
             .cmp[X] = pos.cmp[X] + (f32)cos(angle) * radius,
             .cmp[Y] = pos.cmp[Y] + (f32)sin(angle) * radius,
-            .cmp[Z] = pos.cmp[Z]
         };
         output.points[i] = point; 
 
