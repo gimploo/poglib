@@ -1,65 +1,93 @@
-#ifndef __MY__SHAPES__H__
-#define __MY__SHAPES__H__
-
+#pragma once
 #include "vec.h"
+
+// Triangle
+typedef struct trif_t trif_t;
+
+trif_t          trif_init(vec3f_t pos, f32 side);
+
+#define         TRI_FMT         VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n"
+#define         TRI_ARG(TRI)    VEC2F_ARG(&(TRI.vertex[0])), VEC2F_ARG(&(TRI.vertex[1])), VEC2F_ARG(&(TRI.vertex[2]))
+
+
+
+//Quad
+typedef struct quadf_t quadf_t;
+
+#define         QUAD_FMT                        VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT "\n" 
+#define         QUAD_ARG(QUAD)                  VEC2F_ARG(&(QUAD.vertex[0])), VEC2F_ARG(&(QUAD.vertex[1])), VEC2F_ARG(&(QUAD.vertex[2])), VEC2F_ARG(&(QUAD.vertex[3]))
+
+quadf_t         quadf_init(vec3f_t position, f32 width, f32 height);
+void            quadf_translate(quadf_t *quad, vec3f_t vec);
+void            quadf_scale(quadf_t *quad, f32 scale);
+bool            quadf_is_point_in_quad(quadf_t quad, vec3f_t point);
+
+#define         quadf_get_width(PQUADF)         abs((PQUADF)->vertex[1].cmp[X] - (PQUADF)->vertex[3].cmp[X])
+#define         quadf_get_height(PQUADF)        abs((PQUADF)->vertex[1].cmp[Y] - (PQUADF)->vertex[3].cmp[Y])
+#define         quadf_copy(DESTINATION, SRC)    memcpy(DESTINATION, SRC, sizeof(quadf_t))
+
+
+
+//Circle
+typedef struct circle_t circle_t;
+
+circle_t        circle_init(vec3f_t pos, f32 radius);
+
+
+
+
+
+#ifndef IGNORE_SHAPES_IMPLEMENTATION
 
 #define TOP_LEFT     0
 #define TOP_RIGHT    1
 #define BOTTOM_RIGHT 2
 #define BOTTOM_LEFT  3
 
-/*---------------------------------------------------------
- // Triangle (float type)
----------------------------------------------------------*/
+#define MAX_VERTICES_PER_CIRCLE     60
+#define MAX_TRIANGLES_PER_CIRCLE    (MAX_VERTICES_PER_CIRCLE / 3)
 
-typedef struct trif_t { vec2f_t vertex[3]; } trif_t; 
+struct trif_t { 
 
-#define TRI_FMT         VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n"
-#define TRI_ARG(TRI)    VEC2F_ARG(&(TRI.vertex[0])), VEC2F_ARG(&(TRI.vertex[1])), VEC2F_ARG(&(TRI.vertex[2]))
+    vec3f_t vertex[3]; 
+}; 
 
-trif_t trif_init(vec2f_t pos, f32 side)
+
+trif_t trif_init(vec3f_t pos, f32 side)
 {
     const f32 side_half = side / 2;
     const f32 height = 1.732050807568877f * side_half; 
 
     return (trif_t ) {
         .vertex[0] = pos,
-        .vertex[1] = { pos.cmp[X] - side_half, pos.cmp[Y] - height },
-        .vertex[2] = { pos.cmp[X] + side_half, pos.cmp[Y] - height }
+        .vertex[1] = { pos.cmp[X] - side_half, pos.cmp[Y] - height, pos.cmp[Z] },
+        .vertex[2] = { pos.cmp[X] + side_half, pos.cmp[Y] - height, pos.cmp[Z] }
     };
 }
 
-/*---------------------------------------------------------
- // QUAD (float type)
----------------------------------------------------------*/
 
-typedef struct quadf_t { vec2f_t vertex[4]; } quadf_t;
 
-#define QUAD_FMT        VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT "\n" 
-#define QUAD_ARG(quad) VEC2F_ARG(&(quad.vertex[0])), VEC2F_ARG(&(quad.vertex[1])), VEC2F_ARG(&(quad.vertex[2])), VEC2F_ARG(&(quad.vertex[3]))
+struct quadf_t { 
+
+    vec3f_t vertex[4]; 
+};
+
 
 void quadf_print(quadf_t quad)
 {
     for (int i = 0; i < 4; i++)
     {
         printf(VEC2F_FMT", ", VEC2F_ARG(&quad.vertex[0]));
-        printf(VEC2F_FMT", ", VEC2F_ARG(&quad.vertex[1]));
+        printf(VEC2F_FMT", \n", VEC2F_ARG(&quad.vertex[1]));
         printf(VEC2F_FMT", ", VEC2F_ARG(&quad.vertex[2]));
-        printf(VEC2F_FMT", ", VEC2F_ARG(&quad.vertex[3]));
+        printf(VEC2F_FMT", \n", VEC2F_ARG(&quad.vertex[3]));
     }
     printf("\n");
 }
 
-static inline quadf_t quadf(f32 x)
-{
-    return (quadf_t) {x}; 
-}
-
-#define quadf_get_width(pquadf)   abs((pquadf)->vertex[1].cmp[X] - (pquadf)->vertex[3].cmp[X])
-#define quadf_get_height(pquadf)  abs((pquadf)->vertex[1].cmp[Y] - (pquadf)->vertex[3].cmp[Y])
 
 
-quadf_t quadf_init(vec2f_t position, f32 width, f32 height)
+quadf_t quadf_init(vec3f_t position, f32 width, f32 height)
 {
     quadf_t output;
 
@@ -75,23 +103,23 @@ quadf_t quadf_init(vec2f_t position, f32 width, f32 height)
     return output;
 }
 
-void quadf_translate(quadf_t *quad, vec2f_t vec)
+void quadf_translate(quadf_t *quad, vec3f_t vec)
 {
-    quad->vertex[0] = vec2f_add(quad->vertex[0] , vec);
-    quad->vertex[1] = vec2f_add(quad->vertex[1] , vec);
-    quad->vertex[2] = vec2f_add(quad->vertex[2] , vec);
-    quad->vertex[3] = vec2f_add(quad->vertex[3] , vec);
+    quad->vertex[0] = vec3f_add(quad->vertex[0] , vec);
+    quad->vertex[1] = vec3f_add(quad->vertex[1] , vec);
+    quad->vertex[2] = vec3f_add(quad->vertex[2] , vec);
+    quad->vertex[3] = vec3f_add(quad->vertex[3] , vec);
 }
 
 void quadf_scale(quadf_t *quad, f32 scale)
 {
-    quad->vertex[0] = vec2f_scale(quad->vertex[0], scale);
-    quad->vertex[1] = vec2f_scale(quad->vertex[1], scale);
-    quad->vertex[2] = vec2f_scale(quad->vertex[2], scale);
-    quad->vertex[3] = vec2f_scale(quad->vertex[3], scale);
+    quad->vertex[0] = vec3f_scale(quad->vertex[0], scale);
+    quad->vertex[1] = vec3f_scale(quad->vertex[1], scale);
+    quad->vertex[2] = vec3f_scale(quad->vertex[2], scale);
+    quad->vertex[3] = vec3f_scale(quad->vertex[3], scale);
 }
 
-bool quadf_is_point_in_quad(quadf_t quad, vec2f_t point)
+bool quadf_is_point_in_quad(quadf_t quad, vec3f_t point)
 {
     return (quad.vertex[TOP_LEFT].cmp[X] < point.cmp[X] 
             && quad.vertex[TOP_RIGHT].cmp[X] > point.cmp[X] 
@@ -99,21 +127,16 @@ bool quadf_is_point_in_quad(quadf_t quad, vec2f_t point)
             && quad.vertex[BOTTOM_LEFT].cmp[Y] <  point.cmp[Y]);
 }
 
-/*---------------------------------------------------------
- // Circle (float type)
----------------------------------------------------------*/
 
-#define MAX_VERTICES_PER_CIRCLE     60
-#define MAX_TRIANGLES_PER_CIRCLE    (MAX_VERTICES_PER_CIRCLE / 3)
 
-typedef struct circle_t {
+struct circle_t {
 
-    vec2f_t     points[MAX_VERTICES_PER_CIRCLE];
+    vec3f_t     points[MAX_VERTICES_PER_CIRCLE];
     u64         radius;
 
-} circle_t ;
+};
 
-circle_t circle_init(vec2f_t pos, f32 radius)
+circle_t circle_init(vec3f_t pos, f32 radius)
 {
     circle_t output;
     output.radius = radius; 
@@ -130,9 +153,10 @@ circle_t circle_init(vec2f_t pos, f32 radius)
 
         f32 angle = i * twicepi / MAX_TRIANGLES_PER_CIRCLE;
 
-        vec2f_t point = {
+        vec3f_t point = {
             .cmp[X] = pos.cmp[X] + (f32)cos(angle) * radius,
             .cmp[Y] = pos.cmp[Y] + (f32)sin(angle) * radius,
+            .cmp[Z] = pos.cmp[Z]
         };
         output.points[i] = point; 
 
@@ -140,4 +164,4 @@ circle_t circle_init(vec2f_t pos, f32 radius)
     }
     return output;
 }
-#endif //__MY__SHAPES__H__
+#endif

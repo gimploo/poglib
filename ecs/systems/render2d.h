@@ -66,9 +66,13 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
 
             if (!entity_has_component(e, c_shape2d_t )) continue;
 
-            // VERTICES
+            // SHAPE
             c_shape2d_t *shape = (c_shape2d_t *)entity_get_component(e, c_shape2d_t );
             assert(shape);
+
+            // Mesh
+            c_mesh2d_t *mesh = (c_mesh2d_t *)entity_get_component(e, c_mesh2d_t );
+            assert(mesh);
 
             // SHADER
             c_shader_t *cshader = (c_shader_t *)entity_get_component(e , c_shader_t );
@@ -76,14 +80,14 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
             shader = &cshader->glshader;
 
             //TODO: setup uv
-            quadf_t uv = quadf(0);
+            quadf_t uv = quadf_init(vec3f(0.0f), 0.0f, 0.0f);
 
             switch(shape->type)
             {
                 case CST_SQUARE: {
 
                     glquad_t glquad = glquad_init(
-                            *(quadf_t *)shape->__vertices, 
+                            *(quadf_t *)mesh->vertices, 
                             shape->fill,
                             uv, 0);
 
@@ -94,7 +98,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
                 case CST_CIRCLE: {
 
                     glcircle_t glcircle = glcircle_init(
-                            *(circle_t *)shape->__vertices,
+                            *(circle_t *)mesh->vertices,
                             shape->fill,
                             uv, 0);
                     glbatch_put(&batches[CST_CIRCLE], glcircle);
@@ -104,7 +108,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
                 case CST_TRIANGLE: {
 
                     gltri_t gltri = gltri_init(
-                            *(trif_t *)shape->__vertices, 
+                            *(trif_t *)mesh->vertices, 
                             shape->fill,
                             uv, 0);
                     glbatch_put(&batches[CST_TRIANGLE], gltri);
