@@ -5,11 +5,12 @@
  // OpenGL shader handling library
 =======================================================*/
 
+
 #include <string.h>
 #include "common.h"
 
 #define MAX_UNIFORM_ARRAY_CAPACITY 10
-#define MAX_UNIFORM_VALUE_SIZE (4 * sizeof(f32))
+#define MAX_UNIFORM_VALUE_SIZE (sizeof(matrixf_t ))
 
 const char * const default_vshader = 
     "#version 330 core\n"
@@ -61,6 +62,8 @@ typedef enum glshader_uniform_type {
     UT_VEC2F,
     UT_VEC3F,
     UT_VEC4F,
+
+    UT_MATRIX4F,
 
     UT_COUNT
 
@@ -255,6 +258,19 @@ void __glshader_uniform_set_vec2f(const glshader_t *shader, const char *uniform,
     GL_CHECK(glUniform2f(location, val.cmp[0], val.cmp[1]));
 }
 
+void __glshader_uniform_set_matrix4f(const glshader_t *shader, const char *uniform, matrixf_t val)
+{
+    int location;
+    GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
+    if (location == -1) eprint("[ERROR] uniform doesnt exist");
+
+    vec4f_t matrix[4];
+    memcpy(matrix, val.buffer, sizeof(matrix));
+    GLfloat *value = (GLfloat *)&matrix;
+
+    GL_CHECK(glUniformMatrix4fv(location, 1, GL_TRUE, value));
+}
+
 
 
 void glshader_destroy(const glshader_t *shader)
@@ -276,7 +292,7 @@ __uniform_meta_data_t __uniform_meta_data_init(const char *var_name, void *data_
     if (var_name == NULL) eprint("var_name argument is null");
     if (data_ref == NULL) eprint("data_ref argument is null");
 
-    assert(data_size <= MAX_UNIFORM_VALUE_SIZE);
+    assert(data_size == MAX_UNIFORM_VALUE_SIZE);
 
     __uniform_meta_data_t data = {
         .variable_name  = var_name,
@@ -324,24 +340,34 @@ void glshader_bind(glshader_t *shader)
         {
             case UT_UINT:
                 __glshader_uniform_set_uival(shader, uniform->variable_name, *(u32 *)uniform->data_buffer);
-                break;
+            break;
+
             case UT_INT:
                 __glshader_uniform_set_ival(shader, uniform->variable_name, *(i32 *)uniform->data_buffer);
-                break;
+            break;
+
             case UT_FLOAT:
                 __glshader_uniform_set_fval(shader, uniform->variable_name, *(f32 *)uniform->data_buffer);
-                break;
+            break;
+
             case UT_VEC2F:
                 __glshader_uniform_set_vec2f(shader, uniform->variable_name, *(vec2f_t *)uniform->data_buffer);
-                break;
+            break;
+
             case UT_VEC3F:
                 __glshader_uniform_set_vec3f(shader, uniform->variable_name, *(vec3f_t *)uniform->data_buffer);
-                break;
+            break;
+
             case UT_VEC4F:
                 __glshader_uniform_set_vec4f(shader, uniform->variable_name, *(vec4f_t *)uniform->data_buffer);
-                break;
-            default:
-                eprint("uniform type not accounted for");
+            break;
+
+            case UT_MATRIX4F:
+                __glshader_uniform_set_matrix4f(shader, uniform->variable_name, *(matrixf_t *)uniform->data_buffer);
+            break;
+
+            case UT_COUNT:
+            break;
         }
         __glshader_pop_uniform(shader);
     }

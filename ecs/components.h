@@ -14,12 +14,14 @@ typedef struct entitycomponent_t entitycomponent_t ;
 typedef enum entitycomponent_type {
 
     ECT_c_boxcollider2d_t , 
-    ECT_c_lifespan_t,
-    ECT_c_shape2d_t,
-    ECT_c_sprite_t,
-    ECT_c_transform_t,
-    ECT_c_shader_t,
     ECT_c_texture2d_t,
+    ECT_c_shape2d_t,
+    ECT_c_mesh2d_t,
+
+    ECT_c_transform_t,
+    ECT_c_lifespan_t,
+    ECT_c_sprite_t,
+    ECT_c_shader_t,
     ECT_c_input_t,
 
     // Add new component types here

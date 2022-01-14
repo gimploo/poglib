@@ -91,25 +91,25 @@ glquad_t glquad_init(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex
 
         .vertex = {
             [TOP_LEFT] = (glvertex_t ){ 
-                positions.vertex[0].cmp[X], positions.vertex[0].cmp[Y], 0.0f, 
+                positions.vertex[0].cmp[X], positions.vertex[0].cmp[Y], positions.vertex[0].cmp[Z], 
                 color, 
                 tex_coord.vertex[0].cmp[X], tex_coord.vertex[0].cmp[Y],
                 tex_id
             },
             [TOP_RIGHT] = (glvertex_t ){ 
-                positions.vertex[1].cmp[X], positions.vertex[1].cmp[Y], 0.0f, 
+                positions.vertex[1].cmp[X], positions.vertex[1].cmp[Y], positions.vertex[1].cmp[Z], 
                 color, 
                 tex_coord.vertex[1].cmp[X], tex_coord.vertex[1].cmp[Y],
                 tex_id
             }, 
             [BOTTOM_RIGHT] = (glvertex_t ){ 
-                positions.vertex[2].cmp[X], positions.vertex[2].cmp[Y], 0.0f, 
+                positions.vertex[2].cmp[X], positions.vertex[2].cmp[Y], positions.vertex[2].cmp[Z], 
                 color, 
                 tex_coord.vertex[2].cmp[X], tex_coord.vertex[2].cmp[Y],
                 tex_id
             }, 
             [BOTTOM_LEFT] = (glvertex_t ){ 
-                positions.vertex[3].cmp[X], positions.vertex[3].cmp[Y], 0.0f, 
+                positions.vertex[3].cmp[X], positions.vertex[3].cmp[Y], positions.vertex[3].cmp[Z], 
                 color, 
                 tex_coord.vertex[3].cmp[X], tex_coord.vertex[3].cmp[Y],
                 tex_id
@@ -123,19 +123,19 @@ gltri_t gltri_init(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid)
     return (gltri_t) {
 
         .vertex[0] = (glvertex_t ){ 
-            tri.vertex[0].cmp[X], tri.vertex[0].cmp[Y], 0.0f, 
+            tri.vertex[0].cmp[X], tri.vertex[0].cmp[Y], tri.vertex[0].cmp[Z], 
             color, 
             tex_coord.vertex[0].cmp[X], tex_coord.vertex[0].cmp[Y],
             texid
         }, 
         .vertex[1] = (glvertex_t ){ 
-            tri.vertex[1].cmp[X], tri.vertex[1].cmp[Y], 0.0f, 
+            tri.vertex[1].cmp[X], tri.vertex[1].cmp[Y], tri.vertex[1].cmp[Z], 
             color, 
             tex_coord.vertex[1].cmp[X], tex_coord.vertex[1].cmp[Y],
             texid
         }, 
         .vertex[2] = (glvertex_t ) { 
-            tri.vertex[2].cmp[X], tri.vertex[2].cmp[Y], 0.0f, 
+            tri.vertex[2].cmp[X], tri.vertex[2].cmp[Y], tri.vertex[2].cmp[Z], 
             color, 
             tex_coord.vertex[2].cmp[X], tex_coord.vertex[2].cmp[Y],
             texid
@@ -148,13 +148,25 @@ glcircle_t glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
     glcircle_t output = {0} ;
 
     glvertex_t *vertices = output.vertex;
-    vec2f_t center = circle.points[0];
+    vec3f_t center = circle.points[0];
+
+    for (u64 i = 0; i < MAX_TRIANGLES_PER_CIRCLE; i++)
+    {
+        uv.vertex[i].cmp[X] = (circle.points[i].cmp[X] /circle.radius + 1)*0.5;
+        uv.vertex[i].cmp[Y] = (circle.points[i].cmp[Y]/circle.radius + 1)*0.5;
+
+        /*
+         * float tx = (x/r + 1)*0.5;
+         * float ty = (y/r + 1)*0.5;
+        */
+
+    }
 
     for (u64 i = 0; i < MAX_VERTICES_PER_CIRCLE; i++)
     {
-        vertices[i].position = (vec3f_t ){ circle.points[i].cmp[X], circle.points[i].cmp[Y], 0.0f }; 
+        vertices[i].position = circle.points[i];
         vertices[i].color = color; 
-        vertices[i].texture_coord = vec2f(0.0f);
+        vertices[i].texture_coord = vec2f(uv.vertex[i]);
         vertices[i].texture_id = 0;
     }
 

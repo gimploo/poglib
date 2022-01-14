@@ -111,19 +111,73 @@ struct vec4f_t {
     f32 cmp[4];
 };
 
-vec2f_t vec2f(float x)
+#define vec2f(X) _Generic((X), \
+\
+        f32:        __vec2float,    \
+        vec3f_t:    __vec2vec3f,    \
+        vec4f_t:    __vec2vec4f     \
+\
+)(X)
+
+vec2f_t __vec2float(f32 x)
 {
     return (vec2f_t) { x, x };
 }
 
-vec3f_t vec3f(float x)
+vec2f_t __vec2vec3f(vec3f_t x)
+{
+    return *(vec2f_t *)&x;
+}
+
+vec2f_t __vec2vec4f(vec4f_t x)
+{
+    return *(vec2f_t *)&x;
+}
+
+#define vec3f(X) _Generic((X), \
+\
+        f32:        __vec3float,    \
+        vec2f_t:    __vec3vec2f,     \
+        vec4f_t:    __vec3vec4f     \
+\
+)(X)
+
+vec3f_t __vec3float(float x)
 {
     return (vec3f_t) { x, x, x };
 }
 
-vec4f_t vec4f(float x)
+vec3f_t __vec3vec2f(vec2f_t x)
+{
+    return (vec3f_t ){ x.cmp[X], x.cmp[Y], 0.0f };
+}
+
+vec3f_t __vec3vec4f(vec4f_t x)
+{
+    return *(vec3f_t *)&x;
+}
+
+#define vec4f(X) _Generic((X), \
+\
+        f32:        __vec4float,    \
+        vec2f_t:    __vec4vec2f,     \
+        vec3f_t:    __vec4vec3f     \
+\
+)(X)
+
+vec4f_t __vec4float(float x)
 {
     return (vec4f_t) { x, x, x, x };
+}
+
+vec4f_t __vec4vec2f(vec2f_t x)
+{
+    return (vec4f_t ) { x.cmp[X], x.cmp[Y], 0.0f, 0.0f };
+}
+
+vec4f_t __vec4vec3f(vec3f_t x)
+{
+    return (vec4f_t ) { x.cmp[X], x.cmp[Y], x.cmp[Z], 0.0f };
 }
 
 
@@ -180,6 +234,18 @@ vec3f_t vec3f_scale(const vec3f_t x, const f32 scale)
     output.cmp[Z] = x.cmp[Z] * scale;
 
     return output;
+}
+
+vec3f_t vec3f_init(f32 scale, f32 angle_in_radians)
+{
+    assert(angle_in_radians <= 6.283185 || angle_in_radians >= -6.283185);
+
+    return (vec3f_t ) {
+        .cmp = {
+            [X] = scale * (f32)cos(angle_in_radians),
+            [Y] = scale * (f32)sin(angle_in_radians),
+        }
+    };
 }
 
 bool vec3f_isequal(const vec3f_t x, const vec3f_t y)

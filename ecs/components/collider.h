@@ -28,7 +28,7 @@ struct c_boxcollider2d_t {
 void __c_box_collider2d_update(c_boxcollider2d_t *cmp)
 {
     cmp->__cache = quadf_init( 
-            (vec2f_t ){ cmp->position.cmp[X], cmp->position.cmp[Y] }, 
+            cmp->position,
             cmp->side, cmp->side);
 }
 

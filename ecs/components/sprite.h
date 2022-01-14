@@ -31,7 +31,7 @@ c_sprite_t c_sprite_init(f32 side, c_shape_type type, quadf_t uv)
         } break;
 
         case CST_CIRCLE: {
-            for (u64 i = 0; i < MAX_TOTAL_CIRCLE_SIDES; i++)
+            for (u64 i = 0; i < MAX_TRIANGLES_PER_CIRCLE; i++)
             {
                 uv.vertex[i].cmp[X] = (uv.vertex[i].cmp[X]/side + 1)*0.5;
                 uv.vertex[i].cmp[Y] = (uv.vertex[i].cmp[Y]/side + 1)*0.5;
