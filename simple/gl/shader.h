@@ -5,6 +5,8 @@
  // OpenGL shader handling library
 =======================================================*/
 
+//TODO: Get rid of the whole uniform system implementation and keep it
+// raw 
 
 #include <string.h>
 #include "common.h"
@@ -55,15 +57,15 @@ typedef struct glshader_t {
 
 typedef enum glshader_uniform_type {
 
-    UT_UINT = 0,
-    UT_INT,
-    UT_FLOAT,
+    UT_u32 = 0,
+    UT_i32,
+    UT_f32,
 
-    UT_VEC2F,
-    UT_VEC3F,
-    UT_VEC4F,
+    UT_vec2f_t ,
+    UT_vec3f_t,
+    UT_vec4f_t,
 
-    UT_MATRIX4F,
+    UT_matrix4f_t,
 
     UT_COUNT
 
@@ -89,7 +91,7 @@ glshader_t     glshader_from_file_init(const char *file_vs, const char *file_fs)
 glshader_t     glshader_from_cstr_init(const char *vs_code, const char *fs_code);
 
 void            glshader_bind(glshader_t *shader);
-void            glshader_set_uniform(glshader_t *shader, const char *uniform_name, void *value, u64 value_size, gl_uniform_type type);
+#define         glshader_set_uniform(PSHADER, UNIFORM_NAME, VALUE, TYPE) __impl_glshader_set_uniform((PSHADER), (UNIFORM_NAME), &(VALUE), sizeof(VALUE), UT_##TYPE, sizeof(TYPE)) 
 
 void            glshader_destroy(const glshader_t *shader);
 
@@ -292,7 +294,7 @@ __uniform_meta_data_t __uniform_meta_data_init(const char *var_name, void *data_
     if (var_name == NULL) eprint("var_name argument is null");
     if (data_ref == NULL) eprint("data_ref argument is null");
 
-    assert(data_size == MAX_UNIFORM_VALUE_SIZE);
+    assert(data_size != MAX_UNIFORM_VALUE_SIZE);
 
     __uniform_meta_data_t data = {
         .variable_name  = var_name,
@@ -306,10 +308,12 @@ __uniform_meta_data_t __uniform_meta_data_init(const char *var_name, void *data_
 }
 
 
-void glshader_set_uniform(glshader_t *shader, const char *uniform_name, void *value_ref, u64 value_size, gl_uniform_type type) 
+void __impl_glshader_set_uniform(glshader_t *shader, const char *uniform_name, void *value_ref, u64 value_size, gl_uniform_type type, u64 type_size) 
 {
     if (shader == NULL) eprint("shader arg is null");    
     if (value_ref == NULL) eprint("value ref is null");
+
+    assert(type_size == value_size);
 
     __uniform_meta_data_t data = __uniform_meta_data_init(
             uniform_name, 
@@ -338,31 +342,31 @@ void glshader_bind(glshader_t *shader)
 
         switch(uniform->uniform_type)
         {
-            case UT_UINT:
+            case UT_u32:
                 __glshader_uniform_set_uival(shader, uniform->variable_name, *(u32 *)uniform->data_buffer);
             break;
 
-            case UT_INT:
+            case UT_i32:
                 __glshader_uniform_set_ival(shader, uniform->variable_name, *(i32 *)uniform->data_buffer);
             break;
 
-            case UT_FLOAT:
+            case UT_f32:
                 __glshader_uniform_set_fval(shader, uniform->variable_name, *(f32 *)uniform->data_buffer);
             break;
 
-            case UT_VEC2F:
+            case UT_vec2f_t:
                 __glshader_uniform_set_vec2f(shader, uniform->variable_name, *(vec2f_t *)uniform->data_buffer);
             break;
 
-            case UT_VEC3F:
+            case UT_vec3f_t:
                 __glshader_uniform_set_vec3f(shader, uniform->variable_name, *(vec3f_t *)uniform->data_buffer);
             break;
 
-            case UT_VEC4F:
+            case UT_vec4f_t:
                 __glshader_uniform_set_vec4f(shader, uniform->variable_name, *(vec4f_t *)uniform->data_buffer);
             break;
 
-            case UT_MATRIX4F:
+            case UT_matrix4f_t:
                 __glshader_uniform_set_matrix4f(shader, uniform->variable_name, *(matrixf_t *)uniform->data_buffer);
             break;
 

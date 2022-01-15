@@ -11,6 +11,8 @@
 #include <assert.h>
 #include <time.h>
 
+#include "./color.h"
+
 #define global      static 
 #define local       static 
 

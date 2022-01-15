@@ -16,8 +16,7 @@ c_mesh2d_t * c_mesh2d_init(void);
 
 struct c_mesh2d_t {
 
-    u32 vertex_count;
-    u8 vertices[KB];
+    matrixf_t model;
 };
 
 c_mesh2d_t * c_mesh2d_init(void)
@@ -26,8 +25,7 @@ c_mesh2d_t * c_mesh2d_init(void)
     assert(o);
 
     *o = (c_mesh2d_t ) {
-        .vertex_count = 0,
-        .vertices = {0},
+        .model = {0},
     };
 
     return o;

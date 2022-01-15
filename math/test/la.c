@@ -26,13 +26,18 @@ int main(void)
     vec4f_t _a[4] = {vec4f(100.1f), vec4f(2.0f), vec4f(3.0f), vec4f(4.0f)};
     vec4f_t _b[4] = {vec4f(12.0f), vec4f(2.0f), vec4f(3.0f), vec4f(4.0f)};
 
-    matrixf_t a = matrixf_init(_a, 3, 3);
-    matrixf_t b = matrixf_init(_b, 3, 1);
+    matrixf_t a = matrixf_init(_a, 4, 4);
+    /*matrixf_t b = matrixf_init(_b, 3, 1);*/
     matrixf_print(&a);
-    matrixf_print(&b);
+    matrixf_add_row(&a, _a[0]);
+    matrixf_print(&a);
+    /*matrixf_print(&b);*/
 
-    matrixf_t output = matrixf_product(a, b);
-    matrixf_print(&output);
+    matrixf_t tran = matrixf_transpose(a);
+    matrixf_print(&tran);
+
+    /*matrixf_t output = matrixf_product(a, b);*/
+    /*matrixf_print(&output);*/
 
     return 0;
 }

@@ -6,21 +6,22 @@ typedef struct trif_t trif_t;
 
 trif_t          trif_init(vec3f_t pos, f32 side);
 
-#define         TRI_FMT         VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n"
-#define         TRI_ARG(TRI)    VEC2F_ARG(&(TRI.vertex[0])), VEC2F_ARG(&(TRI.vertex[1])), VEC2F_ARG(&(TRI.vertex[2]))
+#define         TRI_FMT         VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT ",\n"
+#define         TRI_ARG(TRI)    VEC3F_ARG(&(TRI.vertex[0])), VEC3F_ARG(&(TRI.vertex[1])), VEC3F_ARG(&(TRI.vertex[3]))
 
 
 
 //Quad
 typedef struct quadf_t quadf_t;
 
-#define         QUAD_FMT                        VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT ",\n" VEC2F_FMT "\n" 
-#define         QUAD_ARG(QUAD)                  VEC2F_ARG(&(QUAD.vertex[0])), VEC2F_ARG(&(QUAD.vertex[1])), VEC2F_ARG(&(QUAD.vertex[2])), VEC2F_ARG(&(QUAD.vertex[3]))
+#define         QUAD_FMT                        VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT "\n" 
+#define         QUAD_ARG(QUAD)                  VEC3F_ARG(&(QUAD.vertex[0])), VEC3F_ARG(&(QUAD.vertex[1])), VEC3F_ARG(&(QUAD.vertex[3])), VEC3F_ARG(&(QUAD.vertex[3]))
 
 quadf_t         quadf_init(vec3f_t position, f32 width, f32 height);
 void            quadf_translate(quadf_t *quad, vec3f_t vec);
 void            quadf_scale(quadf_t *quad, f32 scale);
 bool            quadf_is_point_in_quad(quadf_t quad, vec3f_t point);
+void            quadf_print(quadf_t quad);
 
 #define         quadf_get_width(PQUADF)         abs((PQUADF)->vertex[1].cmp[X] - (PQUADF)->vertex[3].cmp[X])
 #define         quadf_get_height(PQUADF)        abs((PQUADF)->vertex[1].cmp[Y] - (PQUADF)->vertex[3].cmp[Y])
@@ -77,10 +78,10 @@ void quadf_print(quadf_t quad)
 {
     for (int i = 0; i < 4; i++)
     {
-        printf(VEC2F_FMT", ", VEC2F_ARG(&quad.vertex[0]));
-        printf(VEC2F_FMT", \n", VEC2F_ARG(&quad.vertex[1]));
-        printf(VEC2F_FMT", ", VEC2F_ARG(&quad.vertex[2]));
-        printf(VEC2F_FMT", \n", VEC2F_ARG(&quad.vertex[3]));
+        printf(VEC3F_FMT", ", VEC3F_ARG(&quad.vertex[0]));
+        printf(VEC3F_FMT", \n", VEC3F_ARG(&quad.vertex[1]));
+        printf(VEC3F_FMT", ", VEC3F_ARG(&quad.vertex[3]));
+        printf(VEC3F_FMT", \n", VEC3F_ARG(&quad.vertex[3]));
     }
     printf("\n");
 }
@@ -89,7 +90,7 @@ void quadf_print(quadf_t quad)
 
 quadf_t quadf_init(vec3f_t position, f32 width, f32 height)
 {
-    quadf_t output;
+    quadf_t output = {0};
 
     output.vertex[0] = position;
     output.vertex[1].cmp[X] = position.cmp[X] + width;
@@ -98,7 +99,6 @@ quadf_t quadf_init(vec3f_t position, f32 width, f32 height)
     output.vertex[2].cmp[Y] = position.cmp[Y] - height;
     output.vertex[3].cmp[X] = position.cmp[X];
     output.vertex[3].cmp[Y] = position.cmp[Y] - height;
-
 
     return output;
 }
@@ -132,14 +132,12 @@ bool quadf_is_point_in_quad(quadf_t quad, vec3f_t point)
 struct circle_t {
 
     vec3f_t     points[MAX_VERTICES_PER_CIRCLE];
-    u64         radius;
 
 };
 
 circle_t circle_init(vec3f_t pos, f32 radius)
 {
     circle_t output;
-    output.radius = radius; 
 
     const f32 twicepi = 2.0f * PI;
 
@@ -163,5 +161,12 @@ circle_t circle_init(vec3f_t pos, f32 radius)
 
     }
     return output;
+}
+
+f32 circle_get_radius(circle_t *circle)
+{
+    assert(circle);
+
+    return (circle->points[1].cmp[X] - circle->points[0].cmp[X])/ (f32) cos((2.0f * PI) / MAX_TRIANGLES_PER_CIRCLE) ;
 }
 #endif
