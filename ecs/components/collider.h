@@ -9,7 +9,6 @@ typedef struct c_boxcollider2d_t c_boxcollider2d_t ;
 
 
 c_boxcollider2d_t *     c_boxcollider2d_init(vec3f_t pos, f32 side);
-#define                 c_boxcollider2d_update(PBOX) (PBOX)->update(PBOX)
 
 
 

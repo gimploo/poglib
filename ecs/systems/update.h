@@ -107,6 +107,6 @@ void transform_mesh2d_update(c_transform_t *t, c_mesh2d_t *mesh)
 void transform_boxcollider2d_update(c_transform_t *t, c_boxcollider2d_t *box)
 {
     box->position = t->position;
-    c_boxcollider2d_update(box);
+    box->update(box);
 }
 
