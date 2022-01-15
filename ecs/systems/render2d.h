@@ -64,7 +64,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
             const entity_t *e = *(entity_t **)list_get_element_by_index(entities, j);
             assert(e);
 
-            if (!entity_has_component(e, c_shape2d_t )) continue;
+            if (!e->is_alive) continue;
 
             // SHAPE
             c_shape2d_t *shape = (c_shape2d_t *)entity_get_component(e, c_shape2d_t );
@@ -87,7 +87,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
                 case CST_SQUARE: {
 
                     glquad_t glquad = glquad_init(
-                            *(quadf_t *)mesh->vertices, 
+                            *(quadf_t *)mesh->model.buffer, 
                             shape->fill,
                             uv, 0);
 
@@ -98,7 +98,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
                 case CST_CIRCLE: {
 
                     glcircle_t glcircle = glcircle_init(
-                            *(circle_t *)mesh->vertices,
+                            *(circle_t *)mesh->model.buffer,
                             shape->fill,
                             uv, 0);
                     glbatch_put(&batches[CST_CIRCLE], glcircle);
@@ -108,7 +108,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
                 case CST_TRIANGLE: {
 
                     gltri_t gltri = gltri_init(
-                            *(trif_t *)mesh->vertices, 
+                            *(trif_t *)mesh->model.buffer, 
                             shape->fill,
                             uv, 0);
                     glbatch_put(&batches[CST_TRIANGLE], gltri);

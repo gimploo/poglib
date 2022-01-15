@@ -5,7 +5,6 @@
 typedef struct c_lifespan_t c_lifespan_t ;
 
 c_lifespan_t * c_lifespan_init(u64 total);
-#define c_lifespan_update(PCLIFESPAN) (PCLIFESPAN)->update(PCLIFESPAN)
 
 
 
@@ -15,7 +14,7 @@ c_lifespan_t * c_lifespan_init(u64 total);
 struct c_lifespan_t {
 
     bool is_alive;
-    u64 remaining;
+    i64 remaining;
     u64 total;
 
     void (*update)(c_lifespan_t *);
@@ -24,7 +23,7 @@ struct c_lifespan_t {
 
 void __c_lifespan_update(c_lifespan_t *cmp)
 {
-    if(cmp->remaining == 0)  {
+    if(cmp->remaining <= 0)  {
         cmp->is_alive = false;
         return;
     }
@@ -39,7 +38,7 @@ c_lifespan_t * c_lifespan_init(u64 total)
 
     *o =  (c_lifespan_t ) {
         .is_alive = true,
-        .remaining = total,
+        .remaining = (i64 )total,
         .total = total,
         .update = __c_lifespan_update 
     };

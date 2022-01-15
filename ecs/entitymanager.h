@@ -87,6 +87,7 @@ void entitymanager_update(entitymanager_t *manager)
     {
         entity_t *e = *(entity_t **)list_get_element_by_index(entities, i);
         assert(e);
+
         if (!e->is_alive) {
 
             entity_type tag = e->tag;

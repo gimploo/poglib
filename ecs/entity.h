@@ -71,6 +71,26 @@ void __entity_destroy(entity_t *e)
         entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(cmps, i);
         assert(ec);
 
+        void *tmp = NULL;
+        switch(ec->type)
+        {
+            case ECT_c_shader_t: {
+
+                c_shader_t *tmp = (c_shader_t *)ec->cmp;
+                glshader_destroy(&tmp->glshader);
+
+            } break;
+
+            case ECT_c_texture2d_t: {
+
+                c_texture2d_t *tmp = (c_texture2d_t *)ec->cmp; 
+                gltexture2d_destroy(&tmp->gltexture2d);
+
+            } break;
+            
+            default: ;
+        }
+
         void *cmp = ec->cmp; 
         assert(cmp);
         free(cmp);
@@ -90,6 +110,8 @@ void __entity_destroy(entity_t *e)
     // Freeing the entity itself 
     free(e);
     e = NULL;
+
+    printf("[!] ENTITY DELETED\n");
 }
 
 entity_t * __entity_init(entity_type tag)

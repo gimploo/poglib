@@ -12,8 +12,6 @@ c_transform_t * c_transform_init(vec3f_t pos, vec3f_t velocity, f32 angular_spee
 
 
 
-
-
 #ifndef IGNORE_C_TRANSFORM_IMPLEMENTATION
 
 

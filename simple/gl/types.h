@@ -150,17 +150,16 @@ glcircle_t glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
     glvertex_t *vertices = output.vertex;
     vec3f_t center = circle.points[0];
 
-    for (u64 i = 0; i < MAX_TRIANGLES_PER_CIRCLE; i++)
-    {
-        uv.vertex[i].cmp[X] = (circle.points[i].cmp[X] /circle.radius + 1)*0.5;
-        uv.vertex[i].cmp[Y] = (circle.points[i].cmp[Y]/circle.radius + 1)*0.5;
+    // TODO: Textures on circles
+    //for (u64 i = 0; i < MAX_TRIANGLES_PER_CIRCLE; i++)
+    //{
+        //uv.vertex[i].cmp[X] = (circle.points[i].cmp[X] /circle.radius + 1)*0.5;
+        //uv.vertex[i].cmp[Y] = (circle.points[i].cmp[Y]/circle.radius + 1)*0.5;
 
-        /*
-         * float tx = (x/r + 1)*0.5;
-         * float ty = (y/r + 1)*0.5;
-        */
+         //float tx = (x/r + 1)*0.5;
+         //float ty = (y/r + 1)*0.5;
 
-    }
+    //}
 
     for (u64 i = 0; i < MAX_VERTICES_PER_CIRCLE; i++)
     {

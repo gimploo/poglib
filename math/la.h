@@ -13,25 +13,38 @@ matrixf_t       matrix4f_init(vec4f_t vertex[4]);
 matrixf_t       matrix4f_rotation_init(f32 angle_in_radians);
 matrixf_t       matrix4f_translation_init(vec3f_t vec);
 
+
 matrixf_t       matrixf_sum(matrixf_t a, matrixf_t b);
 matrixf_t       matrixf_product(matrixf_t a, matrixf_t b);
+matrixf_t       matrixf_transpose(matrixf_t a);
+
+#define         matrixf_add_row(PMATRIX, ELEM) __impl_matrixf_add_row((PMATRIX), &(ELEM), sizeof(ELEM))
 
 void            matrixf_print(matrixf_t *m);
 
 
 #ifndef IGNORE_LA_IMPLEMENTATION
 
-#define MAX_MATRIX_BUFFER_SIZE 500
+#define MAX_MATRIX_BUFFER_SIZE KB
 
 struct matrixf_t {
 
-    u32 nrow;
-    u32 ncol;
-    u8  buffer[MAX_MATRIX_BUFFER_SIZE];
+    u8 buffer[MAX_MATRIX_BUFFER_SIZE];
+    u8 nrow;
+    u8 ncol;
 };
 
+void __impl_matrixf_add_row(matrixf_t *m, void *value, u64 value_size)
+{
+    assert(value);
+    assert((m->nrow * m->nrow) * sizeof(f32) != MAX_MATRIX_BUFFER_SIZE);
 
-matrixf_t __impl_matrixf_init(void *array, u64 array_size, u32 nrow, u32 ncol)
+    f32 *pos = (f32 *)m->buffer + (m->ncol * m->nrow);
+    memcpy(pos, value, value_size);
+    m->nrow++;
+}
+
+matrixf_t __impl_matrixf_init(void *array, u64 array_size, u8 nrow, u8 ncol)
 {
     assert(ncol > 0);
     assert(nrow > 0);
@@ -87,15 +100,15 @@ matrixf_t matrixf_product(matrixf_t a, matrixf_t b)
 {
     if (a.ncol != b.nrow) eprint("num of columns in first matrix dosent match with num of rows in the second matrix");
 
-    f32 *mata = (f32 *)a.buffer;
-    f32 *matb = (f32 *)b.buffer;
-
     matrixf_t mul = {0};
-    f32 *product = (f32 *)mul.buffer;
+    
+    f32 *mata       = (f32 *)a.buffer;
+    f32 *matb       = (f32 *)b.buffer;
+    f32 *product    = (f32 *)mul.buffer;
 
     for (u32 i = 0; i < a.nrow; i++) {
         for (u32 j = 0; j < b.ncol; j++) {
-            u32 sum = 0;
+            f32 sum = 0;
             for (u32 k = 0; k < a.ncol; k++)
                 sum = sum + mata[i * a.ncol + k] * matb[k * b.ncol + j];
             product[i * b.ncol + j] = sum;
@@ -183,6 +196,33 @@ void matrixf_print(matrixf_t *m)
          printf("%f ", result[i]);
    }
     printf("\n");
+}
+
+matrixf_t matrixf_transpose(matrixf_t a)
+{
+    matrixf_t output = {0};
+
+    f32 *ibuf = (f32 *)a.buffer;
+    f32 *obuf = (f32 *)output.buffer;
+
+    for (u32 i = 0; i < a.nrow; ++i )
+    {
+       for (u32 j = 0; j < a.ncol; ++j )
+       {
+          // Index in the original matrix.
+          u32 index1 = i * a.ncol + j;
+
+          // Index in the transpose matrix.
+          u32 index2 = j * a.nrow + i;
+
+
+          obuf[index2] = ibuf[index1];
+       }
+    }
+    output.ncol = a.nrow;
+    output.nrow = a.ncol;
+
+    return output;
 }
 
 #endif
