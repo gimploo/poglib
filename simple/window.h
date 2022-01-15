@@ -242,6 +242,9 @@ static inline window_t __sub_window_init(const char *title_name, u64 width, u64 
 
 #ifdef __gl_h_
 
+    GL_CHECK(glEnable(GL_BLEND));
+    GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
     WinFlags = SDL_WINDOW_OPENGL;
 
 #endif 
