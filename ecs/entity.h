@@ -22,7 +22,7 @@ typedef u64 entity_type;
 #define         entity_has_component(PENTITY, TYPE)                     ((PENTITY)->__indices[ECT_type(TYPE)] == -1 ? false : true)
 
 //NOTE: These functions can only be called by the entity manager and not alone
-entity_t *      __entity_init(entity_type tag);
+entity_t *      __entity_init(const char *tagname, entity_type tag);
 void            __entity_destroy(entity_t *e);
 
 
@@ -41,6 +41,7 @@ void            __entity_destroy(entity_t *e);
 struct entity_t {
 
     // Members
+    const char  *label;
     u64         *id;
     entity_type tag; 
     bool        is_alive;
@@ -107,19 +108,21 @@ void __entity_destroy(entity_t *e)
 
     e->id = NULL;
 
+    printf("[!] ENTITY (%s) DELETED\n", e->label);
+
     // Freeing the entity itself 
     free(e);
     e = NULL;
 
-    printf("[!] ENTITY DELETED\n");
 }
 
-entity_t * __entity_init(entity_type tag)
+entity_t * __entity_init(const char *label, entity_type tag)
 {
     entity_t *e = (entity_t *)calloc(1, sizeof(entity_t));
     assert(e);
 
     *e = (entity_t ) {
+        .label = label,
         .id = (u64 *)e,
         .tag = tag,
         .is_alive = true,
