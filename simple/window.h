@@ -17,6 +17,11 @@
 #define DEFAULT_BACKGROUND_COLOR (vec4f_t){{ 0.0f, 1.0f, 0.0f, 0.0f}}
 #define SDL_FLAGS u32
 
+
+#ifndef SDL2_ENABLE_LOG
+#   define SDL_Log(fmt, ...)
+#endif
+
 /*==============================================================================
  // Window library that is wrapper around SDL2 
 ==============================================================================*/
@@ -135,13 +140,16 @@ void            window_sub_window_destroy(window_t *sub_window);
 
 
 #define window_gl_render_begin(pwindow) {\
-    glClearColor(\
+    GL_CHECK(glClearColor(\
             (pwindow)->background_color.cmp[0],\
             (pwindow)->background_color.cmp[1],\
             (pwindow)->background_color.cmp[2],\
             (pwindow)->background_color.cmp[3]\
-    );\
-    glClear(GL_COLOR_BUFFER_BIT);\
+    ));\
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));\
+    GL_CHECK(glEnable(GL_BLEND));\
+    GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
+    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));\
 }
 
 #define window_gl_render_end(pwindow) do {\
@@ -152,13 +160,16 @@ void            window_sub_window_destroy(window_t *sub_window);
 
 #define window_sub_window_gl_render_begin(pwindow) {\
     SDL_GL_MakeCurrent((pwindow)->window_handle, (pwindow)->gl_context);\
-    glClearColor(\
+    GL_CHECK(glClearColor(\
             (pwindow)->background_color.cmp[0],\
             (pwindow)->background_color.cmp[1],\
             (pwindow)->background_color.cmp[2],\
             (pwindow)->background_color.cmp[3]\
-    );\
-    glClear(GL_COLOR_BUFFER_BIT);\
+    ));\
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));\
+    GL_CHECK(glEnable(GL_BLEND));\
+    GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
+    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));\
 }
 
 #define window_sub_window_gl_render_end(pwindow) SDL_GL_SwapWindow((pwindow)->window_handle)
@@ -242,8 +253,6 @@ static inline window_t __sub_window_init(const char *title_name, u64 width, u64 
 
 #ifdef __gl_h_
 
-    GL_CHECK(glEnable(GL_BLEND));
-    GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
     WinFlags = SDL_WINDOW_OPENGL;
 

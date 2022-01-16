@@ -59,7 +59,7 @@ list_t dummy(void)
     return list;
 }
 
-int main(void)
+int oldmain(void)
 {
     // Pointer
 
@@ -110,7 +110,7 @@ int main(void)
     return 0;
 }
 
-int oldmain(void)
+int oldmain02(void)
 {
     // Value
 
@@ -145,7 +145,7 @@ void print_u32(void *arg)
 }
 
 
-int oldmain02(void)
+int oldmain03(void)
 {
     list_t list = list_init(10, u32);
 
@@ -174,6 +174,90 @@ int oldmain02(void)
 
 
 
+    list_destroy(&list);
+
+    return 0;
+}
+
+int main(void)
+{
+    list_t list = list_init(4, list_t );
+
+    for (int i = 0; i < 4; i++)
+    {
+        list_t tmp = list_init(4, foo);
+        list_append(&list, tmp);
+    }
+
+    foo a = {
+        .label = "a",
+        .list = {1,2,3,4,5}
+    };
+
+    foo b = {
+        .label = "b",
+        .list = {6,7,8,9,10}
+    };
+
+    foo c = {
+        .label = "c",
+        .list = {11,12,13,14,15}
+    };
+
+    list_t *tmp = (list_t *)list_get_element_by_index(&list, 3);
+    list_append(tmp, a);
+    list_append(tmp, b);
+    list_append(tmp, c);
+
+    tmp = (list_t *)list_get_element_by_index(&list, 2);
+    list_append(tmp, b);
+
+    tmp = (list_t *)list_get_element_by_index(&list, 1);
+    list_append(tmp, c);
+
+    list_print(&list, list_dump);
+
+    for (int i = 0; i < list.len; i++)
+    {
+        list_t *bar = (list_t *)list_get_element_by_index(&list, i);
+        if (!bar->len) {
+            printf("list %i list is empty\n", i);
+            continue;
+        }
+        printf("list %i is \n",i);
+        for (int j = 0; j < bar->len; j++)
+        {
+            foo *x = (foo *)list_get_element_by_index(bar, j);
+            print_foo(x);
+
+        }
+    }
+
+    printf("\n\n");
+
+    list_delete(&list, 0);
+    for (int i = 0; i < list.len; i++)
+    {
+        list_t *bar = (list_t *)list_get_element_by_index(&list, i);
+        if (!bar->len) {
+            printf("list %i list is empty\n", i);
+            continue;
+        }
+        printf("list %i is \n",i);
+        for (int j = 0; j < bar->len; j++)
+        {
+            foo *x = (foo *)list_get_element_by_index(bar, j);
+            print_foo(x);
+
+        }
+    }
+
+
+    for (int i = 0; i < list.len; i++)
+    {
+        list_t *tmp = (list_t *)list_get_element_by_index(&list, i);
+        list_destroy(tmp);
+    }
     list_destroy(&list);
 
     return 0;

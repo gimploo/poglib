@@ -4,7 +4,7 @@
 
 typedef struct c_lifespan_t c_lifespan_t ;
 
-c_lifespan_t * c_lifespan_init(u64 total);
+c_lifespan_t * c_lifespan_init(i64 total);
 
 
 
@@ -15,23 +15,23 @@ struct c_lifespan_t {
 
     bool is_alive;
     i64 remaining;
-    u64 total;
+    i64 total;
 
-    void (*update)(c_lifespan_t *);
+    void (*update)(c_lifespan_t *, u32 factor);
 
 };
 
-void __c_lifespan_update(c_lifespan_t *cmp)
+void __c_lifespan_update(c_lifespan_t *cmp, u32 factor)
 {
     if(cmp->remaining <= 0)  {
         cmp->is_alive = false;
         return;
     }
 
-    cmp->remaining = cmp->total - 1;
+    cmp->remaining -= factor;
 }
 
-c_lifespan_t * c_lifespan_init(u64 total)
+c_lifespan_t * c_lifespan_init(i64 total)
 {
     c_lifespan_t *o = (c_lifespan_t *)calloc(1, sizeof(c_lifespan_t ));
     assert(o);

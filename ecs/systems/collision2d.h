@@ -26,5 +26,13 @@ bool collision2d_check_collision_by_AABB(c_boxcollider2d_t *a, c_boxcollider2d_t
     return (x_axis_collision && y_axis_collision);
 }
 
+bool collision2d_check_out_of_screen(c_boxcollider2d_t *a)
+{
+    return (a->centerpos.cmp[X] > 1.0f 
+            || a->centerpos.cmp[X] < -1.0f
+            || a->centerpos.cmp[Y] > 1.0f
+            || a->centerpos.cmp[Y] < -1.0f);
+}
+
 
 #endif
