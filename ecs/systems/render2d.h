@@ -50,7 +50,9 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
     glbatch_t *batches = sys->glbatches; 
     assert(batches);
 
-    list_t *entitymap = &manager->entitymap; assert(entitymap);
+    list_t *entitymap = &manager->entitymap; 
+    assert(entitymap);
+
     for (u64 i = 0; i < entitymap->len; i++)
     {
         glshader_t *shader      = NULL;

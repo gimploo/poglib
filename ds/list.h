@@ -88,7 +88,7 @@ void __impl_list_append(list_t *list, void *value_addr, u64 value_size)
 void list_delete(list_t *list, const u64 index)
 {
     assert(list);
-    assert(list->__top != -1);
+    if(list->__top == -1) eprint("Trying to delete an element from an empty list\n");
     assert((i64)index <= list->__top);
 
 
@@ -99,7 +99,7 @@ void list_delete(list_t *list, const u64 index)
                 list->__elem_size * (list->__top - index)); 
     } 
 
-    list->len = --list->__top - 1;
+    list->len = --list->__top + 1;
 
 } 
 
@@ -121,11 +121,19 @@ void list_dump(const list_t *list)
 {
     assert(list);
 
+    printf("\n len = %ld\n arr = %p\n top = %ld\n capacity = %ld\n elem_size = %ld\n", 
+            list->len, 
+            list->__array, 
+            list->__top, 
+            list->__capacity, 
+            list->__elem_size);
+
+    printf(" contents = [ ");
     for (u64 i = 0; i < list->__capacity; i++)
     {
-        printf("%p ",list->__array + i * list->__elem_size);
+        printf("%p, ",list->__array + i * list->__elem_size);
     }
-    printf("\n");
+    printf("]\n");
 
 }
 

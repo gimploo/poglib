@@ -58,9 +58,9 @@ entitymanager_t entitymanager_init(const u64 total_entity_types)
     return (entitymanager_t ) {
         .entities               = list_init(8, entity_t *),
         .entitymap              = map,
-        .__newly_added_entities = queue_init( 
-                MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME, 
-                entity_t *)
+        .__newly_added_entities = queue_init(
+                                    MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME, 
+                                    entity_t *)
     };
 }
 
@@ -88,19 +88,28 @@ void entitymanager_update(entitymanager_t *manager)
         entity_t *e = *(entity_t **)list_get_element_by_index(entities, i);
         assert(e);
 
-        if (!e->is_alive) {
+        if (e->is_alive) continue;
 
-            entity_type tag = e->tag;
-            list_delete(entities, i);
+        list_t *entitylist = entitymanager_get_all_entities_by_tag(manager, e->tag);
+        for (u64 j = 0; j < entitylist->len; j++)
+        {
+            entity_t *tmp = *(entity_t **)list_get_element_by_index(entitylist, j);
+            assert(tmp);
 
-            list_t *entitylist = entitymanager_get_all_entities_by_tag(manager, tag);
-            list_delete(entitylist, i);
+            if (tmp->is_alive) continue;
 
-            __entity_destroy(e);
+            list_delete(entitylist, j);
+            tmp = NULL;
 
+            //j = 0; // LMAO I THINK THIS JUST SOLVED ITERATOR INVALIDATION
         }
+
+        list_delete(entities, i);
+
+        __entity_destroy(e);
         e = NULL;
     }
+
 
     // Adding newly created entities into the entities list and map
     queue_t *queue = &manager->__newly_added_entities;
