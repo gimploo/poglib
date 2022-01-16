@@ -8,10 +8,10 @@
 typedef struct entitymanager_t entitymanager_t;
 
 
-
 entitymanager_t     entitymanager_init(const u64 total_entity_types);
 
-entity_t *          entitymanager_add_entity(entitymanager_t *manager, entity_type tag);
+#define             entitymanager_add_entity(PMANAGER, TAG) __impl_entitymanager_add_entity((PMANAGER), (TAG), #TAG)
+
 void                entitymanager_update(entitymanager_t *manager);
 
 void                entitymanager_destroy(entitymanager_t *manager);
@@ -64,11 +64,11 @@ entitymanager_t entitymanager_init(const u64 total_entity_types)
     };
 }
 
-entity_t * entitymanager_add_entity(entitymanager_t *manager, entity_type tag)
+entity_t * __impl_entitymanager_add_entity(entitymanager_t *manager, entity_type tag, const char *tagname)
 {
     assert(manager);
 
-    entity_t *e = __entity_init(tag);
+    entity_t *e = __entity_init(tagname, tag);
 
     queue_t *queue = &manager->__newly_added_entities;
     queue_put(queue, e);
