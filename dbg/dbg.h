@@ -129,6 +129,7 @@ static void * _debug_realloc(void *pointer, size_t size, const char *file_path, 
 
 #define realloc(p, n) _debug_realloc((p), (n), __FILE__, __LINE__, __func__)
 
+
     DValMeta meta = {0};
     meta.line_num = line_num;
     meta.size = size;

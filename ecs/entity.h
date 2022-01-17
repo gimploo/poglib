@@ -105,7 +105,7 @@ void __entity_destroy(entity_t *e)
 
 
     // Zeroing in the indices buffer
-    memset(e->__indices, 0, sizeof(e->__indices));
+    for (u32 i = 0; i < ARRAY_LEN(e->__indices); i++) e->__indices[i] = 0;
 
     e->id = NULL;
 
@@ -130,7 +130,7 @@ entity_t * __entity_init(const char *label, entity_type tag)
         .components = list_init(4, entitycomponent_t ),
     };
 
-    memset(e->__indices, -1, sizeof(e->__indices));
+    for (u32 i = 0; i < ARRAY_LEN(e->__indices); i++) e->__indices[i] = -1;
 
     return e;
 }
