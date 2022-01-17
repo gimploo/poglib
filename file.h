@@ -31,7 +31,6 @@ struct file_t {
 file_t          file_init(const char *file_path);
 bool            file_open(file_t *file, const char *mode);
 void            file_read_to_buf(file_t *file, char * const buffer, size_t bytes);
-const char *    file_readall(file_t * const file);
 void            file_destroy(file_t * const file);
 
 #define file_close(pfile) {\
@@ -89,27 +88,17 @@ void file_read_to_buf(file_t *file,  char * const buffer, size_t bytes)
         if(!file_open(file, "r")) 
             eprint("Error: unable to open file");
     
-
     fread(buffer, bytes, 1, file->fp);
-    file_destroy(file);
 }
 
-const char * file_readall(file_t * const file)
+void file_readall(file_t * const file, char *buffer, u64 buffer_size)
 {
-    //NOTE: this code works dont tinker
-    
     assert(file);
-
-    char *buffer = (char *)malloc(file->size+1);
-    if (buffer == NULL) {
-        fprintf(stderr, "%s: malloc failed\n", __func__);
-        exit(1);
-    }
+    assert(buffer);
+    if(buffer_size < file->size) eprint("buffer is too smol, trying to copy %li to %li", file->size, buffer_size);
 
     file_read_to_buf(file, buffer, file->size);
     buffer[file->size] = '\0';
-
-    return buffer;
 }
 
 void file_destroy(file_t * const file)

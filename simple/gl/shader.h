@@ -156,26 +156,21 @@ static inline void __shader_load_from_file(glshader_t *shader, const char *verte
 {
     if (shader == NULL) eprint("shader argument is null");
 
+    char vs_code[KB]; 
+    char fs_code[KB]; 
+
     file_t vs_file = file_init(vertex_source_path);
-    const char * vs_code = file_readall(&vs_file);
-    if (vs_code == NULL) {
-        fprintf(stderr, "%s: vertex file returned null\n", __func__);
-        exit(1);
-    }
+        file_readall(&vs_file, vs_code, sizeof(vs_code));
+    file_destroy(&vs_file);
 
     file_t fg_file = file_init(fragment_source_path);
-    const char *fs_code = file_readall(&fg_file);
-    if (fs_code == NULL) {
-        fprintf(stderr, "%s: vertex file returned null\n", __func__);
-        exit(1);
-    }
+        file_readall(&fg_file, fs_code, sizeof(fs_code));
+    file_destroy(&fg_file);
 
     __shader_load_code(shader, vs_code, fs_code);
 
-    free((void *)vs_code);
-    free((void *)fs_code);
-
     GL_LOG("Shader `%i` successfully linked", shader->id);
+
 }
 
 glshader_t  glshader_from_file_init(const char *file_vs, const char *file_fs)

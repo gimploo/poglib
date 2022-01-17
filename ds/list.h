@@ -71,12 +71,10 @@ void __impl_list_append(list_t *list, void *value_addr, u64 value_size)
 
         list->__capacity = list->__capacity * 2;
 
-        u8 *tmp = NULL;
+        list->__array = (u8 *)realloc(list->__array, list->__capacity * list->__elem_size);
 
-        tmp = (u8 *)realloc(list->__array, list->__capacity * list->__elem_size);
+        printf("list reallocated to size to %li\n", list->__capacity * list->__elem_size);
 
-        assert(tmp);
-        list->__array = tmp;
     }
 
     list->len = ++list->__top + 1;
