@@ -133,7 +133,7 @@ void entitymanager_destroy(entitymanager_t *manager)
     assert(manager);
 
     // Deleting the queue
-    assert(queue_is_empty(&manager->__newly_added_entities));
+    //assert(queue_is_empty(&manager->__newly_added_entities));
     queue_destroy(&manager->__newly_added_entities);
 
     // Deleting all entities from entities list
@@ -141,6 +141,7 @@ void entitymanager_destroy(entitymanager_t *manager)
     for (u64 i = 0; i < entities->len; i++)
     {
         entity_t *e = *(entity_t **)list_get_element_by_index(entities, i);
+        e->is_alive = false;
         __entity_destroy(e);
     }
     list_destroy(entities);

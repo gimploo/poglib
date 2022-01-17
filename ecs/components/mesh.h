@@ -8,7 +8,7 @@
 
 typedef struct c_mesh2d_t c_mesh2d_t ;
 
-c_mesh2d_t * c_mesh2d_init(void);
+c_mesh2d_t * c_mesh2d_init(vec3f_t centerpos, c_shape_type type, f32 radius);
 
 
 
@@ -19,17 +19,49 @@ struct c_mesh2d_t {
     matrixf_t model;
 };
 
-c_mesh2d_t * c_mesh2d_init(void)
+c_mesh2d_t * c_mesh2d_init(vec3f_t centerpos, c_shape_type type, f32 radius)
 {
     c_mesh2d_t *o = (c_mesh2d_t *)calloc(1, sizeof(c_mesh2d_t ));
     assert(o);
 
-    *o = (c_mesh2d_t ) {
-        .model = {0},
-    };
+    vec3f_t topright = vec3f_add(
+            centerpos, 
+            (vec3f_t ){ -radius/2, radius/2, 0.0f });
+
+    switch(type)
+    {
+        //Triangle
+        case TRIANGLE: {
+
+            trif_t tri = trif_init(topright, radius);
+            o->model = matrixf_init(tri.vertex, 3, 3);
+
+        } break;
+
+        // Square
+        case SQUARE: {
+
+            quadf_t tmp = quadf_init(topright, radius, radius);
+            o->model = matrixf_init(tmp.vertex, 4, 3);
+
+        } break;
+
+        //Circle
+        case CIRCLE: {
+            
+            circle_t circle = circle_init(centerpos, radius);
+            o->model = matrixf_init(circle.points, MAX_VERTICES_PER_CIRCLE, 3);
+
+        } break;
+
+        default: eprint("side unaccounted for");
+    }
 
     return o;
 }
+
+
+
 
 
 #endif

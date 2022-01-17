@@ -26,11 +26,11 @@ c_sprite_t c_sprite_init(f32 side, c_shape_type type, quadf_t uv)
 
     switch(type)
     {
-        case CST_TRIANGLE: {
+        case TRIANGLE: {
             o.uv = uv;
         } break;
 
-        case CST_CIRCLE: {
+        case CIRCLE: {
             for (u64 i = 0; i < MAX_TRIANGLES_PER_CIRCLE; i++)
             {
                 uv.vertex[i].cmp[X] = (uv.vertex[i].cmp[X]/side + 1)*0.5;
@@ -38,7 +38,7 @@ c_sprite_t c_sprite_init(f32 side, c_shape_type type, quadf_t uv)
             }
         } break;
 
-        case CST_SQUARE: {
+        case SQUARE: {
             o.uv = uv;
         } break;
 
