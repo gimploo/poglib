@@ -86,34 +86,34 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
 
             switch(shape->type)
             {
-                case CST_SQUARE: {
+                case SQUARE: {
 
                     glquad_t glquad = glquad_init(
                             *(quadf_t *)mesh->model.buffer, 
                             shape->fill,
                             uv, 0);
 
-                    glbatch_put(&batches[CST_SQUARE], glquad);
+                    glbatch_put(&batches[SQUARE], glquad);
 
                 } break;
 
-                case CST_CIRCLE: {
+                case CIRCLE: {
 
                     glcircle_t glcircle = glcircle_init(
                             *(circle_t *)mesh->model.buffer,
                             shape->fill,
                             uv, 0);
-                    glbatch_put(&batches[CST_CIRCLE], glcircle);
+                    glbatch_put(&batches[CIRCLE], glcircle);
 
                 } break;
 
-                case CST_TRIANGLE: {
+                case TRIANGLE: {
 
                     gltri_t gltri = gltri_init(
                             *(trif_t *)mesh->model.buffer, 
                             shape->fill,
                             uv, 0);
-                    glbatch_put(&batches[CST_TRIANGLE], gltri);
+                    glbatch_put(&batches[TRIANGLE], gltri);
 
                 } break;
 

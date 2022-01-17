@@ -268,6 +268,16 @@ vec3f_t vec3f_add(const vec3f_t x, const vec3f_t y)
     return output;
 }
 
+vec3f_t vec3f_sub(const vec3f_t x, const vec3f_t y)
+{
+    vec3f_t output;
+    output.cmp[X] = x.cmp[X] - y.cmp[X];
+    output.cmp[Y] = x.cmp[Y] - y.cmp[Y];
+    output.cmp[Z] = x.cmp[Z] - y.cmp[Z];
+
+    return output;
+}
+
 
 vec4f_t vec4f_add(const vec4f_t x, const vec4f_t y)
 {

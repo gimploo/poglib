@@ -7,47 +7,6 @@ void transform_update(c_transform_t *t)
     t->update(t);
 }
 
-void transform_c_shape2d_mesh2d_update(c_transform_t *t, c_shape2d_t *shape, c_mesh2d_t *mesh)
-{    
-    assert(t);
-    assert(shape);
-    assert(mesh);
-
-    vec3f_t topright = vec3f_add(
-            t->position, 
-            (vec3f_t ){ -shape->radius/2, shape->radius/2, 0.0f });
-
-    switch(shape->type)
-    {
-        //Triangle
-        case CST_TRIANGLE: {
-
-            trif_t tri = trif_init(topright, shape->radius);
-            mesh->model = matrixf_init(tri.vertex, 3, 3);
-
-        } break;
-
-        // Square
-        case CST_SQUARE: {
-
-            quadf_t tmp = quadf_init(topright, shape->radius, shape->radius);
-            mesh->model = matrixf_init(tmp.vertex, 4, 3);
-
-        } break;
-
-        //Circle
-        case CST_CIRCLE: {
-            
-            circle_t circle = circle_init(t->position, shape->radius);
-            mesh->model = matrixf_init(circle.points, MAX_VERTICES_PER_CIRCLE, 3);
-
-        } break;
-
-        default: eprint("side unaccounted for");
-    }
-
-}
-
 void transform_mesh2d_update(c_transform_t *t, c_mesh2d_t *mesh)
 {
     assert(t);

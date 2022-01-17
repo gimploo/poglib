@@ -64,6 +64,7 @@ struct entitycomponent_t {
 void __entity_destroy(entity_t *e)
 {
     assert(e);
+    assert(e->is_alive == false);
 
     // Freeing the component list of all its component before destroying the list
     list_t *cmps = &e->components;

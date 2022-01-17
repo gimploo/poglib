@@ -8,9 +8,9 @@
 
 typedef enum c_shape_type {
 
-    CST_TRIANGLE = 0,
-    CST_SQUARE,
-    CST_CIRCLE,
+    TRIANGLE = 0,
+    SQUARE,
+    CIRCLE,
 
     CST_COUNT
 
@@ -21,7 +21,7 @@ typedef enum c_shape_type {
 typedef struct c_shape2d_t c_shape2d_t ;
 
 
-#define c_shape2d_init(TYPE, RADIUS, FILL) __impl_c_shape2d_init(CST_##TYPE, (RADIUS), (FILL))
+#define c_shape2d_init(TYPE, RADIUS, FILL) __impl_c_shape2d_init(TYPE, (RADIUS), (FILL))
 
 
 
@@ -37,6 +37,7 @@ struct c_shape2d_t {
     c_shape_type    type;
     f32             radius;
     vec4f_t         fill;
+    u32             nvertex;
 };
 
 
@@ -49,6 +50,23 @@ c_shape2d_t * __impl_c_shape2d_init(c_shape_type type, f32 radius, vec4f_t fill)
         .radius = radius,
         .fill   = fill,
     };
+
+    switch(type)
+    {
+        case TRIANGLE:
+            o->nvertex = 3;
+        break;
+
+        case SQUARE:
+            o->nvertex = 4;
+        break;
+
+        case CIRCLE:
+            o->nvertex = MAX_VERTICES_PER_CIRCLE;
+        break;
+
+        default: eprint("type not accounted for");
+    }
 
     return o;
 }

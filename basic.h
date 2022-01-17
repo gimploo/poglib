@@ -81,7 +81,7 @@ typedef enum
 int randint(int min, int max)
 {
     srand(time(NULL));
-    return (rand() % (max - min + 1)) + min;
+    return (rand() % ((max-1) - min + 1)) + min;
 }
 
 #endif // _BASIC_H_
