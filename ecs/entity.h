@@ -148,6 +148,7 @@ void __impl_entity_add_component(entity_t *e, void * ecmp_ref, entitycomponent_t
 
     // Appending the wrapper to the entity components list
     list_t *list = &e->components;
+    assert(list);
     list_append(list, ec);
 
     // Updating the indices buffer
@@ -168,8 +169,8 @@ const void * __impl_entity_get_component(const entity_t *e, const entitycomponen
     if ((i64)index == -1) return NULL;
 
     entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(&e->components, index);
-    assert(ec);
-    assert(ec->cmp);
+    if(!ec) eprint("entity %s\n", e->label);
+    if(!ec->cmp) eprint("entity %s\n", e->label);
 
     return ec->cmp;
 }

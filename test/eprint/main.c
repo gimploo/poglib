@@ -1,9 +1,17 @@
-#include <windows.h>
 #include "../../basic.h"
 
-
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdShow, int nCmdShow)
+void bar()
 {
-    eprint("yo\n");
+    eprint("yo");
+}
+
+void foo()
+{
+    bar();
+}
+
+int main(void)
+{
+    foo();
     return 0;
 }
