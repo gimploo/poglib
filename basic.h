@@ -1,6 +1,4 @@
-#ifndef _BASIC_H_
-#define _BASIC_H_
-
+#pragma once
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -12,6 +10,7 @@
 #include <time.h>
 
 #include "./color.h"
+#include "./dbg/stacktrace.h"
 
 #define global      static 
 #define local       static 
@@ -61,18 +60,23 @@ typedef enum
 #define MB      (KB * 1024)
 #define GB      (MB * 1024)
 
-#define PI 3.141592653589793238463
+#define PI      3.141592653589793238463
 
 // Used with struct declaration to avoid padding
 #define NOPADDING __attribute__((packed)) 
 
 // Used with function declaration to force inlining
-#define FORCEINLINE __attribute__((always_inline))
+#ifndef _WIN64
+    #define FORCEINLINE __attribute__((always_inline))
+#endif
 
 // Eprint for for both linux and windows
 #define eprint(fmt, ...) do {\
+\
     fprintf(stderr, "[(%s:%d): %s] " fmt "\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
+    print_stack_trace();\
     exit(-1);\
+\
 } while (0)
 
 #define ARRAY_LEN(ARR) sizeof((ARR)) / sizeof(*(ARR))
@@ -84,4 +88,3 @@ int randint(int min, int max)
     return (rand() % ((max-1) - min + 1)) + min;
 }
 
-#endif // _BASIC_H_

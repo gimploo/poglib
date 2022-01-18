@@ -10,7 +10,7 @@ typedef struct entitymanager_t entitymanager_t;
 
 entitymanager_t     entitymanager_init(const u64 total_entity_types);
 
-#define             entitymanager_add_entity(PMANAGER, TAG) __impl_entitymanager_add_entity((PMANAGER), (TAG), #TAG)
+#define             entitymanager_add_entity(PMANAGER, TAG)                 __impl_entitymanager_add_entity((PMANAGER), (TAG), #TAG)
 
 void                entitymanager_update(entitymanager_t *manager);
 
@@ -20,7 +20,7 @@ void                entitymanager_destroy(entitymanager_t *manager);
 
 #define             entitymanager_get_total_entities(PMANAGER)              (PMANAGER)->entities.len
 #define             entitymanager_get_all_entities(PMANAGER)                &(PMANAGER)->entities
-#define             entitymanager_get_all_entities_by_tag(PMANAGER, TAG)    (list_t *)list_get_element_by_index(&(PMANAGER)->entitymap, (TAG))
+#define             entitymanager_get_all_entities_by_tag(PMANAGER, TAG)    ((list_t *)list_get_element_by_index(&(PMANAGER)->entitymap, (TAG)))
 
 
 
@@ -69,8 +69,11 @@ entity_t * __impl_entitymanager_add_entity(entitymanager_t *manager, entity_type
     assert(manager);
 
     entity_t *e = __entity_init(tagname, tag);
+    assert(e);
 
     queue_t *queue = &manager->__newly_added_entities;
+    assert(queue);
+
     queue_put(queue, e);
 
     return e;
@@ -98,12 +101,14 @@ void entitymanager_update(entitymanager_t *manager)
 
             if (tmp->is_alive) continue;
 
+            printf("Deleting entity (from map) %s \n", e->label);
             list_delete(entitylist, j);
             tmp = NULL;
 
             //j = 0; // LMAO I THINK THIS JUST SOLVED ITERATOR INVALIDATION
         }
 
+        printf("Deleting entity (from list) %s \n", e->label);
         list_delete(entities, i);
 
         __entity_destroy(e);
@@ -116,11 +121,14 @@ void entitymanager_update(entitymanager_t *manager)
     while (!queue_is_empty(queue))
     {
         entity_t *e = *(entity_t **)queue_get(queue);
+        assert(e);
 
         //appending to entities list
+        printf("Adding entity (to list) %s \n", e->label);
         list_append(&manager->entities, e);
 
         // appending to map
+        printf("Adding entity (to map) %s \n", e->label);
         list_t *entitymap = entitymanager_get_all_entities_by_tag(manager, e->tag);
         list_append(entitymap, e);
     }
@@ -137,6 +145,7 @@ void entitymanager_destroy(entitymanager_t *manager)
     {
         entity_t *e = *(entity_t **)queue_get(&manager->__newly_added_entities);
         assert(e);
+
         e->is_alive = false;
         __entity_destroy(e);
     }
@@ -147,6 +156,8 @@ void entitymanager_destroy(entitymanager_t *manager)
     for (u64 i = 0; i < entities->len; i++)
     {
         entity_t *e = *(entity_t **)list_get_element_by_index(entities, i);
+        assert(e);
+
         e->is_alive = false;
         __entity_destroy(e);
     }
@@ -157,6 +168,8 @@ void entitymanager_destroy(entitymanager_t *manager)
     for (u64 i = 0; i < map->len; i++)
     {
         list_t *list = (list_t *)list_get_element_by_index(map, i);
+        assert(list);
+
         list_destroy(list);
     }
     list_destroy(map);

@@ -63,17 +63,14 @@ void __impl_list_append(list_t *list, void *value_addr, u64 value_size)
     assert(value_addr);
     assert(value_size == list->__elem_size);
 
-    if (value_size != list->__elem_size) 
-        eprint("trying to push a value of size %lu to slot of size %lu", 
-                value_size, list->__elem_size);
+    if (value_size != list->__elem_size) eprint("trying to push a value of size %lu to slot of size %lu", value_size, list->__elem_size);
+
 
     if (list->__top == (i64)(list->__capacity - 1)) {
 
         list->__capacity = list->__capacity * 2;
 
         list->__array = (u8 *)realloc(list->__array, list->__capacity * list->__elem_size);
-
-        printf("list reallocated to size to %li\n", list->__capacity * list->__elem_size);
 
     }
 
