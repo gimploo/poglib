@@ -11,8 +11,8 @@ typedef struct glbitmapfont_t glbitmapfont_t;
 
 
 glbitmapfont_t      glbitmapfont_init(const char *file_path, const u32 tile_count_width, const u32 tile_count_height);
-void                glbitmapfont_set_text(glbitmapfont_t *handler, const char *text, const vec2f_t norm_position); 
-void                glbitmapfont_draw(const glbitmapfont_t *font);
+void                glbitmapfont_set_text(glbitmapfont_t *handler, const char *text, vec2f_t norm_position); 
+void                glbitmapfont_draw(glbitmapfont_t *font);
 void                glbitmapfont_destroy(glbitmapfont_t *);
 
 #define             glbitmapfont_set_font_size(PFONT, FSIZE) (PFONT)->norm_font_size = (FSIZE)
@@ -30,10 +30,10 @@ const char * const ascii_font_vs =
     "#version 330 core\n"
     "\n"
     "layout (location = 0) in vec3 aPos;\n"
-    "layout (location = 1) in vec3 aColor;\n"
+    "layout (location = 1) in vec4 aColor;\n"
     "layout (location = 2) in vec2 aTexCoord;\n"
     "\n"
-    "out vec3 ourColor;\n"
+    "out vec4 ourColor;\n"
     "out vec2 TexCoord;\n"
     "\n"
     "void main()\n"
@@ -47,7 +47,7 @@ const char * const ascii_font_fs =
     "#version 330 core\n"
     "\n"
     "in vec2 TexCoord;\n"
-    "in vec3 ourColor;\n"
+    "in vec4 ourColor;\n"
     "\n"
     "out vec4 FragColor;\n"
     "\n"
@@ -59,27 +59,22 @@ const char * const ascii_font_fs =
     "}";
 
 
-typedef struct __character_info_t  {
-
-    char          character;
-    quadf_t       texture_coord;
-
-} __character_info_t;
 
 struct glbitmapfont_t {
     
-    glrenderer2d_t              renderer;
-    __character_info_t          font_atlas[MAX_ASCII_TILES_COUNT];
+    glrenderer2d_t renderer;
 
-    const f32                   norm_font_width;
-    const f32                   norm_font_height;
+    struct {
 
-    glquad_t                    *quads;
-    u64                         quad_count;
+        char          character;
+        quadf_t       texture_coord;
 
-    glbatch_t                   *batch;
+    } font_atlas[MAX_ASCII_TILES_COUNT];
 
-    f32                         norm_font_size;
+    f32         norm_font_width;
+    f32         norm_font_height;
+    f32         norm_font_size;
+    glbatch_t   batches;
 };
 
 
@@ -156,10 +151,8 @@ glbitmapfont_t glbitmapfont_init(const char *file_path, const u32 tile_count_wid
         .renderer           = glrenderer2d_init(pshader, ptexture),
         .norm_font_width    = normalize(texture.width / tile_count_width, 0.0f, texture.width),
         .norm_font_height   = normalize(texture.height / tile_count_height, 0.0f, texture.height), 
-        .quads              = (glquad_t *)calloc(KB, sizeof(glquad_t )),
-        .quad_count         = 0,
-        .batch              = NULL,
-        .norm_font_size     = 0.15f
+        .norm_font_size     = 0.15f,
+        .batches            = glbatch_init(KB, glquad_t )
     };
 
 
@@ -175,10 +168,10 @@ glbitmapfont_t glbitmapfont_init(const char *file_path, const u32 tile_count_wid
 
             output.font_atlas[tile_index].character     = (' ' + tile_index);
             output.font_atlas[tile_index].texture_coord = (quadf_t ){
-                left_U,     top_V,
-                right_U,    top_V,
-                right_U,    bottom_V,
-                left_U,     bottom_V 
+                left_U,     top_V,      0.0f,   
+                right_U,    top_V,      0.0f,
+                right_U,    bottom_V,   0.0f,
+                left_U,     bottom_V,   0.0f
             };
 
 
@@ -209,16 +202,12 @@ glbitmapfont_t glbitmapfont_init(const char *file_path, const u32 tile_count_wid
 void glbitmapfont_set_text(
         glbitmapfont_t  *font, 
         const char      *text, 
-        const vec2f_t   position)
+        vec2f_t   position)
 {
     if (font == NULL)    eprint("font argument is null");
     if (text == NULL)    eprint("text argument is null");
 
 
-    const __character_info_t    *atlas   = font->font_atlas;
-
-    quadf_t quad                = {0};
-    u32     tile_index          = ' ';
     f32     norm_font_width     = font->norm_font_size;
     f32     norm_font_height    = font->norm_font_size;
 
@@ -227,14 +216,12 @@ void glbitmapfont_set_text(
 
     for (int i = 0; text[i] != '\0'; i++) 
     {
-        tile_index = text[i] - ' ';
+        u32 tile_index = text[i] - ' ';
 
-        quad = quadf_init(
-                vec2f_add(position, x_offset), 
-                norm_font_width,
-                norm_font_height
-        );
-
+        quadf_t quad = quadf_init(
+                vec3f_add(vec3f(position), vec3f(x_offset)), 
+                norm_font_width, 
+                norm_font_height);
 
 #if 0
         glbitmapfont_t *output = font; // NOTE: delete this line later
@@ -249,9 +236,9 @@ void glbitmapfont_set_text(
 #endif 
 
 
-        if (font->quad_count == (KB)) eprint("Text exceeded allowed quad amount");
+        glquad_t tmp = glquad_init(quad, (vec4f_t ){0.0f, 0.0f, 0.0f, 1.0f}, font->font_atlas[tile_index].texture_coord, 0);
 
-        font->quads[font->quad_count++] = glquad_init(quad, vec3f(0.0f), atlas[tile_index].texture_coord, 0);
+        glbatch_put(&font->batches, tmp);
 
 #if 0
         printf("Position: " VEC2F_FMT"\n", vertices[0], vertices[1]);
@@ -268,32 +255,14 @@ void glbitmapfont_set_text(
 
 
     }
-
-    glbatch_t new_batch = glbatch_init((glvertex_t *)font->quads, font->quad_count * sizeof(glquad_t ), glquad_t );
-    if (font->batch != NULL) {
-
-        glbatch_destroy(font->batch);
-        glbatch_t *tmp = (glbatch_t *)realloc(font->batch, sizeof(new_batch));
-        assert(tmp);
-        font->batch = tmp;
-        memcpy(font->batch, &new_batch, sizeof(new_batch));
-
-    } else {
-
-        glbatch_t *tmp = (glbatch_t *)realloc(font->batch, sizeof(new_batch));
-        assert(tmp);
-        font->batch = tmp;
-        memcpy(font->batch, &new_batch, sizeof(new_batch));
-    }
-
-
 }
 
-void glbitmapfont_draw(const glbitmapfont_t *font)
+void glbitmapfont_draw(glbitmapfont_t *font)
 {
     assert(font);
 
-    glrenderer2d_draw_from_batch(&font->renderer, font->batch);
+    glrenderer2d_draw_from_batch(&font->renderer, &font->batches);
+    glbatch_clear(&font->batches);
 
 }
 
@@ -304,13 +273,11 @@ void glbitmapfont_destroy(glbitmapfont_t *self)
     glrenderer2d_destroy(&self->renderer);
     glshader_destroy(self->renderer.__shader);
     gltexture2d_destroy(self->renderer.__texture);
-    glbatch_destroy(self->batch);
-    free(self->batch);
-    free(self->quads);
+    glbatch_destroy(&self->batches);
     free(self->renderer.__shader);
     free(self->renderer.__texture);
 
-    self->quad_count = 0;
+
 }
 
 #endif

@@ -68,9 +68,10 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
 
             if (!e->is_alive) continue;
 
+
             // SHAPE
             c_shape2d_t *shape = (c_shape2d_t *)entity_get_component(e, c_shape2d_t );
-            assert(shape);
+            if (!shape) continue;
 
             // Mesh
             c_mesh2d_t *mesh = (c_mesh2d_t *)entity_get_component(e, c_mesh2d_t );

@@ -6,6 +6,7 @@
 int main(void)
 {
     entitymanager_t manager = entitymanager_init(6);
+    s_renderer2d_t render = s_renderer2d_init();
 
     c_transform_t *t1 = c_transform_init(vec3f(0.0f), vec3f(0.0f), 0.0f, 0.0f);
     c_transform_t *t2 = c_transform_init(vec3f(0.0f), vec3f(0.0f), 0.0f, 0.0f);
@@ -24,11 +25,16 @@ int main(void)
     entity_t *e5 = entitymanager_add_entity(&manager, 0);
     entity_add_component(e5, t5, c_transform_t );
 
-    for (int i = 0; i < 10; i++)
+    window_t win = window_init("test", 700, 600, SDL_INIT_VIDEO);
+
+    while(win.is_open)
     {
+        window_update_user_input(&win);
+
         entitymanager_update(&manager);
     }
 
     entitymanager_destroy(&manager);
+    window_destroy(&win);
 }
 
