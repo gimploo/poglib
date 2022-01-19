@@ -95,7 +95,6 @@ void list_delete(list_t *list, const u64 index)
     } 
 
     list->len = --list->__top + 1;
-
 } 
 
 void list_print(const list_t *list, void (*print)(void*))

@@ -161,12 +161,10 @@ const void * __impl_entity_get_component(const entity_t *e, const entitycomponen
     assert(e);
 
     u64 index = e->__indices[type];
-    if(index > e->components.len) eprint(
-            "comp type = %i index = %li and len = %li", 
-            type, index, e->components.len);
 
     // No component found
     if ((i64)index == -1) return NULL;
+
 
     entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(&e->components, index);
     if(!ec) eprint("entity %s\n", e->label);

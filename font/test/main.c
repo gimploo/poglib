@@ -12,7 +12,7 @@ int main(void)
     {
         "Bruh",
         "dio",
-        "pepga",
+        "pepega",
         "12345"
     };
 

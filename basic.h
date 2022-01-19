@@ -73,7 +73,7 @@ typedef enum
 // Eprint for for both linux and windows
 #define eprint(fmt, ...) do {\
 \
-    fprintf(stderr, "[(%s:%d): %s] " fmt "\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
+    fprintf(stderr, "\n[(%s:%d): %s] " fmt "\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
     print_stack_trace();\
     exit(-1);\
 \

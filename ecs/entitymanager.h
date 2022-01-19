@@ -70,6 +70,8 @@ entity_t * __impl_entitymanager_add_entity(entitymanager_t *manager, entity_type
 
     entity_t *e = __entity_init(tagname, tag);
     assert(e);
+    
+    printf("[!] ENTITY (%s) CREATED\n", e->label);
 
     queue_t *queue = &manager->__newly_added_entities;
     assert(queue);
@@ -94,6 +96,8 @@ void entitymanager_update(entitymanager_t *manager)
         if (e->is_alive) continue;
 
         list_t *entitylist = entitymanager_get_all_entities_by_tag(manager, e->tag);
+        assert(entitylist);
+
         for (u64 j = 0; j < entitylist->len; j++)
         {
             entity_t *tmp = *(entity_t **)list_get_element_by_index(entitylist, j);
@@ -101,15 +105,14 @@ void entitymanager_update(entitymanager_t *manager)
 
             if (tmp->is_alive) continue;
 
-            printf("Deleting entity (from map) %s \n", e->label);
             list_delete(entitylist, j);
             tmp = NULL;
 
-            //j = 0; // LMAO I THINK THIS JUST SOLVED ITERATOR INVALIDATION
+            j = 0; // LMAO I THINK THIS JUST SOLVED ITERATOR INVALIDATION
         }
 
-        printf("Deleting entity (from list) %s \n", e->label);
         list_delete(entities, i);
+        i = 0;
 
         __entity_destroy(e);
         e = NULL;
@@ -124,11 +127,9 @@ void entitymanager_update(entitymanager_t *manager)
         assert(e);
 
         //appending to entities list
-        printf("Adding entity (to list) %s \n", e->label);
         list_append(&manager->entities, e);
 
         // appending to map
-        printf("Adding entity (to map) %s \n", e->label);
         list_t *entitymap = entitymanager_get_all_entities_by_tag(manager, e->tag);
         list_append(entitymap, e);
     }
