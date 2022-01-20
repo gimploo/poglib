@@ -5,26 +5,33 @@
 #ifndef _DBG_H_
 #define _DBG_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <assert.h>
+#include "../basic.h"
+#include "../ds/linkedlist.h"
 
-#include "dbg_list.h"
-
-#include <string.h>
-
-#define KB 1024
 
 typedef struct dbg_t dbg_t;
 struct dbg_t {
 
-    FILE *fp;
-    const char *fname;
+    FILE        *fp;
+    const char  *fname;
     
-    DList list;
+    llist_t list;
 
 };
+
+typedef struct dbg_node_info_t {
+
+    data_type   type;
+    void        *value;
+    u32         bytes;
+
+    char filename[WORD];
+    char funcname[WORD];
+    u32 linenum;
+
+
+} dbg_node_info_t ;
+
 
 // FIXME:
 // Issue in DValMeta filename member, apparantely the filename isnt copied properly to it but in func_name that isnt a problem.
@@ -39,9 +46,9 @@ void dbg_destroy();
 
 // Wrapper of common memory allocating function in stdlib 
 
-#define malloc(n) _debug_malloc((n), __FILE__, __LINE__, __func__)
-#define realloc(p, n) _debug_realloc((p), (n), __FILE__, __LINE__, __func__)
-#define free(p) _debug_free((p), (#p), __FILE__, __LINE__, __func__) 
+#define malloc(N)       _debug_malloc((N), __FILE__, __LINE__, __func__)
+#define realloc(P, N)   _debug_realloc((P), (N), __FILE__, __LINE__, __func__)
+#define free(P)         _debug_free((P), (#P), __FILE__, __LINE__, __func__) 
 
 
 
@@ -65,62 +72,90 @@ bool dbg_init(dbg_t *debug, const char *fpath)
     assert(debug);
     debug->fp = fp;
     debug->fname = fpath;
-    debug->list = DList_init();
+    debug->list = llist_init();
 
     fprintf(stdout, "DBG: Initalized\n");
 
     return true;
 }
 
+void debugprint(void *arg)
+{
+    if (arg == NULL) eprint("arg is null");
+
+    dbg_node_info_t info = *(dbg_node_info_t *)arg;
+
+
+    fprintf(stdout, "%s: \tIn function '%s':\n", info.filename, info.funcname);
+    fprintf(stdout, "%s:%i: \tADDR :=\033[0;32m %p (%0i bytes)\033[0m\n", info.filename, info.linenum, info.value, info.bytes);
+
+    printf("\n");
+
+}
+
+void debug_mem_dump(void)
+{
+    llist_t *list = &debug.list;
+    assert(list);
+
+    llist_print(list, debugprint);
+}
+
 
 static void * _debug_malloc(size_t size, const char *file_path, size_t line_num, const char *func_name)
 {
-    FILE *fp = debug.fp; // global variable
-    DList *list = &debug.list;
+    FILE *fp = debug.fp;            // global variable
+    llist_t *list = &debug.list;
 
     assert(fp); assert(list);
 
-    fprintf(fp, "%s: \tIn function '%s':\n", file_path, func_name);
-    fprintf(fp, "%s:%li: \t\033[0;32mMEMORY ALLOCTED (%0li bytes)\033[0m\n", 
-            file_path, line_num, size);
-    fprintf(fp, "\n");
 
 #undef malloc
 
     void *malloc_mem = malloc(size);
 
 #define malloc(n) _debug_malloc((n), __FILE__, __LINE__, __func__)
-    DValMeta meta = {0};
 
-    meta.line_num = line_num;
-    meta.size = size;
-    memcpy(meta.func_name, func_name,strlen(func_name));
-    memcpy(meta.filename, file_path, strlen(file_path));
-    
-    DNode *node = NULL;
-    node = DNode_init(malloc_mem, DVT_ADDR, meta);
+    fprintf(fp, "%s: \tIn function '%s':\n", file_path, func_name);
+    fprintf(fp, "%s:%li: \t\033[01;31m(%p) ALLOCTED (%0li bytes)\033[0m\n", 
+            file_path, line_num,malloc_mem, size);
+    fprintf(fp, "\n");
 
-    if (node == NULL) {
-        fprintf(stderr, "%s: malloc failed\n", __func__);
-        exit(1);
-    }
+    dbg_node_info_t info;
+    info.type = DT_ptr;
+    info.value = malloc_mem;
+    info.linenum = line_num;
+    info.bytes = size;
+    memcpy(info.filename, file_path, sizeof(info.funcname));
+    memcpy(info.funcname, func_name, sizeof(info.funcname));
 
-    DList_append_node(list, node);
+    node_t *node = node_init(&info, sizeof(info));
+    assert(node);
+    llist_append_node(list, node);
     
     return malloc_mem;
 }
 
 
+bool compare_dbg(node_t *arg01, void *arg02)
+{
+    return (((dbg_node_info_t *)arg01->value)->value == arg02);
+}
+
 static void * _debug_realloc(void *pointer, size_t size, const char *file_path, size_t line_num, const char *func_name)
 {
     FILE *fp = debug.fp; // global variable
-    DList *list = &debug.list;
+    llist_t *list = &debug.list;
 
     assert(fp); assert(list);
 
     fprintf(fp, "%s: \tIn function '%s':\n", file_path, func_name);
-    fprintf(fp, "%s:%li: \tMEMORY \033[0;32m REALLOCTED \033[0m OF SIZE:%0li\n" ,
-            file_path, line_num, size);
+    fprintf(fp, "%s:%li: \t\033[01;34m(%p) REALLOCTED (%0li bytes)\033[0m\n" ,
+            file_path, 
+            line_num, 
+            pointer, 
+            size);
+
     fprintf(fp, "\n");
 
 #undef realloc
@@ -129,22 +164,23 @@ static void * _debug_realloc(void *pointer, size_t size, const char *file_path, 
 
 #define realloc(p, n) _debug_realloc((p), (n), __FILE__, __LINE__, __func__)
 
-
-    DValMeta meta = {0};
-    meta.line_num = line_num;
-    meta.size = size;
-    memcpy(meta.func_name, func_name, strlen(func_name));
-    memcpy(meta.filename, file_path, strlen(file_path));
-
-    DNode *node = NULL;
-    node = DNode_init(realloc_mem, DVT_ADDR, meta);
-
-    if (node == NULL) {
-        fprintf(stderr, "%s: malloc failed\n", __func__);
-        exit(1);
+    if (!llist_delete_node_by_value(list, pointer, compare_dbg))
+    {
+        debug_mem_dump();
+        eprint("error: pointer not found %p\n", pointer);
     }
-    DList_append_node(list, node);
-    
+
+    dbg_node_info_t info;
+    info.type = DT_ptr;
+    info.value = realloc_mem;
+    info.linenum = line_num;
+    info.bytes = size;
+    memcpy(info.filename, file_path, sizeof(info.funcname));
+    memcpy(info.funcname, func_name, sizeof(info.funcname));
+
+    node_t *node = node_init(&info, sizeof(info));
+    assert(node);
+    llist_append_node(list, node);
     return realloc_mem;
 }
 
@@ -152,16 +188,21 @@ static void * _debug_realloc(void *pointer, size_t size, const char *file_path, 
 static void _debug_free(void *pointer, char *pointer_name , const char *file_path, size_t line_num, const char *func_name)
 {
     FILE *fp = debug.fp;
-    DList *list = &debug.list;
+    llist_t *list = &debug.list;
 
     assert(fp); assert(list);
 
     fprintf(fp, "%s: \tIn function '%s':\n", file_path, func_name);
-    fprintf(fp, "%s:%li: \t\033[01;34m'%s' DEALLOCATED  \033[0m\n" 
-            ,file_path, line_num, pointer_name);
+    fprintf(fp, "%s:%li: \t\033[01;32m(%p) DEALLOCATED  \033[0m\n" 
+            ,file_path, line_num, pointer);
     fprintf(fp, "\n");
     
-    if (DList_delete_node_by_value(list, &pointer)) fprintf(stderr, "DList_delete_node_by_value: failed to find value\n");
+    if (!llist_delete_node_by_value(list, pointer, compare_dbg)){
+        debug_mem_dump();
+        eprint("pointer not found %p\n", pointer);
+    }
+
+        
 
 #undef free
 
@@ -170,23 +211,11 @@ static void _debug_free(void *pointer, char *pointer_name , const char *file_pat
 #define free(p) _debug_free((p), (#p), __FILE__, __LINE__, __func__) 
 }
 
-void _debug_mem_dump()
-{
-    DList *list = &debug.list;
-    assert(list);
-
-    DList_print(list);
-    list = NULL;
-    
-}
 
 // Close function required to end the debugger
 void dbg_destroy()
 {
     fprintf(stdout, "DBG: Concluded\n");
-
-
-    DList_destory(&debug.list);
 
 
     if (debug.list.count == 0) {
@@ -201,9 +230,10 @@ void dbg_destroy()
                 "MEMORY LEAK FOUND -> COUNT %0li\n", debug.list.count);
         fprintf(stdout, 
                 "MEMORY LEAK FOUND -> COUNT %0li\n", debug.list.count);
-        _debug_mem_dump();
+        debug_mem_dump();
     }
 
+    llist_destroy(&debug.list);
 
     fclose(debug.fp);
 }

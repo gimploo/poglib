@@ -1,28 +1,21 @@
 #pragma once
 
-#include "../str.h"
+#include "../basic.h"
 
 #ifdef DEBUG
 #include "dbg/dbg.h"
 extern dbg_t debug;
 #endif
 
-typedef enum ValType {
-
-    VT_PSTR,  
-    VT_ADDR,
-    VT_COUNT
-
-} ValType;
 
 typedef struct node {
 
     void * value;
-    ValType type;
+    u64 value_size;
     struct node *next;
     struct node *prev;
 
-} Node;
+} node_t;
 
 typedef struct {
 
@@ -30,11 +23,11 @@ typedef struct {
     struct node *tail;
     size_t count;
 
-} linkedlist_t;
+} llist_t;
 
-static inline linkedlist_t llist_init(void)
+static inline llist_t llist_init(void)
 {
-    return (linkedlist_t) {
+    return (llist_t) {
         .head = NULL,
         .tail = NULL,
         .count = 0
@@ -43,15 +36,13 @@ static inline linkedlist_t llist_init(void)
 
 
 
-typedef void (*llist_print_func)(void*);
+node_t * node_init(void *value, u32 value_size);
 
-Node *  node_init(void *value, ValType type);
-
-void    llist_print(linkedlist_t *list);
-bool    llist_append_node(linkedlist_t *list, Node *node);
-bool    llist_delete_node(linkedlist_t *list, Node *node);
-bool    llist_delete_node_by_value(linkedlist_t *list, void *pointer);
-void    llist_destory(linkedlist_t *list);
+bool    llist_append_node(llist_t *list, node_t *node);
+bool    llist_delete_node(llist_t *list, node_t *node);
+bool    llist_delete_node_by_value(llist_t *list, void *value,  bool (*compare)(node_t *arg01, void *arg02));
+void    llist_print(llist_t *list, void (*print)(void *));
+void    llist_destory(llist_t *list);
 
 
 /*
@@ -61,39 +52,25 @@ void    llist_destory(linkedlist_t *list);
  *                     v
  */
 
-Node * node_init(void *value, ValType type)
+node_t * node_init(void *value_addr, u32 value_size)
 {
-
-    Node *node = (Node *) malloc(sizeof(Node));
+    node_t *node = (node_t *) malloc(sizeof(node_t));
     if (node == NULL) {
         fprintf(stderr, "%s: malloc failed\n", __func__);
         return NULL;
     }
 
-    if (value == NULL) {
-        fprintf(stderr, "%s: value argument is null\n", __func__);
-        exit(1);
-    }
+    node->value = calloc(1, value_size);
+    assert(node->value);
 
-    switch(type) {
-        case VT_ADDR:
-            node->value = value;
-            node->type = VT_ADDR;
-            break;
-        case VT_PSTR:
-            node->value = new_pstr((char *)value);
-            node->type = VT_PSTR;
-            break;
-        default:
-            fprintf(stderr, "%s: type not accounted for \n", __func__);
-            exit(1);
-    }
+    memcpy(node->value, value_addr, value_size);
 
+    node->value_size = value_size;
     node->next = node->prev = NULL;
 
     return node;
 }
-bool llist_append_node(linkedlist_t *list, Node *node)
+bool llist_append_node(llist_t *list, node_t *node)
 {
     if (list == NULL) {
         fprintf(stderr, "%s: list argument is null\n", __func__);
@@ -120,27 +97,16 @@ bool llist_append_node(linkedlist_t *list, Node *node)
     return true;
 }
 
-void node_destory(Node *del)
+void node_destroy(node_t *del)
 {
-    switch(del->type) {
-        case VT_PSTR: 
-            pstr_free((str_t *)del->value);
-            free(del);
-            break;
-        case VT_ADDR:
-            free(del);
-            break;
-        default:
-            fprintf(stderr, "%s: type not accounted for\n", __func__);
-            exit(1);
-    }
-
+    free(del->value);
+    free(del);
     del = NULL;
 }
 
 
 
-bool llist_delete_node(linkedlist_t *list, Node *node)
+bool llist_delete_node(llist_t *list, node_t *node)
 {
     if (list == NULL) {
         fprintf(stderr, "%s: list argument is null\n", __func__);
@@ -152,7 +118,7 @@ bool llist_delete_node(linkedlist_t *list, Node *node)
         return false;
     }
 
-    Node *del = NULL;
+    node_t *del = NULL;
     if (list->head == node) {
 
         del = list->head; 
@@ -162,7 +128,7 @@ bool llist_delete_node(linkedlist_t *list, Node *node)
             list->head->prev = NULL;
 
         list->count--;
-        node_destory(del);
+        node_destroy(del);
         return true;
 
     } else if (list->tail == node) {
@@ -173,18 +139,18 @@ bool llist_delete_node(linkedlist_t *list, Node *node)
         if (list->tail != NULL)
             list->tail->next = NULL;
         list->count--;
-        node_destory(del);
+        node_destroy(del);
         return true;
     }
 
-    Node *tmp = list->head->next;
+    node_t *tmp = list->head->next;
     while (tmp != NULL) {
         if (tmp == node) {
             del = tmp;
             tmp->prev->next = tmp->next;
             tmp->next->prev = tmp->prev;
             list->count--;
-            node_destory(del);
+            node_destroy(del);
             return true;
         }
         tmp = tmp->next;
@@ -195,7 +161,7 @@ bool llist_delete_node(linkedlist_t *list, Node *node)
 
 
 
-void llist_print(linkedlist_t *list)
+void llist_print(llist_t *list, void (*print)(void *))
 {
     if (list == NULL) {
         fprintf(stderr, "%s: list argument is null\n", __func__);
@@ -205,50 +171,38 @@ void llist_print(linkedlist_t *list)
         exit(1);
     }
 
-    Node *track = list->head;
+    node_t *track = list->head;
     while (track != NULL) {
-        switch(track->type) {
-            case VT_ADDR:
-                printf("%p", track->value);
-                break;
-            case VT_PSTR:
-                str_print((str_t *)track->value);
-                break;
-            default:
-                fprintf(stderr, "%s: type not accounted for\n", __func__);
-                exit(1);
-        }
+
+        print(track->value);
         track = track->next;
+
     }
 }
 
-void llist_destory(linkedlist_t *list)
+void llist_destroy(llist_t *list)
 {
     if (list == NULL) {
         fprintf(stderr ,"%s: list argument is null\n", __func__);
         exit(1);
     }
-    Node *tmp = list->head;
-    Node *del = NULL;
+    node_t *tmp = list->head;
+    node_t *del = NULL;
     while (tmp != NULL) {
         del = tmp;
         tmp = tmp->next;
-        node_destory(del);
+        node_destroy(del);
     }
 }
 
-bool llist_delete_node_by_value(linkedlist_t *list, void *value)
+bool llist_delete_node_by_value(llist_t *list, void *value_addr,  bool (*compare)(node_t *arg01, void *arg02))
 {
     if (list == NULL) {
         fprintf(stderr, "%s: list argument is null\n", __func__);
         exit(1);
-    } else if (value == NULL) {
-        fprintf(stderr, "%s: value argument is null\n", __func__);
-        exit(1);
-    }
-
-    Node *del = NULL;
-    if (list->head->value == value) {
+    } 
+    node_t *del = NULL;
+    if (compare(list->head, value_addr)) {
 
         del = list->head; 
 
@@ -257,10 +211,10 @@ bool llist_delete_node_by_value(linkedlist_t *list, void *value)
             list->head->prev = NULL;
 
         list->count--;
-        node_destory(del);
+        node_destroy(del);
         return true;
 
-    } else if (list->tail->value == value) {
+    } else if (compare(list->tail, value_addr)) {
 
         del = list->tail; 
 
@@ -269,18 +223,18 @@ bool llist_delete_node_by_value(linkedlist_t *list, void *value)
             list->tail->next = NULL;
 
         list->count--;
-        node_destory(del);
+        node_destroy(del);
         return true;
     }
 
-    Node *tmp = list->head->next;
+    node_t *tmp = list->head->next;
     while (tmp != NULL) {
-        if (tmp->value == value) {
+        if (compare(tmp, value_addr)) {
             del = tmp;
             tmp->prev->next = tmp->next;
             tmp->next->prev = tmp->prev;
             list->count--;
-            node_destory(del);
+            node_destroy(del);
             return true;
         }
         tmp = tmp->next;
