@@ -139,7 +139,7 @@ circle_t circle_init(vec3f_t pos, f32 radius)
 {
     circle_t output;
 
-    const f32 twicepi = 2.0f * PI;
+    const f32 twicepi = 2.0f * (f32)PI;
 
     output.points[0] = pos;
     for (u64 i = 1; i < MAX_VERTICES_PER_CIRCLE; i++)

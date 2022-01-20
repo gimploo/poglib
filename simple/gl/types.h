@@ -148,7 +148,6 @@ glcircle_t glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
     glcircle_t output = {0} ;
 
     glvertex_t *vertices = output.vertex;
-    vec3f_t center = circle.points[0];
 
     // TODO: Textures on circles
     //for (u64 i = 0; i < MAX_TRIANGLES_PER_CIRCLE; i++)
@@ -166,7 +165,7 @@ glcircle_t glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
         vertices[i].position = circle.points[i];
         vertices[i].color = color; 
         vertices[i].texture_coord = vec2f(uv.vertex[i]);
-        vertices[i].texture_id = 0;
+        vertices[i].texture_id = texid;
     }
 
     return output;

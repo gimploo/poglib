@@ -94,7 +94,6 @@ void glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle)
 
     vao_t *vao = &renderer->__vao;
     vbo_t vbo; 
-    ebo_t ebo;
 
     vao_bind(vao);
 

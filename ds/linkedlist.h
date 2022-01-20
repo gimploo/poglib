@@ -1,17 +1,15 @@
 #pragma once
-
-#include "../basic.h"
-
-#ifdef DEBUG
-#include "dbg/dbg.h"
-extern dbg_t debug;
-#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <assert.h>
+#include <string.h>
 
 
 typedef struct node {
 
     void * value;
-    u64 value_size;
+    uint64_t value_size;
     struct node *next;
     struct node *prev;
 
@@ -36,7 +34,7 @@ static inline llist_t llist_init(void)
 
 
 
-node_t * node_init(void *value, u32 value_size);
+node_t * node_init(void *value, uint32_t value_size);
 
 bool    llist_append_node(llist_t *list, node_t *node);
 bool    llist_delete_node(llist_t *list, node_t *node);
@@ -52,7 +50,7 @@ void    llist_destory(llist_t *list);
  *                     v
  */
 
-node_t * node_init(void *value_addr, u32 value_size)
+node_t * node_init(void *value_addr, uint32_t value_size)
 {
     node_t *node = (node_t *) malloc(sizeof(node_t));
     if (node == NULL) {

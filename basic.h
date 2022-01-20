@@ -12,6 +12,10 @@
 #include "./color.h"
 #include "./dbg/stacktrace.h"
 
+#ifdef DEBUG
+    #include "./dbg/dbg.h"
+#endif
+
 #define global      static 
 #define local       static 
 

@@ -73,7 +73,6 @@ void __entity_destroy(entity_t *e)
         entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(cmps, i);
         assert(ec);
 
-        void *tmp = NULL;
         switch(ec->type)
         {
             case ECT_c_shader_t: {
