@@ -1,15 +1,30 @@
-/*
- * This header prints debug info when allocating and freeing 
- * memory from the heap
- */
-#ifndef _DBG_H_
-#define _DBG_H_
-
-#include "../basic.h"
+#pragma once
 #include "../ds/linkedlist.h"
 
 
+
 typedef struct dbg_t dbg_t;
+
+
+bool        dgb_init(dbg_t *debug, const char *);
+void        dbg_destroy();
+
+
+
+
+
+#ifndef IGNORE_MYDBG_IMPLEMENTATION
+
+// Wrapper of common memory allocating function in stdlib 
+
+#define WORD 512
+
+#define malloc(N)       _debug_malloc((N), __FILE__, __LINE__, __func__)
+#define calloc(S,N)     _debug_malloc(((N) * (S)), __FILE__, __LINE__, __func__)
+#define realloc(P, N)   _debug_realloc((P), (#P), (N), __FILE__, __LINE__, __func__)
+#define free(P)         _debug_free((P), (#P), __FILE__, __LINE__, __func__) 
+
+
 struct dbg_t {
 
     FILE        *fp;
@@ -19,49 +34,20 @@ struct dbg_t {
 
 };
 
+static dbg_t global_debug;
+
 typedef struct dbg_node_info_t {
 
-    data_type   type;
     void        *value;
-    u32         bytes;
+    uint32_t         bytes;
 
     char filename[WORD];
     char funcname[WORD];
-    u32 linenum;
+    uint32_t linenum;
 
 
 } dbg_node_info_t ;
 
-
-// FIXME:
-// Issue in DValMeta filename member, apparantely the filename isnt copied properly to it but in func_name that isnt a problem.
-
-
-// Global debug meta data struct
-extern dbg_t debug; 
-
-bool dgb_init(dbg_t *debug, const char *);
-void dbg_destroy();
-
-
-// Wrapper of common memory allocating function in stdlib 
-
-#define malloc(N)       _debug_malloc((N), __FILE__, __LINE__, __func__)
-#define realloc(P, N)   _debug_realloc((P), (N), __FILE__, __LINE__, __func__)
-#define free(P)         _debug_free((P), (#P), __FILE__, __LINE__, __func__) 
-
-
-
-/*
- *
- *
- *
- * Function Definition
- *
- *
- *
- *
- */
 
 // Init function required to start the debugger
 bool dbg_init(dbg_t *debug, const char *fpath)
@@ -81,7 +67,7 @@ bool dbg_init(dbg_t *debug, const char *fpath)
 
 void debugprint(void *arg)
 {
-    if (arg == NULL) eprint("arg is null");
+    assert(arg);
 
     dbg_node_info_t info = *(dbg_node_info_t *)arg;
 
@@ -95,7 +81,7 @@ void debugprint(void *arg)
 
 void debug_mem_dump(void)
 {
-    llist_t *list = &debug.list;
+    llist_t *list = &global_debug.list;
     assert(list);
 
     llist_print(list, debugprint);
@@ -104,8 +90,8 @@ void debug_mem_dump(void)
 
 static void * _debug_malloc(size_t size, const char *file_path, size_t line_num, const char *func_name)
 {
-    FILE *fp = debug.fp;            // global variable
-    llist_t *list = &debug.list;
+    FILE *fp = global_debug.fp;            // global variable
+    llist_t *list = &global_debug.list;
 
     assert(fp); assert(list);
 
@@ -113,6 +99,7 @@ static void * _debug_malloc(size_t size, const char *file_path, size_t line_num,
 #undef malloc
 
     void *malloc_mem = malloc(size);
+    memset(malloc_mem, 0, size);
 
 #define malloc(n) _debug_malloc((n), __FILE__, __LINE__, __func__)
 
@@ -122,7 +109,6 @@ static void * _debug_malloc(size_t size, const char *file_path, size_t line_num,
     fprintf(fp, "\n");
 
     dbg_node_info_t info;
-    info.type = DT_ptr;
     info.value = malloc_mem;
     info.linenum = line_num;
     info.bytes = size;
@@ -142,10 +128,10 @@ bool compare_dbg(node_t *arg01, void *arg02)
     return (((dbg_node_info_t *)arg01->value)->value == arg02);
 }
 
-static void * _debug_realloc(void *pointer, size_t size, const char *file_path, size_t line_num, const char *func_name)
+void * _debug_realloc(void *pointer, const char *pointer_name, size_t size, const char *file_path, size_t line_num, const char *func_name)
 {
-    FILE *fp = debug.fp; // global variable
-    llist_t *list = &debug.list;
+    FILE *fp = global_debug.fp; // global variable
+    llist_t *list = &global_debug.list;
 
     assert(fp); assert(list);
 
@@ -162,16 +148,16 @@ static void * _debug_realloc(void *pointer, size_t size, const char *file_path, 
 
     void *realloc_mem = realloc(pointer, size);
 
-#define realloc(p, n) _debug_realloc((p), (n), __FILE__, __LINE__, __func__)
+#define realloc(p, n) _debug_realloc((p), (#p), (n), __FILE__, __LINE__, __func__)
 
     if (!llist_delete_node_by_value(list, pointer, compare_dbg))
     {
         debug_mem_dump();
-        eprint("error: pointer not found %p\n", pointer);
+        printf("%s:%li: (%s) pointer not found %p\n", file_path,line_num, pointer_name, pointer);
+        exit(1);
     }
 
     dbg_node_info_t info;
-    info.type = DT_ptr;
     info.value = realloc_mem;
     info.linenum = line_num;
     info.bytes = size;
@@ -185,10 +171,12 @@ static void * _debug_realloc(void *pointer, size_t size, const char *file_path, 
 }
 
 
-static void _debug_free(void *pointer, char *pointer_name , const char *file_path, size_t line_num, const char *func_name)
+void _debug_free(void *pointer, const char *pointer_name , const char *file_path, size_t line_num, const char *func_name)
 {
-    FILE *fp = debug.fp;
-    llist_t *list = &debug.list;
+    //(void)pointer_name;
+
+    FILE *fp = global_debug.fp;
+    llist_t *list = &global_debug.list;
 
     assert(fp); assert(list);
 
@@ -199,7 +187,8 @@ static void _debug_free(void *pointer, char *pointer_name , const char *file_pat
     
     if (!llist_delete_node_by_value(list, pointer, compare_dbg)){
         debug_mem_dump();
-        eprint("pointer not found %p\n", pointer);
+        printf("(%s) pointer not found %p\n", pointer_name, pointer);
+        exit(1);
     }
 
         
@@ -218,24 +207,24 @@ void dbg_destroy()
     fprintf(stdout, "DBG: Concluded\n");
 
 
-    if (debug.list.count == 0) {
+    if (global_debug.list.count == 0) {
 
-        fprintf(debug.fp, 
+        fprintf(global_debug.fp, 
                 "NO MEMORY LEAKS\n");
         fprintf(stdout, 
                 "NO MEMORY LEAKS\n");
     } else {
 
-        fprintf(debug.fp, 
-                "MEMORY LEAK FOUND -> COUNT %0li\n", debug.list.count);
+        fprintf(global_debug.fp, 
+                "MEMORY LEAK FOUND -> COUNT %0li\n", global_debug.list.count);
         fprintf(stdout, 
-                "MEMORY LEAK FOUND -> COUNT %0li\n", debug.list.count);
+                "MEMORY LEAK FOUND -> COUNT %0li\n", global_debug.list.count);
         debug_mem_dump();
     }
 
-    llist_destroy(&debug.list);
+    llist_destroy(&global_debug.list);
 
-    fclose(debug.fp);
+    fclose(global_debug.fp);
 }
 
-#endif //_DEBUG_H_
+#endif 

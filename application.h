@@ -62,6 +62,10 @@ application_t __impl_application_init(window_t *window, void (* init)(struct app
 
 void application_run(application_t *app)
 {
+#ifdef DEBUG
+    dbg_init(&global_debug, "./tmp.txt");
+#endif
+
     if (app == NULL) eprint("application argument is null");
     assert(app->__window_handle);
     
@@ -128,6 +132,9 @@ void application_run(application_t *app)
     }
 
     app->shutdown(app);
+#ifdef DEBUG
+    dbg_destroy(&global_debug);
+#endif
 }
 
 #endif 

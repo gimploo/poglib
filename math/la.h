@@ -30,8 +30,8 @@ void            matrixf_print(matrixf_t *m);
 struct matrixf_t {
 
     u8 buffer[MAX_MATRIX_BUFFER_SIZE];
-    u8 nrow;
-    u8 ncol;
+    u32 nrow;
+    u32 ncol;
 };
 
 void __impl_matrixf_add_row(matrixf_t *m, void *value, u64 value_size)
@@ -44,7 +44,7 @@ void __impl_matrixf_add_row(matrixf_t *m, void *value, u64 value_size)
     m->nrow++;
 }
 
-matrixf_t __impl_matrixf_init(void *array, u64 array_size, u8 nrow, u8 ncol)
+matrixf_t __impl_matrixf_init(void *array, u64 array_size, u32 nrow, u32 ncol)
 {
     assert(ncol > 0);
     assert(nrow > 0);
