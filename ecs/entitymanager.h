@@ -70,8 +70,6 @@ entity_t * __impl_entitymanager_add_entity(entitymanager_t *manager, entity_type
 
     entity_t *e = __entity_init(tagname, tag);
     assert(e);
-    
-    printf("[!] ENTITY (%s) CREATED\n", e->label);
 
     queue_t *queue = &manager->__newly_added_entities;
     assert(queue);

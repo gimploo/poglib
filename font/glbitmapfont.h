@@ -10,12 +10,11 @@
 typedef struct glbitmapfont_t glbitmapfont_t;
 
 
+#define             glbitmapfont_default_init()  glbitmapfont_init("./lib/res/ascii_fonts/glyph_atlas.png", 16, 6)
 glbitmapfont_t      glbitmapfont_init(const char *file_path, const u32 tile_count_width, const u32 tile_count_height);
-void                glbitmapfont_set_text(glbitmapfont_t *handler, const char *text, vec2f_t norm_position); 
+void                glbitmapfont_set_text(glbitmapfont_t *handler, const char *text, vec2f_t norm_position, f32 fontsize); 
 void                glbitmapfont_draw(glbitmapfont_t *font);
 void                glbitmapfont_destroy(glbitmapfont_t *);
-
-#define             glbitmapfont_set_font_size(PFONT, FSIZE) (PFONT)->norm_font_size = (FSIZE)
 
 
 
@@ -71,9 +70,6 @@ struct glbitmapfont_t {
 
     } font_atlas[MAX_ASCII_TILES_COUNT];
 
-    f32         norm_font_width;
-    f32         norm_font_height;
-    f32         norm_font_size;
     glbatch_t   batches;
 };
 
@@ -149,22 +145,21 @@ glbitmapfont_t glbitmapfont_init(const char *file_path, const u32 tile_count_wid
 
     glbitmapfont_t output = {
         .renderer           = glrenderer2d_init(pshader, ptexture),
-        .norm_font_width    = normalize(texture.width / tile_count_width, 0.0f, texture.width),
-        .norm_font_height   = normalize(texture.height / tile_count_height, 0.0f, texture.height), 
-        .norm_font_size     = 0.15f,
         .batches            = glbatch_init(KB, glquad_t )
     };
 
+    f32 norm_font_width    = normalize(texture.width / tile_count_width, 0.0f, texture.width);
+    f32 norm_font_height   = normalize(texture.height / tile_count_height, 0.0f, texture.height);
 
     for (u32 v = 0, tile_index = 0; v < tile_count_height; v++)
     {
         for (u32 u = 0; u < tile_count_width; u++)
         {
             
-            f32 left_U      = u * output.norm_font_width;
-            f32 right_U     = left_U + output.norm_font_width; 
-            f32 top_V       = -(v * output.norm_font_height);
-            f32 bottom_V    = top_V - output.norm_font_height ;
+            f32 left_U      = u * norm_font_width;
+            f32 right_U     = left_U + norm_font_width; 
+            f32 top_V       = -(v * norm_font_height);
+            f32 bottom_V    = top_V - norm_font_height ;
 
             output.font_atlas[tile_index].character     = (' ' + tile_index);
             output.font_atlas[tile_index].texture_coord = (quadf_t ){
@@ -202,14 +197,15 @@ glbitmapfont_t glbitmapfont_init(const char *file_path, const u32 tile_count_wid
 void glbitmapfont_set_text(
         glbitmapfont_t  *font, 
         const char      *text, 
-        vec2f_t   position)
+        vec2f_t   position,
+        f32 fontsize)
 {
     if (font == NULL)    eprint("font argument is null");
     if (text == NULL)    eprint("text argument is null");
 
 
-    f32     norm_font_width     = font->norm_font_size;
-    f32     norm_font_height    = font->norm_font_size;
+    f32     norm_font_width     = fontsize;
+    f32     norm_font_height    = fontsize;
 
 
     vec2f_t x_offset = {0};

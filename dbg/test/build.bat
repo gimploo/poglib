@@ -97,10 +97,6 @@ REM                            v
 
     set FLAGS=/DGLEW_STATIC 
 
-    set LIBS=%DEPENDENCY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.lib ^
-                %DEPENDENCY_DEFAULT_PATH%\SDL2\lib\x64\SDL2main.lib ^
-                %DEPENDENCY_DEFAULT_PATH%\GLEW\lib\Release\x64\glew32s.lib ^
-                Opengl32.lib glu32.lib
 
     cl %CC_DEFAULT_FLAGS% %FLAGS%^
         %INCLUDES% ^

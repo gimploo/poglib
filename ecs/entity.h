@@ -108,7 +108,9 @@ void __entity_destroy(entity_t *e)
 
     e->id = NULL;
 
+#ifdef DEBUG
     printf("[!] ENTITY (%s) DELETED\n", e->label);
+#endif
 
     // Freeing the entity itself 
     free(e);
@@ -130,6 +132,10 @@ entity_t * __entity_init(const char *label, entity_type tag)
     };
 
     for (u32 i = 0; i < ARRAY_LEN(e->__indices); i++) e->__indices[i] = -1;
+
+#ifdef DEBUG
+    printf("[!] ENTITY (%s) CREATED\n", e->label);
+#endif
 
     return e;
 }

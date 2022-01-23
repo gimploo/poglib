@@ -4,6 +4,8 @@
 
 void transform_update(c_transform_t *t)
 {
+    assert(t);
+
     t->update(t);
 }
 
@@ -65,7 +67,9 @@ void transform_mesh2d_update(c_transform_t *t, c_mesh2d_t *mesh)
 
 void transform_boxcollider2d_update(c_transform_t *t, c_boxcollider2d_t *box)
 {
+    assert(t);
+    assert(box);
+        
     box->centerpos = t->position;
-    box->update(box);
 }
 
