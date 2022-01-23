@@ -8,7 +8,7 @@ typedef struct c_boxcollider2d_t c_boxcollider2d_t ;
 
 
 
-c_boxcollider2d_t *     c_boxcollider2d_init(vec3f_t pos, f32 side);
+c_boxcollider2d_t *     c_boxcollider2d_init(vec2f_t side);
 
 
 
@@ -17,33 +17,25 @@ c_boxcollider2d_t *     c_boxcollider2d_init(vec3f_t pos, f32 side);
 
 struct c_boxcollider2d_t {
 
-    f32 side;
     vec3f_t centerpos;
+    vec2f_t halfside;
+    vec2f_t side;
 
-    quadf_t __cache;
-    void (*update) (struct c_boxcollider2d_t *);
+    vec2f_t __prev_frame_overlap;
 };
 
-void __c_box_collider2d_update(c_boxcollider2d_t *cmp)
-{
-    cmp->__cache = quadf_init( 
-            vec3f_add(cmp->centerpos, (vec3f_t ){-cmp->side/2, cmp->side/2, 0.0f}),
-            cmp->side, cmp->side);
-}
 
-
-c_boxcollider2d_t * c_boxcollider2d_init(vec3f_t centerpos, f32 side)
+c_boxcollider2d_t * c_boxcollider2d_init(vec2f_t side)
 {
     c_boxcollider2d_t *o = (c_boxcollider2d_t *)calloc(1, sizeof(*o));
     assert(o);
 
     *o =  (c_boxcollider2d_t ) {
-        .side       = side,
-        .centerpos   = centerpos,
-        .update     = __c_box_collider2d_update
+        .centerpos   = vec3f(0.0f),
+        .halfside    = (vec2f_t ){side.cmp[X]/2.0f, side.cmp[Y]/2.0f},
+        .side        = side,
+        .__prev_frame_overlap = vec2f(0.0f)
     };
-
-    __c_box_collider2d_update(o);
 
     return o;
 }

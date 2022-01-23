@@ -10,10 +10,13 @@
 #include <time.h>
 
 #include "./color.h"
-#include "./dbg/stacktrace.h"
+#include "./dbg/dbg.h"
 
-#ifdef DEBUG
-    #include "./dbg/dbg.h"
+// GET ONLY FILENAME AND NOT THE ENTIRE PATH
+#ifdef _WIN64
+    #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#elif __linux__
+    #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #endif
 
 #define global      static 
@@ -78,7 +81,7 @@ typedef enum
 #define eprint(fmt, ...) do {\
 \
     fprintf(stderr, "\n[(%s:%d): %s] " fmt "\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
-    print_stack_trace();\
+    stacktrace_print();\
     exit(-1);\
 \
 } while (0)

@@ -10,20 +10,23 @@ bool            collision2d_check_collision_by_AABB(c_boxcollider2d_t *a, c_boxc
 
 bool collision2d_check_collision_by_AABB(c_boxcollider2d_t *a, c_boxcollider2d_t *b)
 {
-    // AABB - AABB collision
-    //
-    quadf_t *left = &a->__cache;
-    quadf_t *right = &b->__cache;
-    
-    bool x_axis_collision = 
-        (left->vertex[1].cmp[X] >= right->vertex[0].cmp[X]) 
-        && (right->vertex[1].cmp[X] >= left->vertex[0].cmp[X]);
+    assert(a);
+    assert(b);
 
-    bool y_axis_collision = 
-        (left->vertex[0].cmp[Y] >= right->vertex[3].cmp[Y]) 
-        && (right->vertex[0].cmp[Y] >= left->vertex[3].cmp[Y]);
+    vec2f_t delta = {
+        .cmp = {
+            [X] = fabs(a->centerpos.cmp[X] - b->centerpos.cmp[X]), 
+            [Y] = fabs(a->centerpos.cmp[Y] - b->centerpos.cmp[Y])
+        }
+    };
 
-    return (x_axis_collision && y_axis_collision);
+    f32 ox = a->halfside.cmp[X] + b->halfside.cmp[X] - delta.cmp[X];
+    f32 oy = a->halfside.cmp[Y] + b->halfside.cmp[Y] - delta.cmp[Y];
+
+    a->__prev_frame_overlap = (vec2f_t ){ox, oy};
+    b->__prev_frame_overlap = (vec2f_t ){ox, oy};
+
+    return ((ox > 0) && (oy > 0));
 }
 
 bool collision2d_check_out_of_screen(c_boxcollider2d_t *a)

@@ -18,6 +18,7 @@ c_transform_t * c_transform_init(vec3f_t pos, vec3f_t velocity, f32 angular_spee
 struct c_transform_t {
 
     vec3f_t position;
+    vec3f_t prev_position;
     vec3f_t velocity;
 
     f32 angular_speed;
@@ -30,6 +31,8 @@ struct c_transform_t {
 
 void __c_transform_update(c_transform_t *transform)
 {
+    transform->prev_position = transform->position;
+
     // Translation
     transform->position = vec3f_add(transform->position, transform->velocity);
     
@@ -42,6 +45,7 @@ c_transform_t * c_transform_init(vec3f_t pos, vec3f_t velocity, f32 angular_spee
 
     *o = (c_transform_t ) {
         .position           = pos,
+        .prev_position      = pos,
         .velocity           = velocity,
         .angular_speed      = angular_speed,
         .angular_radians    = angular_radians,

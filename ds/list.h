@@ -34,6 +34,8 @@ struct list_t {
     i64 __top;
     u64 __capacity;
     u64 __elem_size;
+
+    u64 __original_capacity;
 };
 
 
@@ -47,13 +49,14 @@ void __impl_list_clear(list_t *list)
 
 list_t __impl_list_init(const u64 capacity, u64 elem_size) 
 {
-    return (list_t )
-    {
+    return (list_t ) {
+
         .len = 0,
         .__array = (u8 *)calloc(capacity, elem_size),
         .__top = -1,
         .__capacity = capacity,
-        .__elem_size = elem_size
+        .__elem_size = elem_size,
+        .__original_capacity = capacity
     };
 }
 
@@ -69,9 +72,8 @@ void __impl_list_append(list_t *list, void *value_addr, u64 value_size)
     if (list->__top == (i64)(list->__capacity - 1)) {
 
         list->__capacity = list->__capacity * 2;
-
         list->__array = (u8 *)realloc(list->__array, list->__capacity * list->__elem_size);
-
+        //printf("Grew to %ld\n", list->__capacity);
     }
 
     list->len = ++list->__top + 1;
@@ -86,7 +88,6 @@ void list_delete(list_t *list, const u64 index)
     if(list->__top == -1) eprint("Trying to delete an element from an empty list\n");
     assert((i64)index <= list->__top);
 
-
     if ((i64)index != list->__top) {
 
         memcpy(list->__array + index * list->__elem_size, 
@@ -95,6 +96,14 @@ void list_delete(list_t *list, const u64 index)
     } 
 
     list->len = --list->__top + 1;
+
+    if ((list->__capacity != list->__original_capacity) 
+            && (list->__top == ((list->__capacity / 2) - 1))) { 
+
+        list->__capacity = list->__capacity / 2;
+        list->__array = (u8 *)realloc(list->__array, list->__capacity * list->__elem_size);
+        //printf("Shrunk to %ld\n", list->__capacity);
+    }
 } 
 
 void list_print(const list_t *list, void (*print)(void*))

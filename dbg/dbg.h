@@ -1,18 +1,42 @@
 #pragma once
+#ifdef __linux__
+    #include <execinfo.h>
+#elif _WIN64
+    #include <windows.h>
+    #include <imagehlp.h>
+#endif
 #include "../ds/linkedlist.h"
 
 
 
-typedef struct dbg_t dbg_t;
+
+/*===============================
+    - MEMORY LEAK CHECKER -
+===============================*/
+
+#ifdef DEBUG // THE Memory debugger is only active, if DEBUG macro is set
+
+    typedef struct dbg_t dbg_t;
+
+    bool        dbg_init(void);
+    void        dbg_destroy(void);
+
+#endif //DEBUG
 
 
-bool        dgb_init(dbg_t *debug, const char *);
-void        dbg_destroy();
+/*===============================
+        - STACK TRACE -
+===============================*/
+
+void        stactrace_print(void);
 
 
 
 
 
+
+
+#ifdef DEBUG
 #ifndef IGNORE_MYDBG_IMPLEMENTATION
 
 // Wrapper of common memory allocating function in stdlib 
@@ -50,17 +74,16 @@ typedef struct dbg_node_info_t {
 
 
 // Init function required to start the debugger
-bool dbg_init(dbg_t *debug, const char *fpath)
+bool dbg_init(void)
 {
-    assert(fpath);
-    FILE *fp = fopen(fpath, "w");
+    FILE *fp = fopen("dbg_mem_log.txt", "w");
     assert(fp);
-    assert(debug);
-    debug->fp = fp;
-    debug->fname = fpath;
-    debug->list = llist_init();
 
-    fprintf(stdout, "DBG: Initalized\n");
+    global_debug.fp = fp;
+    global_debug.fname = "dbg_mem_log.txt";
+    global_debug.list = llist_init();
+
+    fprintf(stdout, "[*] DBG: INITALIZED\n");
 
     return true;
 }
@@ -71,11 +94,11 @@ void debugprint(void *arg)
 
     dbg_node_info_t info = *(dbg_node_info_t *)arg;
 
+    const char* fmt = 
+        "\033[01;33m%s:%02i\033[0m In function '%s': \033[01;32m %p (%0i bytes)\033[0m\n";
 
-    fprintf(stdout, "%s: \tIn function '%s':\n", info.filename, info.funcname);
-    fprintf(stdout, "%s:%i: \tADDR :=\033[0;32m %p (%0i bytes)\033[0m\n", info.filename, info.linenum, info.value, info.bytes);
+    fprintf(stdout, fmt, info.filename, info.linenum, info.funcname, info.value, info.bytes);
 
-    printf("\n");
 
 }
 
@@ -88,12 +111,13 @@ void debug_mem_dump(void)
 }
 
 
-static void * _debug_malloc(size_t size, const char *file_path, size_t line_num, const char *func_name)
+static void * _debug_malloc(const size_t size, const char *file_path, const size_t line_num, const char *func_name)
 {
     FILE *fp = global_debug.fp;            // global variable
     llist_t *list = &global_debug.list;
 
-    assert(fp); assert(list);
+    assert(fp); 
+    assert(list);
 
 
 #undef malloc
@@ -128,7 +152,7 @@ bool compare_dbg(node_t *arg01, void *arg02)
     return (((dbg_node_info_t *)arg01->value)->value == arg02);
 }
 
-void * _debug_realloc(void *pointer, const char *pointer_name, size_t size, const char *file_path, size_t line_num, const char *func_name)
+void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size, const char *file_path, const size_t line_num, const char *func_name)
 {
     FILE *fp = global_debug.fp; // global variable
     llist_t *list = &global_debug.list;
@@ -171,7 +195,7 @@ void * _debug_realloc(void *pointer, const char *pointer_name, size_t size, cons
 }
 
 
-void _debug_free(void *pointer, const char *pointer_name , const char *file_path, size_t line_num, const char *func_name)
+void _debug_free(void *pointer, const char *pointer_name , const char *file_path, const size_t line_num, const char *func_name)
 {
     //(void)pointer_name;
 
@@ -202,23 +226,22 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
 
 
 // Close function required to end the debugger
-void dbg_destroy()
+void dbg_destroy(void)
 {
-    fprintf(stdout, "DBG: Concluded\n");
-
+    fprintf(stdout, "[!] DBG: CONCLUDED\n");
 
     if (global_debug.list.count == 0) {
 
         fprintf(global_debug.fp, 
                 "NO MEMORY LEAKS\n");
         fprintf(stdout, 
-                "NO MEMORY LEAKS\n");
+                "\n\t\033[01;32mNO MEMORY LEAKS \033[0m\n\n");
     } else {
 
         fprintf(global_debug.fp, 
-                "MEMORY LEAK FOUND -> COUNT %0li\n", global_debug.list.count);
+                "MEMORY LEAK FOUND: (%0li) COUNT\n", global_debug.list.count);
         fprintf(stdout, 
-                "MEMORY LEAK FOUND -> COUNT %0li\n", global_debug.list.count);
+                "\n\t\033[01;31m MEMORY LEAK FOUND\033[0m: (%02li)\n\n", global_debug.list.count);
         debug_mem_dump();
     }
 
@@ -226,5 +249,79 @@ void dbg_destroy()
 
     fclose(global_debug.fp);
 }
+#endif //IGNORE_MYDBG_IMPLEMENTATION
+#endif //DEBUG
 
-#endif 
+
+
+
+
+#ifndef IGNORE_STACKTRACE_IMPLEMENTATION
+
+#ifdef _WIN64
+
+void window_print_trace(void)
+{
+    unsigned int   i;
+    void         * stack[ 100 ];
+    unsigned short frames;
+    SYMBOL_INFO  * symbol;
+    HANDLE         process;
+
+    process = GetCurrentProcess();
+
+    SymInitialize( process, NULL, TRUE );
+
+    frames               = CaptureStackBackTrace( 0, 100, stack, NULL );
+    symbol               = ( SYMBOL_INFO * )calloc( sizeof( SYMBOL_INFO ) + 256 * sizeof( char ), 1 );
+    symbol->MaxNameLen   = 255;
+    symbol->SizeOfStruct = sizeof( SYMBOL_INFO );
+
+    printf("\n[*] Printing stack frames ... \n\n");
+    for( i = 0; i < frames; i++ )
+    {
+        SymFromAddr( process, ( DWORD64 )( stack[ i ] ), 0, symbol );
+        printf( " %02i |  %s [0x%0X]\n", frames - i, symbol->Name, symbol->Address );
+    }
+    printf ("\n[!] Obtained %d stack frames.\n\n", frames);
+
+    free( symbol );
+}
+
+#elif __linux__
+
+void linux_print_trace(void)
+{
+    void *array[10];
+    char **strings;
+    int size, i;
+
+    size = backtrace (array, 10);
+    strings = backtrace_symbols(array, size);
+    if (strings != NULL)
+    {
+        printf("\n[*] Printing stack frames ... \n\n");
+        for (i = 0; i < size; i++)
+            printf (" %02i |  %s\n", (size - i), strings[i]);
+        printf ("\n[!] Obtained %d stack frames.\n", size);
+    }
+
+    free (strings);
+}
+
+#endif
+
+void stacktrace_print(void)
+{
+
+#ifdef __linux__
+
+    linux_print_trace();
+
+#elif _WIN64
+
+    window_print_trace();
+
+#endif
+}
+#endif //IGNORE_STACKTRACE_IMPLEMENTATION

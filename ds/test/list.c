@@ -145,9 +145,9 @@ void print_u32(void *arg)
 }
 
 
-int oldmain03(void)
+int main(void)
 {
-    list_t list = list_init(10, u32);
+    list_t list = list_init(2, u32);
 
     list_print(&list, print_u32);
 
@@ -169,9 +169,23 @@ int oldmain03(void)
     list_delete(&list, 6);
         list_print(&list, print_u32);
     
+    list_delete(&list, 0);
+        list_print(&list, print_u32);
+
+    list_delete(&list, 0);
+        list_print(&list, print_u32);
+
+    list_delete(&list, 0);
+        list_print(&list, print_u32);
+
+    list_delete(&list, 0);
+        list_print(&list, print_u32);
+    list_delete(&list, 0);
+        list_print(&list, print_u32);
+    list_delete(&list, 0);
+        list_print(&list, print_u32);
+
     list_dump(&list);
-
-
 
 
     list_destroy(&list);
@@ -179,7 +193,7 @@ int oldmain03(void)
     return 0;
 }
 
-int main(void)
+int oldmain04(void)
 {
     list_t list = list_init(4, list_t );
 
