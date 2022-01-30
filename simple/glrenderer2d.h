@@ -157,21 +157,22 @@ void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *bat
     if (renderer == NULL) eprint("renderer argument is null");
     if (batch == NULL) eprint("batch argument is null");
 
-    assert(!queue_is_empty(&batch->vertices));
+    assert(!queue_is_empty(&batch->globjs));
     assert(renderer->__shader);
 
     u64 vertices_count = 0;
     switch(batch->type)
     {
         case GLBT_gltri_t:
-            vertices_count = 3 * batch->vertices.len;
+            vertices_count = 3 * batch->globjs.len;
         break;
 
         case GLBT_glquad_t:
-            vertices_count = 6 * batch->vertices.len;
+            vertices_count = 6 * batch->globjs.len;
         break;
+
         case GLBT_glcircle_t:
-            vertices_count = MAX_VERTICES_PER_CIRCLE * batch->vertices.len;
+            vertices_count = MAX_VERTICES_PER_CIRCLE * batch->globjs.len;
         break;
 
         default: eprint("batch type not accounted for");
@@ -179,8 +180,8 @@ void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *bat
 
     vao_t *vao  = &renderer->__vao;
     vbo_t vbo   = vbo_static_init (
-                    batch->vertices.array, 
-                    batch->vertices.len * batch->vertices.elem_size, 
+                    batch->globjs.array, 
+                    batch->globjs.len * batch->globjs.elem_size, 
                     vertices_count);
     ebo_t ebo;
 
@@ -197,7 +198,7 @@ void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *bat
             case GLBT_glquad_t:
 
                 memset(GLOBAL_BATCH_POLY_INDICIES_BUFFER, 0, sizeof(GLOBAL_BATCH_POLY_INDICIES_BUFFER));
-                __gen_quad_indices(GLOBAL_BATCH_POLY_INDICIES_BUFFER, batch->vertices.len);
+                __gen_quad_indices(GLOBAL_BATCH_POLY_INDICIES_BUFFER, batch->globjs.len);
                 ebo = ebo_init(&vbo, GLOBAL_BATCH_POLY_INDICIES_BUFFER, vertices_count);
 
             break;

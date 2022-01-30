@@ -2,7 +2,8 @@
 #include "simple/glrenderer2d.h"
 #include "simple/window.h"
 #include "application/stopwatch.h"
-#include "./ecs/entitymanager.h"
+#include "ecs/entitymanager.h"
+#include "poggen.h"
 
 
 
@@ -33,7 +34,13 @@ struct application_t {
     window_t        *const __window_handle;
     stopwatch_t     timer;
     state_t         state;
-    void            *game;
+
+    union {
+
+        poggen_t *engine;
+        void     *game;
+
+    };
 
     void (* init)(struct application_t *);
     void (*update)(struct application_t *);
@@ -73,12 +80,14 @@ void application_run(application_t *app)
     stopwatch_t *timer = &app->timer;
 
     // Initialize the content in the application
+    printf("[!] APPLICATION INIT!\n");
     app->init(app);
 
     // states
     state_t st_current  = app->state, 
             st_previous = 0; 
 
+    printf("[!] APPLICATION RUNNING!\n");
     // Update the content in the application
     while(win->is_open)
     {
@@ -131,6 +140,7 @@ void application_run(application_t *app)
         SDL_Delay(floor(1000/60 - timer->dt));
     }
 
+    printf("[!] APPLICATION SHUTDOWN!\n");
     app->shutdown(app);
 
 #ifdef DEBUG

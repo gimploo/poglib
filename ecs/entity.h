@@ -115,7 +115,6 @@ void __entity_destroy(entity_t *e)
     // Freeing the entity itself 
     free(e);
     e = NULL;
-
 }
 
 entity_t * __entity_init(const char *label, entity_type tag)

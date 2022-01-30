@@ -28,7 +28,7 @@
         - STACK TRACE -
 ===============================*/
 
-void        stactrace_print(void);
+void        stacktrace_print(void);
 
 
 
@@ -63,11 +63,10 @@ static dbg_t global_debug;
 typedef struct dbg_node_info_t {
 
     void        *value;
-    uint32_t         bytes;
-
-    char filename[WORD];
-    char funcname[WORD];
-    uint32_t linenum;
+    uint32_t    bytes;
+    char        filename[WORD];
+    char        funcname[WORD];
+    uint32_t    linenum;
 
 
 } dbg_node_info_t ;
@@ -103,6 +102,7 @@ void debugprint(void *arg)
 }
 
 void debug_mem_dump(void)
+
 {
     llist_t *list = &global_debug.list;
     assert(list);
@@ -322,6 +322,11 @@ void stacktrace_print(void)
 
     window_print_trace();
 
+#endif
+
+#ifdef DEBUG
+    if (global_debug.fp != NULL)
+        dbg_destroy();
 #endif
 }
 #endif //IGNORE_STACKTRACE_IMPLEMENTATION
