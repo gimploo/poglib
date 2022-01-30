@@ -25,10 +25,10 @@ glquad_t        glquad_init(quadf_t positions, vec4f_t color, quadf_t tex_coord,
 glcircle_t      glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
 
 
-#define         glbatch_init(CAPACITY, TYPE)    __impl_glbatch_init((CAPACITY), GLBT_type(TYPE), sizeof(TYPE))
-#define         glbatch_put(PBATCH, ELEM)       queue_put(&(PBATCH)->vertices, (ELEM))
-#define         glbatch_is_empty(PBATCH)        queue_is_empty(&(PBATCH)->vertices)
-#define         glbatch_clear(PBATCH)           queue_clear(&(PBATCH)->vertices)
+#define         glbatch_init(CAPACITY, TYPE)    __impl_glbatch_init((CAPACITY), GLBT_type(TYPE), #TYPE, sizeof(TYPE))
+#define         glbatch_put(PBATCH, ELEM)       queue_put(&(PBATCH)->globjs, (ELEM))
+#define         glbatch_is_empty(PBATCH)        queue_is_empty(&(PBATCH)->globjs)
+#define         glbatch_clear(PBATCH)           queue_clear(&(PBATCH)->globjs)
 void            glbatch_destroy(glbatch_t *batch);
 
 
@@ -176,7 +176,7 @@ glcircle_t glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
 
 struct glbatch_t {
 
-    queue_t             vertices;
+    queue_t             globjs;
     glbatch_type        type;
 
 };
@@ -208,11 +208,11 @@ void __gen_quad_indices(u32 indices[], const u32 shape_count)
     //}
 
 //}
-glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, u64 type_size)
+glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, const char *type_name, u64 type_size)
 {
     return (glbatch_t ) {
-        .vertices = __impl_queue_init(capacity, type_size),
-        .type = type
+        .globjs   = __impl_queue_init(capacity, type_size, type_name),
+        .type       = type
     };
 }
 
@@ -220,7 +220,7 @@ glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, u64 type_size)
 
 void glbatch_destroy(glbatch_t *batch) 
 {
-    queue_destroy(&batch->vertices);
+    queue_destroy(&batch->globjs);
 }
 
 #endif

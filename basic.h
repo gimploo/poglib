@@ -35,10 +35,11 @@ typedef long            i64;
 typedef float           f32;
 typedef double          f64;
 
+#define cstr(VALUE) #VALUE
 
 //NOTE: Data types enum 
 
-#define DT_type(TYPE) DT_ ## TYPE
+#define DT_type(TYPE) (DT_##TYPE)
 
 typedef enum 
 {

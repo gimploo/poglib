@@ -5,7 +5,6 @@
 #include "../components/shape.h"
 #include "../components/shader.h"
 #include "../components/texture.h"
-
 #include "../entitymanager.h"
 
 
@@ -47,27 +46,26 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
     assert(manager);
     assert(sys);
 
-    glbatch_t *batches = sys->glbatches; 
-    assert(batches);
-
     list_t *entitymap = &manager->entitymap; 
     assert(entitymap);
+
+    glbatch_t *batches = sys->glbatches;
 
     for (u64 i = 0; i < entitymap->len; i++)
     {
         glshader_t *shader      = NULL;
         gltexture2d_t *texture  = NULL;
 
-        const list_t *entities = (list_t *)list_get_element_by_index(entitymap, i);
+        list_t *entities = entitymanager_get_all_entities_by_tag(manager, i);
         assert(entities);
+
 
         for (u64 j = 0; j < entities->len; j++)
         {
-            const entity_t *e = *(entity_t **)list_get_element_by_index(entities, j);
+            const entity_t *e = (entity_t *)list_get_element_by_index(entities, j);
             assert(e);
 
             if (!e->is_alive) continue;
-
 
             // SHAPE
             c_shape2d_t *shape = (c_shape2d_t *)entity_get_component(e, c_shape2d_t );
@@ -85,6 +83,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
             //TODO: setup uv
             quadf_t uv = quadf_init(vec3f(0.0f), 0.0f, 0.0f);
 
+
             switch(shape->type)
             {
                 case SQUARE: {
@@ -94,7 +93,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
                             shape->fill,
                             uv, 0);
 
-                    glbatch_put(&batches[SQUARE], glquad);
+                    glbatch_put(&batches[GLBT_glquad_t], glquad);
 
                 } break;
 
@@ -104,7 +103,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
                             *(circle_t *)mesh->model.buffer,
                             shape->fill,
                             uv, 0);
-                    glbatch_put(&batches[CIRCLE], glcircle);
+                    glbatch_put(&batches[GLBT_glcircle_t], glcircle);
 
                 } break;
 
@@ -114,7 +113,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
                             *(trif_t *)mesh->model.buffer, 
                             shape->fill,
                             uv, 0);
-                    glbatch_put(&batches[TRIANGLE], gltri);
+                    glbatch_put(&batches[GLBT_gltri_t], gltri);
 
                 } break;
 
@@ -129,7 +128,12 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
             {
                 glbatch_t *batch = &batches[k];
 
-                if(glbatch_is_empty(batch)) continue; 
+                if(glbatch_is_empty(batch)){
+
+                    glbatch_clear(batch);
+                    continue; 
+
+                } 
 
                 glrenderer2d_draw_from_batch(&renderer, batch);
 

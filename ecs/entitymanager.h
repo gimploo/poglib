@@ -88,7 +88,7 @@ void entitymanager_update(entitymanager_t *manager)
     list_t *entities    = &manager->entities;
     for (u64 i = 0; i < entities->len; i++)
     {
-        entity_t *e = *(entity_t **)list_get_element_by_index(entities, i);
+        entity_t *e = (entity_t *)list_get_element_by_index(entities, i);
         assert(e);
 
         if (e->is_alive) continue;
@@ -98,30 +98,29 @@ void entitymanager_update(entitymanager_t *manager)
 
         for (u64 j = 0; j < entitylist->len; j++)
         {
-            entity_t *tmp = *(entity_t **)list_get_element_by_index(entitylist, j);
+            entity_t *tmp = (entity_t *)list_get_element_by_index(entitylist, j);
             assert(tmp);
 
             if (tmp->is_alive) continue;
 
             list_delete(entitylist, j);
+            j = 0;
             tmp = NULL;
-
-            j = 0; // LMAO I THINK THIS JUST SOLVED ITERATOR INVALIDATION
         }
 
         list_delete(entities, i);
         i = 0;
 
         __entity_destroy(e);
-        e = NULL;
     }
-
 
     // Adding newly created entities into the entities list and map
     queue_t *queue = &manager->__newly_added_entities;
+    assert(queue);
+
     while (!queue_is_empty(queue))
     {
-        entity_t *e = *(entity_t **)queue_get(queue);
+        entity_t *e = (entity_t *)queue_get(queue);
         assert(e);
 
         //appending to entities list
@@ -142,7 +141,7 @@ void entitymanager_destroy(entitymanager_t *manager)
     // Deleting the queue
     if(!queue_is_empty(&manager->__newly_added_entities))
     {
-        entity_t *e = *(entity_t **)queue_get(&manager->__newly_added_entities);
+        entity_t *e = (entity_t *)queue_get(&manager->__newly_added_entities);
         assert(e);
 
         e->is_alive = false;
@@ -154,7 +153,7 @@ void entitymanager_destroy(entitymanager_t *manager)
     list_t *entities = &manager->entities;
     for (u64 i = 0; i < entities->len; i++)
     {
-        entity_t *e = *(entity_t **)list_get_element_by_index(entities, i);
+        entity_t *e = (entity_t *)list_get_element_by_index(entities, i);
         assert(e);
 
         e->is_alive = false;
