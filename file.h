@@ -44,7 +44,7 @@ void            file_destroy(file_t * const file);
 ------------------------------------------*/
 
 
-static inline size_t __file_get_size(const char *file_path)
+size_t file_get_size(const char *file_path)
 {
     FILE *fp = fopen(file_path, "r");
     if (fp == NULL) eprint("failed to open");
@@ -60,7 +60,7 @@ file_t file_init(const char *file_path)
 {
     file_t file = {0};
     file.name = file_path;
-    file.size = __file_get_size(file_path);
+    file.size = file_get_size(file_path);
     file.fp = NULL;
     file.is_closed = true;
 

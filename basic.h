@@ -46,6 +46,7 @@ typedef enum
     DT_str_t,
 
     DT_char,
+    DT_string,
     DT_u8,
     DT_i8,
     DT_u16,
@@ -89,6 +90,8 @@ typedef enum
 
 #define ARRAY_LEN(ARR) sizeof((ARR)) / sizeof(*(ARR))
 
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 int randint(int min, int max)
 {

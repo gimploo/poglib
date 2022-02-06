@@ -209,7 +209,7 @@ void vao_destroy(vao_t *vao)
     if (vao == NULL) eprint("vao_bind: vao argument is null");
 
     GL_LOG("VAO `%i` deleted", vao->id);
-    GL_CHECK(glDeleteBuffers(1, &vao->id));
+    GL_CHECK(glDeleteVertexArrays(1, &vao->id));
 }
 
 #endif

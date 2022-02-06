@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 
 #define GL_LOG_ENABLE
+#undef DEBUG
 #include "../../../glrenderer2d.h"
 
 #include "../../../window.h"
@@ -34,7 +35,8 @@ int main(void)
     glcircle_t glcircle01 = glcircle_init(circle01, (vec4f_t ) {1.0f, 1.0f, 1.0f, 1.0f}, quadf_init(vec3f(0.0f), 1.0f, 1.0f), 0);
     glcircle_t glcircle02 = glcircle_init(circle02, (vec4f_t ) {1.0f, 0.0f, 1.0f, 1.0f}, quadf_init(vec3f(0.0f), 1.0f, 1.0f), 0);
 
-    glshader_t shader = glshader_from_file_init("./wood.vs", "./wood.fs");
+    /*glshader_t shader = glshader_from_file_init("./wood.vs", "./wood.fs");*/
+    glshader_t shader = glshader_default_init();
     gltexture2d_t texture = gltexture2d_init("./wall.jpg");
     glrenderer2d_t renderer = glrenderer2d_init(&shader, &texture);
 
@@ -56,10 +58,10 @@ int main(void)
         window_gl_render_begin(&window);
             /*glrenderer2d_draw_quad(&renderer, glquad01);*/
             /*glrenderer2d_draw_triangle(&renderer, tri01);*/
-            glrenderer2d_draw_circle(&renderer, glcircle01);
-            /*glrenderer2d_draw_from_batch(&renderer, &batchtri);*/
-            /*glrenderer2d_draw_from_batch(&renderer, &batchquads);*/
-            /*glrenderer2d_draw_from_batch(&renderer, &batchcircles);*/
+            /*glrenderer2d_draw_circle(&renderer, glcircle01);*/
+            glrenderer2d_draw_from_batch(&renderer, &batchtri);
+            glrenderer2d_draw_from_batch(&renderer, &batchquads);
+            glrenderer2d_draw_from_batch(&renderer, &batchcircles);
         window_gl_render_end(&window);
     }
 

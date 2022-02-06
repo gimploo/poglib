@@ -6,9 +6,10 @@ REM                            -- WINDOWS BUILD SCRIPT FOR C PROJECTS --
 REM =============================================================================================
 
 REM Include required dependencies
-set DEPENDENCY_LIST=SDL2 GLEW
-set SDL2_URL=https://www.libsdl.org/release/SDL2-devel-2.0.16-VC.zip
+set DEPENDENCY_LIST=SDL2 GLEW FREETYPE
+set SDL2_URL=https://www.libsdl.org/release/SDL2-devel-2.0.20-VC.zip
 set GLEW_URL=https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0-win32.zip
+set FREETYPE_URL=https://github.com/ubawurinna/freetype-windows-binaries/archive/refs/heads/master.zip
 
 REM Include compiler of choice (here its msvc)
 set CC=cl
@@ -67,7 +68,7 @@ set EXE_FILE_NAME=main.exe
         echo [!] Bin directory made!
     )
 
-    echo [*] Building project (DEBUG BUILD)...
+    echo [*] Building project [DEBUG BUILD]...
     call :build_project_with_msvc || goto :end
 
     if "%1" == "debug" (
@@ -93,13 +94,15 @@ REM                            v
 :build_project_with_msvc
 
     set INCLUDES=/I %DEPENDENCY_DEFAULT_PATH%\SDL2\include ^
-                    /I %DEPENDENCY_DEFAULT_PATH%\GLEW\include
+                    /I %DEPENDENCY_DEFAULT_PATH%\GLEW\include ^
+                    /I %DEPENDENCY_DEFAULT_PATH%\FREETYPE\include 
 
-    set FLAGS=/DGLEW_STATIC 
+    set FLAGS=/DGLEW_STATIC /DDEBUG
 
     set LIBS=%DEPENDENCY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.lib ^
                 %DEPENDENCY_DEFAULT_PATH%\SDL2\lib\x64\SDL2main.lib ^
                 %DEPENDENCY_DEFAULT_PATH%\GLEW\lib\Release\x64\glew32s.lib ^
+                %DEPENDENCY_DEFAULT_PATH%\FREETYPE\lib\win64\freetype.lib ^
                 Opengl32.lib glu32.lib
 
     cl %CC_DEFAULT_FLAGS% %FLAGS%^
@@ -122,11 +125,13 @@ REM                             -- HELPER FUNCTIONS --
 REM =======================================================================================
     
 :run_executable
+    echo.
     %EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME%
+    echo.
     exit /b %errorlevel% 
 
 :run_executable_with_debugger
-    echo [*] Running executable through the debugger ...
+    echo [!] Running executable through the debugger!
     devenv /DebugExe %EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME%
     exit /b 0
 
@@ -162,6 +167,20 @@ REM ============================================================================
         pushd SDL2\include
             mkdir SDL2
             move *.h SDL2\ >nul
+        popd
+    )
+
+    if "%~1" == "FREETYPE" (
+        pushd FreeType\
+            rename "release static" lib
+            move "lib\vs2015-2022\win64" lib\ >nul
+            move "lib\vs2015-2022\win32" lib\ >nul
+            rd /s /q "lib\vs2015-2022"
+
+            pushd include\
+                move freetype freetype2 >nul
+                copy ft2build.h freetype2\ >nul
+            popd
         popd
     )
 

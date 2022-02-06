@@ -156,8 +156,8 @@ void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *bat
 {
     if (renderer == NULL) eprint("renderer argument is null");
     if (batch == NULL) eprint("batch argument is null");
+    if(glbatch_is_empty(batch)) eprint("batch queue is empty");
 
-    assert(!queue_is_empty(&batch->globjs));
     assert(renderer->__shader);
 
     u64 vertices_count = 0;

@@ -61,6 +61,8 @@ void __impl_list_clear(list_t *list)
 list_t __impl_list_init(const u64 capacity, const char *type_name, u64 elem_size) 
 {
     bool flag = false;
+
+    if (!strcmp("const char *", type_name) || !strcmp("char *", type_name)) eprint("Use str_t instead of char *");
     if (type_name[strlen(type_name) - 1] == '*') flag = true;
 
     return (list_t ) {

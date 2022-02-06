@@ -9,13 +9,10 @@ typedef struct stack_t stack_t ;
 
 
 
-#define             stack_init(CAPACITY, TYPE)          __impl_stack_init((CAPACITY), sizeof(TYPE))
+#define             stack_init(CAPACITY, TYPE)          __impl_stack_init((CAPACITY), #TYPE, sizeof(TYPE))
 
 #define             stack_push(PSTACK, ELEM)            __impl_stack_push((PSTACK), &(ELEM), sizeof(ELEM))
 
-//NOTE: if the value exceeds 8 bytes in size, the stack returns a buffer holding the value 
-//      so to be copied to someother place else it just returns the value itself if its 
-//      less than 8 bytes
 void *              stack_pop(stack_t *);
 
 void                stack_destroy(stack_t *);
@@ -46,28 +43,31 @@ struct stack_t {
     u64 capacity;
     u64 elem_size;
 
-    // Buffer that stores the get values from queue_get calls instead of having to pass 
-    // a buffer to have it store the output
-    void *buffer;
+    // This variable checks if the list is a list of pointers 
+    bool __are_values_pointers;
 
 };
 
 
-static inline stack_t __impl_stack_init(u64 capacity, u64 elem_size)
+stack_t __impl_stack_init(u64 capacity, const char *elem_name, u64 elem_size)
 {
+    bool flag = false;
+    if (elem_name[strlen(elem_name) - 1] == '*') flag = true;
 
-    return (stack_t) {
+    stack_t o = {
         .len = 0,
         .array = (u8 *)calloc(capacity, elem_size),
         .top = -1,
         .capacity = capacity,
         .elem_size = elem_size,
-        .buffer = (u8 *)calloc(1, elem_size)
+        .__are_values_pointers = flag
     };
+
+    return o;
 }
 
 
-static inline void __impl_stack_push(stack_t *stack, void *elem_ref, u64 elem_size)
+void __impl_stack_push(stack_t *stack, void *elem_ref, u64 elem_size)
 {
     // NOTE: since sizeof void * is 8 bytes and maximum size of a primitive data type 
     // available in c is also 8 bytes, having the array hold it by value is enough,
@@ -95,10 +95,9 @@ void * stack_pop(stack_t *stack)
     u8 *elem_pos = (u8 *)stack->array + stack->top * stack->elem_size;
     stack->len = --stack->top - 1;
 
-    if (stack->elem_size <= 8) return (void *)elem_pos;
+    if (stack->__are_values_pointers) return *(void **)elem_pos;
 
-    memcpy(stack->buffer, elem_pos, stack->elem_size);
-    return stack->buffer;
+    return elem_pos;
 }
 
 
@@ -123,9 +122,6 @@ void stack_destroy(stack_t *stack)
 
     free(stack->array);
     stack->array = NULL;
-
-    free(stack->buffer);
-    stack->buffer = NULL;
 
     stack->array = NULL;
     stack->top = -1;

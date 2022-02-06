@@ -1,4 +1,5 @@
 #pragma once
+#include "./basic.h"
 #include "simple/glrenderer2d.h"
 #include "simple/window.h"
 #include "application/stopwatch.h"
@@ -35,12 +36,8 @@ struct application_t {
     stopwatch_t     timer;
     state_t         state;
 
-    union {
+    void            *game;
 
-        poggen_t *engine;
-        void     *game;
-
-    };
 
     void (* init)(struct application_t *);
     void (*update)(struct application_t *);

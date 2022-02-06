@@ -681,9 +681,6 @@ typedef unsigned char validate_uint32[sizeof(stbi__uint32)==4 ? 1 : -1];
 #define STBI_FREE(p)              free(p)
 #endif
 
-#ifndef STBI_REALLOC_SIZED
-#define STBI_REALLOC_SIZED(p,oldsz,newsz) STBI_REALLOC(p,newsz)
-#endif
 
 // x86/x64 detection
 #if defined(__x86_64__) || defined(_M_X64)
@@ -4207,7 +4204,7 @@ static int stbi__zexpand(stbi__zbuf *z, char *zout, int n)  // need to make room
       if(limit > UINT_MAX / 2) return stbi__err("outofmem", "Out of memory");
       limit *= 2;
    }
-   q = (char *) STBI_REALLOC_SIZED(z->zout_start, old_limit, limit);
+   q = (char *) STBI_REALLOC(z->zout_start, limit);
    STBI_NOTUSED(old_limit);
    if (q == NULL) return stbi__err("outofmem", "Out of memory");
    z->zout_start = q;
@@ -5117,8 +5114,7 @@ static int stbi__parse_png_file(stbi__png *z, int scan, int req_comp)
                while (ioff + c.length > idata_limit)
                   idata_limit *= 2;
                STBI_NOTUSED(idata_limit_old);
-               p = (stbi_uc *) STBI_REALLOC_SIZED(z->idata, idata_limit_old, idata_limit); if (p == NULL) return stbi__err("outofmem", "Out of memory");
-               z->idata = p;
+               z->idata = (stbi_uc *) STBI_REALLOC(z->idata, idata_limit); //if (p == NULL) return stbi__err("outofmem", "Out of memory");
             }
             if (!stbi__getn(s, z->idata+ioff,c.length)) return stbi__err("outofdata","Corrupt PNG");
             ioff += c.length;
@@ -6906,7 +6902,7 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
             stride = g.w * g.h * 4;
 
             if (out) {
-               void *tmp = (stbi_uc*) STBI_REALLOC_SIZED( out, out_size, layers * stride );
+               void *tmp = (stbi_uc*) STBI_REALLOC( out,  layers * stride );
                if (!tmp)
                   return stbi__load_gif_main_outofmem(&g, out, delays);
                else {
@@ -6915,7 +6911,7 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
                }
 
                if (delays) {
-                  int *new_delays = (int*) STBI_REALLOC_SIZED( *delays, delays_size, sizeof(int) * layers );
+                  int *new_delays = (int*) STBI_REALLOC( *delays,  sizeof(int) * layers );
                   if (!new_delays)
                      return stbi__load_gif_main_outofmem(&g, out, delays);
                   *delays = new_delays;

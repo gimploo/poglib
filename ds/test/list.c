@@ -1,4 +1,7 @@
+#define DEBUG
+#include "../../basic.h"
 #include "../list.h"
+#include "../../str.h"
 
 
 
@@ -144,8 +147,39 @@ void print_u32(void *arg)
     printf("%i ", num);
 }
 
+void print_str(void *x)
+{
+    str_t *y = (str_t *)x;
+
+    str_print(y);
+}
 
 int main(void)
+{
+    dbg_init();
+    list_t list = list_init(10, str_t );
+
+    str_t words[] = {
+        str("yo"),
+        str("bruh"),
+        str("gucci"),
+    };
+
+    for (u32 i = 0; i < ARRAY_LEN(words); i++)
+    {
+        list_append(&list, words[i]);
+    }
+
+    list_print(&list, print_str);
+
+    list_destroy(&list);
+
+    dbg_destroy();
+    return 0;
+}
+
+
+int ooldmain(void)
 {
     list_t list = list_init(2, u32);
 

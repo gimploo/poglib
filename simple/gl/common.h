@@ -20,12 +20,8 @@
 \
     CMD;\
     GLenum err = glGetError();\
-    if (err != GL_NO_ERROR) {\
-\
-        fprintf(stderr, "[GL_CHECK] (%s): %s -> %s\n", __func__, #CMD, gluErrorString(err));\
-        exit(1);\
-\
-    }\
+    if (err != GL_NO_ERROR)\
+        eprint("[GL_CHECK] (%s): %s -> %s\n", __func__, #CMD, gluErrorString(err));\
 \
 } while(0)
 
