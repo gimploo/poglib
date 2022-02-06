@@ -14,10 +14,10 @@ REM Include compiler of choice (here its msvc)
 set CC=cl
 set CC_PATH="C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
 set CC_DEFAULT_FLAGS=/std:c11 /W4 /wd4244 /wd4996 /wd4477 /wd4267 /FC /TC /Zi 
-set CC_DEFAULT_LIBS=User32.lib Gdi32.lib Shell32.lib
+set CC_DEFAULT_LIBS=User32.lib Gdi32.lib Shell32.lib winmm.lib dbghelp.lib shlwapi.lib
 
 REM Source and executalble path (default)
-set EXE_FOLDER_DEFAULT_PATH=.
+set EXE_FOLDER_DEFAULT_PATH=.\bin
 set SRC_FOLDER_DEFAULT_PATH=.
 set DEPENDENCY_DEFAULT_PATH=.\external
 
@@ -67,7 +67,7 @@ set EXE_FILE_NAME=test.exe
         echo [!] Bin directory made!
     )
 
-    echo [*] Building project (DEBUG BUILD)...
+    echo [*] Building project [DEBUG BUILD]...
     call :build_project_with_msvc || goto :end
 
     if "%1" == "debug" (
@@ -95,7 +95,7 @@ REM                            v
     set INCLUDES=/I %DEPENDENCY_DEFAULT_PATH%\SDL2\include ^
                     /I %DEPENDENCY_DEFAULT_PATH%\GLEW\include
 
-    set FLAGS=/DGLEW_STATIC 
+    set FLAGS=/DGLEW_STATIC /DDEBUG
 
     set LIBS=%DEPENDENCY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.lib ^
                 %DEPENDENCY_DEFAULT_PATH%\SDL2\lib\x64\SDL2main.lib ^
@@ -122,11 +122,13 @@ REM                             -- HELPER FUNCTIONS --
 REM =======================================================================================
     
 :run_executable
+    echo.
     %EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME%
+    echo.
     exit /b %errorlevel% 
 
 :run_executable_with_debugger
-    echo [*] Running executable through the debugger ...
+    echo [!] Running executable through the debugger!
     devenv /DebugExe %EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME%
     exit /b 0
 

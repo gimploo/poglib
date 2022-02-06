@@ -164,14 +164,14 @@ Header _csv_header_init(str_t *buffer)
         if (c == ',' ) {
 
             word[word_pos] = '\0';
-            header[header_count] = new_pstr(word);
+            *header[header_count] = str_init(word);
             word_pos = 0;
             header_count++;
 
         } else if (c == '\n') {
 
             word[word_pos] = '\0';
-            header[header_count] = new_pstr(word);
+            *header[header_count] = str_init(word);
             word_pos = 0;
             header_count++;
             break;
@@ -354,7 +354,7 @@ Row * csv_get_row_from_line_number(const CSV *csv, size_t line_num)
             }
             word[wcount] = '\0';
 
-            list_buff[lcount] = new_pstr(word);
+            *list_buff[lcount] = str_init(word);
 
             lcount++;
             wcount = 0;
@@ -365,7 +365,7 @@ Row * csv_get_row_from_line_number(const CSV *csv, size_t line_num)
 
             word[wcount] = '\0';
 
-            list_buff[lcount] = new_pstr(word);
+            *list_buff[lcount] = str_init(word);
 
             lcount++;
             wcount = 0;
@@ -376,7 +376,7 @@ Row * csv_get_row_from_line_number(const CSV *csv, size_t line_num)
 
             word[wcount] = '\0';
 
-            list_buff[lcount] = new_pstr(word);
+            *list_buff[lcount] = str_init(word);
 
             break;
         } 
@@ -429,7 +429,7 @@ void csv_row_destroy(Row *row)
 
     for (size_t j = 0; j < row->buff_count; j++)
     {
-        pstr_free(row->buffer[j]);
+        str_free(row->buffer[j]);
     }
     free(row->buffer);
     row->buffer = NULL;
@@ -444,7 +444,7 @@ void csv_destroy(CSV *csv)
     assert(csv);
 
     // str_t buffer
-    pstr_free(csv->buffer);
+    str_free(csv->buffer);
 
     //Meta list
     if (csv->entries.entry_pos_list != NULL) {
@@ -479,7 +479,7 @@ void csv_destroy(CSV *csv)
     if (csv->header.header != NULL) {
 
         for (size_t i = 0; i < csv->header.header_count; i++) {
-            pstr_free(csv->header.header[i]);
+            str_free(csv->header.header[i]);
             csv->header.header[i] = NULL;
         }
         free(csv->header.header);
@@ -560,7 +560,7 @@ void csv_get_all_line_nums_of_string_restricted_to_a_header_field(CSV *csv, stac
 
         if (str_is_string_in_buffer(find_word, str_field)) {
             line_num_list_index = i+1;
-            stack_push_by_value(buffer, line_num_list_index);
+            stack_push(buffer, line_num_list_index);
         }
 
     }

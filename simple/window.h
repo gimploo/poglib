@@ -75,6 +75,8 @@ typedef struct window_t {
 
 typedef void (*render_func) (void*);
 
+global window_t global_window;
+
 /*----------------------------------------------------------------------
  // Declarations
 ----------------------------------------------------------------------*/
@@ -306,22 +308,22 @@ window_t * window_sub_window_init(window_t *parent, const char *title_name, u64 
 
 window_t window_init(const char *title_name, u64 width, u64 height, SDL_FLAGS flags)
 {
-    window_t output         = {0};
-    output.title_name       = title_name;
-    output.is_open          = true;
-    output.width            = width;
-    output.height           = height;
-    output.background_color = DEFAULT_BACKGROUND_COLOR;
-    output.mouse_handler    = __mouse_init(&output);
+    global_window                  = (window_t ){0};
+    global_window.title_name       = title_name;
+    global_window.is_open          = true;
+    global_window.width            = width;
+    global_window.height           = height;
+    global_window.background_color = DEFAULT_BACKGROUND_COLOR;
+    global_window.mouse_handler    = __mouse_init(&global_window);
 
-    output.keyboard_handler = (__keyboard_t ) {
+    global_window.keyboard_handler = (__keyboard_t ) {
         .keystate       = {false},
         .just_pressed   = {false},
         .is_held        = {false}
     };
 
-    output.sub_window_handle = NULL;
-    output.is_sub_window_active = false;
+    global_window.sub_window_handle = NULL;
+    global_window.is_sub_window_active = false;
 
     SDL_FLAGS WinFlags      = 0;
 
@@ -345,9 +347,9 @@ window_t window_init(const char *title_name, u64 width, u64 height, SDL_FLAGS fl
 
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
 
-    output.window_handle = SDL_CreateWindow(output.title_name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
+    global_window.window_handle = SDL_CreateWindow(global_window.title_name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
 
-    if (!output.window_handle) eprint("SDL Error: %s\n", SDL_GetError());
+    if (!global_window.window_handle) eprint("SDL Error: %s\n", SDL_GetError());
 
     if (!SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1"))
         eprint("SDL Error: %s", SDL_GetError());
@@ -356,8 +358,8 @@ window_t window_init(const char *title_name, u64 width, u64 height, SDL_FLAGS fl
 
 #ifdef __gl_h_
     glewExperimental = true; // if using GLEW version 1.13 or earlier
-    output.gl_context = SDL_GL_CreateContext(output.window_handle);
-    if (!output.gl_context) eprint("SDL GL Error: %s\n", SDL_GetError());
+    global_window.gl_context = SDL_GL_CreateContext(global_window.window_handle);
+    if (!global_window.gl_context) eprint("SDL GL Error: %s\n", SDL_GetError());
 
     GLenum glewError = glewInit();
     if (glewError != GLEW_OK) eprint("GLEW Error: %s\n", glewGetErrorString(glewError));
@@ -365,14 +367,14 @@ window_t window_init(const char *title_name, u64 width, u64 height, SDL_FLAGS fl
     printf("[OUTPUT] Using OpenGL render\n");
 
 #else 
-    output.surface_handle = SDL_GetWindowSurface(output.window_handle);
-    if (!output.surface_handle) eprint("SDL Error: %s\n", SDL_GetError());
+    global_window.surface_handle = SDL_GetWindowSurface(global_window.window_handle);
+    if (!global_window.surface_handle) eprint("SDL Error: %s\n", SDL_GetError());
 
     printf("[OUTPUT] Using standard sdl2 render\n");
 #endif
 
-    output.SDL_Window_ID = SDL_GetWindowID(output.window_handle);
-    return output;
+    global_window.SDL_Window_ID = SDL_GetWindowID(global_window.window_handle);
+    return global_window;
 
 }
 
@@ -582,6 +584,24 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
 
                     window->keyboard_handler.keystate[key] = true;
                 }
+
+#ifdef __gl_h_
+
+                static bool polymode_flag = false;
+
+                if (window_keyboard_is_key_pressed(window, SDLK_F5)) polymode_flag = !polymode_flag;
+
+                if (polymode_flag) {
+
+                    printf("[!] OPENGL DEBUG MODE (ACTIVATED)\n");
+                    GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
+
+                } else {
+                    printf("[!] OPENGL DEBUG MODE (DISABLED)\n");
+                    GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+
+                }
+#endif
 
             }
         break;

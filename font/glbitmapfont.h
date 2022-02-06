@@ -54,7 +54,7 @@ const char * const ascii_font_fs =
     "\n"
     "void main()\n"
     "{\n"
-        "FragColor = texture(texture1, TexCoord);\n"
+        "FragColor = texture(texture1, TexCoord) ;\n"
     "}";
 
 
@@ -258,7 +258,6 @@ void glbitmapfont_draw(glbitmapfont_t *font)
     assert(font);
 
     glrenderer2d_draw_from_batch(&font->renderer, &font->batches);
-    glbatch_clear(&font->batches);
 
 }
 

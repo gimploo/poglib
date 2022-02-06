@@ -1,73 +1,78 @@
-#ifndef STR_H
-#define STR_H
-
-#include <string.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <assert.h>
-
-#ifdef DEBUG
-#include "dbg/dbg.h"
-extern dbg_t debug;
-#endif
-
-typedef struct {
-    char *buf;
-    size_t len;
-} str_t;
-
-#define STR_FMT "%.*s"
-#define STR_ARG(pstr) (int)((pstr)->len+1),(pstr)->buf
+#pragma once
+#include "./basic.h"
+#include "./file.h"
 
 
-static inline str_t new_str(char *buffer) 
+
+
+typedef struct str_t str_t ;
+
+
+#define         str(STRING)              (str_t ) { .buf = STRING, .len = strlen(STRING), .__is_heap_allocated = false }
+str_t           str_init(char *buffer);
+void            str_free(str_t *x);
+void            str_print(str_t *str);
+u32             str_is_string_in_buffer(str_t *word, str_t *buffer);
+u32             str_where_is_string_in_buffer(str_t *word, str_t *buffer);
+str_t           str_read_file_to_str(const char *file_path);
+str_t           str_cpy_delimiter(str_t *buffer, char ch);
+bool            str_cmp(str_t *a, str_t *b);
+void            str_cpy(str_t *dest, str_t *source);
+
+
+
+
+
+#ifndef IGNORE_STR_IMPLEMENTATION
+
+#define STR_FMT         "%.*s"
+#define STR_ARG(pstr)   (u32)((pstr)->len+1),(pstr)->buf
+
+struct str_t {
+
+    char      *buf;
+    size_t    len;
+
+    bool      __is_heap_allocated;
+
+} ;
+
+
+
+str_t str_init(char * const buffer) 
 {
-    return (str_t) {
-        .buf = buffer,
+    str_t s = {
+        .buf = (char *)calloc(1, strlen(buffer) + 1),
         .len = strlen(buffer),
+        .__is_heap_allocated = true
     };
+
+    memcpy(s.buf, buffer, strlen(buffer));
+
+    return s;
 }
 
-static inline void str_print(str_t *str)
+void str_free(str_t *x)
+{
+    if (x->__is_heap_allocated) {
+
+        free(x->buf);
+        x->buf = NULL;
+
+    } else {
+
+        eprint("[!] WARNING: tried to free a stack allocated string");
+    }
+}
+
+void str_print(str_t *str)
 {
     assert(str);
     printf(STR_FMT, STR_ARG(str));
 }
 
-static inline void pstr_free(str_t *str)
-{
-    assert(str);
 
-    free(str->buf);    
-    str->buf = NULL;
-
-    free(str);
-    str = NULL;
-}
-
-
-static inline str_t * new_pstr(char *buffer) 
-{
-    str_t *str = (str_t *)malloc(sizeof(str_t));
-    assert(str);
-
-    size_t buffer_size = sizeof(char) * (strlen(buffer) + 1);
-
-    str->buf = (char *)malloc(buffer_size);
-    assert(str->buf);
-
-    memset(str->buf, 0, buffer_size);
-
-    strncpy(str->buf, buffer, buffer_size-1);
-
-
-    str->len = buffer_size - 1;
-
-    return str;
-}
-
-static inline void str_cpy(str_t *dest, str_t *source)
+void str_cpy(str_t *dest, str_t *source)
 {
     assert(dest);
     assert(source);
@@ -77,7 +82,7 @@ static inline void str_cpy(str_t *dest, str_t *source)
     dest->len = source->len;
 }
 
-static inline bool str_cmp(str_t *a, str_t *b) 
+bool str_cmp(str_t *a, str_t *b) 
 {
     assert(a);
     assert(b);
@@ -90,7 +95,7 @@ static inline bool str_cmp(str_t *a, str_t *b)
     return true;
 }
 
-static inline str_t str_cpy_delimiter(str_t *buffer, char ch)
+str_t str_cpy_delimiter(str_t *buffer, char ch)
 {
     assert(buffer);
 
@@ -104,24 +109,11 @@ static inline str_t str_cpy_delimiter(str_t *buffer, char ch)
     return word;
 }
 
-size_t _file_get_size(const char *file_path)
-{
-    FILE *fp = fopen(file_path, "r");
-    if (fp == NULL) {
-        fprintf(stderr, "%s: file failed to open\n", __func__);
-        exit(1);
-    }
-    fseek(fp, 0L, SEEK_END);
-    size_t size = ftell(fp);
-    fclose(fp);
-    return size; // Returns the position of the null character 
-}
-
-static inline str_t * str_read_file_to_str(const char *file_path)
+str_t str_read_file_to_str(const char *file_path)
 {
     //NOTE: this code works dont tinker
     
-    size_t size = _file_get_size(file_path); 
+    size_t size = file_get_size(file_path); 
     assert(size > 0);
 
     //NOTE: the +1 hold the null character
@@ -145,16 +137,11 @@ static inline str_t * str_read_file_to_str(const char *file_path)
     buffer[size] = '\0';
     fclose(fp);
 
-
-    str_t *str_file = (str_t *)malloc(sizeof(str_t));
-    str_file->buf = buffer;
-    str_file->len = size;
-
-    return str_file;
+    return str_init(buffer);
 }
 
 // Returns the pos of the word in buffer
-static inline int str_where_is_string_in_buffer(str_t *word, str_t *buffer)
+u32 str_where_is_string_in_buffer(str_t *word, str_t *buffer)
 {
     //TODO: account for null characters
     
@@ -178,7 +165,7 @@ static inline int str_where_is_string_in_buffer(str_t *word, str_t *buffer)
     return -1;
 }
 
-static inline int str_is_string_in_buffer(str_t *word, str_t *buffer)
+u32 str_is_string_in_buffer(str_t *word, str_t *buffer)
 {
     //TODO: account for null characters
     

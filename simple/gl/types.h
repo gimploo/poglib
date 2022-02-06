@@ -179,6 +179,10 @@ struct glbatch_t {
     queue_t             globjs;
     glbatch_type        type;
 
+    vao_t vao;
+    vbo_t vbo;
+    ebo_t ebo;
+
 };
 
 
@@ -210,10 +214,12 @@ void __gen_quad_indices(u32 indices[], const u32 shape_count)
 //}
 glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, const char *type_name, u64 type_size)
 {
-    return (glbatch_t ) {
+    glbatch_t o =  {
         .globjs   = __impl_queue_init(capacity, type_size, type_name),
-        .type       = type
+        .type     = type
     };
+
+    return o;
 }
 
 

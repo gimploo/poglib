@@ -27,12 +27,12 @@ typedef struct gltexture2d_t {
 -----------------------------------------------------*/
 
 
-gltexture2d_t              gltexture2d_init(const char * file_path);
-gltexture2d_t              gltexture2d_empty_init(u32 width, u32 height);
-void                        gltexture2d_destroy(const gltexture2d_t *texture);
-//NOTE:(macro)              gltexture2d_bind(gltexture2d_t *, u32 slot) --> void
-//NOTE:(macro)              gltexture2d_unbind(void) --> void
-void                        gltexture2d_dump(const gltexture2d_t *texture);
+gltexture2d_t        gltexture2d_init(const char * file_path);
+gltexture2d_t        gltexture2d_empty_init(u32 width, u32 height);
+void                 gltexture2d_destroy(const gltexture2d_t *texture);
+//NOTE:(macro)       gltexture2d_bind(gltexture2d_t *, u32 slot) --> void
+//NOTE:(macro)       gltexture2d_unbind(void) --> void
+void                 gltexture2d_dump(const gltexture2d_t *texture);
 
 
 /*------------------------------------------------------
@@ -161,7 +161,8 @@ void gltexture2d_destroy(const gltexture2d_t *texture)
 
     GL_LOG("Texture `%i` successfully deleted", texture->id);
     GL_CHECK(glDeleteTextures(1, &texture->id)); 
-    stbi_image_free(texture->buf);
+
+    if (texture->buf) stbi_image_free(texture->buf);
 }
 
 void gltexture2d_dump(const gltexture2d_t *texture)

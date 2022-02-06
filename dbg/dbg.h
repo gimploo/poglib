@@ -21,6 +21,11 @@
     bool        dbg_init(void);
     void        dbg_destroy(void);
 
+#else
+
+    #define dbg_init() printf("[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n");
+    #define dbg_destroy() printf("[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n");
+
 #endif //DEBUG
 
 
@@ -116,7 +121,10 @@ static void * _debug_malloc(const size_t size, const char *file_path, const size
     FILE *fp = global_debug.fp;            // global variable
     llist_t *list = &global_debug.list;
 
-    assert(fp); 
+    if(!fp) {
+        fprintf(stderr, "You forgot to add dbg_init() in your code"); 
+        exit(0);
+    }
     assert(list);
 
 
@@ -157,7 +165,11 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
     FILE *fp = global_debug.fp; // global variable
     llist_t *list = &global_debug.list;
 
-    assert(fp); assert(list);
+    if(!fp) {
+        fprintf(stderr, "You forgot to add dbg_init() in your code"); 
+        exit(0);
+    }
+    assert(list);
 
     fprintf(fp, "%s: \tIn function '%s':\n", file_path, func_name);
     fprintf(fp, "%s:%li: \t\033[01;34m(%p) REALLOCTED (%0li bytes)\033[0m\n" ,
@@ -202,26 +214,36 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
     FILE *fp = global_debug.fp;
     llist_t *list = &global_debug.list;
 
-    assert(fp); assert(list);
+    if(!fp) {
+        fprintf(stderr, "You forgot to add dbg_init() in your code"); 
+        exit(0);
+    }
+    assert(list);
 
     fprintf(fp, "%s: \tIn function '%s':\n", file_path, func_name);
     fprintf(fp, "%s:%li: \t\033[01;32m(%p) DEALLOCATED  \033[0m\n" 
             ,file_path, line_num, pointer);
     fprintf(fp, "\n");
     
-    if (!llist_delete_node_by_value(list, pointer, compare_dbg)){
-        debug_mem_dump();
-        printf("(%s) pointer not found %p\n", pointer_name, pointer);
-        exit(1);
-    }
-
-        
-
 #undef free
 
     free(pointer);
 
+    if (list->count != 0) {
+
+        if (!llist_delete_node_by_value(list, pointer, compare_dbg)){
+            debug_mem_dump();
+            printf("(%s) pointer not found %p\n", pointer_name, pointer);
+            exit(1);
+        }
+    } else {
+
+        printf("[!] Warning DBG tried to delete pointer %p from the list but the list is empty\n");
+    }
+
+    pointer = NULL;
 #define free(p) _debug_free((p), (#p), __FILE__, __LINE__, __func__) 
+
 }
 
 

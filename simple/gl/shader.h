@@ -17,10 +17,10 @@
 const char * const default_vshader = 
     "#version 330 core\n"
     "layout (location = 0) in vec3 v_pos;\n"
-    "layout (location = 1) in vec3 v_color;\n"
+    "layout (location = 1) in vec4 v_color;\n"
     "layout (location = 2) in vec2 v_tex_coord;\n"
     "\n"
-    "out vec3 color;\n"
+    "out vec4 color;\n"
     "out vec2 tex_coord;\n"
     "\n"
     "void main()\n"
@@ -32,7 +32,7 @@ const char * const default_vshader =
 
 const char * const default_fshader = 
     "#version 330 core\n"
-    "in vec3 color;\n"
+    "in vec4 color;\n"
     "in vec2 tex_coord;\n"
     "\n"
     "uniform sampler2D u_texture01;\n"
@@ -41,7 +41,7 @@ const char * const default_fshader =
     "\n"
     "void main()\n"
     "{\n"
-        "FragColor = texture(u_texture01, tex_coord) + vec4(color, 1.0f);\n"
+        "FragColor = texture(u_texture01, tex_coord) * color;\n"
     "}";
 
 
