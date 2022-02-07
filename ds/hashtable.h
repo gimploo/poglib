@@ -1,5 +1,4 @@
 #pragma once
-#define DEBUG
 
 #include "../basic.h"
 #include "../str.h"
@@ -17,7 +16,7 @@ typedef struct hashtable_t hashtable_t;
 #define         hashtable_delete(PTABLE, KEY)                       __impl_hashtable_delete_key_value_pair(PTABLE, KEY)
 #define         hashtable_destroy(PTABLE)                           __impl_hashtable_destroy(PTABLE)
 
-void            *hashtable_get_element_by_label(const hashtable_t *table, const char *label);
+void *          hashtable_get_value_by_key(const hashtable_t *table, const char *key);
 
 
 
@@ -162,14 +161,14 @@ void hashtable_print(const hashtable_t *table, void (*print)(void*))
 }
 
 
-void *hashtable_get_element_by_label(const hashtable_t *table, const char *label)
+void *hashtable_get_value_by_key(const hashtable_t *table, const char *key)
 {
     assert(table);
-    assert(label);
+    assert(key);
 
-    u64 index = hash_cstr(label, strlen(label));
+    u64 index = hash_cstr(key, strlen(key));
 
-    if (!table->__index_table[index]) eprint("no value found at index %li of key %s\n", index, label);
+    if (!table->__index_table[index]) eprint("no value found at index %li of key %s\n", index, key);
 
     return table->__array[index].value;
 }
