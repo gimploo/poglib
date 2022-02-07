@@ -60,7 +60,7 @@ const char * freetype_fs =
     "\n"
     "void main()\n"
     "{\n"
-        "FragColor = texture(texture1, TexCoord) * ourColor;\n"
+        "FragColor = ourColor * texture(texture1, TexCoord).a;\n"
     "}";
 
 struct glfreetypefont_t {
