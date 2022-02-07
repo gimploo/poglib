@@ -7,7 +7,7 @@
     #include FT_FREETYPE_H 
 #elif __linux__
     #include <freetype2/ft2build.h>
-    #include FT_FREETYPE_H 
+    #include FT_FREETYPE_H
 #endif
 
 
@@ -243,13 +243,7 @@ void glfreetypefont_set_text(glfreetypefont_t *self, const char *text, vec2f_t p
         /* Skip glyphs that have no pixels */
         if(!w || !h) continue;
 
-        //quadf_t quad = quadf_init((vec3f_t ){x2, y2, 0.0f}, w, h);
-        quadf_t quad = {
-            x2,         -y2,        0.0f,
-            x2 + w,     -y2,        0.0f,
-            x2 + w,     -y2 - h,    0.0f,
-            x2,         -y2 - h,    0.0f,
-        };
+        quadf_t quad = quadf_init((vec3f_t ){x2, -y2, 0.0f}, w, h);
 
         quadf_t uv = {
           self->fontatlas[c].tx, self->fontatlas[c].ty, 0.0f,
