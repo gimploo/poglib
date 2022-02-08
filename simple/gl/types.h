@@ -20,9 +20,9 @@ typedef enum {
 } glbatch_type;
 
 
-gltri_t         gltri_init(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid);
-glquad_t        glquad_init(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id);
-glcircle_t      glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
+gltri_t         gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid);
+glquad_t        glquad(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id);
+glcircle_t      glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
 
 
 #define         glbatch_init(CAPACITY, TYPE)    __impl_glbatch_init((CAPACITY), GLBT_type(TYPE), #TYPE, sizeof(TYPE))
@@ -85,7 +85,7 @@ struct glcircle_t {
 };
 
 // Creates a quad suited for OpenGL
-glquad_t glquad_init(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id)
+glquad_t glquad(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id)
 {
     return (glquad_t) { 
 
@@ -118,7 +118,7 @@ glquad_t glquad_init(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex
     };
 }
 
-gltri_t gltri_init(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid)
+gltri_t gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid)
 {
     return (gltri_t) {
 
@@ -143,7 +143,7 @@ gltri_t gltri_init(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid)
     };
 }
 
-glcircle_t glcircle_init(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
+glcircle_t glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
 {
     glcircle_t output = {0} ;
 

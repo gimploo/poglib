@@ -6,12 +6,12 @@
 typedef struct matrixf_t matrixf_t ;
 
 
-#define         matrixf_init(ARR, NROW, NCOL)       __impl_matrixf_init(&(ARR), sizeof(ARR), (NROW), (NCOL))
-matrixf_t       matrix2f_init(vec2f_t vertex[2]);
-matrixf_t       matrix3f_init(vec3f_t vertex[3]);
-matrixf_t       matrix4f_init(vec4f_t vertex[4]);
-matrixf_t       matrix4f_rotation_init(f32 angle_in_radians);
-matrixf_t       matrix4f_translation_init(vec3f_t vec);
+#define         matrixf(ARR, NROW, NCOL)       __impl_matrixf_init(&(ARR), sizeof(ARR), (NROW), (NCOL))
+matrixf_t       matrix2f(vec2f_t vertex[2]);
+matrixf_t       matrix3f(vec3f_t vertex[3]);
+matrixf_t       matrix4f(vec4f_t vertex[4]);
+matrixf_t       matrix4f_rotation(f32 angle_in_radians);
+matrixf_t       matrix4f_translation(vec3f_t vec);
 
 
 matrixf_t       matrixf_sum(matrixf_t a, matrixf_t b);
@@ -61,7 +61,7 @@ matrixf_t __impl_matrixf_init(void *array, u64 array_size, u32 nrow, u32 ncol)
     return o;
 }
 
-matrixf_t matrix2f_init(vec2f_t vertex[2])
+matrixf_t matrix2f(vec2f_t vertex[2])
 {
     matrixf_t o = (matrixf_t ){
         .nrow = 2,
@@ -73,7 +73,7 @@ matrixf_t matrix2f_init(vec2f_t vertex[2])
     return o;
 }
 
-matrixf_t matrix3f_init(vec3f_t vertex[3])
+matrixf_t matrix3f(vec3f_t vertex[3])
 {
     matrixf_t o = (matrixf_t ){
         .nrow = 3,
@@ -85,7 +85,7 @@ matrixf_t matrix3f_init(vec3f_t vertex[3])
 
 }
 
-matrixf_t matrix4f_init(vec4f_t vertex[4])
+matrixf_t matrix4f(vec4f_t vertex[4])
 {    
     matrixf_t o = (matrixf_t ){
         .nrow = 4,
@@ -143,7 +143,7 @@ matrixf_t matrixf_sum(matrixf_t a, matrixf_t b)
     return o;
 }
 
-matrixf_t matrix4f_rotation_init(f32 angle_in_radians)
+matrixf_t matrix4f_rotation(f32 angle_in_radians)
 {
     vec4f_t rot[4] = {
         [0] = { (f32) cos(angle_in_radians), (f32)-sin(angle_in_radians), 0.0f, 0.0f},
@@ -162,7 +162,7 @@ matrixf_t matrix4f_rotation_init(f32 angle_in_radians)
     return o;
 }
 
-matrixf_t matrix4f_translation_init(vec3f_t vec)
+matrixf_t matrix4f_translation(vec3f_t vec)
 {
     vec4f_t tran[4] = {
         [0] = { 1.0f, 0.0f, 0.0f, vec.cmp[X]},

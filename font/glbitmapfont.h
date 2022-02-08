@@ -214,7 +214,7 @@ void glbitmapfont_set_text(
     {
         u32 tile_index = text[i] - ' ';
 
-        quadf_t quad = quadf_init(
+        quadf_t quad = quadf(
                 vec3f_add(vec3f(position), vec3f(x_offset)), 
                 norm_font_width, 
                 norm_font_height);
@@ -232,7 +232,7 @@ void glbitmapfont_set_text(
 #endif 
 
 
-        glquad_t tmp = glquad_init(quad, (vec4f_t ){0.0f, 0.0f, 0.0f, 1.0f}, font->font_atlas[tile_index].texture_coord, 0);
+        glquad_t tmp = glquad(quad, (vec4f_t ){0.0f, 0.0f, 0.0f, 1.0f}, font->font_atlas[tile_index].texture_coord, 0);
 
         glbatch_put(&font->batches, tmp);
 

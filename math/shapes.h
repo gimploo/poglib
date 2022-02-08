@@ -4,7 +4,7 @@
 // Triangle
 typedef struct trif_t trif_t;
 
-trif_t          trif_init(vec3f_t pos, f32 side);
+trif_t          trif(vec3f_t pos, f32 side);
 
 #define         TRI_FMT         VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT ",\n"
 #define         TRI_ARG(TRI)    VEC3F_ARG(&(TRI.vertex[0])), VEC3F_ARG(&(TRI.vertex[1])), VEC3F_ARG(&(TRI.vertex[3]))
@@ -17,7 +17,7 @@ typedef struct quadf_t quadf_t;
 #define         QUAD_FMT                        VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT "\n" 
 #define         QUAD_ARG(QUAD)                  VEC3F_ARG(&(QUAD.vertex[0])), VEC3F_ARG(&(QUAD.vertex[1])), VEC3F_ARG(&(QUAD.vertex[3])), VEC3F_ARG(&(QUAD.vertex[3]))
 
-quadf_t         quadf_init(vec3f_t position, f32 width, f32 height);
+quadf_t         quadf(vec3f_t position, f32 width, f32 height);
 void            quadf_translate(quadf_t *quad, vec3f_t vec);
 void            quadf_scale(quadf_t *quad, f32 scale);
 bool            quadf_is_point_in_quad(quadf_t quad, vec3f_t point);
@@ -32,7 +32,7 @@ void            quadf_print(quadf_t quad);
 //Circle
 typedef struct circle_t circle_t;
 
-circle_t        circle_init(vec3f_t pos, f32 radius);
+circle_t        circle(vec3f_t pos, f32 radius);
 
 
 
@@ -54,7 +54,7 @@ struct trif_t {
 }; 
 
 
-trif_t trif_init(vec3f_t pos, f32 side)
+trif_t trif(vec3f_t pos, f32 side)
 {
     const f32 side_half = side / 2;
     const f32 height = 1.732050807568877f * side_half; 
@@ -88,7 +88,7 @@ void quadf_print(quadf_t quad)
 
 
 
-quadf_t quadf_init(vec3f_t position, f32 width, f32 height)
+quadf_t quadf(vec3f_t position, f32 width, f32 height)
 {
     quadf_t output = {0};
 
@@ -135,7 +135,7 @@ struct circle_t {
 
 };
 
-circle_t circle_init(vec3f_t pos, f32 radius)
+circle_t circle(vec3f_t pos, f32 radius)
 {
     circle_t output;
 
