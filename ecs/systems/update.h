@@ -39,9 +39,9 @@ void transform_mesh2d_update(c_transform_t *t, c_mesh2d_t *mesh)
                 0.0f, 0.0f, 0.0f, 1.0f,
         };
 
-        matrixf_t origin_shift          = matrix4f_init((vec4f_t *)mat01);
-        matrixf_t origin_shift_reset    = matrix4f_init((vec4f_t *)mat02);
-        matrixf_t rot                   = matrix4f_rotation_init(t->angular_radians);
+        matrixf_t origin_shift          = matrix4f((vec4f_t *)mat01);
+        matrixf_t origin_shift_reset    = matrix4f((vec4f_t *)mat02);
+        matrixf_t rot                   = matrix4f_rotation(t->angular_radians);
 
         matrixf_t rtransform = matrixf_product(
                 origin_shift_reset, 
@@ -52,7 +52,7 @@ void transform_mesh2d_update(c_transform_t *t, c_mesh2d_t *mesh)
     } 
 
     // TRANSLATION
-    matrixf_t trans = matrix4f_translation_init(t->velocity);
+    matrixf_t trans = matrix4f_translation(t->velocity);
     model = matrixf_product(
                 trans,
                 model);

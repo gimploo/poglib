@@ -42,7 +42,6 @@ typedef struct __mouse_t {
 typedef struct __keyboard_t {
 
     bool keystate[SDL_NUM_SCANCODES]; 
-
     bool just_pressed[SDL_NUM_SCANCODES]; 
     bool is_held[SDL_NUM_SCANCODES];
 

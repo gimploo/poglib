@@ -236,7 +236,7 @@ vec3f_t vec3f_scale(const vec3f_t x, const f32 scale)
     return output;
 }
 
-vec3f_t vec3f_init(f32 scale, f32 angle_in_radians)
+vec3f_t vec3f_radians(f32 scale, f32 angle_in_radians)
 {
     assert(angle_in_radians <= 6.283185 || angle_in_radians >= -6.283185);
 

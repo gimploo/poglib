@@ -33,24 +33,24 @@ c_mesh2d_t * c_mesh2d_init(vec3f_t centerpos, c_shape_type type, f32 radius)
         //Triangle
         case TRIANGLE: {
 
-            trif_t tri = trif_init(topright, radius);
-            o->model = matrixf_init(tri.vertex, 3, 3);
+            trif_t tri = trif(topright, radius);
+            o->model = matrixf(tri.vertex, 3, 3);
 
         } break;
 
         // Square
         case SQUARE: {
 
-            quadf_t tmp = quadf_init(topright, radius, radius);
-            o->model = matrixf_init(tmp.vertex, 4, 3);
+            quadf_t tmp = quadf(topright, radius, radius);
+            o->model = matrixf(tmp.vertex, 4, 3);
 
         } break;
 
         //Circle
         case CIRCLE: {
             
-            circle_t circle = circle_init(centerpos, radius);
-            o->model = matrixf_init(circle.points, MAX_VERTICES_PER_CIRCLE, 3);
+            circle_t tmp = circle(centerpos, radius);
+            o->model = matrixf(tmp.points, MAX_VERTICES_PER_CIRCLE, 3);
 
         } break;
 

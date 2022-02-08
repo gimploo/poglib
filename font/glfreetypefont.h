@@ -243,7 +243,7 @@ void glfreetypefont_set_text(glfreetypefont_t *self, const char *text, vec2f_t p
         /* Skip glyphs that have no pixels */
         if(!w || !h) continue;
 
-        quadf_t quad = quadf_init((vec3f_t ){x2, -y2, 0.0f}, w, h);
+        quadf_t quad = quadf((vec3f_t ){x2, -y2, 0.0f}, w, h);
 
         quadf_t uv = {
           self->fontatlas[c].tx, self->fontatlas[c].ty, 0.0f,
@@ -252,16 +252,16 @@ void glfreetypefont_set_text(glfreetypefont_t *self, const char *text, vec2f_t p
           self->fontatlas[c].tx, self->fontatlas[c].ty + self->fontatlas[c].bh / self->height, 0.0f,
         };
 
-        glquad_t glquad = glquad_init(quad, color, uv, 0);
+        glquad_t stuff = glquad(quad, color, uv, 0);
 
-        glbatch_put(&self->batches, glquad);
+        glbatch_put(&self->batches, stuff);
     }
 }
 
 void glfreetypefont_draw(glfreetypefont_t *self)
 {
     glrenderer2d_draw_from_batch(&self->renderer2d, &self->batches);
-    //glbatch_clear(&self->batches);
+    glbatch_clear(&self->batches);
 }
 
 void glfreetypefont_destroy(glfreetypefont_t *self)

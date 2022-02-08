@@ -11,9 +11,9 @@
 
 typedef struct hashtable_t hashtable_t;
 
-#define         hashtable_init(CAPACITY, TYPE)                      __impl_hashtable_init(CAPACITY, #TYPE, sizeof(TYPE))
-#define         hashtable_insert(PTABLE, KEY, VALUE)                __impl_hashtable_insert_key_value_pair_by_value(PTABLE, KEY, &VALUE, sizeof(VALUE))
-#define         hashtable_delete(PTABLE, KEY)                       __impl_hashtable_delete_key_value_pair(PTABLE, KEY)
+#define         hashtable_init(CAPACITY, TYPE)                      __impl_hashtable_init((CAPACITY), (#TYPE), sizeof(TYPE))
+#define         hashtable_insert(PTABLE, KEY, VALUE)                __impl_hashtable_insert_key_value_pair_by_value((PTABLE), (KEY), &(VALUE), sizeof(VALUE))
+#define         hashtable_delete(PTABLE, KEY)                       __impl_hashtable_delete_key_value_pair((PTABLE), (KEY))
 #define         hashtable_destroy(PTABLE)                           __impl_hashtable_destroy(PTABLE)
 
 void *          hashtable_get_value_by_key(const hashtable_t *table, const char *key);
@@ -161,14 +161,14 @@ void hashtable_print(const hashtable_t *table, void (*print)(void*))
 }
 
 
-void *hashtable_get_value_by_key(const hashtable_t *table, const char *key)
+void * hashtable_get_value_by_key(const hashtable_t *table, const char *key)
 {
     assert(table);
     assert(key);
 
     u64 index = hash_cstr(key, strlen(key));
 
-    if (!table->__index_table[index]) eprint("no value found at index %li of key %s\n", index, key);
+    if (!table->__index_table[index]) NULL;
 
     return table->__array[index].value;
 }

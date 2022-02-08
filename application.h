@@ -4,7 +4,6 @@
 #include "simple/window.h"
 #include "application/stopwatch.h"
 #include "ecs/entitymanager.h"
-#include "poggen.h"
 
 
 
@@ -22,7 +21,7 @@ void            application_run(application_t *app);
 #define         application_get_whandle(PAPP) (PAPP)->__window_handle
 
 
-#define         application_pass_game(PAPP, PGAME) (PAPP)->game = PGAME
+#define         application_pass_game(PAPP, PGAME) (PAPP)->content = PGAME
 
 
 
@@ -36,7 +35,11 @@ struct application_t {
     stopwatch_t     timer;
     state_t         state;
 
-    void            *game;
+    union {
+        void *content;
+        void *game;
+        void *engine;
+    };
 
 
     void (* init)(struct application_t *);
@@ -54,7 +57,7 @@ application_t __impl_application_init(window_t *window, void (* init)(struct app
         .__window_handle = window,
         .timer = stopwatch_init(), 
         .state = 0,
-        .game = NULL,
+        .content = NULL,
         .init = init,
         .update = update,
         .render = render,

@@ -1,8 +1,9 @@
 #pragma once
-#include "./simple/window.h"
-#include "./simple/glrenderer2d.h"
+#include "./application.h"
 #include "./ecs/entitymanager.h"
 #include "./poggen/assetmanager.h"
+#include "./poggen/action.h"
+#include "./poggen/scene.h"
 
 
 /*=====================================
@@ -13,29 +14,18 @@
 typedef struct poggen_t poggen_t ;
 
 poggen_t        poggen_init(void);
+
+void            poggen_add_scene(poggen_t *self, const char *label, const scene_t scene);
+void            poggen_remove_scene(poggen_t *self, const char *label);
+void            poggen_change_scene(poggen_t *self, const char *scene_label);
+
 void            poggen_destroy(poggen_t *self);
 
 
 
 #ifndef IGNORE_POGGEN_IMPLEMENTATION
 
-typedef struct scene_t scene_t ;
-
-struct scene_t {
-
-    poggen_t        *game_engine;
-    entitymanager_t manager;
-
-    //NOTE: apparantly this is a better way to handle user input
-    //hashtable_t     action_map; 
-    
-    bool            is_paused;
-    bool            is_over;
-
-    void (*update) (struct scene_t );
-    void (*render) (struct scene_t );
-
-};
+#define MAX_SCENES_ALLOWED 10
 
 struct poggen_t {
 
@@ -50,12 +40,49 @@ struct poggen_t {
 poggen_t poggen_init(void)
 {
     return (poggen_t ) {
-        .window = window_init("Poggen", 800, 700, SDL_INIT_VIDEO | SDL_INIT_AUDIO),
-        .renderer2d = glrenderer2d_init(NULL, NULL),
-        .assets = assetmanager_init(),
-        .scenes = hashtable_init(8, scene_t ),
-        .current_scene = NULL,
+        .window         = window_init("Poggen", 800, 700, SDL_INIT_VIDEO | SDL_INIT_AUDIO),
+        .renderer2d     = glrenderer2d_init(NULL, NULL),
+        .assets         = assetmanager_init(),
+        .scenes         = hashtable_init(MAX_SCENES_ALLOWED, scene_t ),
+        .current_scene  = NULL,
     };
+}
+
+
+void poggen_add_scene(poggen_t *self, const char *label, const scene_t scene)
+{
+    assert(self);
+    assert(label);
+
+    hashtable_insert(&self->scenes, label, *(scene_t *)&scene);
+}
+
+void poggen_remove_scene(poggen_t *self, const char *label)
+{
+    assert(self);
+    assert(label);
+
+    hashtable_delete(&self->scenes, label);
+}
+
+void poggen_change_scene(poggen_t *self, const char *scene_label)
+{
+    assert(self);
+    assert(scene_label);
+
+    hashtable_t *table = &self->scenes;
+
+    scene_t *scene = (scene_t *)hashtable_get_value_by_key(table, scene_label);
+    if (!scene) 
+        eprint("SCENE (%s) NOT FOUND", scene_label);
+
+    printf("SCENE UPDATED FROM (%s) TO (%s)\n", self->current_scene->label, scene->label);
+    self->current_scene = scene;
+}
+
+void poggen_run(poggen_t *self)
+{
+    //TODO:
 }
 
 
