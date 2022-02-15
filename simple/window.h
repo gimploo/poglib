@@ -1,30 +1,103 @@
-#ifndef _SIMPLE_WINDOW_H_
-#define _SIMPLE_WINDOW_H_
-
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <SDL2/SDL.h>
-
-#ifdef __gl_h_
-#include <SDL2/SDL_opengl.h>
-#else 
-#include <SDL2/SDL_render.h>
-#endif
-
+#pragma once
+#include "../basic.h"
 #include "../math/la.h"
-
-#define DEFAULT_BACKGROUND_COLOR (vec4f_t){{ 0.0f, 1.0f, 0.0f, 0.0f}}
-#define SDL_FLAGS u32
-
+#include <SDL2/SDL.h>
+#ifdef __gl_h_
+    #include <SDL2/SDL_opengl.h>
+#else 
+    #include <SDL2/SDL_render.h>
+#endif
 
 #ifndef SDL2_ENABLE_LOG
-#   define SDL_Log(fmt, ...)
+    #define SDL_Log(fmt, ...)
 #endif
+
+
 
 /*==============================================================================
  // Window library that is wrapper around SDL2 
 ==============================================================================*/
+
+
+
+typedef struct window_t window_t;
+
+
+//INIT
+window_t        window_init(const char *title, u64 width, u64 height, const u32 SDL_flags);
+
+//USERINPUT
+void            window_update_user_input(window_t *window);
+
+void            window_set_background(window_t *window, vec4f_t color);
+void            window_update_title(window_t *window, const char *title_name);
+
+//KEYBOARD
+#define         window_keyboard_is_key_just_pressed(PWINDOW, KEY)   ((PWINDOW)->keyboard_handler.just_pressed[SDL_GetScancodeFromKey(KEY)] == true)
+#define         window_keyboard_is_key_held(PWINDOW, KEY)           ((PWINDOW)->keyboard_handler.is_held[SDL_GetScancodeFromKey(KEY)] == true)
+#define         window_keyboard_is_key_pressed(PWINDOW, KEY)        ((PWINDOW)->keyboard_handler.keystate[SDL_GetScancodeFromKey(KEY)] == true)
+#define         window_keyboard_is_key_released(PWINDOW, KEY)       ((PWINDOW)->keyboard_handler.keystate[SDL_GetScancodeFromKey(KEY)] == false)
+
+//MOUSE
+#define         window_mouse_get_norm_position(PWINDOW)     (PWINDOW)->mouse_handler.norm_position
+#define         window_mouse_get_position(PWINDOW)          (PWINDOW)->mouse_handler.position
+#define         window_mouse_button_just_pressed(PWINDOW)   (PWINDOW)->mouse_handler.just_pressed
+#define         window_mouse_button_is_held(PWINDOW)        (PWINDOW)->mouse_handler.is_held
+#define         window_mouse_button_is_pressed(PWINDOW)     (window_mouse_button_just_pressed(PWINDOW) || window_mouse_button_is_held(PWINDOW))
+
+//RENDER
+#define         window_gl_render_begin(PWINDOW) do {\
+\
+    GL_CHECK(glClearColor(\
+            (PWINDOW)->background_color.cmp[0],\
+            (PWINDOW)->background_color.cmp[1],\
+            (PWINDOW)->background_color.cmp[2],\
+            (PWINDOW)->background_color.cmp[3]\
+    ));\
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));\
+    GL_CHECK(glEnable(GL_BLEND));\
+    GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
+    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));\
+\
+} while(0)
+
+#define         window_gl_render_end(PWINDOW) SDL_GL_SwapWindow((PWINDOW)->window_handle)
+//                      (or)
+void            window_render_stuff(window_t *window, void (*stuff)(void *), void * arg);
+
+//DESTROY
+void            window_destroy(window_t *window);
+
+
+
+// Subwindow
+window_t *      window_sub_window_init(window_t *parent, const char *title_name, u64 width, u64 height, const u32 SDL_flags);
+#define         window_sub_window_gl_render_begin(PWINDOW) do {\
+\
+    SDL_GL_MakeCurrent((PWINDOW)->window_handle, (PWINDOW)->gl_context);\
+    GL_CHECK(glClearColor(\
+            (PWINDOW)->background_color.cmp[0],\
+            (PWINDOW)->background_color.cmp[1],\
+            (PWINDOW)->background_color.cmp[2],\
+            (PWINDOW)->background_color.cmp[3]\
+    ));\
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));\
+    GL_CHECK(glEnable(GL_BLEND));\
+    GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
+    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));\
+\
+} while(0)
+#define         window_sub_window_gl_render_end(PWINDOW) SDL_GL_SwapWindow((PWINDOW)->window_handle)
+void            window_sub_window_render_stuff(window_t *sub_window, void (*stuff)(void *), void *arg);
+void            window_sub_window_destroy(window_t *sub_window);
+
+
+
+
+
+#ifndef IGNORE_WINDOW_IMPLEMENTATION
+
+#define DEFAULT_BACKGROUND_COLOR (vec4f_t){{ 0.0f, 1.0f, 0.0f, 0.0f}}
 
 
 // Mouse 
@@ -47,7 +120,7 @@ typedef struct __keyboard_t {
 
 } __keyboard_t;
 
-typedef struct window_t {
+struct window_t {
 
     u32             SDL_Window_ID;                  // useful for managing multiple windows
     bool            is_open;
@@ -70,115 +143,9 @@ typedef struct window_t {
     struct window_t     *sub_window_handle;             // Holds sub_window address
     bool                is_sub_window_active;
 
-} window_t;
-
-typedef void (*render_func) (void*);
+};
 
 global window_t global_window;
-
-/*----------------------------------------------------------------------
- // Declarations
-----------------------------------------------------------------------*/
-
-// Initializing +++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-window_t        window_init(const char *title, u64 width, u64 height, SDL_FLAGS flags);
-window_t *      window_sub_window_init(window_t *parent, const char *title_name, u64 width, u64 height, SDL_FLAGS flags);
-
-//NOTE:(macro)  window_while_is_open(window_t *window)
-
-// Helper ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void            window_set_background(window_t *window, vec4f_t color);
-void            window_update_title(window_t *window, const char *title_name);
-
-//NOTE:(macro)  window_get_dt(window_t *window) -> f64
-//NOTE:(macro)  window_get_fps(window_t *window) -> f64
-
-// Input ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void            window_update_user_input(window_t *window);
-
-//NOTE:(macro)  window_mouse_get_norm_position(window_t *window) -> vec2f_t
-//NOTE:(macro)  window_mouse_get_position(window_t *window) -> vec2ui_t
-//
-#//NOTE:(macro) window_mouse_button_is_pressed(window_t *window) -> bool     
-//NOTE:(macro)  window_mouse_button_just_pressed(window_t *window) -> bool
-//NOTE:(macro)  window_mouse_button_is_held(window_t *window) -> bool
-
-//NOTE:(macro)  window_keyboard_is_key_just_pressed(window_t *window, SDL_KeyCode key)  -> bool
-//NOTE:(macro)  window_keyboard_is_key_held(window_t *window, SDL_KeyCode key)          -> bool
-//NOTE:(macro)  window_keyboard_is_key_pressed(window_t *window, SDL_KeyCode key)       -> bool
-//NOTE:(macro)  window_keyboard_is_key_released(window_t *window, SDL_KeyCode key)      -> bool
-
-
-// Render ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 
-//NOTE:(macro)  window_gl_render_begin(window_t *window)
-//NOTE:(macro)  window_gl_render_end(window_t *window)
-//              (or)
-void            window_render_stuff(window_t *window, render_func stuff, void * arg);
-
-//NOTE:(macro)  window_sub_window_gl_render_begin(window_t *sub_window)
-//NOTE:(macro)  window_sub_window_gl_render_end(window_t *sub_window)
-//              (or)
-void            window_sub_window_render_stuff(window_t *sub_window, render_func stuff, void *arg);
-
-// Cleanup ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-void            window_destroy(window_t *window);
-void            window_sub_window_destroy(window_t *sub_window);
-
-
-/*-------------------------------------------------------------------------
- // Implementations
--------------------------------------------------------------------------*/
-#define window_mouse_get_norm_position(pwindow)     (pwindow)->mouse_handler.norm_position
-#define window_mouse_get_position(pwindow)          (pwindow)->mouse_handler.position
-#define window_mouse_button_just_pressed(pwindow)   (pwindow)->mouse_handler.just_pressed
-#define window_mouse_button_is_held(pwindow)        (pwindow)->mouse_handler.is_held
-#define window_mouse_button_is_pressed(PWINDOW)     (window_mouse_button_just_pressed(PWINDOW) || window_mouse_button_is_held(PWINDOW))
-
-
-#define window_gl_render_begin(pwindow) {\
-    GL_CHECK(glClearColor(\
-            (pwindow)->background_color.cmp[0],\
-            (pwindow)->background_color.cmp[1],\
-            (pwindow)->background_color.cmp[2],\
-            (pwindow)->background_color.cmp[3]\
-    ));\
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));\
-    GL_CHECK(glEnable(GL_BLEND));\
-    GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
-    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));\
-}
-
-#define window_gl_render_end(pwindow) do {\
-\
-    SDL_GL_SwapWindow((pwindow)->window_handle);\
-\
-} while(0)
-
-#define window_sub_window_gl_render_begin(pwindow) {\
-    SDL_GL_MakeCurrent((pwindow)->window_handle, (pwindow)->gl_context);\
-    GL_CHECK(glClearColor(\
-            (pwindow)->background_color.cmp[0],\
-            (pwindow)->background_color.cmp[1],\
-            (pwindow)->background_color.cmp[2],\
-            (pwindow)->background_color.cmp[3]\
-    ));\
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));\
-    GL_CHECK(glEnable(GL_BLEND));\
-    GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
-    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));\
-}
-
-#define window_sub_window_gl_render_end(pwindow) SDL_GL_SwapWindow((pwindow)->window_handle)
-
-#define window_keyboard_is_key_just_pressed(pwindow, KEY)   ((pwindow)->keyboard_handler.just_pressed[SDL_GetScancodeFromKey(KEY)] == true)
-#define window_keyboard_is_key_held(pwindow, KEY)           ((pwindow)->keyboard_handler.is_held[SDL_GetScancodeFromKey(KEY)] == true)
-#define window_keyboard_is_key_pressed(pwindow, KEY)        ((pwindow)->keyboard_handler.keystate[SDL_GetScancodeFromKey(KEY)] == true)
-#define window_keyboard_is_key_released(pwindow, KEY)       ((pwindow)->keyboard_handler.keystate[SDL_GetScancodeFromKey(KEY)] == false)
 
 void window_update_title(window_t *window, const char *title_name)
 {
@@ -231,7 +198,7 @@ static inline __mouse_t __mouse_init(window_t *window)
     return mouse;
 }
 
-static inline window_t __sub_window_init(const char *title_name, u64 width, u64 height, SDL_FLAGS flags) 
+static inline window_t __sub_window_init(const char *title_name, u64 width, u64 height, const u32 flags) 
 {   
     window_t output         = {0};
     output.title_name       = title_name;
@@ -250,7 +217,7 @@ static inline window_t __sub_window_init(const char *title_name, u64 width, u64 
     output.sub_window_handle = NULL;
     output.is_sub_window_active = false;
 
-    SDL_FLAGS WinFlags      = 0;
+    const u32 WinFlags      = 0;
 
 #ifdef __gl_h_
 
@@ -291,7 +258,7 @@ static inline window_t __sub_window_init(const char *title_name, u64 width, u64 
 
 }
 
-window_t * window_sub_window_init(window_t *parent, const char *title_name, u64 width, u64 height, SDL_FLAGS flags)
+window_t * window_sub_window_init(window_t *parent, const char *title_name, u64 width, u64 height, const u32 flags)
 {
     if (parent == NULL) eprint("parent window argument is null");
 
@@ -305,7 +272,7 @@ window_t * window_sub_window_init(window_t *parent, const char *title_name, u64 
 }
 
 
-window_t window_init(const char *title_name, u64 width, u64 height, SDL_FLAGS flags)
+window_t window_init(const char *title_name, u64 width, u64 height, const u32 flags)
 {
     global_window                  = (window_t ){0};
     global_window.title_name       = title_name;
@@ -324,7 +291,7 @@ window_t window_init(const char *title_name, u64 width, u64 height, SDL_FLAGS fl
     global_window.sub_window_handle = NULL;
     global_window.is_sub_window_active = false;
 
-    SDL_FLAGS WinFlags      = 0;
+    const u32 WinFlags      = 0;
 
 #ifdef __gl_h_
     WinFlags = SDL_WINDOW_OPENGL;
@@ -623,7 +590,7 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
 }
 
 
-void window_sub_window_render_stuff(window_t *sub_window, render_func stuff, void *arg)
+void window_sub_window_render_stuff(window_t *sub_window, void (*stuff)(void *), void *arg)
 {
 #ifdef __gl_h_
         SDL_GL_MakeCurrent(sub_window->window_handle, sub_window->gl_context);
@@ -717,7 +684,7 @@ void window_update_user_input(window_t *window)
 }
 
 
-void window_render_stuff(window_t *window, render_func render, void *arg)
+void window_render_stuff(window_t *window, void (*render)(void *), void *arg)
 {
     if (window == NULL) eprint("window argument is null");
 
@@ -804,4 +771,4 @@ void window_destroy(window_t *window)
 }
 
 
-#endif // __SIMPLE_WINDOW_H_
+#endif 
