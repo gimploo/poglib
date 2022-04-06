@@ -86,7 +86,7 @@ void entitymanager_update(entitymanager_t *manager)
 
     // Remove dead entities from entities list and entitymap
     list_t *entities    = &manager->entities;
-    for (u64 i = 0; i < entities->len; i++)
+    for (u64 i = 0; i < list_len(entities); i++)
     {
         entity_t *e = (entity_t *)list_get_element_by_index(entities, i);
         assert(e);
@@ -96,7 +96,7 @@ void entitymanager_update(entitymanager_t *manager)
         list_t *entitylist = entitymanager_get_all_entities_by_tag(manager, e->tag);
         assert(entitylist);
 
-        for (u64 j = 0; j < entitylist->len; j++)
+        for (u64 j = 0; j < list_len(entitylist); j++)
         {
             entity_t *tmp = (entity_t *)list_get_element_by_index(entitylist, j);
             assert(tmp);
@@ -151,7 +151,7 @@ void entitymanager_destroy(entitymanager_t *manager)
 
     // Deleting all entities from entities list
     list_t *entities = &manager->entities;
-    for (u64 i = 0; i < entities->len; i++)
+    for (u64 i = 0; i < list_len(entities); i++)
     {
         entity_t *e = (entity_t *)list_get_element_by_index(entities, i);
         assert(e);
@@ -163,7 +163,7 @@ void entitymanager_destroy(entitymanager_t *manager)
 
     // Deleting entitymap
     list_t *map = &manager->entitymap;
-    for (u64 i = 0; i < map->len; i++)
+    for (u64 i = 0; i < list_len(map); i++)
     {
         list_t *list = (list_t *)list_get_element_by_index(map, i);
         assert(list);

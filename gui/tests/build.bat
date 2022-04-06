@@ -1,47 +1,54 @@
 @echo off
+SETLOCAL
 
 REM =============================================================================================
 REM                            -- WINDOWS BUILD SCRIPT FOR C PROJECTS --
 REM =============================================================================================
 
 REM Include required dependencies
-set DEPENDENCY_LIST=SDL2 GLEW
-set SDL2_URL=https://www.libsdl.org/release/SDL2-devel-2.0.16-VC.zip
+set DEPENDENCY_LIST=SDL2 GLEW FREETYPE
+set SDL2_URL=https://www.libsdl.org/release/SDL2-devel-2.0.20-VC.zip
 set GLEW_URL=https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0-win32.zip
+set FREETYPE_URL=https://github.com/ubawurinna/freetype-windows-binaries/archive/refs/heads/master.zip
+
+REM Url to my library
+set POGLIB_URL=https://github.com/gimploo/poglib/archive/refs/heads/main.zip
 
 REM Include compiler of choice (here its msvc)
 set CC=cl
-set CC_PATH="C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
-set CC_DEFAULT_FLAGS=/std:c11 /W4 /wd4244 /wd4996 /wd5105 /FC /TC /Zi 
-set CC_DEFAULT_LIBS=User32.lib Gdi32.lib Shell32.lib
+set CC_PATH="C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+set CC_DEFAULT_FLAGS=/std:c11 /W4 /wd4244 /wd4996 /wd4477 /wd4267 /FC /TC /Zi 
+set CC_DEFAULT_LIBS=User32.lib Gdi32.lib Shell32.lib winmm.lib dbghelp.lib shlwapi.lib
 
 REM Source and executalble path (default)
-set EXE_DEFAULT_PATH=.\bin
-set SRC_DEFAULT_PATH=.
+set EXE_FOLDER_DEFAULT_PATH=.\bin
+set SRC_FOLDER_DEFAULT_PATH=.\src
 set DEPENDENCY_DEFAULT_PATH=.\external
 
 REM Source files and exe name
-set SRC_FILES="main.c"
-set EXE=test.exe
+set SRC_FILE_NAME=test01.c
+set EXE_FILE_NAME=test.exe
 
 
 
 :main
-    if "%1" == "deepclean" (
-        call :deepcleanup
-        exit /b 0
-    )
 
     if "%1" == "clean" (
         call :cleanup
-        exit /b 0
+        goto :end
     )
+
+    if "%1" == "deepclean" (
+        call :deepcleanup
+        goto :end
+    )
+
 
     cls
     echo [*] Running build script for windows...
     
     echo [*] Checking %CC% compiler is installed ...
-    call :check_compiler_is_installed || goto :EOF
+    call :check_compiler_is_installed || goto :end
 
 
     echo [*] Checking if all dependenices are installed ...
@@ -53,33 +60,43 @@ set EXE=test.exe
     )
 
     echo [*] Checking dependenices ...
-    call :check_dependencies_are_installed || goto :EOF
+    call :check_dependencies_are_installed
     echo [!] Dependencies all found!
 
+    echo [*] Checking for bin folder ...
     if exist bin (
-        echo [!] Bin directory found!
+        echo [!] bin directory found!
     ) else (
-        echo [!] Bin directory not found!
+        echo [!] bin directory not found!
         mkdir bin
-        echo [!] Bin directory made!
+        call :copy_all_dlls_to_bin
+        echo [!] bin directory made!
     )
 
-    echo [*] Building project ...
-    call :build_project_with_msvc || goto :EOF
+    echo [*] Checking for lib folder ...
+    if exist lib (
+        echo [!] lib folder found!
+    ) else (
+        echo [!] lib folder not found!
+        call :setup_poglib
+        echo [!] lib folder setup finished!
+    )
 
-    if %errorlevel% == 0 (
+    echo [*] Building project [DEBUG BUILD]...
+    call :build_project_with_msvc || goto :end
+
+    if "%1" == "debug" (
+        call :run_executable_with_debugger
+        goto :end
+    )
+
+    if "%1" == "run" (
         echo [*] Running executable ...
-        call :run_executable || goto :EOF
-
-        if %errorlevel% neq 0 (
-            echo [*] Running executable through the debugger ...
-            call :run_executable_with_debugger || goto :EOF
-        )
+        call :run_executable
+        echo [!] Exited! 
     )
-    
 
-    echo [!] Exited! 
-    exit /b 0
+    goto :end
 
 
 REM ==================================================================================
@@ -89,26 +106,29 @@ REM (change whats in here to ) -
 REM                            |
 REM                            v
 :build_project_with_msvc
-    SETLOCAL
 
     set INCLUDES=/I %DEPENDENCY_DEFAULT_PATH%\SDL2\include ^
-                    /I %DEPENDENCY_DEFAULT_PATH%\GLEW\include
+                    /I %DEPENDENCY_DEFAULT_PATH%\GLEW\include ^
+                    /I %DEPENDENCY_DEFAULT_PATH%\FREETYPE\include 
 
-    set FLAGS=/DGLEW_STATIC 
+    set FLAGS=/DGLEW_STATIC /DDEBUG
 
     set LIBS=%DEPENDENCY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.lib ^
                 %DEPENDENCY_DEFAULT_PATH%\SDL2\lib\x64\SDL2main.lib ^
                 %DEPENDENCY_DEFAULT_PATH%\GLEW\lib\Release\x64\glew32s.lib ^
+                %DEPENDENCY_DEFAULT_PATH%\FREETYPE\lib\win64\freetype.lib ^
                 Opengl32.lib glu32.lib
 
     cl %CC_DEFAULT_FLAGS% %FLAGS%^
         %INCLUDES% ^
-        /Fe%EXE_DEFAULT_PATH%\%EXE% ^
-        %SRC_DEFAULT_PATH%\%SRC_FILES% ^
-        /link %CC_DEFAULT_LIBS% %LIBS% -SUBSYSTEM:windows
+        /Fe%EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME% ^
+        %SRC_FOLDER_DEFAULT_PATH%\%SRC_FILE_NAME% ^
+        /link %CC_DEFAULT_LIBS% %LIBS% -SUBSYSTEM:console || echo [!] Failed to compile! && exit /b 1
+
+    move *.pdb %EXE_FOLDER_DEFAULT_PATH% >nul
+    move *.obj %EXE_FOLDER_DEFAULT_PATH% >nul
 
 
-    ENDLOCAL
     exit /b %errorlevel%
 
 
@@ -119,29 +139,21 @@ REM                             -- HELPER FUNCTIONS --
 REM =======================================================================================
     
 :run_executable
-    %EXE_DEFAULT_PATH%\%EXE%
+    echo.
+    %EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME%
+    echo.
     exit /b %errorlevel% 
 
 :run_executable_with_debugger
-    devenv /DebugExe %EXE_DEFAULT_PATH%\%EXE%
+    echo [!] Running executable through the debugger!
+    devenv /DebugExe %EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME%
     exit /b 0
 
-:deepcleanup
-    echo [*] Cleanup in progress ...
-    if exist "%DEPENDENCY_DEFAULT_PATH%" (
-        rd /s /q "%DEPENDENCY_DEFAULT_PATH%"
-        echo [!] %DEPENDENCY_DEFAULT_PATH% directory deleted!
-    )
-    call :cleanup
-    echo [!] Cleanup done!
-    exit /b 0
-
-:cleanup
-    if exist bin (
-        rd /s /q bin
-        echo [!] bin directory deleted!
-    )
-    del /s *.pdb *.obj 2>nul
+:setup_poglib
+    echo [!] Setting up poglib ...
+    call curl -L --output main.zip %POGLIB_URL% 
+    mkdir lib
+    tar -xf main.zip -C lib --strip-components 1 && del main.zip
     exit /b 0
 
 :check_dependencies_are_installed
@@ -158,8 +170,17 @@ REM ============================================================================
     exit /b 0
 
 :check_compiler_is_installed 
-    %CC_PATH% || echo [!] Compiler %CC% not found! && goto :EOF
+    %CC_PATH% || echo [!] Compiler %CC% not found! && goto :end
     echo [!] Compiler %CC% found!
+    exit /b 0
+
+:copy_all_dlls_to_bin
+    echo [*] Copying all DLLs to bin ...
+
+    REM ADD New dlls here! 
+
+    copy %DEPENDENCY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.dll %EXE_FOLDER_DEFAULT_PATH% >nul
+
     exit /b 0
 
 :download_dependency
@@ -178,6 +199,38 @@ REM ============================================================================
         popd
     )
 
+    if "%~1" == "FREETYPE" (
+        pushd FreeType\
+            rename "release static" lib
+            move "lib\vs2015-2022\win64" lib\ >nul
+            move "lib\vs2015-2022\win32" lib\ >nul
+            rd /s /q "lib\vs2015-2022"
+        popd
+    )
+
     echo [!] Successfully installed %~1!
     exit /b 0
 
+:cleanup
+    if exist bin (
+        rd /s /q bin || echo [!] bin folder not found!
+        echo [!] bin directory deleted!
+    )
+    rd /s /q lib || echo [!] lib folder not found! 
+    echo [!] lib folder deleted!
+    exit /b 0
+
+:deepcleanup
+    echo [*] Cleanup in progress ...
+    if exist "%DEPENDENCY_DEFAULT_PATH%" (
+        rd /s /q "%DEPENDENCY_DEFAULT_PATH%"
+        echo [!] %DEPENDENCY_DEFAULT_PATH% directory deleted!
+    )
+    call :cleanup
+    echo [!] Cleanup done!
+    exit /b 0
+
+
+:end
+    echo [!] Script exiting!
+    ENDLOCAL

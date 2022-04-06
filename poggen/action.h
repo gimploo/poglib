@@ -2,10 +2,12 @@
 #include <SDL2/SDL.h>
 #include "../str.h"
 
+//NOTE: Not used at the moment, felt as if i am overenginerring a already simple
+//problem
 
 
 typedef struct action_t action_t ;
-#define     action(LABEL, KEY)         __impl_action_init(str(LABEL), (SDLK_##KEY))
+#define     action(LABEL, KEY)         __impl_action_init(LABEL, (SDLK_##KEY))
 
 
 
@@ -14,12 +16,12 @@ typedef struct action_t action_t ;
 
 struct action_t {
 
-    const str_t       label;
-    const SDL_Keycode key;
+    const char          *label;
+    const SDL_Keycode   key;
 
 };
 
-action_t __impl_action_init(const str_t label, const SDL_Keycode key)
+action_t __impl_action_init(const char *label, const SDL_Keycode key)
 {
     return (action_t ) {
         .label = label,

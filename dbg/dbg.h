@@ -16,8 +16,6 @@
 
 #ifdef DEBUG // THE Memory debugger is only active, if DEBUG macro is set
 
-    typedef struct dbg_t dbg_t;
-
     bool        dbg_init(void);
     void        dbg_destroy(void);
 
@@ -53,6 +51,7 @@ void        stacktrace_print(void);
 #define realloc(P, N)   _debug_realloc((P), (#P), (N), __FILE__, __LINE__, __func__)
 #define free(P)         _debug_free((P), (#P), __FILE__, __LINE__, __func__) 
 
+typedef struct dbg_t dbg_t;
 
 struct dbg_t {
 
