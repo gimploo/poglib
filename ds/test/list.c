@@ -265,15 +265,15 @@ int oldmain04(void)
 
     list_print(&list, list_dump);
 
-    for (int i = 0; i < list.len; i++)
+    for (int i = 0; i < list.__len; i++)
     {
         list_t *bar = (list_t *)list_get_element_by_index(&list, i);
-        if (!bar->len) {
+        if (!bar->__len) {
             printf("list %i list is empty\n", i);
             continue;
         }
         printf("list %i is \n",i);
-        for (int j = 0; j < bar->len; j++)
+        for (int j = 0; j < bar->__len; j++)
         {
             foo *x = (foo *)list_get_element_by_index(bar, j);
             print_foo(x);
@@ -284,15 +284,15 @@ int oldmain04(void)
     printf("\n\n");
 
     list_delete(&list, 0);
-    for (int i = 0; i < list.len; i++)
+    for (int i = 0; i < list.__len; i++)
     {
         list_t *bar = (list_t *)list_get_element_by_index(&list, i);
-        if (!bar->len) {
+        if (!bar->__len) {
             printf("list %i list is empty\n", i);
             continue;
         }
         printf("list %i is \n",i);
-        for (int j = 0; j < bar->len; j++)
+        for (int j = 0; j < bar->__len; j++)
         {
             foo *x = (foo *)list_get_element_by_index(bar, j);
             print_foo(x);
@@ -301,7 +301,7 @@ int oldmain04(void)
     }
 
 
-    for (int i = 0; i < list.len; i++)
+    for (int i = 0; i < list.__len; i++)
     {
         list_t *tmp = (list_t *)list_get_element_by_index(&list, i);
         list_destroy(tmp);

@@ -9,14 +9,14 @@ typedef struct str_t str_t ;
 
 
 #define         str(STRING)              (str_t ) { .buf = STRING, .len = strlen(STRING), .__is_heap_allocated = false }
-str_t           str_init(char *buffer);
+str_t           str_init(const char *buffer);
 void            str_free(str_t *x);
 void            str_print(str_t *str);
 u32             str_is_string_in_buffer(str_t *word, str_t *buffer);
 u32             str_where_is_string_in_buffer(str_t *word, str_t *buffer);
 str_t           str_read_file_to_str(const char *file_path);
 str_t           str_cpy_delimiter(str_t *buffer, char ch);
-bool            str_cmp(str_t *a, str_t *b);
+bool            str_cmp(const str_t *a, const str_t *b);
 void            str_cpy(str_t *dest, str_t *source);
 
 
@@ -39,8 +39,9 @@ struct str_t {
 
 
 
-str_t str_init(char * const buffer) 
+str_t str_init(const char * const buffer) 
 {
+    assert(buffer);
     str_t s = {
         .buf = (char *)calloc(1, strlen(buffer) + 1),
         .len = strlen(buffer),
@@ -82,7 +83,7 @@ void str_cpy(str_t *dest, str_t *source)
     dest->len = source->len;
 }
 
-bool str_cmp(str_t *a, str_t *b) 
+bool str_cmp(const str_t *a, const str_t *b) 
 {
     assert(a);
     assert(b);

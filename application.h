@@ -4,6 +4,7 @@
 #include "simple/window.h"
 #include "application/stopwatch.h"
 #include "ecs/entitymanager.h"
+#include "font/glfreetypefont.h"
 
 
 
@@ -13,15 +14,17 @@ typedef struct application_t application_t;
 typedef u8 state_t;
 
 #define         application_init(PWIN) __impl_application_init((PWIN), (void *)app_init, (void *)app_update, (void *)app_render, (void *)app_shutdown)
+
+#define         application_set_font(PAPP, FONT)        (PAPP)->__fontrenderer = FONT
+#define         application_pass_game(PAPP, PGAME)      (PAPP)->content = PGAME
+
 void            application_run(application_t *app);
 
 #define         application_update_state(PAPP, STATE) (PAPP)->state = STATE
 #define         application_get_dt(PAPP)  (PAPP)->timer.dt
 #define         application_get_fps(PAPP) (PAPP)->timer.fps
-#define         application_get_whandle(PAPP) (PAPP)->__window_handle
 
 
-#define         application_pass_game(PAPP, PGAME) (PAPP)->content = PGAME
 
 
 
@@ -31,9 +34,10 @@ void            application_run(application_t *app);
 
 struct application_t {
 
-    window_t        *const __window_handle;
-    stopwatch_t     timer;
-    state_t         state;
+    state_t             state;
+    window_t            *__window_handle;
+    stopwatch_t         __timer;
+    glfreetypefont_t    *__fontrenderer;
 
     union {
         void *content;
@@ -54,9 +58,10 @@ struct application_t {
 application_t __impl_application_init(window_t *window, void (* init)(struct application_t*), void (*update)(struct application_t*),void (*render)(struct application_t*), void (*shutdown)(struct application_t*))
 {
     return (application_t) {
-        .__window_handle = window,
-        .timer = stopwatch_init(), 
         .state = 0,
+        .__window_handle = window,
+        .__timer = stopwatch_init(), 
+        .__fontrenderer = NULL,
         .content = NULL,
         .init = init,
         .update = update,
@@ -77,7 +82,7 @@ void application_run(application_t *app)
     assert(app->__window_handle);
     
     window_t *win = app->__window_handle;
-    stopwatch_t *timer = &app->timer;
+    stopwatch_t *timer = &app->__timer;
 
     // Initialize the content in the application
     printf("[!] APPLICATION INIT!\n");

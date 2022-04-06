@@ -37,15 +37,12 @@ void                stack_print(stack_t *stack, void (*print_elem)(void *));
 
 struct stack_t {
 
-    u64 len;
-    u8 *array;
-    i64 top;
-    u64 capacity;
-    u64 elem_size;
-
-    // This variable checks if the list is a list of pointers 
-    bool __are_values_pointers;
-
+    u64     len;
+    u8      *__array;
+    i64     __top;
+    u64     __capacity;
+    u64     __elem_size;
+    bool    __are_values_pointers;     // This variable checks if the list is a list of pointers 
 };
 
 
@@ -56,10 +53,10 @@ stack_t __impl_stack_init(u64 capacity, const char *elem_name, u64 elem_size)
 
     stack_t o = {
         .len = 0,
-        .array = (u8 *)calloc(capacity, elem_size),
-        .top = -1,
-        .capacity = capacity,
-        .elem_size = elem_size,
+        .__array = (u8 *)calloc(capacity, elem_size),
+        .__top = -1,
+        .__capacity = capacity,
+        .__elem_size = elem_size,
         .__are_values_pointers = flag
     };
 
@@ -76,24 +73,24 @@ void __impl_stack_push(stack_t *stack, void *elem_ref, u64 elem_size)
 
     if (stack == NULL)                          eprint("stack_push: stack argument is null");
     if (elem_ref == NULL )                      eprint("stack_push: elem argument is null");
-    if (stack->top == (i64)stack->capacity-1)   eprint("stack_push: overflow");
+    if (stack->__top == (i64)stack->__capacity-1)   eprint("stack_push: overflow");
 
-    if (elem_size != stack->elem_size) eprint("trying to push a value of size %lu to slot of size %lu", elem_size, stack->elem_size);
+    if (elem_size != stack->__elem_size) eprint("trying to push a value of size %lu to slot of size %lu", elem_size, stack->__elem_size);
 
-    u8 *arr = (u8 *)stack->array + (++stack->top * elem_size); 
+    u8 *arr = (u8 *)stack->__array + (++stack->__top * elem_size); 
     memcpy(arr, elem_ref, elem_size);
 
-    stack->len = stack->top + 1;
+    stack->len = stack->__top + 1;
 
 }
 
 void * stack_pop(stack_t *stack)
 {
     if (stack == NULL) eprint("stack argument is null");
-    if (stack->top == -1) eprint("underflow");
+    if (stack->__top == -1) eprint("underflow");
 
-    u8 *elem_pos = (u8 *)stack->array + stack->top * stack->elem_size;
-    stack->len = --stack->top - 1;
+    u8 *elem_pos = (u8 *)stack->__array + stack->__top * stack->__elem_size;
+    stack->len = --stack->__top - 1;
 
     if (stack->__are_values_pointers) return *(void **)elem_pos;
 
@@ -105,12 +102,12 @@ void stack_print(stack_t *stack, void (*print_elem)(void *))
 {
     if (stack == NULL) eprint("stack_print: stack argument is null");
 
-    if(stack->top == -1) printf("stack_print: stack is empty");
+    if(stack->__top == -1) printf("stack_print: stack is empty");
 
     printf("\nSTACK ----------------------\n");
-    for (int i = stack->top; i > -1; i--) {
+    for (int i = stack->__top; i > -1; i--) {
         printf("\t");
-        print_elem(stack->array + i * stack->elem_size);
+        print_elem(stack->__array + i * stack->__elem_size);
         printf("\n");
     }
     printf("---------------------------\n");
@@ -120,13 +117,13 @@ void stack_destroy(stack_t *stack)
 {
     assert(stack);
 
-    free(stack->array);
-    stack->array = NULL;
+    free(stack->__array);
+    stack->__array = NULL;
 
-    stack->array = NULL;
-    stack->top = -1;
-    stack->capacity = 0;
-    stack->elem_size = 0;
+    stack->__array = NULL;
+    stack->__top = -1;
+    stack->__capacity = 0;
+    stack->__elem_size = 0;
     stack->len = 0;
 }
 

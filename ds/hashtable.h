@@ -18,6 +18,8 @@ typedef struct hashtable_t hashtable_t;
 
 void *          hashtable_get_value_by_key(const hashtable_t *table, const char *key);
 
+void            hashtable_print(const hashtable_t *table, void (*print)(void*));
+void            hashtable_dump(const hashtable_t *table);
 
 
 
@@ -29,13 +31,16 @@ void *          hashtable_get_value_by_key(const hashtable_t *table, const char 
 typedef struct __key_value_pair_t {
 
     const char      *key;
-    void            *value;
+    const void      *value;
     const u64       value_size;
 
 } __key_value_pair_t;
 
 
 struct hashtable_t {
+
+    // public 
+    u64                 len;
 
     //private
     __key_value_pair_t  *__array;
@@ -45,8 +50,6 @@ struct hashtable_t {
     const u64           __elem_size;
     bool                __are_values_pointers;
 
-    // public 
-    u64 len;
 };
 
 
@@ -85,7 +88,7 @@ bool __check_for_collision(const hashtable_t *table, const u64 index)
     return table->__index_table[index];
 }
 
-__key_value_pair_t __key_value_pair_init(const char *key, void * value_addr, const u64 value_size)
+__key_value_pair_t __key_value_pair_init(const char *key, const void * value_addr, const u64 value_size)
 {
     return (__key_value_pair_t ) {
 
@@ -99,7 +102,7 @@ __key_value_pair_t __key_value_pair_init(const char *key, void * value_addr, con
 void * __impl_hashtable_insert_key_value_pair_by_value(
         hashtable_t *table,
         const char  *key, 
-        void        *value_addr, 
+        const void  *value_addr, 
         const u64   value_size)
 { 
     if (table == NULL) eprint("table argument is null");
@@ -120,7 +123,7 @@ void * __impl_hashtable_insert_key_value_pair_by_value(
 
     table->len++;
     
-    return ((__key_value_pair_t *)table->__array + index)->value;
+    return (void *)((__key_value_pair_t *)table->__array + index)->value;
 }
 
 void __impl_hashtable_delete_key_value_pair(hashtable_t *table, const char *key_value)
@@ -146,12 +149,12 @@ void hashtable_print(const hashtable_t *table, void (*print)(void*))
     assert(table);
     assert(print);
 
-    printf("{\n");
+    printf("{");
     for (u64 i = 0; i < table->__capacity; i++)
     {
         if (table->__index_table[i]) {
 
-            printf("\tkey: %s, value: ", table->__array[i].key);
+            printf("\n\t`%s` := ", table->__array[i].key);
             print((void *)table->__array[i].value);
             printf("\n");
         }
@@ -170,7 +173,7 @@ void * hashtable_get_value_by_key(const hashtable_t *table, const char *key)
 
     if (!table->__index_table[index]) NULL;
 
-    return table->__array[index].value;
+    return (void *)table->__array[index].value;
 }
 
 void hashtable_dump(const hashtable_t *table)
