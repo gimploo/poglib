@@ -21,8 +21,8 @@ typedef u8 state_t;
 void            application_run(application_t *app);
 
 #define         application_update_state(PAPP, STATE) (PAPP)->state = STATE
-#define         application_get_dt(PAPP)  (PAPP)->timer.dt
-#define         application_get_fps(PAPP) (PAPP)->timer.fps
+#define         application_get_dt(PAPP)  (PAPP)->__timer.dt
+#define         application_get_fps(PAPP) (PAPP)->__timer.fps
 
 
 
