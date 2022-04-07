@@ -179,9 +179,9 @@ void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *bat
     }
 
     vao_t *vao  = &renderer->__vao;
-    vbo_t vbo   = vbo_static_init (
-                    batch->globjs.array, 
-                    batch->globjs.len * batch->globjs.elem_size, 
+    vbo_t vbo   = vbo_static_init(
+                    batch->globjs.__array, 
+                    batch->globjs.len * batch->globjs.__elem_size, 
                     vertices_count);
     ebo_t ebo;
 
