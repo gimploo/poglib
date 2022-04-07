@@ -330,9 +330,9 @@ void glshader_bind(glshader_t *shader)
 
     GL_SHADER_BIND(shader);
 
-    for (int i = 0; i <= shader->uniforms.top; i++)
+    for (int i = 0; i <= shader->uniforms.__top; i++)
     {
-        __uniform_meta_data_t *uniform = (__uniform_meta_data_t *)shader->uniforms.array + i;
+        __uniform_meta_data_t *uniform = (__uniform_meta_data_t *)shader->uniforms.__array + i;
         GL_LOG("Shader `%i` setting uniform `%s`", shader->id, uniform->variable_name);
 
         switch(uniform->uniform_type)
