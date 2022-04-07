@@ -217,7 +217,7 @@ static inline window_t __sub_window_init(const char *title_name, u64 width, u64 
     output.sub_window_handle = NULL;
     output.is_sub_window_active = false;
 
-    const u32 WinFlags      = 0;
+    u32 WinFlags      = 0;
 
 #ifdef __gl_h_
 
@@ -291,7 +291,7 @@ window_t window_init(const char *title_name, u64 width, u64 height, const u32 fl
     global_window.sub_window_handle = NULL;
     global_window.is_sub_window_active = false;
 
-    const u32 WinFlags      = 0;
+    u32 WinFlags      = 0;
 
 #ifdef __gl_h_
     WinFlags = SDL_WINDOW_OPENGL;
