@@ -15,7 +15,7 @@ void            list_destroy(list_t *list);
 void            list_dump(const list_t *list);
 void            list_print(const list_t *list, void (*print)(void*));
 
-void *          list_get_element_by_index(const list_t *list, const u64 index);
+void *          list_get_value(const list_t *list, const u64 index);
 
 #define         list_clear(PLIST)                               __impl_list_clear(PLIST)
 
@@ -37,7 +37,7 @@ struct list_t {
     bool    __are_values_pointers;     // This variable checks if the list is a list of pointers 
 };
 
-void * list_get_element_by_index(const list_t *list, const u64 index)
+void * list_get_value(const list_t *list, const u64 index)
 {
     if (list->__are_values_pointers)
         return *(void **)(list->__array + index * list->__elem_size);

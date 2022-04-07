@@ -70,7 +70,7 @@ void __entity_destroy(entity_t *e)
     list_t *cmps = &e->components;
     for (u64 i = 0; i < cmps->len; i++)
     {
-        entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(cmps, i);
+        entitycomponent_t *ec = (entitycomponent_t *)list_get_value(cmps, i);
         assert(ec);
 
         switch(ec->type)
@@ -170,7 +170,7 @@ const void * __impl_entity_get_component(const entity_t *e, const entitycomponen
     if ((i64)index == -1) return NULL;
 
 
-    entitycomponent_t *ec = (entitycomponent_t *)list_get_element_by_index(&e->components, index);
+    entitycomponent_t *ec = (entitycomponent_t *)list_get_value(&e->components, index);
     if(!ec) eprint("entity %s\n", e->label);
     if(!ec->cmp) eprint("entity %s\n", e->label);
 

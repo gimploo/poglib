@@ -25,7 +25,7 @@ typedef struct asset_t asset_t ;
 
 struct asset_t {
 
-    str_t       label;
+    const char  *label;
     const char  *filepath01;
     const char  *filepath02;
     asset_type  type;
