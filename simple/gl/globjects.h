@@ -8,7 +8,7 @@ typedef struct ebo_t ebo_t;
 
 
 
-#define         vbo_init(ARRAY)                                 vbo_static_init(&(ARRAY), sizeof(ARRAY), ARRAY_LEN(ARRAY))
+#define         vbo_init(ARRAY)                                 vbo_static_init((ARRAY), sizeof(ARRAY), ARRAY_LEN(ARRAY))
 //              (or)
 vbo_t           vbo_static_init(const void *vertices, const size_t vsize, const u64 count);
 
