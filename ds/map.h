@@ -13,6 +13,7 @@ typedef struct map_t map_t ;
 #define         map_init(CAPACITY, TYPE)        __impl_map_init(CAPACITY, #TYPE, sizeof(TYPE))
 #define         map_insert(PMAP, KEY, VALUE)    __impl_map_insert(PMAP, (KEY), &(VALUE), sizeof(VALUE))
 #define         map_delete(PMAP, KEY)           __impl_map_delete((PMAP), (KEY))
+#define         map_get_value(PMAP, KEY)        __impl_map_get_reference_to_value(PMAP, KEY)
 void            map_destroy(map_t *);
 
 
@@ -48,12 +49,20 @@ void __impl_map_insert(map_t *self, const char *key, const void *value_addr, con
     self->len++;
 }
 
+void * __impl_map_get_reference_to_value(const map_t *map, const char *key)
+{
+    assert(map);
+    assert(key);
+
+    return hashtable_get_value_by_key(&map->__values, key);
+}
+
 void __impl_map_delete(map_t *self, const char *key)
 {
     hashtable_delete(&self->__values, key);
     for (u32 i = 0; i < self->__keys.len; i++)
     {
-        const char *tmp = (char *)list_get_element_by_index(&self->__keys, i);
+        const char *tmp = (char *)list_get_value(&self->__keys, i);
         if (strcmp(key, tmp) == 0)
         {
             list_delete(&self->__keys, i);

@@ -20,7 +20,7 @@ void                entitymanager_destroy(entitymanager_t *manager);
 
 #define             entitymanager_get_total_entities(PMANAGER)              (PMANAGER)->entities.len
 #define             entitymanager_get_all_entities(PMANAGER)                &(PMANAGER)->entities
-#define             entitymanager_get_all_entities_by_tag(PMANAGER, TAG)    ((list_t *)list_get_element_by_index(&(PMANAGER)->entitymap, (TAG)))
+#define             entitymanager_get_all_entities_by_tag(PMANAGER, TAG)    ((list_t *)list_get_value(&(PMANAGER)->entitymap, (TAG)))
 
 
 
@@ -86,9 +86,9 @@ void entitymanager_update(entitymanager_t *manager)
 
     // Remove dead entities from entities list and entitymap
     list_t *entities    = &manager->entities;
-    for (u64 i = 0; i < list_len(entities); i++)
+    for (u64 i = 0; i < entities->len; i++)
     {
-        entity_t *e = (entity_t *)list_get_element_by_index(entities, i);
+        entity_t *e = (entity_t *)list_get_value(entities, i);
         assert(e);
 
         if (e->is_alive) continue;
@@ -96,9 +96,9 @@ void entitymanager_update(entitymanager_t *manager)
         list_t *entitylist = entitymanager_get_all_entities_by_tag(manager, e->tag);
         assert(entitylist);
 
-        for (u64 j = 0; j < list_len(entitylist); j++)
+        for (u64 j = 0; j < entitylist->len; j++)
         {
-            entity_t *tmp = (entity_t *)list_get_element_by_index(entitylist, j);
+            entity_t *tmp = (entity_t *)list_get_value(entitylist, j);
             assert(tmp);
 
             if (tmp->is_alive) continue;
@@ -151,9 +151,9 @@ void entitymanager_destroy(entitymanager_t *manager)
 
     // Deleting all entities from entities list
     list_t *entities = &manager->entities;
-    for (u64 i = 0; i < list_len(entities); i++)
+    for (u64 i = 0; i < entities->len; i++)
     {
-        entity_t *e = (entity_t *)list_get_element_by_index(entities, i);
+        entity_t *e = (entity_t *)list_get_value(entities, i);
         assert(e);
 
         e->is_alive = false;
@@ -163,9 +163,9 @@ void entitymanager_destroy(entitymanager_t *manager)
 
     // Deleting entitymap
     list_t *map = &manager->entitymap;
-    for (u64 i = 0; i < list_len(map); i++)
+    for (u64 i = 0; i < map->len; i++)
     {
-        list_t *list = (list_t *)list_get_element_by_index(map, i);
+        list_t *list = (list_t *)list_get_value(map, i);
         assert(list);
 
         list_destroy(list);

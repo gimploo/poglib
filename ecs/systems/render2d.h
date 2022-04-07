@@ -62,7 +62,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
 
         for (u64 j = 0; j < entities->len; j++)
         {
-            const entity_t *e = (entity_t *)list_get_element_by_index(entities, j);
+            const entity_t *e = (entity_t *)list_get_value(entities, j);
             assert(e);
 
             if (!e->is_alive) continue;
