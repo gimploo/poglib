@@ -13,7 +13,6 @@ typedef struct application_t application_t;
 
 typedef u8 state_t;
 
-
 #define         application_set_font(PAPP, FONT)        (PAPP)->__fontrenderer = FONT
 #define         application_pass_game(PAPP, PGAME)      (PAPP)->content = PGAME
 
@@ -40,7 +39,6 @@ struct application_t {
     char                *title;
     u32                 width;
     u32                 height;
-    u32                 flags;
     state_t             state;
 
     union {
@@ -56,7 +54,6 @@ struct application_t {
     void (*shutdown)(struct application_t *);
 };
 
-    
 
 
 void application_run(application_t *app)
@@ -65,9 +62,16 @@ void application_run(application_t *app)
     dbg_init();
 #endif
 
-    if (app == NULL) eprint("application argument is null");
-    
-    window_t win = window_init(app->title, app->width, app->height, app->flags);
+    if (app == NULL)        eprint("application argument is null");
+    if (!app->title)        eprint("application title is missing ");
+    if (app->width <= 0)    eprint("provide a proper width to the application");
+    if (app->height <= 0)   eprint("provide a proper height to the application");
+    if(!app->init)          eprint("application init funciton is missing");
+    if(!app->update)        eprint("application update function is missing");
+    if(!app->render)        eprint("application render function is missing");
+    if(!app->shutdown)      eprint("application shutdown function is missing");
+
+    window_t win = window_init(app->title, app->width, app->height, SDL_INIT_EVERYTHING);
     stopwatch_t timer = stopwatch();
 
     app->__window_handle = &win;

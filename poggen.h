@@ -14,9 +14,8 @@
 
 typedef struct poggen_t poggen_t ;
 
-global poggen_t *global_poggen = NULL;
 
-poggen_t        poggen_init(window_t *);
+poggen_t        poggen_init(void);
 
 void            poggen_add_scene(poggen_t *self, const char *label, const scene_t scene);
 void            poggen_remove_scene(poggen_t *self, const char *label);
@@ -33,7 +32,6 @@ void            poggen_destroy(poggen_t *self);
 
 struct poggen_t {
 
-    window_t        *window;
     assetmanager_t  assets;
     hashtable_t     scenes;
     scene_t         *current_scene;
@@ -42,10 +40,9 @@ struct poggen_t {
     s_renderer2d_t  renderer2d;
 };
 
-poggen_t poggen_init(window_t *window)
+poggen_t poggen_init(void)
 {
     return (poggen_t ) {
-        .window         = window,
         .assets         = assetmanager_init(),
         .scenes         = hashtable_init(MAX_SCENES_ALLOWED, scene_t ),
         .current_scene  = NULL,
@@ -59,8 +56,6 @@ void poggen_add_scene(poggen_t *self, const char *label, scene_t scene)
 {
     assert(self);
     assert(label);
-
-    global_poggen = self;
 
     hashtable_insert(&self->scenes, label, scene);
 }
@@ -93,12 +88,10 @@ void poggen_destroy(poggen_t *self)
 {
     assert(self);
 
-    self->window = NULL;
     assetmanager_destroy(&self->assets);
     hashtable_destroy(&self->scenes);
     self->current_scene = NULL;
 
-    global_poggen = NULL;
     s_renderer2d_destroy(&self->renderer2d);
 
 }
