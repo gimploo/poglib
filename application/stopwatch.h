@@ -23,7 +23,7 @@ struct stopwatch_t {
 };
 
 
-stopwatch_t stopwatch_init(void)
+stopwatch_t stopwatch(void)
 {
     stopwatch_t output = {0};
     output.__now = (f32)SDL_GetTicks();
