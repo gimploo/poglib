@@ -14,14 +14,17 @@ typedef struct application_t application_t;
 
 typedef u8 state_t;
 
-#define         application_set_font(PAPP, FONT)        (PAPP)->__fontrenderer = FONT
-#define         application_pass_game(PAPP, PGAME)      (PAPP)->content = PGAME
 
 void            application_run(application_t *app);
 
+#define         application_set_font(PAPP, FONT)            (PAPP)->__fontrenderer = FONT
+#define         application_set_background(PAPP, COLOR)     (PAPP)->__window_handle->background_color = COLOR
+
+#define         application_get_window(PAPP) (PAPP)->__window_handle
+#define         application_get_dt(PAPP)  (PAPP)->__timer->dt
+#define         application_get_fps(PAPP) (PAPP)->__timer->fps
+
 #define         application_update_state(PAPP, STATE) (PAPP)->state = STATE
-#define         application_get_dt(PAPP)  (PAPP)->__timer.dt
-#define         application_get_fps(PAPP) (PAPP)->__timer.fps
 
 
 
