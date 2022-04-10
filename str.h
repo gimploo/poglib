@@ -166,7 +166,7 @@ u32 str_where_is_string_in_buffer(str_t *word, str_t *buffer)
     return -1;
 }
 
-u32 str_is_string_in_buffer(str_t *word, str_t *buffer)
+u32 str_is_word_in_buffer(str_t *word, str_t *buffer)
 {
     //TODO: account for null characters
     

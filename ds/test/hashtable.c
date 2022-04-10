@@ -8,7 +8,7 @@ void print_str(void *arg)
     printf(STR_FMT" ", STR_ARG(str));
 }
 
-int main(void)
+int test01(void)
 {
     dbg_init();
 
@@ -30,20 +30,20 @@ int main(void)
 
     hashtable_t table = hashtable_init(100, str_t );
 
-    for (int i = 4; i >= 0; i--)
+    for (int i = 0; i < 5; i++)
     {
         hashtable_insert(&table, keys[i], names[i]);
         hashtable_print(&table, print_str);
     }
-    hashtable_dump(&table);
+    /*hashtable_dump(&table);*/
 
-    for (int i = 4; i >= 0; i--)
+    for (int i = 0; i < 5; i++)
     {
         hashtable_delete(&table, keys[i]);
         hashtable_print(&table, print_str);
     }
 
-    hashtable_print(&table, print_str);
+    /*hashtable_print(&table, print_str);*/
     hashtable_dump(&table);
 
     hashtable_destroy(&table);
@@ -52,8 +52,55 @@ int main(void)
     return 0;
 }
 
+typedef struct foo {
+    const char *label;
+    int list[5];
+} foo;
 
-int oldmain(void)
+void print_foo(void *x)
+{
+    foo *tmp = (foo *) x;
+    printf("%s ", tmp->label);
+    for (int i = 0; i < 5; i++)
+        printf(" %i",tmp->list[i]);
+    printf("\n");
+}
+
+void insert_foo_in_table_lul(hashtable_t *table)
+{
+    foo a = {
+        .label = "a",
+        .list = {1,2,3,4,5}
+    };
+
+    foo b = {
+        .label = "b",
+        .list = {6,7,8,9,10}
+    };
+
+    foo c = {
+        .label = "c",
+        .list = {11,12,13,14,15}
+    };
+
+    hashtable_insert(table, a.label, a);
+    hashtable_insert(table, b.label, b);
+    hashtable_insert(table, c.label, c);
+}
+
+void test03(void)
+{
+    hashtable_t table = hashtable_init(10, foo);
+
+    insert_foo_in_table_lul(&table);
+
+    hashtable_print(&table, print_foo);
+    hashtable_dump(&table);
+
+    hashtable_destroy(&table);
+}
+
+int test02(void)
 {
     str_t name = str("gokul");
     u32 x = hash_cstr(name.buf, name.len);
@@ -72,5 +119,14 @@ int oldmain(void)
     printf("string: "STR_FMT"\n", STR_ARG(&juice));
     printf("index: %i \n", z % 10);
 
+    return 0;
+}
+
+int main(void)
+{
+    test01();
+    /*test02();*/
+    printf("test03\n");
+    test03();
     return 0;
 }

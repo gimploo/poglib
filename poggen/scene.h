@@ -11,7 +11,8 @@
 
 typedef struct scene_t scene_t ;
 
-scene_t     scene_init(const char *scene_label);
+scene_t     scene_init(const u32 enum_id, const char *scene_label);
+#define     scene_get_type(PSCENE) (PSCENE)->__enum_id
 void        scene_add_action(scene_t *scene, const action_t action);
 void        scene_destroy(scene_t *scene);
 
@@ -29,6 +30,8 @@ struct scene_t {
     bool                is_over;
     map_t               actionmap;
 
+    const u32           __enum_id;
+
     void (*init)        (struct scene_t *);
     void (*update)      (struct scene_t *);
     void (*doaction)    (struct scene_t *);
@@ -44,13 +47,15 @@ void scene_add_action(scene_t *scene, const action_t action)
     map_insert(&scene->actionmap, action.label, action.key);
 }
 
-scene_t scene_init(const char *scene_label)
+scene_t scene_init(const u32 enum_id, const char *scene_label)
 {
     scene_t scene = {
         .label      = scene_label,
         .manager    = entitymanager_init(10),
         .is_paused  = false,
         .is_over    = false,
+
+        .__enum_id  = enum_id, 
 
         .init       = NULL,
         .update     = NULL,

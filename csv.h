@@ -414,7 +414,7 @@ int csv_get_line_num_from_string(CSV *csv, str_t *find)
     assert(csv);
     assert(find);
 
-    int gpos = str_is_string_in_buffer(find, csv->buffer);
+    int gpos = str_is_word_in_buffer(find, csv->buffer);
     if (gpos == -1) return gpos;
 
     size_t epos = csv_get_entry_pos_from_general_buffer_pos(csv, gpos); 
@@ -518,7 +518,7 @@ size_t csv_get_line_num_of_string_restricted_to_a_header_field(CSV *csv, size_t 
         str_t *str_field = row->buffer[buffer_index]; 
         assert(str_field);
 
-        if (str_is_string_in_buffer(find_word, str_field)) {
+        if (str_is_word_in_buffer(find_word, str_field)) {
             line_num = i+1;
             break;
         }
@@ -558,7 +558,7 @@ void csv_get_all_line_nums_of_string_restricted_to_a_header_field(CSV *csv, stac
         str_t *str_field = row->buffer[buffer_index]; 
         assert(str_field);
 
-        if (str_is_string_in_buffer(find_word, str_field)) {
+        if (str_is_word_in_buffer(find_word, str_field)) {
             line_num_list_index = i+1;
             stack_push(buffer, line_num_list_index);
         }

@@ -20,7 +20,10 @@ void *          list_get_value(const list_t *list, const u64 index);
 #define         list_clear(PLIST)                               __impl_list_clear(PLIST)
 
 
-
+#define         list_iterator(PLIST, ITER)\
+                u64 ITER##_I = 0; for (void *(ITER) = list_get_value(PLIST, 0);\
+                                        ITER##_I < (PLIST)->len;\
+                                        ++ITER##_I, (ITER) = list_get_value(PLIST, ITER##_I)) 
 
 
 
@@ -93,11 +96,13 @@ void __impl_list_append(list_t *list, void *value_addr, u64 value_size)
 }
 
 
+//TODO: check this for edge conditions, it looks like its could possibly fail
+//in some common conditions
 void list_delete(list_t *list, const u64 index)
 {
     assert(list);
-    if(list->__top == -1) eprint("Trying to delete an element from an empty list\n");
-    assert((i64)index <= list->__top);
+    if(list->__top == -1)           eprint("Trying to delete an element from an empty list\n");
+    if((i64)index > list->__top)    eprint("index (`%lu`) exceeds list length (`%lu`) ", index, list->__top);
 
     if ((i64)index != list->__top) {
 

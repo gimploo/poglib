@@ -1,13 +1,13 @@
 #pragma once
 #include "../ds/list.h"
-#include "../ds/hashtable.h"
+#include "../ds/map.h"
 #include "../poggen/asset.h"
 
 
 
-/*===========================================================
-                -- ASSET MANAGER --
-===========================================================*/
+/*==============================================================================
+                        -- ASSET MANAGER --
+===============================================================================*/
 
 
 
@@ -17,11 +17,11 @@ assetmanager_t  assetmanager_init(void);
 
 #define         assetmanager_add_shader(PASSETMANAGER, LABEL, VERTEXFILE, FRAGMENTFILE)    __impl_assetmanager_add_asset((PASSETMANAGER), (LABEL), (VERTEXFILE), (FRAGMENTFILE), AT_GLSHADER) 
 #define         assetmanager_add_texture2d(PASSETMANAGER, LABEL, FILEPATH)                 __impl_assetmanager_add_asset((PASSETMANAGER), (LABEL), (FILEPATH), NULL, AT_GLTEXTURE2D) 
-#define         assetmanager_add_freetypefont(PASSETMANAGER, LABEL, FILEPATH)                 __impl_assetmanager_add_asset((PASSETMANAGER), (LABEL), (FILEPATH), NULL, AT_FONT_TTF) 
+#define         assetmanager_add_freetypefont(PASSETMANAGER, LABEL, FILEPATH)              __impl_assetmanager_add_asset((PASSETMANAGER), (LABEL), (FILEPATH), NULL, AT_FONT_TTF) 
 
 #define         assetmanager_get_shader(PASSETMANAGER, LABEL)       __impl_assetmanager_get_asset((PASSETMANAGER), (LABEL), AT_GLSHADER)
 #define         assetmanager_get_texture2d(PASSETMANAGER, LABEL)    __impl_assetmanager_get_asset((PASSETMANAGER), (LABEL), AT_GLTEXTURE2D)
-#define         assetmanager_get_freetypefont(PASSETMANAGER, LABEL)    __impl_assetmanager_get_asset((PASSETMANAGER), (LABEL), AT_FONT_TTF)
+#define         assetmanager_get_freetypefont(PASSETMANAGER, LABEL) __impl_assetmanager_get_asset((PASSETMANAGER), (LABEL), AT_FONT_TTF)
 
 void            assetmanager_destroy(assetmanager_t *self);
 
@@ -34,40 +34,35 @@ void            assetmanager_destroy(assetmanager_t *self);
 
 struct assetmanager_t {
 
-    list_t assetlabels;
-    list_t assets;
+    list_t assetmaps;
 
 };
 
 assetmanager_t assetmanager_init(void)
 {
     assetmanager_t o = {
-        .assetlabels = list_init(8, char * ),
-        .assets = list_init(AT_COUNT, hashtable_t )
+        .assetmaps = list_init(AT_COUNT, map_t )
     };
 
     for (u32 i = 0; i < AT_COUNT; i++)
     {
-        hashtable_t *elem = (hashtable_t *)list_get_value(&o.assets, i);
+        map_t *elem = (map_t *)list_get_value(&o.assetmaps, i);
         switch(i)
         {
             case AT_GLSHADER: {
-                hashtable_t tmp = hashtable_init(10, glshader_t );
-                memcpy(elem, &tmp, sizeof(tmp));
+                *elem = map_init(10, asset_t );
             } break;
 
             case AT_GLTEXTURE2D: {
-                hashtable_t tmp = hashtable_init(10, gltexture2d_t );
-                memcpy(elem, &tmp, sizeof(tmp));
+                *elem = map_init(10, asset_t );
             } break;
 
             case AT_SOUND_WAV:
-            //TODO: sound
+                *elem = map_init(4, asset_t );
             break;
 
             case AT_FONT_FreeType: {
-                hashtable_t tmp = hashtable_init(4, glfreetypefont_t );
-                memcpy(elem, &tmp, sizeof(tmp));
+                *elem = map_init(4, asset_t );
             } break;
 
             default: eprint("type not accounted for");
@@ -111,12 +106,10 @@ asset_t * __impl_assetmanager_add_asset(assetmanager_t *manager, const char *lab
         default: eprint("type not accounted for");
     }
 
-    list_append(&manager->assetlabels, label);
-
-    hashtable_t *table = (hashtable_t *)list_get_value(&manager->assets, type);
+    map_t *table = (map_t *)list_get_value(&manager->assetmaps, type);
     assert(table);
     
-    return (asset_t *)hashtable_insert(table, label, output);
+    return (asset_t *)map_insert(table, label, output);
 
 }
 
@@ -127,7 +120,7 @@ void assetmanager_destroy(assetmanager_t *self)
 
     for (u32 i = 0; i < AT_COUNT; i++)
     {
-        hashtable_t *table = (hashtable_t *)list_get_value(&self->assets, i);
+        map_t *table = (map_t *)list_get_value(&self->assetmaps, i);
         assert(table);
 
         switch(i)
@@ -135,47 +128,53 @@ void assetmanager_destroy(assetmanager_t *self)
             case AT_GLSHADER:
                 for (u32 i = 0; i < table->len; i++)
                 {
-                    const char *value = (const char *)list_get_value(&self->assetlabels, i);
+                    const char *value = (const char *)list_get_value(&table->__keys, i);
                     assert(value);
 
-                    glshader_destroy((glshader_t *)hashtable_get_value_by_key(table, value));
+                    asset_t *asset = (asset_t *)map_get_value(table, value);
+                    assert(asset);
+
+                    glshader_destroy(&asset->shader);
                 }
             break;
 
             case AT_GLTEXTURE2D:
                 for (u32 i = 0; i < table->len; i++)
                 {
-                    const char *value = (const char *)list_get_value(&self->assetlabels, i);
+                    const char *value = (const char *)list_get_value(&table->__keys, i);
                     assert(value);
 
-                    gltexture2d_destroy((gltexture2d_t *)hashtable_get_value_by_key(table, value));
+                    asset_t *asset = (asset_t *)map_get_value(table, value);
+                    assert(asset);
+
+                    gltexture2d_destroy(&asset->texture2d);
                 }
             break;
 
             case AT_FONT_FreeType:
                 for (u32 i = 0; i < table->len; i++)
                 {
-                    const char *value = (const char *)list_get_value(&self->assetlabels, i);
+                    const char *value = (const char *)list_get_value(&table->__keys, i);
                     assert(value);
 
-                    glfreetypefont_destroy((glfreetypefont_t *)hashtable_get_value_by_key(table, value));
+                    asset_t *asset = (asset_t *)map_get_value(table, value);
+                    assert(asset);
+
+                    glfreetypefont_destroy(&asset->font);
                 }
             break;
 
             case AT_SOUND_WAV:
-                eprint("TODO : ");
+                // TODO: 
             break;
 
             default: eprint("type not accounted for ");
         }
+        map_destroy(table);
 
-
-        hashtable_destroy(table);
-        list_delete(&self->assets, i);
     }
 
-    list_destroy(&self->assetlabels);
-    list_destroy(&self->assets);
+    list_destroy(&self->assetmaps);
 }
 
 
@@ -183,10 +182,10 @@ asset_t * __impl_assetmanager_get_asset(assetmanager_t *manager, const char *lab
 {
     assert(manager);
 
-    hashtable_t *table = (hashtable_t *)list_get_value(&manager->assets, type);
+    map_t *table = (map_t *)list_get_value(&manager->assetmaps, type);
     assert(table);
 
-    return (asset_t *)hashtable_get_value_by_key(table, label);
+    return (asset_t *)map_get_value(table, label);
 }
 
 #endif

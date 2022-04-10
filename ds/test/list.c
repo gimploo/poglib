@@ -1,4 +1,3 @@
-#define DEBUG
 #include "../../basic.h"
 #include "../list.h"
 #include "../../str.h"
@@ -62,7 +61,7 @@ list_t dummy(void)
     return list;
 }
 
-int oldmain(void)
+int test05(void)
 {
     // Pointer
 
@@ -113,7 +112,7 @@ int oldmain(void)
     return 0;
 }
 
-int oldmain02(void)
+int test01(void)
 {
     // Value
 
@@ -154,7 +153,7 @@ void print_str(void *x)
     str_print(y);
 }
 
-int main(void)
+int test02(void)
 {
     dbg_init();
     list_t list = list_init(10, str_t );
@@ -179,7 +178,7 @@ int main(void)
 }
 
 
-int ooldmain(void)
+int test03(void)
 {
     list_t list = list_init(2, u32);
 
@@ -227,7 +226,7 @@ int ooldmain(void)
     return 0;
 }
 
-int oldmain04(void)
+int test04(void)
 {
     list_t list = list_init(4, list_t );
 
@@ -252,30 +251,30 @@ int oldmain04(void)
         .list = {11,12,13,14,15}
     };
 
-    list_t *tmp = (list_t *)list_get_element_by_index(&list, 3);
+    list_t *tmp = (list_t *)list_get_value(&list, 3);
     list_append(tmp, a);
     list_append(tmp, b);
     list_append(tmp, c);
 
-    tmp = (list_t *)list_get_element_by_index(&list, 2);
+    tmp = (list_t *)list_get_value(&list, 2);
     list_append(tmp, b);
 
-    tmp = (list_t *)list_get_element_by_index(&list, 1);
+    tmp = (list_t *)list_get_value(&list, 1);
     list_append(tmp, c);
 
     list_print(&list, list_dump);
 
-    for (int i = 0; i < list.__len; i++)
+    for (int i = 0; i < list.len; i++)
     {
-        list_t *bar = (list_t *)list_get_element_by_index(&list, i);
-        if (!bar->__len) {
+        list_t *bar = (list_t *)list_get_value(&list, i);
+        if (!bar->len) {
             printf("list %i list is empty\n", i);
             continue;
         }
         printf("list %i is \n",i);
-        for (int j = 0; j < bar->__len; j++)
+        for (int j = 0; j < bar->len; j++)
         {
-            foo *x = (foo *)list_get_element_by_index(bar, j);
+            foo *x = (foo *)list_get_value(bar, j);
             print_foo(x);
 
         }
@@ -284,29 +283,65 @@ int oldmain04(void)
     printf("\n\n");
 
     list_delete(&list, 0);
-    for (int i = 0; i < list.__len; i++)
+    for (int i = 0; i < list.len; i++)
     {
-        list_t *bar = (list_t *)list_get_element_by_index(&list, i);
-        if (!bar->__len) {
+        list_t *bar = (list_t *)list_get_value(&list, i);
+        if (!bar->len) {
             printf("list %i list is empty\n", i);
             continue;
         }
         printf("list %i is \n",i);
-        for (int j = 0; j < bar->__len; j++)
+        for (int j = 0; j < bar->len; j++)
         {
-            foo *x = (foo *)list_get_element_by_index(bar, j);
+            foo *x = (foo *)list_get_value(bar, j);
             print_foo(x);
 
         }
     }
 
 
-    for (int i = 0; i < list.__len; i++)
+    for (int i = 0; i < list.len; i++)
     {
-        list_t *tmp = (list_t *)list_get_element_by_index(&list, i);
+        list_t *tmp = (list_t *)list_get_value(&list, i);
         list_destroy(tmp);
     }
     list_destroy(&list);
 
     return 0;
 }
+
+void test06()
+{
+    list_t list = list_init(10, u32 *);
+
+    int values[] = { 1,2,3,4,5,6,7,8,9,10};
+    int *ptrs[] = {&values[0], &values[1], &values[2], &values[3], &values[4], &values[5] };
+    for (u32 i = 0; i < 6; i++)
+        list_append(&list, ptrs[i]);
+
+    list_iterator(&list, elem) {
+        printf("%i ", *(u32 *)elem);
+    }
+
+    list_delete(&list, 3);
+    list_delete(&list, 3);
+    list_delete(&list, 3);
+    list_delete(&list, 3);
+
+    list_iterator(&list, elem02) {
+        printf("%i ", *(u32 *)elem02);
+    }
+
+    list_destroy(&list);
+};
+
+int main(void)
+{
+    /*test01();*/
+    /*test02();*/
+    /*test03();*/
+    /*test04();*/
+    test06();
+
+    return 0;
+};
