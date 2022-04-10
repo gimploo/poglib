@@ -5,6 +5,7 @@
 #include "application/stopwatch.h"
 #include "ecs/entitymanager.h"
 #include "font/glfreetypefont.h"
+#include "./poggen.h"
 
 
 
@@ -42,9 +43,8 @@ struct application_t {
     state_t             state;
 
     union {
-        void *content;
-        void *game;
-        void *engine;
+        void        *content;
+        void        *game;
     };
 
 

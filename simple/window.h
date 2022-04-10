@@ -741,6 +741,7 @@ void window_sub_window_destroy(window_t *sub_window)
     SDL_DestroyWindow(sub_window->window_handle);
     sub_window->window_handle = NULL;
 
+    free(sub_window);
     sub_window = NULL;
 }
 
@@ -757,11 +758,9 @@ void window_destroy(window_t *window)
 
     if (window->sub_window_handle != NULL) {
         window_sub_window_destroy(window->sub_window_handle);
-        window->sub_window_handle = NULL;
         window->is_sub_window_active = false;
     }
 
-    free(window->sub_window_handle);
     SDL_DestroyWindow(window->window_handle);
     SDL_Quit();
 

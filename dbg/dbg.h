@@ -1,4 +1,5 @@
 #pragma once
+#include <string.h>
 #ifdef __linux__
     #include <execinfo.h>
 #elif _WIN64
@@ -8,30 +9,32 @@
 #include "../ds/linkedlist.h"
 
 
+const char *IGNORE_FILES[] = { "stb_image.h" };
 
 
-/*===============================
-    - MEMORY LEAK CHECKER -
-===============================*/
+/*=============================================================================
+                        - MEMORY LEAK CHECKER -
+===============================================================================*/
 
-#ifdef DEBUG // THE Memory debugger is only active, if DEBUG macro is set
 
+#if defined(DEBUG)
     bool        dbg_init(void);
     void        dbg_destroy(void);
+#else 
+    #define dbg_init()      fprintf(stderr,"[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n")
+    #define dbg_destroy()   fprintf(stderr,"[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n")
+#endif
 
+
+/*=============================================================================
+                            - STACK TRACE -
+===============================================================================*/
+
+#if defined(DEBUG)
+    void        stacktrace_print(void);
 #else
-
-    #define dbg_init() printf("[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n");
-    #define dbg_destroy() printf("[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n");
-
-#endif //DEBUG
-
-
-/*===============================
-        - STACK TRACE -
-===============================*/
-
-void        stacktrace_print(void);
+    #define stacktrace_print() fprintf(stderr, "[❗] Missing DEBUG macro, define DEBUG before including library\n")
+#endif
 
 
 
@@ -39,8 +42,8 @@ void        stacktrace_print(void);
 
 
 
-#ifdef DEBUG
-#ifndef IGNORE_MYDBG_IMPLEMENTATION
+
+#if !defined(IGNORE_MYDBG_IMPLEMENTATION) && defined(DEBUG)
 
 // Wrapper of common memory allocating function in stdlib 
 
@@ -75,6 +78,25 @@ typedef struct dbg_node_info_t {
 
 } dbg_node_info_t ;
 
+
+bool __is_file_in_ignore_files(const char *filepath)
+{
+    char *pfile = filepath + strlen(filepath);
+    for (; pfile > filepath; pfile--)
+    {
+        if ((*pfile == '\\') || (*pfile == '/'))
+        {
+            pfile++;
+            break;
+        }
+    }
+    for (int i = 0; i < (sizeof(IGNORE_FILES) / sizeof(IGNORE_FILES[0])); i++)
+    {
+        if (strcmp(IGNORE_FILES[i], pfile) == 0) return true;
+    }
+
+    return false;
+}
 
 // Init function required to start the debugger
 bool dbg_init(void)
@@ -134,6 +156,13 @@ static void * _debug_malloc(const size_t size, const char *file_path, const size
 
 #define malloc(n) _debug_malloc((n), __FILE__, __LINE__, __func__)
 
+
+    if (__is_file_in_ignore_files(file_path)) {
+        fprintf(fp, "%s file ignored\n", file_path);   
+        return malloc_mem;
+    }
+    
+
     fprintf(fp, "%s: \tIn function '%s':\n", file_path, func_name);
     fprintf(fp, "%s:%li: \t\033[01;31m(%p) ALLOCTED (%0li bytes)\033[0m\n", 
             file_path, line_num,malloc_mem, size);
@@ -170,6 +199,17 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
     }
     assert(list);
 
+#undef realloc
+
+    void *realloc_mem = realloc(pointer, size);
+
+#define realloc(p, n) _debug_realloc((p), (#p), (n), __FILE__, __LINE__, __func__)
+
+    if (__is_file_in_ignore_files(file_path)) {
+        fprintf(fp, "%s file ignored\n", file_path);
+        return realloc_mem;
+    }
+
     fprintf(fp, "%s: \tIn function '%s':\n", file_path, func_name);
     fprintf(fp, "%s:%li: \t\033[01;34m(%p) REALLOCTED (%0li bytes)\033[0m\n" ,
             file_path, 
@@ -178,12 +218,6 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
             size);
 
     fprintf(fp, "\n");
-
-#undef realloc
-
-    void *realloc_mem = realloc(pointer, size);
-
-#define realloc(p, n) _debug_realloc((p), (#p), (n), __FILE__, __LINE__, __func__)
 
     if (!llist_delete_node_by_value(list, pointer, compare_dbg))
     {
@@ -213,6 +247,14 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
     FILE *fp = global_debug.fp;
     llist_t *list = &global_debug.list;
 
+    if (__is_file_in_ignore_files(file_path)) {
+            fprintf(fp,"%s file ignored\n", file_path);
+#undef free
+            free(pointer);
+#define free(P) _debug_free((P), (#P), __FILE__, __LINE__, __func__) 
+            return;
+    }
+
     if(!fp) {
         fprintf(stderr, "You forgot to add dbg_init() in your code"); 
         exit(0);
@@ -233,6 +275,7 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
         if (!llist_delete_node_by_value(list, pointer, compare_dbg)){
             debug_mem_dump();
             printf("(%s) pointer not found %p\n", pointer_name, pointer);
+            stacktrace_print();
             exit(1);
         }
     } else {
@@ -241,7 +284,7 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
     }
 
     pointer = NULL;
-#define free(p) _debug_free((p), (#p), __FILE__, __LINE__, __func__) 
+#define free(P) _debug_free((P), (#P), __FILE__, __LINE__, __func__) 
 
 }
 
@@ -271,13 +314,12 @@ void dbg_destroy(void)
     fclose(global_debug.fp);
 }
 #endif //IGNORE_MYDBG_IMPLEMENTATION
-#endif //DEBUG
 
 
 
 
 
-#ifndef IGNORE_STACKTRACE_IMPLEMENTATION
+#if !defined(IGNORE_STACKTRACE_IMPLEMENTATION) && defined(DEBUG)
 
 #ifdef _WIN64
 
@@ -335,19 +377,12 @@ void linux_print_trace(void)
 void stacktrace_print(void)
 {
 
-#ifdef __linux__
-
+#if defined(__linux__)
     linux_print_trace();
-
-#elif _WIN64
-
+#elif defined(_WIN64)
     window_print_trace();
-
 #endif
 
-#ifdef DEBUG
-    if (global_debug.fp != NULL)
-        dbg_destroy();
-#endif
+    if (global_debug.fp != NULL) dbg_destroy();
 }
 #endif //IGNORE_STACKTRACE_IMPLEMENTATION

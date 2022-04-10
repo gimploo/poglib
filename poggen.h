@@ -1,5 +1,4 @@
 #pragma once
-#include "./application.h"
 #include "./ecs/entitymanager.h"
 #include "./poggen/assetmanager.h"
 #include "./poggen/scene.h"
@@ -7,9 +6,9 @@
 
 //TODO: Actions
 
-/*=====================================
-            - GAME ENGINE -
-=====================================*/
+/*=============================================================================
+                             - GAME ENGINE -
+==============================================================================*/
 
 
 typedef struct poggen_t poggen_t ;
@@ -17,7 +16,7 @@ typedef struct poggen_t poggen_t ;
 
 poggen_t        poggen_init(void);
 
-void            poggen_add_scene(poggen_t *self, const char *label, const scene_t scene);
+#define         poggen_add_scene(PGEN, ENUM_SCENE_TYPE)            __impl_poggen_add_scene((PGEN), (ENUM_SCENE_TYPE), (#ENUM_SCENE_TYPE))
 void            poggen_remove_scene(poggen_t *self, const char *label);
 void            poggen_change_scene(poggen_t *self, const char *scene_label);
 
@@ -33,7 +32,7 @@ void            poggen_destroy(poggen_t *self);
 struct poggen_t {
 
     assetmanager_t  assets;
-    hashtable_t     scenes;
+    map_t           scenes;
     scene_t         *current_scene;
 
     // ecs systems
@@ -44,20 +43,20 @@ poggen_t poggen_init(void)
 {
     return (poggen_t ) {
         .assets         = assetmanager_init(),
-        .scenes         = hashtable_init(MAX_SCENES_ALLOWED, scene_t ),
+        .scenes         = map_init(MAX_SCENES_ALLOWED, scene_t ),
         .current_scene  = NULL,
-
-        .renderer2d = s_renderer2d_init(),
+        .renderer2d     = s_renderer2d_init(),
     };
 }
 
 
-void poggen_add_scene(poggen_t *self, const char *label, scene_t scene)
+void __impl_poggen_add_scene(poggen_t *self, const u32 enum_id, const char *label)
 {
     assert(self);
     assert(label);
 
-    hashtable_insert(&self->scenes, label, scene);
+    scene_t tmp = scene_init(enum_id, label);
+    map_insert(&self->scenes, label, tmp);
 }
 
 void poggen_remove_scene(poggen_t *self, const char *label)
@@ -65,7 +64,7 @@ void poggen_remove_scene(poggen_t *self, const char *label)
     assert(self);
     assert(label);
 
-    hashtable_delete(&self->scenes, label);
+    map_delete(&self->scenes, label);
 }
 
 void poggen_change_scene(poggen_t *self, const char *scene_label)
@@ -73,11 +72,9 @@ void poggen_change_scene(poggen_t *self, const char *scene_label)
     assert(self);
     assert(scene_label);
 
-    hashtable_t *table = &self->scenes;
+    map_t *table = &self->scenes;
 
-    scene_t *scene = (scene_t *)hashtable_get_value_by_key(table, scene_label);
-    if (!scene) 
-        eprint("SCENE (%s) NOT FOUND", scene_label);
+    scene_t *scene = (scene_t *)map_get_value(table, scene_label);
 
     printf("SCENE UPDATED FROM (%s) TO (%s)\n", self->current_scene->label, scene->label);
     self->current_scene = scene;
@@ -89,7 +86,14 @@ void poggen_destroy(poggen_t *self)
     assert(self);
 
     assetmanager_destroy(&self->assets);
-    hashtable_destroy(&self->scenes);
+
+    map_t *map = &self->scenes;
+
+    map_iterator(map, tmp) {
+        scene_destroy((scene_t *)tmp);
+    }
+    map_destroy(&self->scenes);
+
     self->current_scene = NULL;
 
     s_renderer2d_destroy(&self->renderer2d);
