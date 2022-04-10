@@ -11,6 +11,7 @@
 #endif
 
 
+//TODO: fix the scale, have it be more opengl esque than its own number system
 //TODO: test on linux
 
 
