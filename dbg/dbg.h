@@ -274,7 +274,10 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
 
         if (!llist_delete_node_by_value(list, pointer, compare_dbg)){
             debug_mem_dump();
-            printf("(%s) pointer not found %p\n", pointer_name, pointer);
+            if (!pointer) 
+                fprintf(stderr, "[DBG] `%s` is a null pointer\n", pointer_name);
+            else 
+                fprintf(stderr, "[DBG] `%s` is a pointer to address %x\n", pointer);
             stacktrace_print();
             exit(1);
         }
