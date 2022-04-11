@@ -1,6 +1,7 @@
 #pragma once
 #include "../ecs/entitymanager.h"
 #include "../ds/map.h"
+#include "./assetmanager.h"
 #include "./action.h"
 
 //TODO: Implement actions
@@ -26,6 +27,7 @@ struct scene_t {
 
     const char          *label;
     entitymanager_t     manager;
+    assetmanager_t      assets;
     bool                is_paused;
     bool                is_over;
     map_t               actionmap;
@@ -36,6 +38,7 @@ struct scene_t {
     void (*update)      (struct scene_t *);
     void (*doaction)    (struct scene_t *);
     void (*render)      (struct scene_t *);
+    void (*destroy)     (struct scene_t *);
 
 };
 
@@ -52,6 +55,7 @@ scene_t scene_init(const u32 enum_id, const char *scene_label)
     scene_t scene = {
         .label      = scene_label,
         .manager    = entitymanager_init(10),
+        .assets     = assetmanager_init(),
         .is_paused  = false,
         .is_over    = false,
 
@@ -59,7 +63,8 @@ scene_t scene_init(const u32 enum_id, const char *scene_label)
 
         .init       = NULL,
         .update     = NULL,
-        .render     = NULL
+        .render     = NULL,
+        .destroy    = NULL 
     };
 
     return scene;
@@ -69,10 +74,16 @@ scene_t scene_init(const u32 enum_id, const char *scene_label)
 void scene_destroy(scene_t *scene)
 {
     assert(scene);
+
     entitymanager_destroy(&scene->manager);
+    assetmanager_destroy(&scene->assets);
+    scene->destroy(scene);
 
     scene->label = NULL;
+    scene->init   = NULL;
     scene->update = NULL;
+    scene->render = NULL;
+    scene->destroy    = NULL;
 }
 
 #endif
