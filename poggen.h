@@ -16,7 +16,7 @@ typedef struct poggen_t poggen_t ;
 
 poggen_t        poggen_init(void);
 
-#define         poggen_add_scene(PGEN, ENUM_SCENE_TYPE)            __impl_poggen_add_scene((PGEN), (ENUM_SCENE_TYPE), (#ENUM_SCENE_TYPE))
+#define         poggen_add_scene(PGEN, SCENE_NAME) __impl_poggen_add_scene(PGEN, SCENE_NAME)
 
 void            poggen_remove_scene(poggen_t *self, const char *label);
 void            poggen_change_scene(poggen_t *self, const char *scene_label);
@@ -45,7 +45,7 @@ struct poggen_t {
 poggen_t poggen_init(void)
 {
     return (poggen_t ) {
-        .assets  = assetmanager_init(),
+        .assets         = assetmanager_init(),
         .scenes         = map_init(MAX_SCENES_ALLOWED, scene_t ),
         .current_scene  = NULL,
         .renderer2d     = s_renderer2d_init(),
@@ -53,17 +53,21 @@ poggen_t poggen_init(void)
 }
 
 
-void __impl_poggen_add_scene(poggen_t *self, const u32 enum_id, const char *label)
-{
-    assert(self);
-    assert(label);
+#define __impl_poggen_add_scene(PGEN, SCENE_NAME) do {\
+\
+    scene_t __TMP##SCENE_NAME = scene_init(#SCENE_NAME);\
+    __TMP##SCENE_NAME.init = SCENE_NAME##_init;\
+    __TMP##SCENE_NAME.update = SCENE_NAME##_update;\
+    __TMP##SCENE_NAME.render = SCENE_NAME##_render;\
+    __TMP##SCENE_NAME.destroy = SCENE_NAME##_destroy;\
+    (__TMP##SCENE_NAME).poggen = (PGEN);\
+    if (!(PGEN)->current_scene)\
+        (PGEN)->current_scene = map_insert(&(PGEN)->scenes, #SCENE_NAME, __TMP##SCENE_NAME);\
+    else\
+        map_insert(&(PGEN)->scenes, #SCENE_NAME, __TMP##SCENE_NAME);\
+\
+} while (0)
 
-    scene_t tmp = scene_init(enum_id, label);
-    if (!self->current_scene)
-        self->current_scene = map_insert(&self->scenes, label, tmp);
-    else
-        map_insert(&self->scenes, label, tmp);
-}
 
 void poggen_remove_scene(poggen_t *self, const char *label)
 {
