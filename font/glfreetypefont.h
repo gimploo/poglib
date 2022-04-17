@@ -1,14 +1,8 @@
 #pragma once
 #include "../simple/glrenderer2d.h"
 #include "../simple/window.h"
-
-#ifdef _WIN64
-    #include <ft2build.h>
-    #include FT_FREETYPE_H 
-#elif __linux__
-    #include <freetype2/ft2build.h>
-    #include FT_FREETYPE_H
-#endif
+#include <ft2build.h>
+#include FT_FREETYPE_H 
 
 
 //TODO: fix the scale, have it be more opengl esque than its own number system
@@ -222,10 +216,10 @@ void glfreetypefont_set_text(glfreetypefont_t *self, const char *text, vec2f_t p
     assert(text);
 
     f32 x = pos.cmp[X];
-    f32 y = pos.cmp[Y];
+    f32 y = pos.cmp[Y] - 0.08f;
 
-    f32 sx = 2.0f / global_window.width;
-    f32 sy = 2.0f / global_window.height;
+    f32 sx = 2.0f / global_window->width;
+    f32 sy = 2.0f / global_window->height;
     
     u32 textlength = strlen(text);
     for(u32 i = 0; i < textlength; i++) 
@@ -262,7 +256,7 @@ void glfreetypefont_set_text(glfreetypefont_t *self, const char *text, vec2f_t p
 void glfreetypefont_draw(glfreetypefont_t *self)
 {
     glrenderer2d_draw_from_batch(&self->renderer2d, &self->batches);
-    glbatch_clear(&self->batches);
+    /*glbatch_clear(&self->batches);*/
 }
 
 void glfreetypefont_destroy(glfreetypefont_t *self)
