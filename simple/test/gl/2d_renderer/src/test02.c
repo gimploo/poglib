@@ -2,40 +2,40 @@
 #include <stdlib.h>
 #include <GL/glew.h>
 
-#define GL_LOG_ENABLE
-#undef DEBUG
-#include "../../../glrenderer2d.h"
+/*#define GL_LOG_ENABLE*/
+#include "../lib/simple/glrenderer2d.h"
 
-#include "../../../window.h"
+#include "../lib/simple/window.h"
 
 
 
 int main(void)
 {
+    dbg_init();
     u32 FLAGS = SDL_INIT_VIDEO;
     window_t window = window_init("test.c",1080, 920, FLAGS);
 
 
-    trif_t triangle01 = trif_init(vec3f(0.0f), 0.5f);
-    trif_t triangle02 = trif_init(vec3f(0.5f), 0.5f);
+    trif_t triangle01 = trif(vec3f(0.0f), 0.5f);
+    trif_t triangle02 = trif(vec3f(0.5f), 0.5f);
 
-    quadf_t quad02 = quadf_init(vec3f(0.0f), 0.2f, 0.2f);
-    quadf_t quad03 = quadf_init(vec3f(0.5f), 0.2f, 0.2f);
+    quadf_t quad02 = quadf(vec3f(0.0f), 0.2f, 0.2f);
+    quadf_t quad03 = quadf(vec3f(0.5f), 0.2f, 0.2f);
 
-    circle_t circle01 = circle_init(vec3f(0.0f), 0.2f);
-    circle_t circle02 = circle_init(vec3f(0.5f), 0.2f);
+    circle_t circle01 = circle(vec3f(0.0f), 0.2f);
+    circle_t circle02 = circle(vec3f(0.5f), 0.2f);
 
 
-    gltri_t tri01 = gltri_init(triangle01, (vec4f_t ) {1.0f, 1.0f, 0.0f, 1.0f}, quadf_init(vec3f(0.0f), 1.0f, 1.0f), 0);
-    gltri_t tri02 = gltri_init(triangle02, (vec4f_t ) {1.0f, 1.0f, 0.0f, 1.0f}, quadf_init(vec3f(0.0f), 1.0f, 1.0f), 0);
+    gltri_t tri01 = gltri(triangle01, (vec4f_t ) {1.0f, 1.0f, 0.0f, 1.0f}, quadf(vec3f(0.0f), 1.0f, 1.0f), 0);
+    gltri_t tri02 = gltri(triangle02, (vec4f_t ) {1.0f, 1.0f, 0.0f, 1.0f}, quadf(vec3f(0.0f), 1.0f, 1.0f), 0);
 
-    glquad_t glquad01 = glquad_init(quad02, (vec4f_t ) {1.0f, 1.0f, 0.0f, 1.0f}, quadf_init(vec3f(0.0f), 1.0f, 1.0f), 0);
-    glquad_t glquad02 = glquad_init(quad03, (vec4f_t ) {1.0f, 1.0f, 0.0f, 1.0f}, quadf_init(vec3f(0.0f), 1.0f, 1.0f), 0);
+    glquad_t glquad01 = glquad(quad02, (vec4f_t ) {1.0f, 1.0f, 0.0f, 1.0f}, quadf(vec3f(0.0f), 1.0f, 1.0f), 0);
+    glquad_t glquad02 = glquad(quad03, (vec4f_t ) {1.0f, 1.0f, 0.0f, 1.0f}, quadf(vec3f(0.0f), 1.0f, 1.0f), 0);
 
-    glcircle_t glcircle01 = glcircle_init(circle01, (vec4f_t ) {1.0f, 1.0f, 1.0f, 1.0f}, quadf_init(vec3f(0.0f), 1.0f, 1.0f), 0);
-    glcircle_t glcircle02 = glcircle_init(circle02, (vec4f_t ) {1.0f, 0.0f, 1.0f, 1.0f}, quadf_init(vec3f(0.0f), 1.0f, 1.0f), 0);
+    glcircle_t glcircle01 = glcircle(circle01, (vec4f_t ) {1.0f, 1.0f, 1.0f, 1.0f}, quadf(vec3f(0.0f), 1.0f, 1.0f), 0);
+    glcircle_t glcircle02 = glcircle(circle02, (vec4f_t ) {1.0f, 0.0f, 1.0f, 1.0f}, quadf(vec3f(0.0f), 1.0f, 1.0f), 0);
 
-    /*glshader_t shader = glshader_from_file_init("./wood.vs", "./wood.fs");*/
+    /*glshader_t shader = glshader_from_file("./wood.vs", "./wood.fs");*/
     glshader_t shader = glshader_default_init();
     gltexture2d_t texture = gltexture2d_init("./wall.jpg");
     glrenderer2d_t renderer = glrenderer2d_init(&shader, &texture);
@@ -75,6 +75,7 @@ int main(void)
     glrenderer2d_destroy(&renderer);
     window_destroy(&window);
 
+    dbg_destroy();
     return 0;
 }
 
