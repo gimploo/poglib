@@ -1,7 +1,7 @@
-#include "../../basic.h"
-#include "../glbitmapfont.h"
-#include "../glfreetypefont.h"
-#include "../../simple/window.h"
+#include "../lib/basic.h"
+#include "../lib/font/glbitmapfont.h"
+#include "../lib/font/glfreetypefont.h"
+#include "../lib/simple/window.h"
 
 
 int main(void)
@@ -14,7 +14,7 @@ int main(void)
 
     const char *text[] = 
     {
-        "Bruh",
+        "BRUH",
         "dioderant",
         "pepega",
         "*()@#$%#$!@#:<>?:-->"
@@ -27,9 +27,9 @@ int main(void)
         window_gl_render_begin(&win);
 
             glfreetypefont_set_text(&font, text[0], (vec2f_t ){-1.0f, 1.0f}, COLOR_RED);
-            glfreetypefont_set_text(&font, text[2], (vec2f_t ){-0.5f, 0.5f}, COLOR_BLUE);
-            glfreetypefont_set_text(&font, text[1], (vec2f_t ){-0.5f, -0.5f}, COLOR_GREEN);
-            glfreetypefont_set_text(&font, text[3], (vec2f_t ){-0.75f,-0.75},  COLOR_CYAN);
+            glfreetypefont_set_text(&font, text[0], (vec2f_t ){0.0f, 0.0f}, COLOR_BLUE);
+            glfreetypefont_set_text(&font, text[0], (vec2f_t ){-1.0f, -1.0f}, COLOR_GREEN);
+            glfreetypefont_set_text(&font, text[0], (vec2f_t ){1.0f,-1.0f},  COLOR_CYAN);
 
             glfreetypefont_draw(&font);
 

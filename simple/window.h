@@ -19,12 +19,12 @@
 ==============================================================================*/
 
 
-
 typedef struct window_t window_t;
 
+global window_t *global_window = NULL;
 
 //INIT
-window_t        window_init(const char *title, u64 width, u64 height, const u32 SDL_flags);
+window_t *      window_init(const char *title, u64 width, u64 height, const u32 SDL_flags);
 
 //USERINPUT
 void            window_update_user_input(window_t *window);
@@ -61,12 +61,12 @@ void            window_update_title(window_t *window, const char *title_name);
 \
 } while(0)
 
-#define         window_gl_render_end(PWINDOW) SDL_GL_SwapWindow((PWINDOW)->window_handle)
+#define         window_gl_render_end(PWINDOW) SDL_GL_SwapWindow((PWINDOW)->__sdl_window)
 //                      (or)
 void            window_render_stuff(window_t *window, void (*stuff)(void *), void * arg);
 
 //DESTROY
-void            window_destroy(window_t *window);
+void            window_destroy(void);
 
 
 
@@ -74,7 +74,7 @@ void            window_destroy(window_t *window);
 window_t *      window_sub_window_init(window_t *parent, const char *title_name, u64 width, u64 height, const u32 SDL_flags);
 #define         window_sub_window_gl_render_begin(PWINDOW) do {\
 \
-    SDL_GL_MakeCurrent((PWINDOW)->window_handle, (PWINDOW)->gl_context);\
+    SDL_GL_MakeCurrent((PWINDOW)->__sdl_window, (PWINDOW)->gl_context);\
     GL_CHECK(glClearColor(\
             (PWINDOW)->background_color.cmp[0],\
             (PWINDOW)->background_color.cmp[1],\
@@ -87,7 +87,7 @@ window_t *      window_sub_window_init(window_t *parent, const char *title_name,
     GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));\
 \
 } while(0)
-#define         window_sub_window_gl_render_end(PWINDOW) SDL_GL_SwapWindow((PWINDOW)->window_handle)
+#define         window_sub_window_gl_render_end(PWINDOW) SDL_GL_SwapWindow((PWINDOW)->__sdl_window)
 void            window_sub_window_render_stuff(window_t *sub_window, void (*stuff)(void *), void *arg);
 void            window_sub_window_destroy(window_t *sub_window);
 
@@ -97,7 +97,7 @@ void            window_sub_window_destroy(window_t *sub_window);
 
 #ifndef IGNORE_WINDOW_IMPLEMENTATION
 
-#define DEFAULT_BACKGROUND_COLOR (vec4f_t){{ 0.0f, 1.0f, 0.0f, 0.0f}}
+#define DEFAULT_BACKGROUND_COLOR (vec4f_t ){ 0.0f, 1.0f, 0.0f, 0.0f}
 
 
 // Mouse 
@@ -127,32 +127,32 @@ struct window_t {
     const char      *title_name;
     u64             width; 
     u64             height;
-    SDL_Window      *window_handle;                 // initializes the window 
     __mouse_t       mouse_handler;
     __keyboard_t    keyboard_handler;
     vec4f_t         background_color;
+    SDL_Window      *__sdl_window;                 // initializes the window 
+    SDL_Event       __sdl_event;
 
 #ifndef __gl_h_                                     // initializes the renderer
-    SDL_Surface    *surface_handle;
+    SDL_Surface    *__sdl_surface;
 #else 
     SDL_GLContext   gl_context;
 #endif 
 
     //TODO: this approach was to have a debug window, but at the moment can only hold one sub window at a time. In the future lets implement a list of sub windows 
     // Sub window logic
-    struct window_t     *sub_window_handle;             // Holds sub_window address
+    struct window_t     *sub_sdl_window;             // Holds sub_window address
     bool                is_sub_window_active;
 
 };
 
-global window_t global_window;
 
 void window_update_title(window_t *window, const char *title_name)
 {
     if (window == NULL) eprint("window argument is null");
 
     window->title_name = title_name;
-    SDL_SetWindowTitle(window->window_handle, title_name);
+    SDL_SetWindowTitle(window->__sdl_window, title_name);
 }
 
 void window_set_background(window_t *window, vec4f_t color) 
@@ -214,7 +214,7 @@ static inline window_t __sub_window_init(const char *title_name, u64 width, u64 
         .is_held        = {false}
     };
 
-    output.sub_window_handle = NULL;
+    output.sub_sdl_window = NULL;
     output.is_sub_window_active = false;
 
     u32 WinFlags      = 0;
@@ -228,9 +228,9 @@ static inline window_t __sub_window_init(const char *title_name, u64 width, u64 
 
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
 
-    output.window_handle = SDL_CreateWindow(output.title_name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
+    output.__sdl_window = SDL_CreateWindow(output.title_name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
 
-    if (!output.window_handle) eprint("SDL Error: %s\n", SDL_GetError());
+    if (!output.__sdl_window) eprint("SDL Error: %s\n", SDL_GetError());
 
     if (!SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1"))
         eprint("SDL Error: %s", SDL_GetError());
@@ -238,7 +238,7 @@ static inline window_t __sub_window_init(const char *title_name, u64 width, u64 
 
 #ifdef __gl_h_
     glewExperimental = true; // if using GLEW version 1.13 or earlier
-    output.gl_context = SDL_GL_CreateContext(output.window_handle);
+    output.gl_context = SDL_GL_CreateContext(output.__sdl_window);
     if (!output.gl_context) eprint("SDL Error: %s\n", SDL_GetError());
 
     GLenum glewError = glewInit();
@@ -247,13 +247,13 @@ static inline window_t __sub_window_init(const char *title_name, u64 width, u64 
     printf("[OUTPUT] Using OpenGL render\n");
 
 #else 
-    output.surface_handle = SDL_GetWindowSurface(output.window_handle);
-    if (!output.surface_handle) eprint("SDL Error: %s\n", SDL_GetError());
+    output.__sdl_surface = SDL_GetWindowSurface(output.__sdl_window);
+    if (!output.__sdl_surface) eprint("SDL Error: %s\n", SDL_GetError());
 
     printf("[OUTPUT] Using standard sdl2 render\n");
 #endif
 
-    output.SDL_Window_ID = SDL_GetWindowID(output.window_handle);
+    output.SDL_Window_ID = SDL_GetWindowID(output.__sdl_window);
     return output;
 
 }
@@ -266,30 +266,32 @@ window_t * window_sub_window_init(window_t *parent, const char *title_name, u64 
     if (sub_window == NULL) eprint("sub_window malloc failed");
 
     *sub_window                 = __sub_window_init(title_name, width, height, flags);
-    parent->sub_window_handle   = sub_window;
+    parent->sub_sdl_window   = sub_window;
 
     return sub_window;
 }
 
 
-window_t window_init(const char *title_name, u64 width, u64 height, const u32 flags)
+window_t * window_init(const char *title_name, u64 width, u64 height, const u32 flags)
 {
-    global_window                  = (window_t ){0};
-    global_window.title_name       = title_name;
-    global_window.is_open          = true;
-    global_window.width            = width;
-    global_window.height           = height;
-    global_window.background_color = DEFAULT_BACKGROUND_COLOR;
-    global_window.mouse_handler    = __mouse_init(&global_window);
+    if (global_window) eprint("Window already exist, trying to create a second window");
 
-    global_window.keyboard_handler = (__keyboard_t ) {
+    window_t win = {0};
+    win.title_name       = title_name;
+    win.is_open          = true;
+    win.width            = width;
+    win.height           = height;
+    win.background_color = DEFAULT_BACKGROUND_COLOR;
+    win.mouse_handler    = __mouse_init(&win);
+
+    win.keyboard_handler = (__keyboard_t ) {
         .keystate       = {false},
         .just_pressed   = {false},
         .is_held        = {false}
     };
 
-    global_window.sub_window_handle = NULL;
-    global_window.is_sub_window_active = false;
+    win.sub_sdl_window = NULL;
+    win.is_sub_window_active = false;
 
     u32 WinFlags      = 0;
 
@@ -313,9 +315,9 @@ window_t window_init(const char *title_name, u64 width, u64 height, const u32 fl
 
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
 
-    global_window.window_handle = SDL_CreateWindow(global_window.title_name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
+    win.__sdl_window = SDL_CreateWindow(win.title_name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
 
-    if (!global_window.window_handle) eprint("SDL Error: %s\n", SDL_GetError());
+    if (!win.__sdl_window) eprint("SDL Error: %s\n", SDL_GetError());
 
     if (!SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1"))
         eprint("SDL Error: %s", SDL_GetError());
@@ -324,8 +326,8 @@ window_t window_init(const char *title_name, u64 width, u64 height, const u32 fl
 
 #ifdef __gl_h_
     glewExperimental = true; // if using GLEW version 1.13 or earlier
-    global_window.gl_context = SDL_GL_CreateContext(global_window.window_handle);
-    if (!global_window.gl_context) eprint("SDL GL Error: %s\n", SDL_GetError());
+    win.gl_context = SDL_GL_CreateContext(win.__sdl_window);
+    if (!win.gl_context) eprint("SDL GL Error: %s\n", SDL_GetError());
 
     GLenum glewError = glewInit();
     if (glewError != GLEW_OK) eprint("GLEW Error: %s\n", glewGetErrorString(glewError));
@@ -333,180 +335,200 @@ window_t window_init(const char *title_name, u64 width, u64 height, const u32 fl
     printf("[OUTPUT] Using OpenGL render\n");
 
 #else 
-    global_window.surface_handle = SDL_GetWindowSurface(global_window.window_handle);
-    if (!global_window.surface_handle) eprint("SDL Error: %s\n", SDL_GetError());
+    win.__sdl_surface = SDL_GetWindowSurface(win.__sdl_window);
+    if (!win.__sdl_surface) eprint("SDL Error: %s\n", SDL_GetError());
 
     printf("[OUTPUT] Using standard sdl2 render\n");
 #endif
 
-    global_window.SDL_Window_ID = SDL_GetWindowID(global_window.window_handle);
+    win.SDL_Window_ID = SDL_GetWindowID(win.__sdl_window);
+
+    global_window = (window_t *)calloc(1, sizeof(window_t ));
+    assert(global_window);
+
+    *global_window = win;
+
     return global_window;
 
 }
 
-INTERNAL void __window_handle_window_event(window_t *window, SDL_Event *event)
-{
-    if (window->SDL_Window_ID == event->window.windowID) {
+INTERNAL void __window_handle_window_event(window_t *window, SDL_Event *event) {
+  if (window->SDL_Window_ID == event->window.windowID) {
 
-        switch(event->window.event) 
-        {
-            case SDL_WINDOWEVENT_CLOSE:
-                SDL_Log("Window (%s) close requested", window->title_name);
-                window->is_open = false;
-            break;
+    switch (event->window.event) {
+    case SDL_WINDOWEVENT_CLOSE:
+      SDL_Log("Window (%s) close requested", window->title_name);
+      window->is_open = false;
+      break;
 
-            case SDL_WINDOWEVENT_SHOWN:
-                SDL_Log("Window (%s) shown", window->title_name);
-            break;
+    case SDL_WINDOWEVENT_SHOWN:
+      SDL_Log("Window (%s) shown", window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_HIDDEN:
-                SDL_Log("Window (%s) hidden", window->title_name);
-            break;
+    case SDL_WINDOWEVENT_HIDDEN:
+      SDL_Log("Window (%s) hidden", window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_EXPOSED:
-                SDL_Log("Window (%s) exposed", window->title_name);
-            break;
-            
-            case SDL_WINDOWEVENT_MOVED:
-                SDL_Log("Window (%s) moved to %d,%d", window->title_name, event->window.data1, event->window.data2);
-            break;
+    case SDL_WINDOWEVENT_EXPOSED:
+      SDL_Log("Window (%s) exposed", window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_RESIZED:
-                SDL_Log("Window (%s) resized to %dx%d", window->title_name, event->window.data1, event->window.data2);
-            break;
+    case SDL_WINDOWEVENT_MOVED:
+      SDL_Log("Window (%s) moved to %d,%d", window->title_name,
+              event->window.data1, event->window.data2);
+      break;
 
-            case SDL_WINDOWEVENT_SIZE_CHANGED:
-                SDL_Log("Window (%s) size changed to %dx%d", window->title_name, event->window.data1, event->window.data2);
-            break;
+    case SDL_WINDOWEVENT_RESIZED:
+      SDL_Log("Window (%s) resized to %dx%d", window->title_name,
+              event->window.data1, event->window.data2);
+      break;
 
-            case SDL_WINDOWEVENT_MINIMIZED:
-                SDL_Log("Window (%s) minimized", window->title_name);
-            break;
+    case SDL_WINDOWEVENT_SIZE_CHANGED:
+      SDL_Log("Window (%s) size changed to %dx%d", window->title_name,
+              event->window.data1, event->window.data2);
+      break;
 
-            case SDL_WINDOWEVENT_MAXIMIZED:
-                SDL_Log("Window (%s) maximized", window->title_name);
-            break;
+    case SDL_WINDOWEVENT_MINIMIZED:
+      SDL_Log("Window (%s) minimized", window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_RESTORED:
-                SDL_Log("Window (%s) restored", window->title_name);
-            break;
+    case SDL_WINDOWEVENT_MAXIMIZED:
+      SDL_Log("Window (%s) maximized", window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_ENTER:
-                SDL_Log("Mouse entered main window (%s)", window->title_name);
-            break;
+    case SDL_WINDOWEVENT_RESTORED:
+      SDL_Log("Window (%s) restored", window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_LEAVE:
-                SDL_Log("Mouse left main window (%s)", window->title_name);
-                window->mouse_handler.is_held = false;
-                window->mouse_handler.just_pressed = false;
-                memset(window->keyboard_handler.is_held, false, sizeof(window->keyboard_handler.is_held));
-                memset(window->keyboard_handler.just_pressed, false, sizeof(window->keyboard_handler.just_pressed));
-                memset(window->keyboard_handler.keystate, false, sizeof(window->keyboard_handler.keystate));
-            break;
+    case SDL_WINDOWEVENT_ENTER:
+      SDL_Log("Mouse entered main window (%s)", window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_FOCUS_GAINED:
-                SDL_Log("Window (%s) gained keyboard focus", window->title_name);
-            break;
+    case SDL_WINDOWEVENT_LEAVE:
+      SDL_Log("Mouse left main window (%s)", window->title_name);
+      window->mouse_handler.is_held = false;
+      window->mouse_handler.just_pressed = false;
+      memset(window->keyboard_handler.is_held, false,
+             sizeof(window->keyboard_handler.is_held));
+      memset(window->keyboard_handler.just_pressed, false,
+             sizeof(window->keyboard_handler.just_pressed));
+      memset(window->keyboard_handler.keystate, false,
+             sizeof(window->keyboard_handler.keystate));
+      break;
 
-            case SDL_WINDOWEVENT_FOCUS_LOST:
-                SDL_Log("Window (%s) lost keyboard focus", window->title_name);
-            break;
+    case SDL_WINDOWEVENT_FOCUS_GAINED:
+      SDL_Log("Window (%s) gained keyboard focus", window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_TAKE_FOCUS:
-                SDL_Log("Window (%s) is offered a focus", window->title_name); 
-            break;
+    case SDL_WINDOWEVENT_FOCUS_LOST:
+      SDL_Log("Window (%s) lost keyboard focus", window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_HIT_TEST:
-                SDL_Log("Window (%s) has a special hit test", window->title_name);
-            break;
+    case SDL_WINDOWEVENT_TAKE_FOCUS:
+      SDL_Log("Window (%s) is offered a focus", window->title_name);
+      break;
 
-            default:
-                SDL_Log("Window (%s) got unknown event %d", window->title_name, event->window.event);
-            break;
-        }
+    case SDL_WINDOWEVENT_HIT_TEST:
+      SDL_Log("Window (%s) has a special hit test", window->title_name);
+      break;
 
-    } else if (window->sub_window_handle->SDL_Window_ID == event->window.windowID) {
+    default:
+      SDL_Log("Window (%s) got unknown event %d", window->title_name,
+              event->window.event);
+      break;
+    }
 
-        switch(event->window.event) 
-        {
-            case SDL_WINDOWEVENT_CLOSE:
-                SDL_Log("Window (%s) close requested", window->sub_window_handle->title_name);
-                window->sub_window_handle->is_open = false;
-            break;
+  } else if (window->sub_sdl_window->SDL_Window_ID == event->window.windowID) {
 
-            case SDL_WINDOWEVENT_SHOWN:
-                SDL_Log("Window (%s) shown", window->sub_window_handle->title_name);
-            break;
+    switch (event->window.event) {
+    case SDL_WINDOWEVENT_CLOSE:
+      SDL_Log("Window (%s) close requested",
+              window->sub_sdl_window->title_name);
+      window->sub_sdl_window->is_open = false;
+      break;
 
-            case SDL_WINDOWEVENT_HIDDEN:
-                SDL_Log("Window (%s) hidden", window->sub_window_handle->title_name);
-            break;
+    case SDL_WINDOWEVENT_SHOWN:
+      SDL_Log("Window (%s) shown", window->sub_sdl_window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_EXPOSED:
-                SDL_Log("Window (%s) exposed", window->sub_window_handle->title_name);
-            break;
-            
-            case SDL_WINDOWEVENT_MOVED:
-                SDL_Log("Window (%s) moved to %d,%d", window->sub_window_handle->title_name, event->window.data1, event->window.data2);
-            break;
+    case SDL_WINDOWEVENT_HIDDEN:
+      SDL_Log("Window (%s) hidden", window->sub_sdl_window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_RESIZED:
-                SDL_Log("Window (%s) resized to %dx%d", window->sub_window_handle->title_name, event->window.data1, event->window.data2);
-            break;
+    case SDL_WINDOWEVENT_EXPOSED:
+      SDL_Log("Window (%s) exposed", window->sub_sdl_window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_SIZE_CHANGED:
-                SDL_Log("Window (%s) size changed to %dx%d", window->sub_window_handle->title_name, event->window.data1, event->window.data2);
-            break;
+    case SDL_WINDOWEVENT_MOVED:
+      SDL_Log("Window (%s) moved to %d,%d", window->sub_sdl_window->title_name,
+              event->window.data1, event->window.data2);
+      break;
 
-            case SDL_WINDOWEVENT_MINIMIZED:
-                SDL_Log("Window (%s) minimized", window->sub_window_handle->title_name);
-            break;
+    case SDL_WINDOWEVENT_RESIZED:
+      SDL_Log("Window (%s) resized to %dx%d",
+              window->sub_sdl_window->title_name, event->window.data1,
+              event->window.data2);
+      break;
 
-            case SDL_WINDOWEVENT_MAXIMIZED:
-                SDL_Log("Window (%s) maximized", window->sub_window_handle->title_name);
-            break;
+    case SDL_WINDOWEVENT_SIZE_CHANGED:
+      SDL_Log("Window (%s) size changed to %dx%d",
+              window->sub_sdl_window->title_name, event->window.data1,
+              event->window.data2);
+      break;
 
-            case SDL_WINDOWEVENT_RESTORED:
-                SDL_Log("Window (%s) restored", window->sub_window_handle->title_name);
-            break;
+    case SDL_WINDOWEVENT_MINIMIZED:
+      SDL_Log("Window (%s) minimized", window->sub_sdl_window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_ENTER:
-                SDL_Log("Mouse entered window (%s)", window->sub_window_handle->title_name);
-                window->is_sub_window_active = true;
-            break;
+    case SDL_WINDOWEVENT_MAXIMIZED:
+      SDL_Log("Window (%s) maximized", window->sub_sdl_window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_LEAVE:
-                SDL_Log("Mouse left window (%s)", window->sub_window_handle->title_name);
-                window->is_sub_window_active = false;
-            break;
+    case SDL_WINDOWEVENT_RESTORED:
+      SDL_Log("Window (%s) restored", window->sub_sdl_window->title_name);
+      break;
 
-            case SDL_WINDOWEVENT_FOCUS_GAINED:
-                SDL_Log("Window (%s) gained keyboard focus", window->sub_window_handle->title_name);
-                window->is_sub_window_active = true;
-            break;
+    case SDL_WINDOWEVENT_ENTER:
+      SDL_Log("Mouse entered window (%s)", window->sub_sdl_window->title_name);
+      window->is_sub_window_active = true;
+      break;
 
-            case SDL_WINDOWEVENT_FOCUS_LOST:
-                SDL_Log("Window (%s) lost keyboard focus", window->sub_window_handle->title_name);
-                window->is_sub_window_active = false;
-            break;
+    case SDL_WINDOWEVENT_LEAVE:
+      SDL_Log("Mouse left window (%s)", window->sub_sdl_window->title_name);
+      window->is_sub_window_active = false;
+      break;
 
-            case SDL_WINDOWEVENT_TAKE_FOCUS:
-                SDL_Log("Window (%s) is offered a focus", window->sub_window_handle->title_name); 
-                window->is_sub_window_active = true;
-            break;
+    case SDL_WINDOWEVENT_FOCUS_GAINED:
+      SDL_Log("Window (%s) gained keyboard focus",
+              window->sub_sdl_window->title_name);
+      window->is_sub_window_active = true;
+      break;
 
-            case SDL_WINDOWEVENT_HIT_TEST:
-                SDL_Log("Window (%s) has a special hit test", window->sub_window_handle->title_name);
-            break;
+    case SDL_WINDOWEVENT_FOCUS_LOST:
+      SDL_Log("Window (%s) lost keyboard focus",
+              window->sub_sdl_window->title_name);
+      window->is_sub_window_active = false;
+      break;
 
-            default:
-                SDL_Log("Window (%s) got unknown event %d", window->sub_window_handle->title_name, event->window.event);
-            break;
-        }
-    } else eprint("unkown sub window triggered");
+    case SDL_WINDOWEVENT_TAKE_FOCUS:
+      SDL_Log("Window (%s) is offered a focus",
+              window->sub_sdl_window->title_name);
+      window->is_sub_window_active = true;
+      break;
 
+    case SDL_WINDOWEVENT_HIT_TEST:
+      SDL_Log("Window (%s) has a special hit test",
+              window->sub_sdl_window->title_name);
+      break;
+
+    default:
+      SDL_Log("Window (%s) got unknown event %d",
+              window->sub_sdl_window->title_name, event->window.event);
+      break;
+    }
+  } else
+    eprint("unkown sub window triggered");
 }
-
 
 INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_Scancode key)
 {
@@ -515,23 +537,23 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
         case SDL_KEYDOWN:
             if (window->is_sub_window_active) {
 
-                SDL_Log("Window (%s) KEY_DOWN: %s\n", window->sub_window_handle->title_name, SDL_GetScancodeName(key));
+                SDL_Log("Window (%s) KEY_DOWN: %s\n", window->sub_sdl_window->title_name, SDL_GetScancodeName(key));
 
-                if (window->sub_window_handle->keyboard_handler.keystate[key] == true) { 
+                if (window->sub_sdl_window->keyboard_handler.keystate[key] == true) { 
 
-                    SDL_Log("Window (%s) KEY_HELD: %s\n", window->sub_window_handle->title_name, SDL_GetScancodeName(key));
-                    window->sub_window_handle->keyboard_handler.is_held[key]        = true;
-                    window->sub_window_handle->keyboard_handler.just_pressed[key]   = false;
+                    SDL_Log("Window (%s) KEY_HELD: %s\n", window->sub_sdl_window->title_name, SDL_GetScancodeName(key));
+                    window->sub_sdl_window->keyboard_handler.is_held[key]        = true;
+                    window->sub_sdl_window->keyboard_handler.just_pressed[key]   = false;
 
-                } else if (window->sub_window_handle->keyboard_handler.keystate[key] == false) {
+                } else if (window->sub_sdl_window->keyboard_handler.keystate[key] == false) {
 
-                    SDL_Log("Window (%s) KEY_JUST_PRESSED: %s\n", window->sub_window_handle->title_name, SDL_GetScancodeName(key));
-                    window->sub_window_handle->keyboard_handler.just_pressed[key]   = true;
-                    window->sub_window_handle->keyboard_handler.is_held[key]        = false;
+                    SDL_Log("Window (%s) KEY_JUST_PRESSED: %s\n", window->sub_sdl_window->title_name, SDL_GetScancodeName(key));
+                    window->sub_sdl_window->keyboard_handler.just_pressed[key]   = true;
+                    window->sub_sdl_window->keyboard_handler.is_held[key]        = false;
 
                 }
 
-                window->sub_window_handle->keyboard_handler.keystate[key] = true;
+                window->sub_sdl_window->keyboard_handler.keystate[key] = true;
 
             } else {
 
@@ -563,7 +585,7 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
                     GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
 
                 } else {
-                    printf("[!] OPENGL DEBUG MODE (DISABLED)\n");
+                    printf("[!] OPENGL DEBUG MODE (DISABLED), press `F5` to enable\n");
                     GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 
                 }
@@ -574,10 +596,10 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
 
         case SDL_KEYUP:
             if (window->is_sub_window_active) {
-                SDL_Log("Window (%s) KEY_UP: %s\n", window->sub_window_handle->title_name, SDL_GetScancodeName(key));
-                window->sub_window_handle->keyboard_handler.is_held[key]        = false;
-                window->sub_window_handle->keyboard_handler.just_pressed[key]   = false;
-                window->sub_window_handle->keyboard_handler.keystate[key]       = false;
+                SDL_Log("Window (%s) KEY_UP: %s\n", window->sub_sdl_window->title_name, SDL_GetScancodeName(key));
+                window->sub_sdl_window->keyboard_handler.is_held[key]        = false;
+                window->sub_sdl_window->keyboard_handler.just_pressed[key]   = false;
+                window->sub_sdl_window->keyboard_handler.keystate[key]       = false;
 
             } else {
                 SDL_Log("Window (%s) KEY_UP: %s\n", window->title_name, SDL_GetScancodeName(key));
@@ -593,7 +615,7 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
 void window_sub_window_render_stuff(window_t *sub_window, void (*stuff)(void *), void *arg)
 {
 #ifdef __gl_h_
-        SDL_GL_MakeCurrent(sub_window->window_handle, sub_window->gl_context);
+        SDL_GL_MakeCurrent(sub_window->__sdl_window, sub_window->gl_context);
         glClearColor(
                 sub_window->background_color.cmp[0], 
                 sub_window->background_color.cmp[1],
@@ -609,10 +631,10 @@ void window_sub_window_render_stuff(window_t *sub_window, void (*stuff)(void *),
         };
 
         SDL_FillRect(
-                sub_window->surface_handle, 
+                sub_window->__sdl_surface, 
                 NULL, 
                 SDL_MapRGB(
-                    sub_window->surface_handle->format, 
+                    sub_window->__sdl_surface->format, 
                     color[0], color[1], color[2])
                 );
 #endif 
@@ -620,23 +642,24 @@ void window_sub_window_render_stuff(window_t *sub_window, void (*stuff)(void *),
         stuff(arg);
 
 #ifdef __gl_h_
-        SDL_GL_SwapWindow(sub_window->window_handle);
+        SDL_GL_SwapWindow(sub_window->__sdl_window);
 #else
-        SDL_UpdateWindowSurface(sub_window->window_handle);
+        SDL_UpdateWindowSurface(sub_window->__sdl_window);
 #endif
     
 }
 
 void window_update_user_input(window_t *window)
 {
-    SDL_Event event;
-    while(SDL_PollEvent(&event) > 0) 
+    SDL_Event *event = &window->__sdl_event;
+
+    while(SDL_PollEvent(event) > 0) 
     {
-        switch (event.type) 
+        switch (event->type) 
         {
             case SDL_WINDOWEVENT:
-                __window_handle_window_event(window, &event);
-            break;
+              __window_handle_window_event(window, event);
+              break;
 
             case SDL_QUIT:
                 window->is_open = false;
@@ -662,22 +685,21 @@ void window_update_user_input(window_t *window)
             break;
 
             case SDL_MOUSEBUTTONUP:
-
                 SDL_Log("Window (%s) MOUSE_UP\n", window->title_name);
                 window->mouse_handler.just_pressed  = false;
                 window->mouse_handler.is_held       = false;
             break;
 
             case SDL_KEYDOWN:
-                __keyboard_update_buffers(window, SDL_KEYDOWN, event.key.keysym.scancode);
+                __keyboard_update_buffers(window, SDL_KEYDOWN, event->key.keysym.scancode);
             break;
 
             case SDL_KEYUP:
-                __keyboard_update_buffers(window, SDL_KEYUP, event.key.keysym.scancode);
+                __keyboard_update_buffers(window, SDL_KEYUP, event->key.keysym.scancode);
             break;
 
             //default:
-                //SDL_ShowSimpleMessageBox(0, "ERROR", "Key not accounted for", window->window_handle);
+                //SDL_ShowSimpleMessageBox(0, "ERROR", "Key not accounted for", window->__sdl_window);
                 //window->is_open = false;
         }
     }
@@ -691,7 +713,7 @@ void window_render_stuff(window_t *window, void (*render)(void *), void *arg)
     window_update_user_input(window);
 
 #ifdef __gl_h_
-    SDL_GL_MakeCurrent(window->window_handle, window->gl_context);
+    SDL_GL_MakeCurrent(window->__sdl_window, window->gl_context);
     glClearColor(
             window->background_color.cmp[0], 
             window->background_color.cmp[1],
@@ -707,10 +729,10 @@ void window_render_stuff(window_t *window, void (*render)(void *), void *arg)
     };
 
     SDL_FillRect(
-            window->surface_handle, 
+            window->__sdl_surface, 
             NULL, 
             SDL_MapRGB(
-                window->surface_handle->format, 
+                window->__sdl_surface->format, 
                 color[0], color[1], color[2])
             );
 #endif 
@@ -720,9 +742,9 @@ void window_render_stuff(window_t *window, void (*render)(void *), void *arg)
 
 
 #ifdef __gl_h_
-    SDL_GL_SwapWindow(window->window_handle);
+    SDL_GL_SwapWindow(window->__sdl_window);
 #else
-    SDL_UpdateWindowSurface(window->window_handle);
+    SDL_UpdateWindowSurface(window->__sdl_window);
 #endif
 
 }
@@ -734,39 +756,43 @@ void window_sub_window_destroy(window_t *sub_window)
 #   ifdef __gl_h_
         SDL_GL_DeleteContext(sub_window->gl_context);
 #   else 
-        SDL_FreeSurface(sub_window->surface_handle);
-        sub_window->surface_handle = NULL;
+        SDL_FreeSurface(sub_window->__sdl_surface);
+        sub_window->__sdl_surface = NULL;
 #   endif 
 
-    SDL_DestroyWindow(sub_window->window_handle);
-    sub_window->window_handle = NULL;
+    SDL_DestroyWindow(sub_window->__sdl_window);
+    sub_window->__sdl_window = NULL;
 
     free(sub_window);
     sub_window = NULL;
 }
 
-void window_destroy(window_t *window)
+void window_destroy(void)
 {
-    if (window == NULL) eprint("window argument is null");
+    if (!global_window) eprint("global window is null");
+
+    window_t *window = global_window;
 
 #ifdef __gl_h_
     SDL_GL_DeleteContext(window->gl_context);
 #else 
-    SDL_FreeSurface(window->surface_handle);
-    window->surface_handle = NULL;
+    SDL_FreeSurface(window->__sdl_surface);
+    window->__sdl_surface = NULL;
 #endif 
 
-    if (window->sub_window_handle != NULL) {
-        window_sub_window_destroy(window->sub_window_handle);
+    if (window->sub_sdl_window != NULL) {
+        window_sub_window_destroy(window->sub_sdl_window);
         window->is_sub_window_active = false;
     }
 
-    SDL_DestroyWindow(window->window_handle);
+    SDL_DestroyWindow(window->__sdl_window);
     SDL_Quit();
 
-    window->window_handle = NULL;
+    window->__sdl_window = NULL;
     window = NULL;
-    
+
+    free(global_window);
+    window = NULL;
 }
 
 

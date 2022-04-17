@@ -13,3 +13,6 @@ test/application/test
 **/.vs/
 **/bin
 *.db
+**/lib/*
+**/bin/*
+font/test/lib/
