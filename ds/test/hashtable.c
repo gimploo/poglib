@@ -119,14 +119,25 @@ int test02(void)
     printf("string: "STR_FMT"\n", STR_ARG(&juice));
     printf("index: %i \n", z % 10);
 
+    for (int i = 0; i < 100; i++)
+    {
+        char buff[4] = {0}; 
+        snprintf(buff, sizeof(buff), "%i", i);
+        u32 z = hash_cstr(buff, strlen(buff));
+        printf("key: %s\n", buff);
+        printf("index: %i \n", z % 100);
+    }
+
     return 0;
 }
 
 int main(void)
 {
-    test01();
-    /*test02();*/
-    printf("test03\n");
-    test03();
+    /*printf("test01\n");*/
+    /*test01();*/
+    printf("test02\n");
+    test02();
+    /*printf("test03\n");*/
+    /*test03();*/
     return 0;
 }
