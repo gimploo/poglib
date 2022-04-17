@@ -74,7 +74,7 @@ list_t __impl_list_init(const u64 capacity, const char *type_name, u64 elem_size
     };
 }
 
-void __impl_list_append(list_t *list, void *value_addr, u64 value_size)
+void __impl_list_append(list_t *list, const void *value_addr, u64 value_size)
 {
     assert(list);
     assert(value_addr);
