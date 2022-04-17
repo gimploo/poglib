@@ -6,7 +6,7 @@
 } while(0)
 
 
-label_t label_init(const char *value, vec2f_t norm_position, f32 norm_font_size)
+label_t label_init(const char *value, vec3f_t norm_position, f32 norm_font_size)
 {
     return (label_t) {
         .string = value,
@@ -18,6 +18,6 @@ label_t label_init(const char *value, vec2f_t norm_position, f32 norm_font_size)
 
 void label_draw(crapgui_t *gui, label_t *label)
 {
-    gl_ascii_font_render_text(gui->font_handler, label->string, label->norm_position, label->norm_font_size);
+    glfreetypefont_set_text(gui->font_handler, label->string, vec2f(label->norm_position), COLOR_WHITE);
 }
 
