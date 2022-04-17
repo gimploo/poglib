@@ -135,8 +135,11 @@ void test03()
 
 int main(void)
 {
-    /*test01();*/
-    /*test02();*/
+    printf("TEST01\n");
+    test01();
+    printf("TEST02\n");
+    test02();
+    printf("TEST03\n");
     test03();
 
     return 0;
