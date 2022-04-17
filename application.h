@@ -8,41 +8,22 @@
 #include "./poggen.h"
 
 
+/*=============================================================================
+                            - APPLICATION -
+=============================================================================*/
 
+#define state_t u8
 
-typedef struct application_t application_t;
+typedef struct application_t {
 
-typedef u8 state_t;
-
-
-void            application_run(application_t *app);
-
-#define         application_set_font(PAPP, FONT)            (PAPP)->__fontrenderer = FONT
-#define         application_set_background(PAPP, COLOR)     (PAPP)->__window_handle->background_color = COLOR
-
-#define         application_get_window(PAPP) (PAPP)->__window_handle
-#define         application_get_dt(PAPP)  (PAPP)->__timer->dt
-#define         application_get_fps(PAPP) (PAPP)->__timer->fps
-
-#define         application_update_state(PAPP, STATE) (PAPP)->state = STATE
-
-
-
-
-
-
-
-#ifndef IGNORE_APPLICATION_IMPLEMENTATION
-
-struct application_t {
-
-    window_t            *__window_handle;
+    window_t            *__window;
     stopwatch_t         *__timer;
     glfreetypefont_t    *__fontrenderer;
 
-    char                *title;
-    u32                 width;
-    u32                 height;
+    char                *window_title;
+    u32                 window_width;
+    u32                 window_height;
+
     state_t             state;
 
     union {
@@ -55,8 +36,26 @@ struct application_t {
     void (*update)(struct application_t *);
     void (*render)(struct application_t *);
     void (*shutdown)(struct application_t *);
-};
 
+} application_t ;
+
+
+void            application_run(application_t *app);
+
+#define         application_set_font(PAPP, FONT)            (PAPP)->__fontrenderer = FONT
+#define         application_set_background(PAPP, COLOR)     (PAPP)->__window->background_color = COLOR
+
+#define         application_get_window(PAPP) (PAPP)->__window
+#define         application_get_dt(PAPP)  (PAPP)->__timer->dt
+#define         application_get_fps(PAPP) (PAPP)->__timer->fps
+
+#define         application_update_state(PAPP, STATE)       (PAPP)->state = STATE
+
+
+/*---------------------------------------------------------------------------*/
+
+
+#ifndef IGNORE_APPLICATION_IMPLEMENTATION
 
 
 void application_run(application_t *app)
@@ -65,19 +64,25 @@ void application_run(application_t *app)
     dbg_init();
 #endif
 
-    if (app == NULL)        eprint("application argument is null");
-    if (!app->title)        eprint("application title is missing ");
-    if (app->width <= 0)    eprint("provide a proper width to the application");
-    if (app->height <= 0)   eprint("provide a proper height to the application");
-    if(!app->init)          eprint("application init funciton is missing");
-    if(!app->update)        eprint("application update function is missing");
-    if(!app->render)        eprint("application render function is missing");
-    if(!app->shutdown)      eprint("application shutdown function is missing");
+    if (app == NULL)                eprint("application argument is null");
+    if (!app->window_title)         eprint("application title is missing ");
+    if (app->window_width <= 0)     eprint("provide a proper width to the application");
+    if (app->window_height <= 0)    eprint("provide a proper height to the application");
+    if(!app->init)                  eprint("application init funciton is missing");
+    if(!app->update)                eprint("application update function is missing");
+    if(!app->render)                eprint("application render function is missing");
+    if(!app->shutdown)              eprint("application shutdown function is missing");
 
-    window_t win = window_init(app->title, app->width, app->height, SDL_INIT_EVERYTHING);
+    window_t * win = window_init(
+            app->window_title, 
+            app->window_width, 
+            app->window_height, 
+            SDL_INIT_EVERYTHING);
+    assert(win);
+
     stopwatch_t timer = stopwatch();
 
-    app->__window_handle = &win;
+    app->__window= win;
     app->__timer = &timer;
     app->__fontrenderer = NULL;
 
@@ -91,7 +96,7 @@ void application_run(application_t *app)
 
     printf("[!] APPLICATION RUNNING!\n");
     // Update the content in the application
-    while(win.is_open)
+    while(win->is_open)
     {
         //u64 perf_start  = SDL_GetPerformanceCounter();
 
@@ -109,7 +114,12 @@ void application_run(application_t *app)
 
             application_update_state(app, st_current);
 
-            window_update_user_input(&win);
+            SDL_Event *event = &win->__sdl_event;
+
+            while(SDL_PollEvent(event) > 0) 
+                if (event->type == SDL_QUIT) 
+                    win->is_open = false;
+
             app->update(app);
 
             timer.accumulator -= timer.dt;
@@ -122,11 +132,11 @@ void application_run(application_t *app)
         application_update_state(app, state);
 
 
-        window_gl_render_begin(&win);
+        window_gl_render_begin(win);
 
             app->render(app);
 
-        window_gl_render_end(&win);
+        window_gl_render_end(win);
 
 
         // NOTE: for now i am capping at 60 fps 
@@ -145,7 +155,7 @@ void application_run(application_t *app)
     printf("[!] APPLICATION SHUTDOWN!\n");
     app->shutdown(app);
 
-    window_destroy(&win);
+    window_destroy();
 
 #ifdef DEBUG
     dbg_destroy();
