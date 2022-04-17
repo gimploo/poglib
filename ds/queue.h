@@ -115,7 +115,7 @@ void queue_clear(queue_t *queue)
 
 }
 
-void __impl_queue_put(queue_t *queue, void *elemaddr, u64 __elem_size)
+void __impl_queue_put(queue_t *queue, const void *elemaddr, u64 __elem_size)
 {
     if (queue == NULL)                  eprint("queue_put: queue argument is null");
     if (elemaddr == NULL)               eprint("queue_put: elem argument is null");
