@@ -34,12 +34,12 @@ struct map_t {
 };
 
 #define __impl_map_for_loop_iterator(PMAP, TMP)\
-                    u64 TMP##_I = 0;\
-                    for (void *(TMP) = (void *)map_get_value((PMAP), (char *)list_get_value(&(PMAP)->__keys, 0));\
-                         (TMP##_I) < (PMAP)->len;\
-                         (TMP) = map_get_value((PMAP), \
+                    for (void **index = 0, *(TMP) = (void *)map_get_value((PMAP), (char *)list_get_value(&(PMAP)->__keys, 0));\
+                         (u64)(index) < (PMAP)->len;\
+                         index = (void **)((u64)index + 1),\
+                         (TMP) = (void *)map_get_value((PMAP), \
                              (char *)list_get_value(&(PMAP)->__keys, \
-                                 (++TMP##_I < (PMAP)->len) ? TMP##_I : (TMP##_I - 1))))
+                                 ((u64)index < (PMAP)->len) ? index : ((u64)index - 1))))
 
 map_t __impl_map_init(const u64 capacity, const char *type_name, const u32 elem_size)
 {

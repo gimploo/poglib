@@ -21,9 +21,10 @@ void *          list_get_value(const list_t *list, const u64 index);
 
 
 #define         list_iterator(PLIST, ITER)\
-                u64 ITER##_I = 0; for (void *(ITER) = list_get_value(PLIST, 0);\
-                                        ITER##_I < (PLIST)->len;\
-                                        ++ITER##_I, (ITER) = list_get_value(PLIST, ITER##_I)) 
+                    for (void **index = 0, *(ITER) = (void *)list_get_value((PLIST), (u64)index);\
+                            (u64)(index) < (PLIST)->len;\
+                            index = (void **)((u64)index + 1),\
+                            (ITER) = (void *)list_get_value(PLIST, (u64)index))
 
 
 

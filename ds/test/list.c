@@ -312,12 +312,12 @@ int test04(void)
 
 void test06()
 {
-    list_t list = list_init(10, u32 *);
+    list_t list = list_init(10, u32);
 
     int values[] = { 1,2,3,4,5,6,7,8,9,10};
     int *ptrs[] = {&values[0], &values[1], &values[2], &values[3], &values[4], &values[5] };
     for (u32 i = 0; i < 6; i++)
-        list_append(&list, ptrs[i]);
+        list_append(&list, i);
 
     list_iterator(&list, elem) {
         printf("%i ", *(u32 *)elem);
