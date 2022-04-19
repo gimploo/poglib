@@ -2,20 +2,7 @@
 #include "../../simple/gl/types.h"
 
 
-
-typedef struct c_transform_t c_transform_t ;
-
-
-c_transform_t * c_transform_init(vec3f_t pos, vec3f_t velocity, f32 angular_speed, f32 angular_radians);
-
-
-
-
-
-#ifndef IGNORE_C_TRANSFORM_IMPLEMENTATION
-
-
-struct c_transform_t {
+typedef struct c_transform_t {
 
     vec3f_t position;
     vec3f_t prev_position;
@@ -24,10 +11,15 @@ struct c_transform_t {
     f32 angular_speed;
     f32 angular_radians;
 
-    void (*update)(c_transform_t *);
+    void (*update)(struct c_transform_t *);
 
-};
+} c_transform_t ;
 
+
+c_transform_t c_transform(vec3f_t pos, vec3f_t velocity, f32 angular_speed, f32 angular_radians);
+
+
+#ifndef IGNORE_C_TRANSFORM_IMPLEMENTATION
 
 void __c_transform_update(c_transform_t *transform)
 {
@@ -39,11 +31,9 @@ void __c_transform_update(c_transform_t *transform)
     //Rotation
 }
 
-c_transform_t * c_transform_init(vec3f_t pos, vec3f_t velocity, f32 angular_speed, f32 angular_radians)
+c_transform_t c_transform(vec3f_t pos, vec3f_t velocity, f32 angular_speed, f32 angular_radians)
 {
-    c_transform_t * o = (c_transform_t *)calloc(1, sizeof(c_transform_t ));
-
-    *o = (c_transform_t ) {
+    return (c_transform_t ) {
         .position           = pos,
         .prev_position      = pos,
         .velocity           = velocity,
@@ -51,7 +41,6 @@ c_transform_t * c_transform_init(vec3f_t pos, vec3f_t velocity, f32 angular_spee
         .angular_radians    = angular_radians,
         .update             = __c_transform_update
     };
-    return o;
 }
 
 #endif

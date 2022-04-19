@@ -2,13 +2,6 @@
 #include "../components.h"
 
 
-void transform_update(c_transform_t *t)
-{
-    assert(t);
-
-    t->update(t);
-}
-
 void transform_mesh2d_update(c_transform_t *t, c_mesh2d_t *mesh)
 {
     assert(t);

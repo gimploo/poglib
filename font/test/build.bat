@@ -56,12 +56,11 @@ set EXE_FILE_NAME=test.exe
         echo [!] `external` directory found!
     ) else (
         echo [!] `external` directory not found!
-        mkdir "%DEPENDENCY_DEFAULT_PATH%"
+        echo [*] Checking dependenices ...
+        call :check_dependencies_are_installed
+        echo [!] Dependencies all found!
     )
 
-    echo [*] Checking dependenices ...
-    call :check_dependencies_are_installed
-    echo [!] Dependencies all found!
 
     echo [*] Checking for `bin` folder ...
     if exist bin (
@@ -121,7 +120,7 @@ REM                            v
 
     set INCLUDES=/I %DEPENDENCY_DEFAULT_PATH%\SDL2\include ^
                     /I %DEPENDENCY_DEFAULT_PATH%\GLEW\include ^
-                    /I %DEPENDENCY_DEFAULT_PATH%\FREETYPE\include\ 
+                    /I %DEPENDENCY_DEFAULT_PATH%\FREETYPE\include
 
 
     if "%~1" == "debug" (
@@ -180,6 +179,14 @@ REM ============================================================================
     exit /b 0
 
 :check_dependencies_are_installed
+
+    if "%USERNAME%" == "gokul" (
+        mklink /j external C:\Users\User\OneDrive\Documents\projects\poglib\external
+        exit /b 0
+    )
+
+    mkdir "%DEPENDENCY_DEFAULT_PATH%"
+
     pushd %DEPENDENCY_DEFAULT_PATH%
         for %%x in (%DEPENDENCY_LIST%) do (
             if not exist %%x (
@@ -229,8 +236,6 @@ REM ============================================================================
             move "lib\vs2015-2022\win32" lib\ >nul
             rd /s /q "lib\vs2015-2022"
         popd
-
-        pushd FreeType\
     )
 
     echo [!] Successfully installed %~1!

@@ -3,7 +3,7 @@
 #include "../entitymanager.h"
 #include "../components.h"
 
-//NOTE: Deprecated, better to do have this with the player logic instead of a
+//FIXME: Deprecated, better to do have this with the player logic instead of a
 //generic system
 
 void s_movement2d(entitymanager_t *manager, entity_t *player, f32 dt)

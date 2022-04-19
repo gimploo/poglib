@@ -3,38 +3,29 @@
 #include "../components/shader.h"
 
 
+typedef struct c_texture2d_t {
 
-typedef struct c_texture2d_t c_texture2d_t ;
+    const char *label;
+    const gltexture2d_t *gltexture2d;
 
-c_texture2d_t   c_texture2d_init(const char *file);
-void            c_texture2d_destroy(c_texture2d_t *tx);
+}c_texture2d_t ;
 
-
+c_texture2d_t   c_texture2d(const assetmanager_t *, const char *);
 
 
 #ifndef IGNORE_C_TEXTURE_IMPLEMENTATION
 
-struct c_texture2d_t {
 
-    gltexture2d_t gltexture2d;
-
-};
-
-c_texture2d_t c_texture2d_init(const char *file)
+c_texture2d_t c_texture2d(const assetmanager_t *manager, const char *label)
 {
-    assert(file);
+    asset_t *asset = assetmanager_get_texture2d(manager, label);
 
     return (c_texture2d_t ) {
-
-        .gltexture2d = gltexture2d_init(file)
+        .label = label,
+        .gltexture2d = &asset->texture2d
 
     };
 }
 
-void c_texture2d_destroy(c_texture2d_t *tx)
-{
-    assert(tx);
-    gltexture2d_destroy(&tx->gltexture2d);
-}
 
 #endif
