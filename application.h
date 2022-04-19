@@ -114,10 +114,6 @@ void application_run(application_t *app)
 
             application_update_state(app, st_current);
 
-            SDL_Event *event = &win->__sdl_event;
-            if (event->type == SDL_QUIT) 
-                win->is_open = false;
-
             app->update(app);
 
             timer.accumulator -= timer.dt;
