@@ -1,5 +1,4 @@
 #pragma once
-
 #include "../../simple/glrenderer2d.h"
 #include "../components/sprite.h"
 #include "../components/shape.h"
@@ -8,25 +7,19 @@
 #include "../entitymanager.h"
 
 
+typedef struct s_renderer2d_t {
 
-typedef struct s_renderer2d_t s_renderer2d_t;
+    glbatch_t glbatches[GLBT_COUNT];
+    void (*render)(struct s_renderer2d_t *, entitymanager_t *);
+
+} s_renderer2d_t ;
 
 s_renderer2d_t      s_renderer2d_init(void);
-#define             s_renderer2d_draw(PSRENDERER2D, PENTITYMANGER) (PSRENDERER2D)->render((PSRENDERER2D), (PENTITYMANGER))
+#define             s_renderer2d_draw(PSRENDERER2D, PENTITYMANGER)              (PSRENDERER2D)->render((PSRENDERER2D), (PENTITYMANGER))
 void                s_renderer2d_destroy(s_renderer2d_t *renderer);
 
 
-
-
-
 #ifndef IGNORE_RENDER2D_SYSTEM_IMPLEMENTATION
-
-
-struct s_renderer2d_t {
-
-    glbatch_t glbatches[GLBT_COUNT];
-    void (*render)( s_renderer2d_t *, entitymanager_t *);
-};
 
 void s_renderer2d_destroy(s_renderer2d_t *renderer)
 {
@@ -56,7 +49,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
         glshader_t *shader      = NULL;
         gltexture2d_t *texture  = NULL;
 
-        list_t *entities = entitymanager_get_all_entities_by_tag(manager, i);
+        list_t *entities = entitymanager_get_entities_by_tag(manager, i);
         assert(entities);
 
 
@@ -78,7 +71,7 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
             // SHADER
             c_shader_t *cshader = (c_shader_t *)entity_get_component(e , c_shader_t );
             assert(cshader);
-            shader = &cshader->glshader;
+            shader = (glshader_t *)cshader->glshader;
 
             //TODO: setup uv
             quadf_t uv = quadf(vec3f(0.0f), 0.0f, 0.0f);
@@ -128,11 +121,9 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
             {
                 glbatch_t *batch = &batches[k];
 
-                if(glbatch_is_empty(batch)){
-
+                if(glbatch_is_empty(batch)) {
                     glbatch_clear(batch);
                     continue; 
-
                 } 
 
                 glrenderer2d_draw_from_batch(&renderer, batch);

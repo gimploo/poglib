@@ -9,7 +9,7 @@
 typedef struct c_sprite_t c_sprite_t ;
 
 
-c_sprite_t c_sprite_init(f32 side, c_shape_type type, quadf_t uv);
+c_sprite_t c_sprite(f32 side, c_shape_type type, quadf_t uv);
 
 
 #ifndef IGNORE_C_SPRITE_IMPLEMENTATION
@@ -20,7 +20,7 @@ struct c_sprite_t {
 };
 
  
-c_sprite_t c_sprite_init(f32 side, c_shape_type type, quadf_t uv)
+c_sprite_t c_sprite(f32 side, c_shape_type type, quadf_t uv)
 {
     c_sprite_t o = {0};
 

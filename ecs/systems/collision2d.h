@@ -1,9 +1,7 @@
 #pragma once
 #include "../components/collider.h"
 
-
-bool            collision2d_check_collision_by_AABB(c_boxcollider2d_t *a, c_boxcollider2d_t *b);
-
+bool collision2d_check_collision_by_AABB(c_boxcollider2d_t *a, c_boxcollider2d_t *b);
 
 
 #ifndef IGNORE_COLLISION2D_SYSTEM_IMPLEMENTATION

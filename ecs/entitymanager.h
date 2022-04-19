@@ -2,35 +2,11 @@
 #include "./entity.h"
 #include "../ds/queue.h"
 
+/*=============================================================================
+                            - ENTITY MANAGER -
+=============================================================================*/
 
-
-
-typedef struct entitymanager_t entitymanager_t;
-
-
-entitymanager_t     entitymanager_init(const u64 total_entity_types);
-
-#define             entitymanager_add_entity(PMANAGER, TAG)                 __impl_entitymanager_add_entity((PMANAGER), (TAG), #TAG)
-
-void                entitymanager_update(entitymanager_t *manager);
-
-void                entitymanager_destroy(entitymanager_t *manager);
-
-
-
-#define             entitymanager_get_total_entities(PMANAGER)              (PMANAGER)->entities.len
-#define             entitymanager_get_all_entities(PMANAGER)                &(PMANAGER)->entities
-#define             entitymanager_get_all_entities_by_tag(PMANAGER, TAG)    ((list_t *)list_get_value(&(PMANAGER)->entitymap, (TAG)))
-
-
-
-
-
-#ifndef IGNORE_ENTITY_MANAGER_IMPLEMENTATION
-
-#define MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME 100
-
-struct entitymanager_t {
+typedef struct entitymanager_t {
 
     //An list of all entities
     list_t      entities;
@@ -41,8 +17,25 @@ struct entitymanager_t {
     // A queue of newly created entities ready to be added (solution to fix iterator invalidation)
     queue_t     __newly_added_entities;
 
-};
+} entitymanager_t ;
 
+entitymanager_t     entitymanager_init(const u64 total_entity_types);
+#define             entitymanager_add_entity(PMANAGER, TAG)                     __impl_entitymanager_add_entity((PMANAGER), (TAG), #TAG)
+void                entitymanager_update(entitymanager_t *manager);
+
+#define             entitymanager_get_total_entities(PMANAGER)                  (PMANAGER)->entities.len
+#define             entitymanager_get_entities_by_tag(PMANAGER, TAG)            (list_t *)list_get_value(&(PMANAGER)->entitymap, (TAG))
+
+void                entitymanager_destroy(entitymanager_t *manager);
+
+
+/*-----------------------------------------------------------------------------
+                            IMPLEMENTATION 
+-----------------------------------------------------------------------------*/
+
+#ifndef IGNORE_ENTITY_MANAGER_IMPLEMENTATION
+
+#define MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME 100
 
 entitymanager_t entitymanager_init(const u64 total_entity_types)
 {
@@ -64,7 +57,7 @@ entitymanager_t entitymanager_init(const u64 total_entity_types)
     };
 }
 
-entity_t * __impl_entitymanager_add_entity(entitymanager_t *manager, entity_type tag, const char *tagname)
+entity_t * __impl_entitymanager_add_entity(entitymanager_t *manager, entity_enumtype tag, const char *tagname)
 {
     assert(manager);
 
@@ -93,7 +86,7 @@ void entitymanager_update(entitymanager_t *manager)
 
         if (e->is_alive) continue;
 
-        list_t *entitylist = entitymanager_get_all_entities_by_tag(manager, e->tag);
+        list_t *entitylist = entitymanager_get_entities_by_tag(manager, e->tag);
         assert(entitylist);
 
         for (u64 j = 0; j < entitylist->len; j++)
@@ -111,7 +104,7 @@ void entitymanager_update(entitymanager_t *manager)
         list_delete(entities, i);
         i = 0;
 
-        __entity_destroy(e);
+        __entity_free(e);
     }
 
     // Adding newly created entities into the entities list and map
@@ -127,7 +120,7 @@ void entitymanager_update(entitymanager_t *manager)
         list_append(&manager->entities, e);
 
         // appending to map
-        list_t *entitymap = entitymanager_get_all_entities_by_tag(manager, e->tag);
+        list_t *entitymap = entitymanager_get_entities_by_tag(manager, e->tag);
         list_append(entitymap, e);
     }
 
@@ -145,7 +138,7 @@ void entitymanager_destroy(entitymanager_t *manager)
         assert(e);
 
         e->is_alive = false;
-        __entity_destroy(e);
+        __entity_free(e);
     }
     queue_destroy(&manager->__newly_added_entities);
 
@@ -157,7 +150,7 @@ void entitymanager_destroy(entitymanager_t *manager)
         assert(e);
 
         e->is_alive = false;
-        __entity_destroy(e);
+        __entity_free(e);
     }
     list_destroy(entities);
 
