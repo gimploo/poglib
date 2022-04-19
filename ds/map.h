@@ -7,8 +7,15 @@
                             - MAP DATA STRUCTURE -
 =============================================================================*/
 
+typedef struct map_t {
 
-typedef struct map_t map_t ;
+    u64         len;
+    list_t      __keys;
+    hashtable_t __values;
+
+} map_t ;
+
+
 
 #define         map_init(CAPACITY, TYPE)                __impl_map_init(CAPACITY, #TYPE, sizeof(TYPE))
 #define         map_insert(PMAP, KEY, VALUE)            __impl_map_insert(PMAP, (KEY), &(VALUE), sizeof(VALUE))
@@ -22,24 +29,24 @@ typedef struct map_t map_t ;
 void            map_destroy(map_t *);
 
 
+
+/*-----------------------------------------------------------------------------
+                                IMPLEMENTATION
+-----------------------------------------------------------------------------*/
+
 #ifndef IGNORE_MAP_IMPLEMENTATION
 
 
-struct map_t {
-
-    u64         len;
-    list_t      __keys;
-    hashtable_t __values;
-
-};
-
 #define __impl_map_for_loop_iterator(PMAP, TMP)\
-                    for (void **index = 0, *(TMP) = (void *)map_get_value((PMAP), (char *)list_get_value(&(PMAP)->__keys, 0));\
-                         (u64)(index) < (PMAP)->len;\
-                         index = (void **)((u64)index + 1),\
-                         (TMP) = (void *)map_get_value((PMAP), \
-                             (char *)list_get_value(&(PMAP)->__keys, \
-                                 ((u64)index < (PMAP)->len) ? index : ((u64)index - 1))))
+                if ((PMAP)->len != 0)\
+                    for (void *index = 0, *(TMP) = (void *)map_get_value((PMAP), (char *)list_get_value(&(PMAP)->__keys, 0));\
+                             (u64)(index) < (PMAP)->len;\
+                             index = (void *)((u64)index + 1),\
+                             (TMP) = (void *)map_get_value((PMAP), \
+                                 (char *)list_get_value(&(PMAP)->__keys, \
+                                     ((u64)index < (PMAP)->len) ? \
+                                         (u64)index : \
+                                         (u64)((u64)index - 1))))
 
 map_t __impl_map_init(const u64 capacity, const char *type_name, const u32 elem_size)
 {

@@ -1,36 +1,11 @@
 #pragma once
 #include "../basic.h"
 
+/*==============================================================================
+                        - DYNAMIC ARRAY DATA STRUCTURE -
+==============================================================================*/
 
-typedef struct list_t list_t;
-
-
-#define         list_init(CAPACITY, TYPE)                       __impl_list_init(CAPACITY, #TYPE, sizeof(TYPE))
-
-#define         list_append(PLIST, VALUE)                       __impl_list_append((PLIST), &(VALUE), sizeof(VALUE)) 
-void            list_delete(list_t *list, const u64 index);
-
-void            list_destroy(list_t *list);
-
-void            list_dump(const list_t *list);
-void            list_print(const list_t *list, void (*print)(void*));
-
-void *          list_get_value(const list_t *list, const u64 index);
-
-#define         list_clear(PLIST)                               __impl_list_clear(PLIST)
-
-
-#define         list_iterator(PLIST, ITER)\
-                    for (void **index = 0, *(ITER) = (void *)list_get_value((PLIST), (u64)index);\
-                            (u64)(index) < (PLIST)->len;\
-                            index = (void **)((u64)index + 1),\
-                            (ITER) = (void *)list_get_value(PLIST, (u64)index))
-
-
-
-#ifndef IGNORE_LIST_IMPLEMENTATION
-
-struct list_t {
+typedef struct list_t {
 
     u64     len;                        // length of the list
     u64     __capacity;
@@ -39,10 +14,42 @@ struct list_t {
     u64     __elem_size;
     u64     __original_capacity;
     bool    __are_values_pointers;     // This variable checks if the list is a list of pointers 
-};
+                                       
+} list_t ;
+
+
+#define         list_init(CAPACITY, TYPE)                       __impl_list_init(CAPACITY, #TYPE, sizeof(TYPE))
+
+#define         list_append(PLIST, VALUE)                       __impl_list_append((PLIST), &(VALUE), sizeof(VALUE)) 
+void            list_delete(list_t *list, const u64 index);
+#define         list_clear(PLIST)                               __impl_list_clear(PLIST)
+
+void            list_dump(const list_t *list);
+void            list_print(const list_t *list, void (*print)(void*));
+
+void *          list_get_value(const list_t *list, const u64 index);
+#define         list_iterator(PLIST, ITER)                      __impl_list_iterator((PLIST), (ITER))
+
+void            list_destroy(list_t *list);
+
+
+/*-----------------------------------------------------------------------------
+                            IMPLEMENTATION 
+-----------------------------------------------------------------------------*/
+
+#ifndef IGNORE_LIST_IMPLEMENTATION
+
+#define __impl_list_iterator(PLIST, ITER)\
+    if ((PLIST)->len != 0)\
+        for (void **index = 0, *(ITER) = (void *)list_get_value((PLIST), (u64)index);\
+            (u64)(index) < (PLIST)->len;\
+            index = (void **)((u64)index + 1),\
+                (ITER) = (void *)list_get_value(PLIST, ((u64)index < (PLIST)->len ? (u64)index : (u64)index-1)))
 
 void * list_get_value(const list_t *list, const u64 index)
 {
+    assert(index < list->len);
+
     if (list->__are_values_pointers)
         return *(void **)(list->__array + index * list->__elem_size);
     else 
