@@ -1,7 +1,7 @@
 #pragma once
 #include "../ecs/entitymanager.h"
 #include "../ds/map.h"
-#include "./assetmanager.h"
+#include "../util/assetmanager.h"
 #include "./action.h"
 
 //NOTE: the action map is a list, i dont like it this way, i might need to make 

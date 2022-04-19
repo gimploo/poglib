@@ -7,10 +7,17 @@
 #include "gl/framebuffer.h"
 #include "gl/types.h"
 
+/*=============================================================================
+                        - OPENGL 2D RENDERER -
+=============================================================================*/
 
+typedef struct glrenderer2d_t {
 
+    vao_t         __vao;
+    glshader_t    *shader;
+    gltexture2d_t *texture;
 
-typedef struct glrenderer2d_t glrenderer2d_t ; 
+} glrenderer2d_t ;
 
 
 glrenderer2d_t      glrenderer2d_init(glshader_t *shader, gltexture2d_t *texture);
@@ -25,12 +32,9 @@ void                glrenderer2d_draw_frame_buffer(glframebuffer_t *fbo, const g
 #define             glrenderer2d_destroy(PREND)    vao_destroy(&(PREND)->__vao)
 
 
-
-
-
-
-
-
+/*-----------------------------------------------------------------------------
+                            IMPLEMENTATION
+-----------------------------------------------------------------------------*/
 
 #ifndef IGNORE_GLRENDERER2D_IMPLEMENTATION
 
@@ -40,13 +44,6 @@ global u32 GLOBAL_BATCH_POLY_INDICIES_BUFFER[MAX_QUAD_CAPACITY_PER_DRAW_CALL * M
 
 global u32 GLOBAL_POLY_INDICIES_BUFFER[MAX_VERTICES_PER_CIRCLE];
 
-struct glrenderer2d_t {
-
-    vao_t         __vao;
-    glshader_t    *__shader;
-    gltexture2d_t *__texture;
-
-};
 
 
 //NOTE: make sure to not have texture uniform if your passing NULL as texture argument
@@ -54,8 +51,8 @@ glrenderer2d_t glrenderer2d_init(glshader_t *shader, gltexture2d_t *texture)
 {
     return (glrenderer2d_t ) {
         .__vao = vao_init(),
-        .__shader = shader,
-        .__texture = texture,
+        .shader = shader,
+        .texture = texture,
     };
 
 }
@@ -63,6 +60,7 @@ glrenderer2d_t glrenderer2d_init(glshader_t *shader, gltexture2d_t *texture)
 void glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri)
 {    
     if (renderer == NULL) eprint("renderer argument is null");
+    assert(renderer->shader);
 
     vao_t *vao = &renderer->__vao;
     vbo_t vbo; 
@@ -73,13 +71,13 @@ void glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri)
             vao_set_attributes(vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, position));
             vao_set_attributes(vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color));
 
-            if (renderer->__texture != NULL) {
+            if (renderer->texture != NULL) {
                 vao_set_attributes(vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_coord));
                 vao_set_attributes(vao, &vbo,1, GL_UNSIGNED_INT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_id));
-                gltexture2d_bind(renderer->__texture, 0);
+                gltexture2d_bind(renderer->texture, 0);
             }
 
-            glshader_bind((glshader_t *)renderer->__shader);
+            glshader_bind((glshader_t *)renderer->shader);
             vao_draw_with_vbo(&renderer->__vao, &vbo);
 
     vao_unbind();
@@ -91,6 +89,7 @@ void glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri)
 void glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle)
 {    
     if (renderer == NULL) eprint("renderer argument is null");
+    assert(renderer->shader);
 
     vao_t *vao = &renderer->__vao;
     vbo_t vbo; 
@@ -101,13 +100,13 @@ void glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle)
             vao_set_attributes(vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, position));
             vao_set_attributes(vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color));
 
-            if (renderer->__texture != NULL) {
+            if (renderer->texture != NULL) {
                 vao_set_attributes(vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_coord));
                 vao_set_attributes(vao, &vbo,1, GL_UNSIGNED_INT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_id));
-                gltexture2d_bind(renderer->__texture, 0);
+                gltexture2d_bind(renderer->texture, 0);
             }
 
-            glshader_bind((glshader_t *)renderer->__shader);
+            glshader_bind((glshader_t *)renderer->shader);
             vao_draw_with_vbo(&renderer->__vao, &vbo);
 
     vao_unbind();
@@ -121,7 +120,7 @@ void glrenderer2d_draw_quad(glrenderer2d_t *renderer, const glquad_t quad)
 {
     if (renderer == NULL) eprint("renderer argument is null");
 
-    assert(renderer->__shader);
+    assert(renderer->shader);
 
     vao_t *vao = &renderer->__vao;
     vbo_t vbo; 
@@ -134,13 +133,13 @@ void glrenderer2d_draw_quad(glrenderer2d_t *renderer, const glquad_t quad)
         vao_set_attributes(vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, position));
         vao_set_attributes(vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color));
 
-        if (renderer->__texture != NULL) {
+        if (renderer->texture != NULL) {
             vao_set_attributes(vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex_t ), offsetof(glvertex_t, texture_coord));
             vao_set_attributes(vao, &vbo, 1, GL_UNSIGNED_INT, false, sizeof(glvertex_t ), offsetof(glvertex_t, texture_id));
-            gltexture2d_bind(renderer->__texture, 0);
+            gltexture2d_bind(renderer->texture, 0);
         }
 
-        glshader_bind((glshader_t *)renderer->__shader);
+        glshader_bind((glshader_t *)renderer->shader);
         vao_draw_with_ebo(vao, &ebo);
 
     vao_unbind();
@@ -158,7 +157,7 @@ void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *bat
     if (batch == NULL) eprint("batch argument is null");
     if(glbatch_is_empty(batch)) eprint("batch queue is empty");
 
-    assert(renderer->__shader);
+    assert(renderer->shader);
 
     u64 vertices_count = 0;
     switch(batch->type)
@@ -210,13 +209,13 @@ void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *bat
         vao_set_attributes(vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, position));
         vao_set_attributes(vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color));
 
-        if (renderer->__texture != NULL) {
+        if (renderer->texture != NULL) {
             vao_set_attributes(vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex_t ), offsetof(glvertex_t, texture_coord));
             vao_set_attributes(vao, &vbo, 1, GL_UNSIGNED_INT, false, sizeof(glvertex_t ), offsetof(glvertex_t, texture_id));
-            gltexture2d_bind(renderer->__texture, 0);
+            gltexture2d_bind(renderer->texture, 0);
         }
 
-        glshader_bind((glshader_t *)renderer->__shader);
+        glshader_bind((glshader_t *)renderer->shader);
 
         // Draw calls
         switch(batch->type)
