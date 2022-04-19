@@ -173,7 +173,7 @@ static inline void __shader_load_from_file(glshader_t *shader, const char *verte
 
 }
 
-glshader_t  glshader_from_file_init(const char *file_vs, const char *file_fs)
+glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
 {
     if (file_vs == NULL) eprint("file_vs argument is null");
     if (file_fs == NULL) eprint("file_fs arguemnt is null");

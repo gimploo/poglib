@@ -1,8 +1,6 @@
 #pragma once
-#include "./ecs/entitymanager.h"
-#include "./poggen/assetmanager.h"
+#include "./util/assetmanager.h"
 #include "./poggen/scene.h"
-#include "./ecs/systems.h"
 
 //TODO: Actions
 
