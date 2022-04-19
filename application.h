@@ -115,10 +115,8 @@ void application_run(application_t *app)
             application_update_state(app, st_current);
 
             SDL_Event *event = &win->__sdl_event;
-
-            while(SDL_PollEvent(event) > 0) 
-                if (event->type == SDL_QUIT) 
-                    win->is_open = false;
+            if (event->type == SDL_QUIT) 
+                win->is_open = false;
 
             app->update(app);
 
