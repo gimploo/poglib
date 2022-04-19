@@ -322,11 +322,12 @@ void test06()
     list_iterator(&list, elem) {
         printf("%i ", *(u32 *)elem);
     }
+    printf("\n");
 
-    list_delete(&list, 3);
-    list_delete(&list, 3);
-    list_delete(&list, 3);
-    list_delete(&list, 3);
+    /*list_delete(&list, 3);*/
+    list_delete(&list, 5);
+    /*list_delete(&list, 3);*/
+    /*list_delete(&list, 3);*/
 
     list_iterator(&list, elem02) {
         printf("%i ", *(u32 *)elem02);

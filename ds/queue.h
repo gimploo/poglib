@@ -3,41 +3,11 @@
 #include <stdlib.h>
 #include "../basic.h"
 
+/*=============================================================================
+                            - QUEUE DATA STRUCTURE -
+=============================================================================*/
 
-
-
-typedef struct queue_t queue_t ;
-
-
-
-#define             queue_init(CAPACITY, TYPE)          __impl_queue_init(CAPACITY, sizeof(TYPE), #TYPE)
-
-#define             queue_put(PQUEUE, ELEM)             __impl_queue_put((PQUEUE), &(ELEM), sizeof(ELEM))
-
-#define             queue_get(PQUEUE)                   __impl_queue_get((PQUEUE)) 
-#define             queue_get_in_buffer(PQUEUE, BUFFER) __impl_queue_get_in_buffer((PQUEUE), &BUFFER, sizeof(BUFFER))
-
-#define             queue_is_empty(PQUEUE)              ((PQUEUE)->__start == (PQUEUE)->__end)
-#define             queue_is_full(PQUEUE)               ((PQUEUE)->len == (PQUEUE)->__capacity) ? true : false
-
-
-void                queue_clear(queue_t *queue);
-
-void                queue_destroy(queue_t *queue);
-
-void                queue_print(queue_t *queue, void (*print)(void *));
-void                queue_dump(queue_t *queue);
-
-
-
-
-
-
-
-
-#ifndef IGNORE_QUEUE_IMPLEMENTATION
-
-struct queue_t {
+typedef struct queue_t {
 
     u64     len;
     u8      *__array;
@@ -45,8 +15,34 @@ struct queue_t {
     u64     __end;
     u64     __capacity;
     u64     __elem_size;
-    bool    are_values_pointers;   // This variable checks if the list is a list of pointers 
-};
+    bool    __are_values_pointers;   // This variable checks if the list is a list of pointers 
+                                   
+} queue_t ;
+
+
+#define             queue_init(CAPACITY, TYPE)                                  __impl_queue_init(CAPACITY, sizeof(TYPE), #TYPE)
+
+#define             queue_put(PQUEUE, ELEM)                                     __impl_queue_put((PQUEUE), &(ELEM), sizeof(ELEM))
+#define             queue_get(PQUEUE)                                           __impl_queue_get((PQUEUE)) 
+#define             queue_get_in_buffer(PQUEUE, BUFFER)                         __impl_queue_get_in_buffer((PQUEUE), &BUFFER, sizeof(BUFFER))
+
+#define             queue_is_empty(PQUEUE)                                      ((PQUEUE)->__start == (PQUEUE)->__end)
+#define             queue_is_full(PQUEUE)                                       ((PQUEUE)->len == (PQUEUE)->__capacity) ? true : false
+
+#define             queue_iterator(PQUEUE, ITER)                                __impl_queue_iterator((PQUEUE), (ITER))
+
+void                queue_clear(queue_t *queue);
+void                queue_print(queue_t *queue, void (*print)(void *));
+void                queue_dump(queue_t *queue);
+
+void                queue_destroy(queue_t *queue);
+
+
+/*-----------------------------------------------------------------------------
+                                IMPLEMENTATION
+-----------------------------------------------------------------------------*/
+
+#ifndef IGNORE_QUEUE_IMPLEMENTATION
 
 void queue_destroy(queue_t *queue)
 {
@@ -57,6 +53,14 @@ void queue_destroy(queue_t *queue)
     queue->__start = queue->__end = queue->len = 0; 
 
 }
+
+#define __impl_queue_iterator(PQUEUE, ITER)\
+    if ((PQUEUE)->len != 0)\
+        for (void **index = 0, *(ITER) = (void *)__queue_get_value_at_index((PQUEUE), (u64)index);\
+                (u64)(index) < (PQUEUE)->len;\
+                index = (void **)((u64)index + 1),\
+                (ITER) = (void *)__queue_get_value_at_index(PQUEUE, \
+                    ((u64)index < (PQUEUE)->len) ? (u64)index : (u64)index - 1))
 
 void queue_dump(queue_t *queue)
 {
@@ -69,14 +73,14 @@ void queue_dump(queue_t *queue)
         " queue->__capacity    = %li,\n" 
         " queue->__elem_size   = %li,\n" 
         " queue->len         = %li,\n"
-        " queue->are_values_pointers = %i\n",
+        " queue->__are_values_pointers = %i\n",
 
         queue->__start,
         queue->__end,
         queue->__capacity,
         queue->__elem_size,
         queue->len,
-        queue->are_values_pointers
+        queue->__are_values_pointers
     );
 
     printf(" queue->__array       = [");
@@ -96,13 +100,13 @@ queue_t __impl_queue_init(u64 __capacity, u64 __elem_size, const char *type_in_s
     if (type_in_strings[strlen(type_in_strings) - 1] == '*') flag = true;
 
     return (queue_t) {
+        .len = 0 ,
         .__array = (u8 *)calloc(__capacity, __elem_size),
         .__start = 0,
         .__end = 0,
         .__capacity = __capacity,
         .__elem_size = __elem_size,
-        .len = 0 ,
-        .are_values_pointers = flag
+        .__are_values_pointers = flag
     };
 }
 
@@ -133,6 +137,20 @@ void __impl_queue_put(queue_t *queue, const void *elemaddr, u64 __elem_size)
     if (queue->__end == queue->__start) queue->__end = oldpos;
 }
 
+void * __queue_get_value_at_index(const queue_t *queue, const u64 index)
+{
+    if (queue == NULL)          eprint("queue_get: queue argument is null");
+    if (queue_is_empty(queue))  eprint("underflow");
+    if (index >= queue->len)     eprint("index exceeds the length of the queue");
+
+    void *elem_pos = NULL;
+    if (queue->__are_values_pointers)
+        elem_pos  = *(void **)(queue->__array + index * queue->__elem_size);
+    else
+        elem_pos  = (queue->__array + index * queue->__elem_size);
+
+    return elem_pos;
+}
 
 void * __impl_queue_get(queue_t *queue)
 {
@@ -141,7 +159,7 @@ void * __impl_queue_get(queue_t *queue)
     if (queue_is_empty(queue))  eprint("underflow");
 
     void *elem_pos = NULL;
-    if (queue->are_values_pointers)
+    if (queue->__are_values_pointers)
         elem_pos  = *(void **)(queue->__array + queue->__start * queue->__elem_size);
     else
         elem_pos  = (queue->__array + queue->__start * queue->__elem_size);
@@ -161,7 +179,7 @@ void __impl_queue_get_in_buffer(queue_t *queue, void *buffer, u64 buffer_size)
     if (buffer_size == 8)                eprint("passed in buffer is a pointer");
 
     void *elem_pos = NULL;
-    if (queue->are_values_pointers)
+    if (queue->__are_values_pointers)
         elem_pos  = *(void **)(queue->__array + queue->__start * queue->__elem_size);
     else
         elem_pos  = (queue->__array + queue->__start * queue->__elem_size);
@@ -185,7 +203,7 @@ void queue_print(queue_t *queue, void (*print_elem)(void *))
     void *elem_pos = NULL;
     for (u64 i = queue->__start, j = 0; j < queue->len; i = (i + 1) % queue->len, j++)
     {
-        if (queue->are_values_pointers)
+        if (queue->__are_values_pointers)
             elem_pos  = *(void **)(queue->__array + i * queue->__elem_size);
         else
             elem_pos  = (queue->__array + i * queue->__elem_size);

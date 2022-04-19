@@ -37,7 +37,13 @@ int main(void)
     for (int i = 0; i < 3; i++)
         queue_put(&queue, pvecs[i]);
 
+    printf("-----------------------\n");
     queue_print(&queue, print_foo);
+    printf("-----------------------\n");
+    queue_iterator(&queue, iter) {
+        print_foo(iter);
+    }
+    printf("-----------------------\n");
 
     while(!queue_is_empty(&queue))
     {
