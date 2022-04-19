@@ -326,91 +326,93 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 
 }
 
-INTERNAL void __window_handle_window_event(window_t *window, SDL_Event *event) {
-  if (window->SDL_Window_ID == event->window.windowID) {
+INTERNAL void __window_handle_sdlwindow_event(window_t *window, SDL_Event *event) 
+{
+    if (window->SDL_Window_ID == event->window.windowID) {
 
-    switch (event->window.event) {
-    case SDL_WINDOWEVENT_CLOSE:
-      SDL_Log("Window (%s) close requested", window->title);
-      window->is_open = false;
-      break;
+        switch (event->window.event) 
+        {
+            case SDL_WINDOWEVENT_CLOSE:
+                SDL_Log("Window (%s) close requested", window->title);
+                window->is_open = false;
+            break;
 
-    case SDL_WINDOWEVENT_SHOWN:
-      SDL_Log("Window (%s) shown", window->title);
-      break;
+            case SDL_WINDOWEVENT_SHOWN:
+                SDL_Log("Window (%s) shown", window->title);
+            break;
 
-    case SDL_WINDOWEVENT_HIDDEN:
-      SDL_Log("Window (%s) hidden", window->title);
-      break;
+            case SDL_WINDOWEVENT_HIDDEN:
+                SDL_Log("Window (%s) hidden", window->title);
+            break;
 
-    case SDL_WINDOWEVENT_EXPOSED:
-      SDL_Log("Window (%s) exposed", window->title);
-      break;
+            case SDL_WINDOWEVENT_EXPOSED:
+                SDL_Log("Window (%s) exposed", window->title);
+            break;
 
-    case SDL_WINDOWEVENT_MOVED:
-      SDL_Log("Window (%s) moved to %d,%d", window->title,
-              event->window.data1, event->window.data2);
-      break;
+            case SDL_WINDOWEVENT_MOVED:
+                SDL_Log("Window (%s) moved to %d,%d", window->title,
+                  event->window.data1, event->window.data2);
+              break;
 
-    case SDL_WINDOWEVENT_RESIZED:
-      SDL_Log("Window (%s) resized to %dx%d", window->title,
-              event->window.data1, event->window.data2);
-      break;
+            case SDL_WINDOWEVENT_RESIZED:
+                SDL_Log("Window (%s) resized to %dx%d", window->title,
+                      event->window.data1, event->window.data2);
+            break;
 
-    case SDL_WINDOWEVENT_SIZE_CHANGED:
-      SDL_Log("Window (%s) size changed to %dx%d", window->title,
-              event->window.data1, event->window.data2);
-      break;
+            case SDL_WINDOWEVENT_SIZE_CHANGED:
+                SDL_Log("Window (%s) size changed to %dx%d", window->title,
+                      event->window.data1, event->window.data2);
+            break;
 
-    case SDL_WINDOWEVENT_MINIMIZED:
-      SDL_Log("Window (%s) minimized", window->title);
-      break;
+            case SDL_WINDOWEVENT_MINIMIZED:
+              SDL_Log("Window (%s) minimized", window->title);
+              break;
 
-    case SDL_WINDOWEVENT_MAXIMIZED:
-      SDL_Log("Window (%s) maximized", window->title);
-      break;
+            case SDL_WINDOWEVENT_MAXIMIZED:
+              SDL_Log("Window (%s) maximized", window->title);
+              break;
 
-    case SDL_WINDOWEVENT_RESTORED:
-      SDL_Log("Window (%s) restored", window->title);
-      break;
+            case SDL_WINDOWEVENT_RESTORED:
+              SDL_Log("Window (%s) restored", window->title);
+              break;
 
-    case SDL_WINDOWEVENT_ENTER:
-      SDL_Log("Mouse entered main window (%s)", window->title);
-      break;
+            case SDL_WINDOWEVENT_ENTER:
+              SDL_Log("Mouse entered main window (%s)", window->title);
+              break;
 
-    case SDL_WINDOWEVENT_LEAVE:
-      SDL_Log("Mouse left main window (%s)", window->title);
-      window->mouse_handler.is_held = false;
-      window->mouse_handler.just_pressed = false;
-      memset(window->keyboard_handler.is_held, false,
-             sizeof(window->keyboard_handler.is_held));
-      memset(window->keyboard_handler.just_pressed, false,
-             sizeof(window->keyboard_handler.just_pressed));
-      memset(window->keyboard_handler.keystate, false,
-             sizeof(window->keyboard_handler.keystate));
-      break;
+            case SDL_WINDOWEVENT_LEAVE:
+              SDL_Log("Mouse left main window (%s)", window->title);
+              window->mouse_handler.is_held = false;
+              window->mouse_handler.just_pressed = false;
+              memset(window->keyboard_handler.is_held, false,
+                     sizeof(window->keyboard_handler.is_held));
+              memset(window->keyboard_handler.just_pressed, false,
+                     sizeof(window->keyboard_handler.just_pressed));
+              memset(window->keyboard_handler.keystate, false,
+                     sizeof(window->keyboard_handler.keystate));
+              break;
 
-    case SDL_WINDOWEVENT_FOCUS_GAINED:
-      SDL_Log("Window (%s) gained keyboard focus", window->title);
-      break;
+            case SDL_WINDOWEVENT_FOCUS_GAINED:
+              SDL_Log("Window (%s) gained keyboard focus", window->title);
+              break;
 
-    case SDL_WINDOWEVENT_FOCUS_LOST:
-      SDL_Log("Window (%s) lost keyboard focus", window->title);
-      break;
+            case SDL_WINDOWEVENT_FOCUS_LOST:
+              SDL_Log("Window (%s) lost keyboard focus", window->title);
+              break;
 
-    case SDL_WINDOWEVENT_TAKE_FOCUS:
-      SDL_Log("Window (%s) is offered a focus", window->title);
-      break;
+            case SDL_WINDOWEVENT_TAKE_FOCUS:
+              SDL_Log("Window (%s) is offered a focus", window->title);
+              break;
 
-    case SDL_WINDOWEVENT_HIT_TEST:
-      SDL_Log("Window (%s) has a special hit test", window->title);
-      break;
+            case SDL_WINDOWEVENT_HIT_TEST:
+              SDL_Log("Window (%s) has a special hit test", window->title);
+              break;
 
-    default:
-      SDL_Log("Window (%s) got unknown event %d", window->title,
-              event->window.event);
-      break;
-    }
+            default:
+              SDL_Log("Window (%s) got unknown event %d", window->title,
+                      event->window.event);
+              break;
+        }
 
   } else if (window->__subwindow->SDL_Window_ID == event->window.windowID) {
 
@@ -632,11 +634,7 @@ void window_update_user_input(window_t *window)
         switch (event->type) 
         {
             case SDL_WINDOWEVENT:
-              __window_handle_window_event(window, event);
-              break;
-
-            case SDL_QUIT:
-                window->is_open = false;
+                __window_handle_sdlwindow_event(window, event);
             break;
 
             //NOTE: Here a mouse held down state is triggered if its just pressed and the mouse moved after.
