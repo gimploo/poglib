@@ -1,5 +1,5 @@
 #pragma once
-#include "../../simple/glrenderer2d.h"
+#include "../../glrenderer2d.h"
 #include "../components/sprite.h"
 #include "../components/shape.h"
 #include "../components/shader.h"

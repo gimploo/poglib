@@ -1,6 +1,6 @@
 #pragma once
-#include "../simple/gl/texture2d.h"
-#include "../simple/gl/shader.h"
+#include "../gfx/gl/texture2d.h"
+#include "../gfx/gl/shader.h"
 #include "../font/glfreetypefont.h"
 
 typedef enum asset_type {
