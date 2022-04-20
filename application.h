@@ -1,11 +1,10 @@
 #pragma once
-#include "./basic.h"
-#include "simple/glrenderer2d.h"
-#include "simple/window.h"
+#include "basic.h"
+#include "glrenderer2d.h"
+#include "application/window.h"
 #include "application/stopwatch.h"
-#include "ecs/entitymanager.h"
+#include "ecs.h"
 #include "font/glfreetypefont.h"
-#include "./poggen.h"
 
 
 /*=============================================================================

@@ -6,7 +6,7 @@
     #include <windows.h>
     #include <imagehlp.h>
 #endif
-#include "../ds/linkedlist.h"
+#include "./ds/linkedlist.h"
 
 
 const char *IGNORE_FILES[] = { "stb_image.h" };

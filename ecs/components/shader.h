@@ -1,5 +1,5 @@
 #pragma once 
-#include "../../simple/gl/shader.h"
+#include "../../gfx/gl/shader.h"
 #include "../../util/assetmanager.h"
 
 

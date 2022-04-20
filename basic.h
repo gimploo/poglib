@@ -10,7 +10,7 @@
 #include <time.h>
 
 #include "./color.h"
-#include "./dbg/dbg.h"
+#include "./dbg.h"
 
 // GET ONLY FILENAME AND NOT THE ENTIRE PATH
 #if defined(_WIN64)

@@ -1,6 +1,6 @@
 #pragma once
 #include "../../basic.h"
-#include "../../simple/gl/types.h"
+#include "../../gfx/gl/types.h"
 #include "../components/transform.h"
 
 

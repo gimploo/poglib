@@ -1,5 +1,5 @@
 #pragma once 
-#include "../../simple/gl/types.h"
+#include "../../gfx/gl/types.h"
 
 
 typedef struct c_transform_t {

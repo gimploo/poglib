@@ -1,7 +1,7 @@
 #pragma once
-#include "../../simple/gl/types.h"
-#include "../../simple/gl/shader.h"
-#include "../../simple/gl/texture2d.h"
+#include "../../gfx/gl/types.h"
+#include "../../gfx/gl/shader.h"
+#include "../../gfx/gl/texture2d.h"
 #include "../components/shape.h"
 
 

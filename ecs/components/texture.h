@@ -1,5 +1,5 @@
 #pragma once
-#include "../../simple/gl/texture2d.h"
+#include "../../gfx/gl/texture2d.h"
 #include "../components/shader.h"
 
 

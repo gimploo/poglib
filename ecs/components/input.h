@@ -1,5 +1,5 @@
 #pragma once
-#include "../../simple/window.h"
+#include "../../application/window.h"
 
 
 typedef struct c_input_t c_input_t;
