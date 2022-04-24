@@ -1,7 +1,7 @@
 #ifndef __MY_LA_H__
 #define __MY_LA_H__
 
-#include "../basic.h"
+#include <poglib/basic.h>
 #include <math.h>
 
 

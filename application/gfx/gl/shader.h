@@ -9,7 +9,7 @@
 // raw 
 
 #include <string.h>
-#include "common.h"
+#include <poglib/application/gfx/gl/common.h>
 
 #define MAX_UNIFORM_ARRAY_CAPACITY 10
 #define MAX_UNIFORM_VALUE_SIZE (sizeof(matrixf_t ))

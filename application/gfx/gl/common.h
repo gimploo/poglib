@@ -3,12 +3,12 @@
 
 #include <GL/glew.h>
 
-#include "../../basic.h"
-#include "../../ds/stack.h"
-#include "../../ds/queue.h"
-#include "../../file.h"
-#include "../../math/la.h"
-#include "../../math/shapes.h"
+#include <poglib/basic.h>
+#include <poglib/ds/stack.h>
+#include <poglib/ds/queue.h>
+#include <poglib/file.h>
+#include <poglib/math/la.h>
+#include <poglib/math/shapes.h>
 
 #ifdef GL_LOG_ENABLE
 #   define GL_LOG(fmt, ...) fprintf(stderr, "[LOG]\t " fmt "\n", ##__VA_ARGS__)

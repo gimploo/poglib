@@ -5,7 +5,7 @@
 // 2. have the declarations in internals/common.h
 // 3. make sure to have the file in internals/
 
-#include "./internals/crapgui.h"
+#include "./internals/common.h"
 #include "./internals/frame.h"
 #include "./internals/button.h"
 #include "./internals/label.h"

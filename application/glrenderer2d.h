@@ -1,11 +1,11 @@
 #pragma once
 #include <GL/glew.h>
-#include "math/shapes.h"
-#include "gfx/gl/shader.h"
-#include "gfx/gl/texture2d.h"
-#include "gfx/gl/globjects.h"
-#include "gfx/gl/framebuffer.h"
-#include "gfx/gl/types.h"
+#include <poglib/math/shapes.h>
+#include <poglib/application/gfx/gl/shader.h>
+#include <poglib/application/gfx/gl/texture2d.h>
+#include <poglib/application/gfx/gl/globjects.h>
+#include <poglib/application/gfx/gl/framebuffer.h>
+#include <poglib/application/gfx/gl/types.h>
 
 /*=============================================================================
                         - OPENGL 2D RENDERER -
