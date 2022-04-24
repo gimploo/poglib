@@ -4,11 +4,11 @@
 //TODO: memory manage the allocated stack array in menu bar
 
 
-#include "./../../simple/glrenderer2d.h"
-#include "./../../simple/window.h"
-#include "./../../font/glfreetypefont.h"
-#include "./../../color.h"
-#include "../../ds/map.h"
+#include <poglib/application/glrenderer2d.h>
+#include <poglib/application/window.h>
+#include <poglib/font/glfreetypefont.h>
+#include <poglib/basic/color.h>
+#include <poglib/ds/map.h>
 
 //NOTE: the type of ui components currently supported
 typedef enum uicmp_type {

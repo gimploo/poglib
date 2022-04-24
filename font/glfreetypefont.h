@@ -1,6 +1,6 @@
 #pragma once
-#include "../glrenderer2d.h"
-#include "../application/window.h"
+#include <poglib/application/glrenderer2d.h>
+#include <poglib/application/window.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H 
 

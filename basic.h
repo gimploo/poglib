@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <time.h>
 
-#include "./color.h"
+#include <poglib/basic/color.h>
 #include "./dbg.h"
 
 // GET ONLY FILENAME AND NOT THE ENTIRE PATH
