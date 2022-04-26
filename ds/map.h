@@ -22,7 +22,7 @@ typedef struct map_t {
 #define         map_delete(PMAP, KEY)                   __impl_map_delete((PMAP), (KEY))
 
 #define         map_get_value(PMAP, KEY)                hashtable_get_value(&(PMAP)->__values, KEY) 
-#define         map_get_value_at_index(PMAP, INDEX)     __impl_map_get_reference_to_value_at_index(PMAP, INDEX)
+#define         map_get_value_at_index(PMAP, INDEX)     __impl_map_get_reference_to_value_at_index(PMAP, (INDEX))
 
 #define         map_iterator(PMAP, TMP)                 __impl_map_for_loop_iterator(PMAP, TMP)
 
@@ -85,10 +85,16 @@ void __impl_map_delete(map_t *self, const char *key)
     eprint("key `%s` not found", key);
 }
 
-void *__impl_map_get_reference_to_value_at_index(map_t *map, const u32 index)
+void *__impl_map_get_reference_to_value_at_index(const map_t *map, const u32 index)
 {
-    if (index > map->__keys.len) eprint("Index value exceeds map.__kyes length");
-    return __hashtable_get_reference_to_only_value_at_index(&map->__values, index);
+    if (index >= map->__keys.len) 
+        eprint("Index value exceeds map.__keys length");
+
+    const list_t *list  = &map->__keys;
+    const char *key     = (char *)list_get_value(list, index);
+    const u64 hash      = hash_cstr(key, strlen(key)) % map->__values.__capacity;
+
+    return __hashtable_get_reference_to_only_value_at_index(&map->__values, hash);
 }
 
 void map_destroy(map_t *map)
