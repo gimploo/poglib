@@ -1,5 +1,5 @@
 #pragma once
-#include "../../gfx/gl/texture2d.h"
+#include <poglib/application/gfx/gl/texture2d.h>
 #include "../components/shader.h"
 
 
@@ -18,11 +18,11 @@ c_texture2d_t   c_texture2d(const assetmanager_t *, const char *);
 
 c_texture2d_t c_texture2d(const assetmanager_t *manager, const char *label)
 {
-    asset_t *asset = assetmanager_get_texture2d(manager, label);
+    gltexture2d_t *texture = assetmanager_get_texture2d(manager, label);
 
     return (c_texture2d_t ) {
         .label = label,
-        .gltexture2d = &asset->texture2d
+        .gltexture2d = texture
 
     };
 }

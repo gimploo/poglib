@@ -3,7 +3,7 @@
 #include "../math/la.h"
 #include "../ds/hashtable.h"
 #include "../ds/list.h"
-#include "../gfx/gl/types.h"
+#include <poglib/application/gfx/gl/types.h>
 #include "./components.h"
 
 /*============================================================================
