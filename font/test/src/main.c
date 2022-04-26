@@ -1,7 +1,5 @@
-#include "../lib/basic.h"
-#include "../lib/font/glbitmapfont.h"
-#include "../lib/font/glfreetypefont.h"
-#include "../lib/simple/window.h"
+#include <poglib/font/glbitmapfont.h>
+#include <poglib/font/glfreetypefont.h>
 
 
 int main(void)

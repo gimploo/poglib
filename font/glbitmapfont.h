@@ -4,7 +4,7 @@
 ======================================================*/
 
 #include "../math/la.h"
-#include "../simple/glrenderer2d.h"
+#include "../application/glrenderer2d.h"
 
 
 typedef struct glbitmapfont_t glbitmapfont_t;
@@ -61,7 +61,8 @@ const char * const ascii_font_fs =
 
 struct glbitmapfont_t {
     
-    glrenderer2d_t renderer;
+    glshader_t      shader;
+    gltexture2d_t   texture;
 
     struct {
 
@@ -130,26 +131,16 @@ glbitmapfont_t glbitmapfont_init(const char *file_path, const u32 tile_count_wid
 {
     if (file_path == NULL) eprint("file_path argument is null");
 
-    //Shader
-    glshader_t shader = glshader_from_cstr_init(ascii_font_vs, ascii_font_fs);
-    glshader_t *pshader = (glshader_t *)calloc(1, sizeof(shader));
-    assert(pshader);
-    memcpy(pshader, &shader, sizeof(shader));
-
-    //Texture
-    gltexture2d_t texture = __ascii_load_texture(file_path);
-    gltexture2d_t *ptexture = (gltexture2d_t *)calloc(1, sizeof(texture));
-    assert(ptexture);
-    memcpy(ptexture, &texture, sizeof(texture));
-
-
     glbitmapfont_t output = {
-        .renderer           = glrenderer2d_init(pshader, ptexture),
+        .shader             = glshader_from_cstr_init(ascii_font_vs, ascii_font_fs),
+        .texture            = __ascii_load_texture(file_path),
         .batches            = glbatch_init(KB, glquad_t )
     };
 
-    f32 norm_font_width    = normalize(texture.width / tile_count_width, 0.0f, texture.width);
-    f32 norm_font_height   = normalize(texture.height / tile_count_height, 0.0f, texture.height);
+    gltexture2d_t *texture = &output.texture;
+
+    f32 norm_font_width    = normalize(texture->width / tile_count_width, 0.0f, texture->width);
+    f32 norm_font_height   = normalize(texture->height / tile_count_height, 0.0f, texture->height);
 
     for (u32 v = 0, tile_index = 0; v < tile_count_height; v++)
     {
@@ -257,7 +248,12 @@ void glbitmapfont_draw(glbitmapfont_t *font)
 {
     assert(font);
 
-    glrenderer2d_draw_from_batch(&font->renderer, &font->batches);
+    glrenderer2d_t renderer = {
+        .shader = &font->shader,
+        .texture = &font->texture
+    };
+
+    glrenderer2d_draw_from_batch(&renderer, &font->batches);
 
 }
 
@@ -265,13 +261,9 @@ void glbitmapfont_destroy(glbitmapfont_t *self)
 {
     if (self == NULL) eprint("argument is null");
 
-    glrenderer2d_destroy(&self->renderer);
-    glshader_destroy(self->renderer.__shader);
-    gltexture2d_destroy(self->renderer.__texture);
+    glshader_destroy(&self->shader);
+    gltexture2d_destroy(&self->texture);
     glbatch_destroy(&self->batches);
-    free(self->renderer.__shader);
-    free(self->renderer.__texture);
-
 
 }
 
