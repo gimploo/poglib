@@ -1,7 +1,6 @@
 #pragma once
-#include "../../gfx/gl/types.h"
-#include "../../gfx/gl/shader.h"
-#include "../../gfx/gl/texture2d.h"
+#include <poglib/application/gfx/gl/texture2d.h>
+#include <poglib/application/gfx/gl/shader.h>
 #include "../components/shape.h"
 
 

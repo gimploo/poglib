@@ -1,5 +1,5 @@
 #pragma once
-#include "../../glrenderer2d.h"
+#include "../../application/glrenderer2d.h"
 #include "../components/sprite.h"
 #include "../components/shape.h"
 #include "../components/shader.h"
@@ -116,7 +116,6 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
 
         if (shader) {
 
-            glrenderer2d_t renderer = glrenderer2d_init(shader, texture);
             for (u32 k = 0; k < GLBT_COUNT; k++)
             {
                 glbatch_t *batch = &batches[k];
@@ -126,11 +125,15 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
                     continue; 
                 } 
 
+                glrenderer2d_t renderer = {
+                    .shader = shader, 
+                    .texture = texture
+                };
+
                 glrenderer2d_draw_from_batch(&renderer, batch);
 
                 glbatch_clear(batch);
             }
-            glrenderer2d_destroy(&renderer);
         }
 
     }
