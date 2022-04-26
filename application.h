@@ -1,6 +1,6 @@
 #pragma once
 #include "basic.h"
-#include "glrenderer2d.h"
+#include "application/glrenderer2d.h"
 #include "application/window.h"
 #include "application/stopwatch.h"
 #include "ecs.h"
@@ -31,10 +31,10 @@ typedef struct application_t {
     };
 
 
-    void (* init)(struct application_t *);
+    void (*init)(struct application_t *);
     void (*update)(struct application_t *);
     void (*render)(struct application_t *);
-    void (*shutdown)(struct application_t *);
+    void (*destroy)(struct application_t *);
 
 } application_t ;
 
@@ -70,7 +70,7 @@ void application_run(application_t *app)
     if(!app->init)                  eprint("application init funciton is missing");
     if(!app->update)                eprint("application update function is missing");
     if(!app->render)                eprint("application render function is missing");
-    if(!app->shutdown)              eprint("application shutdown function is missing");
+    if(!app->destroy)              eprint("application shutdown function is missing");
 
     window_t * win = window_init(
             app->window_title, 
@@ -146,7 +146,7 @@ void application_run(application_t *app)
     }
 
     printf("[!] APPLICATION SHUTDOWN!\n");
-    app->shutdown(app);
+    app->destroy(app);
 
     window_destroy();
 
