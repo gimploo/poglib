@@ -158,10 +158,9 @@ const void * __impl_assetmanager_get_asset(const assetmanager_t *manager, const 
             eprint("TODO");
         break;
 
-        default: eprint("type not accounted for ");
+        default: eprint("Asset `%s` type not accounted for ", label);
     }
 
-    eprint("Asset `%s` not found", label);
 }
 
 #endif
