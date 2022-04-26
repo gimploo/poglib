@@ -41,7 +41,9 @@ const char * const default_fshader =
     "\n"
     "void main()\n"
     "{\n"
-        "FragColor = texture(u_texture01, tex_coord) * color;\n"
+        "FragColor = \n"
+        "   texture(u_texture01, tex_coord) + color;\n"
+        "\n"
     "}";
 
 
