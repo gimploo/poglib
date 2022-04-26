@@ -47,7 +47,7 @@ void            file_destroy(file_t * const file);
 size_t file_get_size(const char *file_path)
 {
     FILE *fp = fopen(file_path, "r");
-    if (fp == NULL) eprint("failed to open");
+    if (fp == NULL) eprint("%s failed to open", file_path);
     
     fseek(fp, 0L, SEEK_END);
     size_t size = ftell(fp);
