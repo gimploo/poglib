@@ -32,7 +32,8 @@ typedef struct glfreetypefont_t {
 
     } fontatlas[MAX_CHARACTERS_IN_FREETYPE];
 
-    glrenderer2d_t  renderer2d;
+    glshader_t      shader;
+    gltexture2d_t   texture;
     glbatch_t       dynamic_texts;
     glbatch_t       static_texts;
 
@@ -200,17 +201,9 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize)
     FT_Done_FreeType(ft);
 
     //Shader
-    glshader_t shader = glshader_from_cstr_init(freetype_vs, freetype_fs);
-    glshader_t *pshader = (glshader_t *)calloc(1, sizeof(shader));
-    assert(pshader);
-    memcpy(pshader, &shader, sizeof(shader));
+    o.shader = glshader_from_cstr_init(freetype_vs, freetype_fs);
+    o.texture = tex;
 
-    //Texture
-    gltexture2d_t *ptexture = (gltexture2d_t *)calloc(1, sizeof(tex));
-    assert(ptexture);
-    memcpy(ptexture, &tex, sizeof(tex));
-
-    o.renderer2d = glrenderer2d_init(pshader, ptexture);
     return o;
 }
 
@@ -310,17 +303,18 @@ void glfreetypefont_draw(glfreetypefont_t *self)
         glbatch_put(&self->dynamic_texts, *obj);
     }
 
-    glrenderer2d_draw_from_batch(&self->renderer2d, &self->dynamic_texts);
+    glrenderer2d_t rd2d = {
+        .shader = &self->shader,
+        .texture = &self->texture
+    };
+    glrenderer2d_draw_from_batch(&rd2d, &self->dynamic_texts);
     glbatch_clear(&self->dynamic_texts);
 }
 
 void glfreetypefont_destroy(glfreetypefont_t *self)
 {
-    glrenderer2d_destroy(&self->renderer2d);
-    glshader_destroy(self->renderer2d.shader);
-    free(self->renderer2d.shader); self->renderer2d.shader = NULL;
-    gltexture2d_destroy(self->renderer2d.texture);
-    free(self->renderer2d.texture); self->renderer2d.texture = NULL;
+    glshader_destroy(&self->shader);
+    gltexture2d_destroy(&self->texture);
     glbatch_destroy(&self->static_texts);
     glbatch_destroy(&self->dynamic_texts);
 }

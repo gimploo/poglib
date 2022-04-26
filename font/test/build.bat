@@ -6,13 +6,12 @@ REM                 -- WINDOWS BUILD SCRIPT FOR C PROJECTS --
 REM ===========================================================================
 
 REM Include required dependencies
-set DEPENDENCY_LIST=SDL2 GLEW FREETYPE
+set LIBRARY_LIST=SDL2 GLEW FREETYPE POGLIB
 set SDL2_URL=https://www.libsdl.org/release/SDL2-devel-2.0.20-VC.zip
 set GLEW_URL=https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0-win32.zip
 set FREETYPE_URL=https://github.com/ubawurinna/freetype-windows-binaries/archive/refs/heads/master.zip
-
-REM Url to my library
 set POGLIB_URL=https://github.com/gimploo/poglib/archive/refs/heads/main.zip
+
 
 REM Include compiler of choice (here its msvc)
 set CC=cl
@@ -23,7 +22,7 @@ set CC_DEFAULT_LIBS=User32.lib Gdi32.lib Shell32.lib winmm.lib dbghelp.lib shlwa
 REM Source and executalble path (default)
 set EXE_FOLDER_DEFAULT_PATH=.\bin
 set SRC_FOLDER_DEFAULT_PATH=.\src
-set DEPENDENCY_DEFAULT_PATH=.\external
+set LIBRARY_DEFAULT_PATH=.\lib
 
 REM Source files and exe name
 set SRC_FILE_NAME=main.c
@@ -52,12 +51,16 @@ set EXE_FILE_NAME=test.exe
 
 
     echo [*] Checking if all dependenices are installed ...
-    if exist "%DEPENDENCY_DEFAULT_PATH%" (
-        echo [!] `external` directory found!
+    if exist "%LIBRARY_DEFAULT_PATH%" (
+        echo [!] `lib` directory found!
     ) else (
-        echo [!] `external` directory not found!
+        echo [!] `lib` directory not found!
         echo [*] Checking dependenices ...
-        call :check_dependencies_are_installed
+        if "%USERNAME%" == "gokul" (
+            mklink /j "%LIBRARY_DEFAULT_PATH%" C:\Users\User\OneDrive\Documents\projects\dev-libs
+        ) else (
+            call :check_dependencies_are_installed
+        )
         echo [!] Dependencies all found!
     )
 
@@ -70,15 +73,6 @@ set EXE_FILE_NAME=test.exe
         mkdir bin
         call :copy_all_dlls_to_bin
         echo [!] `bin` directory made!
-    )
-
-    echo [*] Checking for `lib` folder ...
-    if exist lib (
-        echo [!] `lib` folder found!
-    ) else (
-        echo [!] `lib` folder not found!
-        call :setup_poglib
-        echo [!] `lib` folder setup finished!
     )
 
     REM EITHER A RELEASE BUILD OR A DEBUG BUILD
@@ -118,9 +112,10 @@ REM                            |
 REM                            v
 :build_project_with_msvc
 
-    set INCLUDES=/I %DEPENDENCY_DEFAULT_PATH%\SDL2\include ^
-                    /I %DEPENDENCY_DEFAULT_PATH%\GLEW\include ^
-                    /I %DEPENDENCY_DEFAULT_PATH%\FREETYPE\include
+    set INCLUDES=/I %LIBRARY_DEFAULT_PATH%\SDL2\include ^
+                    /I %LIBRARY_DEFAULT_PATH%\GLEW\include ^
+                    /I %LIBRARY_DEFAULT_PATH%\FREETYPE\include ^
+                    /I %LIBRARY_DEFAULT_PATH%\
 
 
     if "%~1" == "debug" (
@@ -129,10 +124,10 @@ REM                            v
         set FLAGS=/DGLEW_STATIC 
     )
 
-    set LIBS=%DEPENDENCY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.lib ^
-                %DEPENDENCY_DEFAULT_PATH%\SDL2\lib\x64\SDL2main.lib ^
-                %DEPENDENCY_DEFAULT_PATH%\GLEW\lib\Release\x64\glew32s.lib ^
-                %DEPENDENCY_DEFAULT_PATH%\FREETYPE\lib\win64\freetype.lib ^
+    set LIBS=%LIBRARY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.lib ^
+                %LIBRARY_DEFAULT_PATH%\SDL2\lib\x64\SDL2main.lib ^
+                %LIBRARY_DEFAULT_PATH%\GLEW\lib\Release\x64\glew32s.lib ^
+                %LIBRARY_DEFAULT_PATH%\FREETYPE\lib\win64\freetype.lib ^
                 Opengl32.lib glu32.lib
 
     cl %CC_DEFAULT_FLAGS% %FLAGS%^
@@ -165,30 +160,12 @@ REM ============================================================================
     devenv /DebugExe %EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME%
     exit /b 0
 
-:setup_poglib
-    echo [!] Setting up poglib ...
-
-    if "%USERNAME%" == "gokul" (
-        mklink /j lib C:\Users\User\OneDrive\Documents\projects\poglib
-        exit /b 0
-    )
-
-    call curl -L --output main.zip %POGLIB_URL% 
-    mkdir lib
-    tar -xf main.zip -C lib --strip-components 1 && del main.zip
-    exit /b 0
-
 :check_dependencies_are_installed
 
-    if "%USERNAME%" == "gokul" (
-        mklink /j external C:\Users\User\OneDrive\Documents\projects\poglib\external
-        exit /b 0
-    )
+    mkdir "%LIBRARY_DEFAULT_PATH%"
 
-    mkdir "%DEPENDENCY_DEFAULT_PATH%"
-
-    pushd %DEPENDENCY_DEFAULT_PATH%
-        for %%x in (%DEPENDENCY_LIST%) do (
+    pushd %LIBRARY_DEFAULT_PATH%
+        for %%x in (%LIBRARY_LIST%) do (
             if not exist %%x (
                 echo [!] `%%x` directory not found!
                 call :download_dependency %%x
@@ -209,7 +186,7 @@ REM ============================================================================
 
     REM ADD New dlls here! 
 
-    copy %DEPENDENCY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.dll %EXE_FOLDER_DEFAULT_PATH% >nul
+    copy %LIBRARY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.dll %EXE_FOLDER_DEFAULT_PATH% >nul
 
     exit /b 0
 
@@ -238,6 +215,10 @@ REM ============================================================================
         popd
     )
 
+    if "%~1" == "POGLIB" (
+        rename "POGLIB" poglib
+    )
+
     echo [!] Successfully installed %~1!
     exit /b 0
 
@@ -250,15 +231,13 @@ REM ============================================================================
 
 :deepcleanup
     echo [*] Cleanup in progress ...
-    if exist "%DEPENDENCY_DEFAULT_PATH%" (
-        rd /s /q "%DEPENDENCY_DEFAULT_PATH%"
-        echo [!] `%DEPENDENCY_DEFAULT_PATH%` directory deleted!
-    )
-
-    if exist lib (
-        echo [*] Removing library folder ...
-        rmdir lib
-        echo [!] `lib` folder deleted!
+    if exist "%LIBRARY_DEFAULT_PATH%" (
+        if "%USERNAME%" == "gokul" (
+            rmdir "%LIBRARY_DEFAULT_PATH%"
+        ) else (
+            rd /s /q "%LIBRARY_DEFAULT_PATH%"
+        )
+        echo [!] `%LIBRARY_DEFAULT_PATH%` directory deleted!
     )
 
     call :cleanup
