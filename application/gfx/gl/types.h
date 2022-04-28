@@ -27,11 +27,10 @@ glcircle_t      glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
 
 #define         glbatch_init(CAPACITY, TYPE)    __impl_glbatch_init((CAPACITY), GLBT_type(TYPE), #TYPE, sizeof(TYPE))
 #define         glbatch_put(PBATCH, ELEM)       queue_put(&(PBATCH)->globjs, (ELEM))
+#define         glbatch_get(PBATCH, ELEM)       queue_get_in_buffer(&(PBATCH)->globjs, (ELEM))
 #define         glbatch_is_empty(PBATCH)        queue_is_empty(&(PBATCH)->globjs)
 #define         glbatch_clear(PBATCH)           queue_clear(&(PBATCH)->globjs)
 void            glbatch_destroy(glbatch_t *batch);
-
-
 
 
 
@@ -222,6 +221,35 @@ glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, const char *type_
     return o;
 }
 
+void glbatch_combine(glbatch_t *dest, glbatch_t *src)
+{
+    assert(dest->type == src->type);
+
+    queue_t *queue = &src->globjs;
+
+    queue_iterator(queue, iter)
+    {
+        switch(dest->type)
+        {
+            case GLBT_glquad_t: {
+                glquad_t *quad = (glquad_t *)iter;
+                glbatch_put(dest, *quad);
+            } break;
+
+            case GLBT_gltri_t: {
+                gltri_t *tri = (gltri_t *)iter;
+                glbatch_put(dest, *tri);
+            } break;
+
+            case GLBT_glcircle_t: {
+                glcircle_t *circle = (glcircle_t *)iter;
+                glbatch_put(dest, *circle);
+            } break;
+
+            default: eprint("type not accounted for");
+        }
+    }
+}
 
 
 void glbatch_destroy(glbatch_t *batch) 
