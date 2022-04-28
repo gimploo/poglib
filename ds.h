@@ -5,3 +5,4 @@
 #include "./ds/hashtable.h"
 #include "./ds/map.h"
 #include "./ds/linkedlist.h"
+#include "./ds/slotarray.h"
