@@ -12,7 +12,7 @@ void __crapgui_update(crapgui_t *gui)
     map_iterator(map, iter) 
     {
         frame_t *frame = (frame_t *)iter;
-        frame->update(frame, gui);
+        frame->update(frame);
     }
 }
 
@@ -22,7 +22,7 @@ void __crapgui_render(crapgui_t *gui)
     map_iterator(map, iter) 
     {
         frame_t *frame = (frame_t *)iter;
-        frame->render(frame, gui);
+        frame->render(frame);
     }
 }
 
@@ -31,15 +31,25 @@ crapgui_t crapgui_init(void)
     if (!global_window) eprint("global window is null");
 
     return (crapgui_t ) {
+
         .win    = global_window,
-        .font   = glfreetypefont_init(DEFAULT_FONT_PATH, DEFAULT_FONT_SIZE),
-        .shaders = {
-            [UIELEM_BUTTON] = glshader_from_file_init(COMMON_VS, BUTTON_FS),
-            [UIELEM_FRAME] = glshader_from_file_init(COMMON_VS, FRAME_FS),
+
+        .fonts = {
+            [UI_BUTTON] = glfreetypefont_init(DEFAULT_BUTTON_FONT_PATH, DEFAULT_BUTTON_FONT_SIZE),
+            [UI_LABEL]  = glfreetypefont_init(DEFAULT_LABEL_FONT_PATH, DEFAULT_LABEL_FONT_SIZE),
+            [UI_FRAME]  = glfreetypefont_init(DEFAULT_FRAME_FONT_PATH, DEFAULT_FRAME_FONT_SIZE)
         },
-        .frames = map_init(MAX_FRAMES_ALLOWED_IN_CRAPGUI, frame_t ),
+
+        .shaders = {
+            [UI_BUTTON] = glshader_from_file_init(COMMON_VS, BUTTON_FS),
+            [UI_LABEL]  = glshader_default_init(),
+            [UI_FRAME]  = glshader_from_file_init(COMMON_VS, FRAME_FS),
+        },
+
+        .frames = map_init(MAX_FRAMES_ALLOWED, frame_t ),
         .update = __crapgui_update,
         .render = __crapgui_render
+
     };
 }
 
@@ -72,8 +82,6 @@ vec2f_t __crapgui_get_pos_for_new_frame(const crapgui_t *gui)
     if (output.cmp[Y] - prev_frame->dim.cmp[Y] - margin.cmp[Y] <= -1.0f)
         eprint("This frame cannot fit in the window");
 
-    printf(VEC2F_FMT "\n", VEC2F_ARG(&output));
-
     return output;
 
 }
@@ -84,6 +92,7 @@ frame_t * __crapgui_add_frame(crapgui_t *gui, const char *label)
 
     vec2f_t pos     = __crapgui_get_pos_for_new_frame(gui);
     frame_t frame   = frame_init(
+                        gui,
                         label, 
                         pos, 
                         DEFAULT_FRAME_BACKGROUNDCOLOR, 
@@ -97,7 +106,6 @@ void crapgui_destroy(crapgui_t *gui)
     assert(gui);
 
     gui->win = NULL;
-    glfreetypefont_destroy(&gui->font);
 
     map_t *map = &gui->frames;
     map_iterator(map, iter) {
@@ -106,9 +114,12 @@ void crapgui_destroy(crapgui_t *gui)
     }
     map_destroy(map);
 
-    for (u32 i = 0; i < UIELEM_COUNT; i++)
+    for (u32 i = 0; i < UITYPE_COUNT; i++)
     {
-        glshader_t *shader = &gui->shaders[i];
+        glshader_t *shader      = &gui->shaders[i];
+        glfreetypefont_t *font  = &gui->fonts[i];
+
         glshader_destroy(shader);
+        glfreetypefont_destroy(font);
     }
 }
