@@ -1,75 +1,96 @@
 #pragma once
 #include "../decl.h"
 #include "./button.h"
+#include "./uielem.h"
+#include "./label.h"
 
+//TODO: MAKE A BATCH MANAGER URGENT !!!!!!!!!!!!!!!!!!!!!!
 
-void __frame_update(frame_t *frame, crapgui_t *gui)
+#define frame_get_font(PFRAME, UITYPE)      &(PFRAME)->__gui->fonts[UITYPE]
+#define frame_get_textbatch(PFRAME)         &(PFRAME)->__onlytextbatch
+
+void __frame_update(frame_t *frame)
 {
+    crapgui_t *gui = frame->__gui;
+
     // Updating the vertices for next frame
     if (!frame->__is_changed) return;
 
-    for (u32 i = 0; i < MAX_UIELEM_TYPE_ALLOWED_IN_FRAME; i++)
+    // Clearing all batches
+    for (u32 i = 0; i < MAX_UI_TYPE_ALLOWED_IN_FRAME; i++)
     {
-        glbatch_t *batch = &frame->__batch[i];
-        glbatch_clear(batch);
+        glbatch_t *uibatch = &frame->__uibatch[i];
+        glbatch_t *txtbatch = &frame->__txtbatch[i];
+
+        glbatch_clear(uibatch);
+        glbatch_clear(txtbatch);
     }
 
+    // Updating ui elements and adding its vertices to the batch
     list_t *list = &frame->uielems;
     list_iterator(list, iter) 
     {
         uielem_t *ui = (uielem_t *)iter;
-        ui->update(ui);
+        __uielem_update(ui);
 
-        glquad_t *quad = &ui->__vertices;
-        assert(quad);
+        glquad_t *uiquad      = &ui->__uivertices;
+        glbatch_t *uibatch    = &frame->__uibatch[ui->type];
+        glbatch_put(uibatch, *uiquad);
 
-        glbatch_t *batch = &frame->__batch[ui->type];
-        glbatch_put(batch, *quad);
+        glbatch_t *txtbatch = &frame->__txtbatch[ui->type];
+        glbatch_t *txtquads = &ui->__textbatch;
+
+        glbatch_combine(txtbatch, txtquads);
     }
 
+    // Updating frame vertices
     frame->__vertices = glquad(
                 quadf(vec3f(frame->pos), frame->dim.cmp[X], frame->dim.cmp[Y]), 
                 frame->color,
                 quadf(vec3f(0.0f), 1.0f, 1.0f), 
                 0);
 
-    // Creating the texture
-    glframebuffer_t *fbo = &frame->__texture;
+    // Creating the framebuffer object texture
+    {
+        GL_CHECK(glClearColor(
+                frame->color.cmp[0],
+                frame->color.cmp[1],
+                frame->color.cmp[2],
+                frame->color.cmp[3]
+        ));
 
-    GL_CHECK(glClearColor(
-            frame->color.cmp[0],
-            frame->color.cmp[1],
-            frame->color.cmp[2],
-            frame->color.cmp[3]
-    ));
+        glframebuffer_t *fbo = &frame->__texture;
+        glframebuffer_begin_texture(fbo);
+            for (u32 i = 0; i < MAX_UI_TYPE_ALLOWED_IN_FRAME; i++)
+            {
+                glbatch_t *uibatch      = &frame->__uibatch[i]; 
+                glbatch_t *txtbatch     = &frame->__txtbatch[i];
 
-    glframebuffer_begin_texture(fbo);
-        for (u32 i = 0; i < MAX_UIELEM_TYPE_ALLOWED_IN_FRAME; i++)
-        {
-            glbatch_t *batch = &frame->__batch[i]; 
-            if (glbatch_is_empty(batch)) {
-                continue;
+                if (glbatch_is_empty(uibatch)) {
+                    continue;
+                }
+
+                glrenderer2d_t r2d = {
+                    .shader = &gui->shaders[i],
+                    .texture = NULL,
+                };
+                glrenderer2d_draw_from_batch(&r2d, uibatch);
+
+                glfreetypefont_t *font = frame_get_font(frame, i);
+                glfreetypefont_draw(font, txtbatch);
             }
-
-            glrenderer2d_t r2d = {
-                .shader = &gui->shaders[i],
-                .texture = NULL,
-            };
-
-            glrenderer2d_draw_from_batch(&r2d, batch);
-            printf("alskdfj\n");
-
-        }
-    glframebuffer_end_texture(fbo);
-
+        glframebuffer_end_texture(fbo);
+    }
 
     frame->__is_changed = false;
 }
 
-void __frame_render(frame_t *frame, crapgui_t *gui)
+void __frame_render(frame_t *frame)
 {
+    crapgui_t *gui = (crapgui_t *)frame->__gui;
+
     glrenderer2d_t r2d = {
-        .shader = &gui->shaders[UIELEM_FRAME],
+        .shader = &gui->shaders[UI_FRAME],
         .texture = &frame->__texture.texture2d,
     };
 
@@ -80,7 +101,7 @@ vec2f_t __frame_get_pos_for_new_uielem(frame_t *frame)
 {
     vec2f_t output          = {0};
     const list_t *uielems   = &frame->uielems;
-    const vec2f_t margin    = DEFAULT_UIELEM_MARGIN;
+    const vec2f_t margin    = DEFAULT_UI_MARGIN;
 
     if (uielems->len == 0) 
         return (vec2f_t ) { -1.0f + margin.cmp[X], 1.0f - margin.cmp[Y] };
@@ -111,26 +132,33 @@ vec2f_t __frame_get_pos_for_new_uielem(frame_t *frame)
 }
 
 
-frame_t frame_init(const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim)
+frame_t frame_init(crapgui_t *gui, const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim)
 {
-    //TODO: batch manager is in due
-
     const u64 cap_per_batch = 
-        MAX_UIELEM_CAPACITY_PER_FRAME / MAX_UIELEM_TYPE_ALLOWED_IN_FRAME;
+        MAX_UI_CAPACITY_PER_FRAME / MAX_UI_TYPE_ALLOWED_IN_FRAME;
 
     return (frame_t ) {
         .label              = label,
         .pos                = pos,
         .dim                = dim,
         .color              = color,
-        .uielems            = list_init(MAX_UIELEM_CAPACITY_PER_FRAME, uielem_t ),
+        .uielems            = list_init(MAX_UI_CAPACITY_PER_FRAME, uielem_t ),
 
+        .__gui              = gui,
         .__is_changed       = true,
         .__texture          = glframebuffer_init(global_window->width, global_window->height),
 
-        .__batch            = {
+        .__uibatch            = {
 
-                [UIELEM_BUTTON] = glbatch_init(cap_per_batch, glquad_t ),
+            [UI_BUTTON] = glbatch_init(cap_per_batch, glquad_t ),
+            [UI_LABEL]  = glbatch_init(cap_per_batch, glquad_t ),
+
+        },
+        .__txtbatch            = {
+
+            [UI_BUTTON] = glbatch_init(cap_per_batch, glquad_t ),
+            [UI_LABEL]  = glbatch_init(cap_per_batch, glquad_t ),
+
         },
 
         .update             = __frame_update,
@@ -138,11 +166,6 @@ frame_t frame_init(const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim)
     };
 }
 
-void __uielem_destroy(uielem_t *elem)
-{
-    free(elem->value);
-    elem->value = NULL;
-}
 
 void frame_destroy(frame_t *self)
 {
@@ -156,42 +179,45 @@ void frame_destroy(frame_t *self)
     }
     list_destroy(list);
 
-    for (u32 i = 0; i < MAX_UIELEM_TYPE_ALLOWED_IN_FRAME; i++)
+    for (u32 i = 0; i < MAX_UI_TYPE_ALLOWED_IN_FRAME; i++)
     {
-        glbatch_destroy(&self->__batch[i]);
+        glbatch_destroy(&self->__uibatch[i]);
+        glbatch_destroy(&self->__txtbatch[i]);
     }
+
 }
 
-void __uielem_update(uielem_t *ui)
-{
-    switch(ui->type)
-    {
-        case UIELEM_BUTTON:{
-            button_t *button = (button_t *)ui->value;
-            if (ui->__is_changed)
-                button->update(button, ui);
-        } break;
-
-        default: eprint("type not accounted for ");
-    }
-    ui->__is_changed = false;
-}
 
 void __frame_add_uielem(frame_t *frame, const char *label, uitype type)
 {
-    uielem_t ui = {
-        .type           = type,
-        .pos            = __frame_get_pos_for_new_uielem(frame),
-        .__is_changed   = true,
-        .update         = __uielem_update
-    };
+    assert(type != UI_FRAME);
+
+    uielem_t ui; memset(&ui, 0, sizeof(ui));
+
+    ui.type           = type;
+    ui.pos            = __frame_get_pos_for_new_uielem(frame);
+    ui.__font         = frame_get_font(frame, type);
+    ui.__is_changed   = true;
+    ui.__textbatch    = glbatch_init(KB/2, glquad_t );
+
+
     switch(type)
     {
-        case UIELEM_BUTTON:{
-            button_t o  = button_init(label);
-            ui.dim      = DEFAULT_BUTTON_DIMENSIONS; 
-            ui.color    = DEFAULT_BUTTON_COLOR;
-            ui.value    = (void *)calloc(1, sizeof(button_t ));
+        case UI_BUTTON:{
+            button_t o      = button_init(label);
+            ui.dim          = DEFAULT_BUTTON_DIMENSIONS; 
+            ui.color        = DEFAULT_BUTTON_COLOR;
+            ui.update       = __button_update,
+            ui.value        = (void *)calloc(1, sizeof(button_t ));
+            memcpy(ui.value, &o, sizeof(o));
+        } break;
+
+        case UI_LABEL: {
+            label_t o   = label_init(label);
+            ui.dim      = DEFAULT_LABEL_DIMENSIONS;
+            ui.color    = DEFAULT_LABEL_COLOR;
+            ui.update   = __label_update;
+            ui.value    = (void *)calloc(1, sizeof(label_t ));
             memcpy(ui.value, &o, sizeof(o));
         } break;
 

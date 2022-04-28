@@ -17,8 +17,8 @@ void        crapgui_destroy(crapgui_t *gui);
 
 #define button(LABEL)\
     assert(__frame);\
-    __frame_add_uielem(__frame, LABEL, UIELEM_BUTTON)
+    __frame_add_uielem(__frame, LABEL, UI_BUTTON)
 
 #define label(LABEL)\
     assert(__frame);\
-    __frame_add_uielem(__frame, LABEL, UIELEM_LABEL)
+    __frame_add_uielem(__frame, LABEL, UI_LABEL)

@@ -13,14 +13,24 @@ void appinit(application_t *app)
             button("Yes"); button("No");
             button("Yes"); button("No");
             /*label("Confirm"); button("Submit");*/
+            label("THIS IS A LABEL");
         }
 
         frame("FRAME02") {
+            button("Yes"); button("No");
+            button("Yes"); button("No");
+            label("THIS IS A LABEL");
         }
         frame("FRAME03") {
+            button("Yes"); button("No");
+            button("Yes"); button("No");
+            label("THIS IS A LABEL");
         }
 
         frame("FRAME04") {
+            button("Yes"); button("No");
+            button("Yes"); button("No");
+            label("THIS IS A LABEL");
         }
 
     };
