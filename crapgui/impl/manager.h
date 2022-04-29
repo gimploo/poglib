@@ -2,9 +2,39 @@
 #include "../decl.h"
 #include "./frame.h"
 
+
 #define COMMON_VS   "lib/poglib/crapgui/res/common.vs"
 #define FRAME_FS    "lib/poglib/crapgui/res/frame.fs"
 #define BUTTON_FS   "lib/poglib/crapgui/res/button.fs"
+
+bool __crapgui_is_mouse_over_frame(const crapgui_t *gui, const frame_t *frame)
+{
+    window_t *win = gui->win;
+
+    vec2f_t norm_mouse_position = window_mouse_get_norm_position(win);
+    return quadf_is_point_in_quad(frame->__vertices, norm_mouse_position);
+}
+
+vec2f_t __crapgui_get_mouse_position_relative_to_frame_coordinate_axis(const crapgui_t *gui, const frame_t *frame)
+{
+    //NOTE: here we convert the mouse position in the frame to the window position, 
+    //because all the ui components holds the quad vertices relative to the window and not to the frame 
+    //
+    window_t *win = gui->win;
+
+    vec2f_t mp = window_mouse_get_norm_position(win);
+
+    /*u32 frame_width = ((frame->dim.cmp[X])/2.0f) *  win->width;*/
+    /*u32 frame_height = ((frame->dim.cmp[Y])/2.0f) * win->height;*/
+
+    //TODO: herer !!!!!!!!!!!!
+    vec2f_t delta = {
+        mp.cmp[X],
+        mp.cmp[Y],
+    };
+
+    return vec2f_add(mp, delta);
+}
 
 void __crapgui_update(crapgui_t *gui)
 {
@@ -12,7 +42,17 @@ void __crapgui_update(crapgui_t *gui)
     map_iterator(map, iter) 
     {
         frame_t *frame = (frame_t *)iter;
-        frame->update(frame);
+
+        if (__crapgui_is_mouse_over_frame(gui, frame)) {
+            frame->is_hot       = true;
+            frame->__is_changed = true;
+            frame->__relative_mouse_pos = 
+                __crapgui_get_mouse_position_relative_to_frame_coordinate_axis(gui, frame);
+            printf(VEC2F_FMT "\n", VEC2F_ARG(&frame->__relative_mouse_pos));
+            gui->active_frame   = frame;
+        }     
+
+        frame->update(frame, gui);
     }
 }
 
@@ -22,7 +62,7 @@ void __crapgui_render(crapgui_t *gui)
     map_iterator(map, iter) 
     {
         frame_t *frame = (frame_t *)iter;
-        frame->render(frame);
+        frame->render(frame,gui);
     }
 }
 
@@ -92,7 +132,6 @@ frame_t * __crapgui_add_frame(crapgui_t *gui, const char *label)
 
     vec2f_t pos     = __crapgui_get_pos_for_new_frame(gui);
     frame_t frame   = frame_init(
-                        gui,
                         label, 
                         pos, 
                         DEFAULT_FRAME_BACKGROUNDCOLOR, 
@@ -123,3 +162,4 @@ void crapgui_destroy(crapgui_t *gui)
         glfreetypefont_destroy(font);
     }
 }
+

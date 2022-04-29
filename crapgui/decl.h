@@ -1,6 +1,13 @@
 #pragma once
 #include <poglib/application.h>
+#include <poglib/ds.h>
 
+/*=============================================================================
+// CRAPGUI ( IMMEDIATE UI INSPIRED GUI LIB )
+=============================================================================*/
+
+typedef struct uielem_t uielem_t ;
+typedef struct frame_t  frame_t ;
 
 typedef enum uitype {
 
@@ -16,31 +23,6 @@ typedef enum uitype {
 
 } uitype;
 
-typedef struct uielem_t {
-
-    uitype              type;
-    void                *value;
-
-    vec2f_t             pos;
-    vec2f_t             dim;
-    vec4f_t             color;
-
-    glfreetypefont_t    *__font;
-    bool                __is_changed;
-
-    glquad_t            __uivertices;
-    glbatch_t           __textbatch;
-
-    void (*update)(struct uielem_t *);
-
-} uielem_t ;
-
-
-
-/*=============================================================================
-// CRAPGUI ( IMMEDIATE UI INSPIRED GUI LIB )
-=============================================================================*/
-
 typedef struct crapgui_t {
 
     window_t            *win;
@@ -49,11 +31,12 @@ typedef struct crapgui_t {
     glshader_t          shaders[UITYPE_COUNT];
     map_t               frames;
 
+    frame_t             *active_frame;
+
     void (*update)(struct crapgui_t *);
     void (*render)(struct crapgui_t *);
 
 } crapgui_t ;
-
 
 /*=============================================================================
  // FRAME 
@@ -79,17 +62,19 @@ typedef struct frame_t {
     vec2f_t             pos;
     vec2f_t             dim;
     vec4f_t             color;
-    list_t              uielems;
+    slot_t              uielems;
 
-    crapgui_t           *__gui;
+    bool                is_hot;
+
+    vec2f_t             __relative_mouse_pos;
     bool                __is_changed;       // flag to check whether to rebatch the batch
     glframebuffer_t     __texture;
-    glquad_t            __vertices;
+    quadf_t             __vertices;
     glbatch_t           __uibatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
     glbatch_t           __txtbatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
 
-    void (*update)(struct frame_t * self);
-    void (*render)(struct frame_t * self);
+    void (*update)(struct frame_t * self, const crapgui_t *gui);
+    void (*render)(const struct frame_t * self, const crapgui_t *gui);
 
 } frame_t ;
 
@@ -107,10 +92,12 @@ typedef struct frame_t {
 
 typedef struct button_t {
 
-    const char  *label;
+    vec4f_t     hover_color;
     bool        is_active;
     bool        is_hot;
-    vec4f_t     hover_color;
+
+    quadf_t     __vertices;
+    uielem_t    *__ui;
 
 } button_t ;
 
@@ -125,7 +112,7 @@ typedef struct button_t {
 
 typedef struct label_t {
 
-    const char *label;
+    vec4f_t     textcolor;
 
 } label_t ;
 

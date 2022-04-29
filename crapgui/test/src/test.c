@@ -42,9 +42,9 @@ void appupdate(application_t *app)
     window_update_user_input(global_window);
 
     crapgui_update(gui);
-    /*button_t *button = crapgui_get_button("Submit");*/
-    /*if (button_is_clicked(button))*/
-        /*button->color = COLOR_BLUE;*/
+    button_t *button = crapgui_get_button(gui, "FRAME01", "Yes");
+    if (button->is_active)
+        printf("button SUBMIT clicked\n");
 
 }
 
