@@ -13,19 +13,19 @@
 
 typedef struct glrenderer2d_t {
 
-    glshader_t    *shader;
-    gltexture2d_t *texture;
+    const glshader_t    *shader;
+    const gltexture2d_t *texture;
 
 } glrenderer2d_t ;
 
 
-glrenderer2d_t      glrenderer2d(glshader_t *shader, gltexture2d_t *texture);
+glrenderer2d_t      glrenderer2d(const glshader_t *shader, const gltexture2d_t *texture);
 
-void                glrenderer2d_draw_quad(glrenderer2d_t *renderer, const glquad_t quad);
-void                glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri);
-void                glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle);
+void                glrenderer2d_draw_quad(const glrenderer2d_t *renderer, const glquad_t quad);
+void                glrenderer2d_draw_triangle(const glrenderer2d_t *renderer, const gltri_t tri);
+void                glrenderer2d_draw_circle(const glrenderer2d_t *renderer, const glcircle_t circle);
 
-void                glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *batch);
+void                glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_t *batch);
 
 
 /*-----------------------------------------------------------------------------
@@ -43,7 +43,7 @@ global u32 GLOBAL_POLY_INDICIES_BUFFER[MAX_VERTICES_PER_CIRCLE];
 
 
 //NOTE: make sure to not have texture uniform if your passing NULL as texture argument
-glrenderer2d_t glrenderer2d(glshader_t *shader, gltexture2d_t *texture)
+glrenderer2d_t glrenderer2d(const glshader_t *shader, const gltexture2d_t *texture)
 {
     return (glrenderer2d_t ) {
         .shader = shader,
@@ -52,7 +52,7 @@ glrenderer2d_t glrenderer2d(glshader_t *shader, gltexture2d_t *texture)
 
 }
 
-void glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri)
+void glrenderer2d_draw_triangle(const glrenderer2d_t *renderer, const gltri_t tri)
 {    
     if (renderer == NULL) eprint("renderer argument is null");
     assert(renderer->shader);
@@ -82,7 +82,7 @@ void glrenderer2d_draw_triangle(glrenderer2d_t *renderer, const gltri_t tri)
 
 }
 
-void glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle)
+void glrenderer2d_draw_circle(const glrenderer2d_t *renderer, const glcircle_t circle)
 {    
     if (renderer == NULL) eprint("renderer argument is null");
     assert(renderer->shader);
@@ -113,7 +113,7 @@ void glrenderer2d_draw_circle(glrenderer2d_t *renderer, const glcircle_t circle)
 }
 
 
-void glrenderer2d_draw_quad(glrenderer2d_t *renderer, const glquad_t quad)
+void glrenderer2d_draw_quad(const glrenderer2d_t *renderer, const glquad_t quad)
 {
     if (renderer == NULL) eprint("renderer argument is null");
 
@@ -149,7 +149,7 @@ void glrenderer2d_draw_quad(glrenderer2d_t *renderer, const glquad_t quad)
 
 
 
-void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *batch) 
+void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_t *batch) 
 {
     if (renderer == NULL) eprint("renderer argument is null");
     if (batch == NULL) eprint("batch argument is null");
@@ -248,7 +248,6 @@ void glrenderer2d_draw_from_batch(glrenderer2d_t *renderer, const glbatch_t *bat
         case GLBT_glquad_t: 
             ebo_destroy(&ebo);
         break;
-
 
         default: eprint("batch type not accounted for");
     }
