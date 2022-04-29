@@ -3,6 +3,10 @@
 #include "./crapgui/impl/button.h"
 #include "./crapgui/impl/frame.h"
 
+//TODO: fix relative frame mouse position
+//TODO: desgin better state managamenet (__is_change ) shit
+//TODO: frame design 
+
 crapgui_t   crapgui_init(void);
 #define     crapgui_update(PGUI)                (PGUI)->update(PGUI)
 #define     crapgui_render(PGUI)                (PGUI)->render(PGUI)
@@ -17,8 +21,9 @@ void        crapgui_destroy(crapgui_t *gui);
 
 #define button(LABEL)\
     assert(__frame);\
-    __frame_add_uielem(__frame, LABEL, UI_BUTTON)
+    __crapgui_frame_add_uielem(__gui, __frame, LABEL, UI_BUTTON)
 
 #define label(LABEL)\
     assert(__frame);\
-    __frame_add_uielem(__frame, LABEL, UI_LABEL)
+    __crapgui_frame_add_uielem(__gui, __frame, LABEL, UI_LABEL)
+
