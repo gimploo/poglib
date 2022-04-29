@@ -40,7 +40,7 @@ typedef struct glfreetypefont_t {
 
 glfreetypefont_t    glfreetypefont_init(const char *filepath, const u32 fontsize);
 void                glfreetypefont_add_text_to_batch(glfreetypefont_t *self, glbatch_t *batch, const char *text, vec2f_t pos, vec4f_t color);
-void                glfreetypefont_draw(glfreetypefont_t *self, const glbatch_t *batch);
+void                glfreetypefont_draw(const glfreetypefont_t *self, const glbatch_t *batch);
 void                glfreetypefont_destroy(glfreetypefont_t *self);
 
 
@@ -249,7 +249,7 @@ void glfreetypefont_add_text_to_batch(glfreetypefont_t *self, glbatch_t *batch, 
 }
 
 
-void glfreetypefont_draw(glfreetypefont_t *self, const glbatch_t *batch)
+void glfreetypefont_draw(const glfreetypefont_t *self, const glbatch_t *batch)
 {
     glrenderer2d_t rd2d = {
         .shader = &self->shader,
