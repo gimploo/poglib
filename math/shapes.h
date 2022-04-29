@@ -20,7 +20,7 @@ typedef struct quadf_t quadf_t;
 quadf_t         quadf(vec3f_t position, f32 width, f32 height);
 void            quadf_translate(quadf_t *quad, vec3f_t vec);
 void            quadf_scale(quadf_t *quad, f32 scale);
-bool            quadf_is_point_in_quad(quadf_t quad, vec3f_t point);
+bool            quadf_is_point_in_quad(const quadf_t quad, const vec2f_t point);
 void            quadf_print(quadf_t quad);
 
 #define         quadf_get_width(PQUADF)         abs((PQUADF)->vertex[1].cmp[X] - (PQUADF)->vertex[3].cmp[X])
@@ -119,7 +119,7 @@ void quadf_scale(quadf_t *quad, f32 scale)
     quad->vertex[3] = vec3f_scale(quad->vertex[3], scale);
 }
 
-bool quadf_is_point_in_quad(quadf_t quad, vec3f_t point)
+bool quadf_is_point_in_quad(const quadf_t quad, const vec2f_t point)
 {
     return (quad.vertex[TOP_LEFT].cmp[X] < point.cmp[X] 
             && quad.vertex[TOP_RIGHT].cmp[X] > point.cmp[X] 
