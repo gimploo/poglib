@@ -7,7 +7,7 @@
                 - STATIC ARRAY (SLOT ARRAY ) DATA STRUCTURE -
 ============================================================================*/
 
-typedef struct slotarray_t {
+typedef struct slot_t {
 
     // public 
     u64                 len;
@@ -20,20 +20,21 @@ typedef struct slotarray_t {
     bool                *__index_table;
     bool                __are_values_pointers;
 
-} slotarray_t ;
+} slot_t ;
 
 
-#define             slotarray_init(CAPACITY, TYPE)                              __impl_slotarray_init((CAPACITY), (#TYPE), sizeof(TYPE))
-#define             slotarray_insert(PSLOTARRAY, INDEX, VALUE)                  __impl_slotarray_insert((PSLOTARRAY), (INDEX), &(VALUE), sizeof(VALUE))
-#define             slotarray_delete(PSLOTARRAY, INDEX)                         __impl_slotarray_delete((PSLOTARRAY), (INDEX))
+#define             slot_init(CAPACITY, TYPE)                              __impl_slot_init((CAPACITY), (#TYPE), sizeof(TYPE))
+#define             slot_insert(PSLOTARRAY, INDEX, VALUE)                  __impl_slot_insert((PSLOTARRAY), (INDEX), &(VALUE), sizeof(VALUE))
+#define             slot_append(PSLOTARRAY, VALUE)                         slot_insert((PSLOTARRAY), (PSLOTARRAY)->len, (VALUE))
+#define             slot_delete(PSLOTARRAY, INDEX)                         __impl_slot_delete((PSLOTARRAY), (INDEX))
 
-void *              slotarray_get_value(const slotarray_t *table, const u64 index);
-#define             slotarray_iterator(PSLOTARRAY, ITER)                        __impl_slotarray_for_loop_iterator((PSLOTARRAY), (ITER))
+void *              slot_get_value(const slot_t *table, const u64 index);
+#define             slot_iterator(PSLOTARRAY, ITER)                        __impl_slot_for_loop_iterator((PSLOTARRAY), (ITER))
 
-void                slotarray_print(const slotarray_t *table, void (*print)(void*));
-void                slotarray_dump(const slotarray_t *table);
+void                slot_print(const slot_t *table, void (*print)(void*));
+void                slot_dump(const slot_t *table);
 
-#define             slotarray_destroy(PSLOTARRAY)                               __impl_slotarray_destroy(PSLOTARRAY)
+#define             slot_destroy(PSLOTARRAY)                               __impl_slot_destroy(PSLOTARRAY)
 
 
 
@@ -43,20 +44,20 @@ void                slotarray_dump(const slotarray_t *table);
                              IMPLEMENTATION 
 ------------------------------------------------------------------------------*/
 
-#define __impl_slotarray_for_loop_iterator(PSLOTARRAY, TMP)\
+#define __impl_slot_for_loop_iterator(PSLOTARRAY, TMP)\
                 if ((PSLOTARRAY)->len != 0)\
-                    for (void *index = 0, *(TMP) = (void *)slotarray_get_value((PSLOTARRAY), 0);\
+                    for (void *index = 0, *(TMP) = (void *)slot_get_value((PSLOTARRAY), 0);\
                              (u64)(index) < (PSLOTARRAY)->len;\
                              index = (void *)((u64)index + 1),\
-                             (TMP) = (void *)slotarray_get_value((PSLOTARRAY), ((u64)index < (PSLOTARRAY)->len) ? (u64)index : (u64)((u64)index - 1)))
+                             (TMP) = (void *)slot_get_value((PSLOTARRAY), ((u64)index < (PSLOTARRAY)->len) ? (u64)index : (u64)((u64)index - 1)))
 
 
-slotarray_t __impl_slotarray_init(const u64 array_capacity, const char *elem_type, const u64 elem_size)
+slot_t __impl_slot_init(const u64 array_capacity, const char *elem_type, const u64 elem_size)
 {
     bool flag = false;
     if (elem_type[strlen(elem_type) - 1] == '*') flag = true;
 
-    slotarray_t o = {
+    slot_t o = {
         .len = 0,
         .__values               = (u8 *)calloc(array_capacity, elem_size),
         .__value_type           = (char *)elem_type,
@@ -69,12 +70,12 @@ slotarray_t __impl_slotarray_init(const u64 array_capacity, const char *elem_typ
     return o;
 }
 
-bool __check_if_empty(const slotarray_t *table, const u64 index)
+bool __check_if_empty(const slot_t *table, const u64 index)
 {
     return table->__index_table[index];
 }
 
-void * __slotarray_get_reference_to_only_value_at_index(const slotarray_t *table, const u64 index)
+void * __slot_get_reference_to_only_value_at_index(const slot_t *table, const u64 index)
 {
     if (!table->__are_values_pointers)
         return (void *)(table->__values + index * table->__value_size);
@@ -83,8 +84,8 @@ void * __slotarray_get_reference_to_only_value_at_index(const slotarray_t *table
 }
 
 
-void * __impl_slotarray_insert(
-        slotarray_t *table,
+void * __impl_slot_insert(
+        slot_t *table,
         const u64   index, 
         const void  *value_addr, 
         const u64   value_size)
@@ -104,15 +105,15 @@ void * __impl_slotarray_insert(
 
     } else {
 
-        eprint("slotarray at [%li] index is not empty", index);
+        eprint("slot at [%li] index is not empty", index);
 
     } 
     table->len++;
     
-    return __slotarray_get_reference_to_only_value_at_index(table, index);
+    return __slot_get_reference_to_only_value_at_index(table, index);
 }
 
-void __impl_slotarray_delete(slotarray_t *table, const u64 index)
+void __impl_slot_delete(slot_t *table, const u64 index)
 {
     if (table == NULL) eprint("table argument is null");
 
@@ -124,7 +125,7 @@ void __impl_slotarray_delete(slotarray_t *table, const u64 index)
 }
 
 
-void __impl_slotarray_destroy(slotarray_t *table)
+void __impl_slot_destroy(slot_t *table)
 {
     if (table == NULL) eprint("table arguemnt is null");
 
@@ -132,7 +133,7 @@ void __impl_slotarray_destroy(slotarray_t *table)
     free(table->__index_table);
 }
 
-void slotarray_print(const slotarray_t *table, void (*print)(void*))
+void slot_print(const slot_t *table, void (*print)(void*))
 {
     assert(table);
     assert(print);
@@ -143,7 +144,7 @@ void slotarray_print(const slotarray_t *table, void (*print)(void*))
     {
         if (!table->__index_table[i]) continue;
 
-        print(slotarray_get_value(table, i));
+        print(slot_get_value(table, i));
 
         printf("\n");
     }
@@ -152,15 +153,15 @@ void slotarray_print(const slotarray_t *table, void (*print)(void*))
 }
 
 
-void * slotarray_get_value(const slotarray_t *table, const u64 index)
+void * slot_get_value(const slot_t *table, const u64 index)
 {
     assert(table);
-    if(index <= 0 && index > table->__capacity) eprint("invalid index (%li) value", index);;
+    if(index <= 0 && index >= table->__capacity) eprint("invalid index (%li) value", index);;
 
-    return __slotarray_get_reference_to_only_value_at_index(table, index);
+    return __slot_get_reference_to_only_value_at_index(table, index);
 }
 
-void slotarray_dump(const slotarray_t *table)
+void slot_dump(const slot_t *table)
 {
     assert(table);
 
