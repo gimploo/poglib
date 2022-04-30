@@ -18,6 +18,7 @@ typedef struct quadf_t quadf_t;
 #define         QUAD_ARG(QUAD)                  VEC3F_ARG(&(QUAD.vertex[0])), VEC3F_ARG(&(QUAD.vertex[1])), VEC3F_ARG(&(QUAD.vertex[3])), VEC3F_ARG(&(QUAD.vertex[3]))
 
 quadf_t         quadf(vec3f_t position, f32 width, f32 height);
+quadf_t         quadf_sub(quadf_t a, quadf_t b);
 void            quadf_translate(quadf_t *quad, vec3f_t vec);
 void            quadf_scale(quadf_t *quad, f32 scale);
 bool            quadf_is_point_in_quad(const quadf_t quad, const vec2f_t point);
@@ -109,6 +110,17 @@ void quadf_translate(quadf_t *quad, vec3f_t vec)
     quad->vertex[1] = vec3f_add(quad->vertex[1] , vec);
     quad->vertex[2] = vec3f_add(quad->vertex[2] , vec);
     quad->vertex[3] = vec3f_add(quad->vertex[3] , vec);
+}
+
+quadf_t quadf_sub(quadf_t a, quadf_t b)
+{
+    quadf_t quad;
+    quad.vertex[0] = vec3f_sub(a.vertex[0] , b.vertex[0]);
+    quad.vertex[1] = vec3f_sub(a.vertex[1] , b.vertex[1]);
+    quad.vertex[2] = vec3f_sub(a.vertex[2] , b.vertex[2]);
+    quad.vertex[3] = vec3f_sub(a.vertex[3] , b.vertex[3]);
+
+    return quad;
 }
 
 void quadf_scale(quadf_t *quad, f32 scale)
