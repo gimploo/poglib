@@ -66,6 +66,7 @@ typedef struct window_t {
 global window_t     *global_window = NULL;
 
 window_t *          window_init(const char *title, u64 width, u64 height, const u32 SDL_flags);
+#define             window_get_current_active_window()                          global_window; assert(global_window && "GLOBAL WINDOW IS NULL")
 
 void                window_update_user_input(window_t *window);
 void                window_set_background(window_t *window, vec4f_t color);
@@ -108,6 +109,8 @@ void            window_subwindow_destroy(window_t *subwindow);
 #ifndef IGNORE_WINDOW_IMPLEMENTATION
 
 #define DEFAULT_BACKGROUND_COLOR (vec4f_t ){ 0.0f, 1.0f, 0.0f, 0.0f}
+
+
 
 #define __impl_window_subwindow_gl_render_begin(PWINDOW) do {\
 \
