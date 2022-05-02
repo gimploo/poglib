@@ -42,7 +42,7 @@ const char * const default_fshader =
     "void main()\n"
     "{\n"
         "FragColor = \n"
-        "   texture(u_texture01, tex_coord) + color;\n"
+        "   texture(u_texture01, tex_coord) * color;\n"
         "\n"
     "}";
 
@@ -52,7 +52,7 @@ typedef struct glshader_t {
     GLuint      id;
     const char  *vs_file_path;
     const char  *fg_file_path;
-    stack_t     uniforms;
+    queue_t     uniforms;
 
 } glshader_t;
 
@@ -186,7 +186,7 @@ glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
 
     __shader_load_from_file(&shader, file_vs, file_fs);
 
-    shader.uniforms = stack_init(MAX_UNIFORM_ARRAY_CAPACITY, __uniform_meta_data_t );
+    shader.uniforms = queue_init(MAX_UNIFORM_ARRAY_CAPACITY, __uniform_meta_data_t );
 
     return shader;
 }
@@ -202,7 +202,7 @@ glshader_t  glshader_from_cstr_init(const char *vs_code, const char *fs_code)
 
     __shader_load_code(&shader, vs_code, fs_code);
 
-    shader.uniforms = stack_init(MAX_UNIFORM_ARRAY_CAPACITY, __uniform_meta_data_t );
+    shader.uniforms = queue_init(MAX_UNIFORM_ARRAY_CAPACITY, __uniform_meta_data_t );
 
     return shader;
 }
@@ -278,8 +278,8 @@ void glshader_destroy(const glshader_t *shader)
 
     GL_CHECK(glDeleteProgram(shader->id));
 
-    stack_t *stack =(stack_t *) &shader->uniforms;
-    stack_destroy(stack);
+    queue_t *queue =(queue_t *) &shader->uniforms;
+    queue_destroy(queue);
 
     GL_LOG("Shader `%i` successfully deleted", shader->id);
 }
@@ -318,12 +318,12 @@ void __impl_glshader_set_uniform(glshader_t *shader, const char *uniform_name, v
             value_size, 
             type);
 
-    stack_push(&shader->uniforms, data);
+    queue_put(&shader->uniforms, data);
 }
 
-void __glshader_pop_uniform(glshader_t *shader)
+void __glshader_get_uniform(glshader_t *shader)
 {
-    stack_pop(&shader->uniforms);
+    queue_get(&shader->uniforms);
 }
 
 void glshader_bind(glshader_t *shader)
@@ -332,9 +332,10 @@ void glshader_bind(glshader_t *shader)
 
     GL_SHADER_BIND(shader);
 
-    for (int i = 0; i <= shader->uniforms.__top; i++)
+    queue_t *queue = &shader->uniforms;
+    queue_iterator(queue, iter)
     {
-        __uniform_meta_data_t *uniform = (__uniform_meta_data_t *)shader->uniforms.__array + i;
+        __uniform_meta_data_t *uniform = (__uniform_meta_data_t *)iter;
         GL_LOG("Shader `%i` setting uniform `%s`", shader->id, uniform->variable_name);
 
         switch(uniform->uniform_type)
@@ -370,7 +371,7 @@ void glshader_bind(glshader_t *shader)
             case UT_COUNT:
             break;
         }
-        __glshader_pop_uniform(shader);
+        __glshader_get_uniform(shader);
     }
         
 }
