@@ -190,6 +190,8 @@ vec4f_t __vec4vec3f(vec3f_t x)
 #define vec3f_translate(x, y) vec3f_add(x, y)
 #define vec4f_translate(x, y) vec4f_add(x, y)
 
+vec3f_t vec3f_cross(const vec3f_t x, const vec3f_t y);
+
 vec2f_t vec2f_add(const vec2f_t x, const vec2f_t y)
 {
     vec2f_t output;
@@ -278,6 +280,15 @@ vec3f_t vec3f_sub(const vec3f_t x, const vec3f_t y)
     return output;
 }
 
+vec3f_t vec3f_cross(const vec3f_t x, const vec3f_t y)
+{
+    return (vec3f_t ) {
+        .cmp[X] = x.cmp[Y] * y.cmp[Z] - x.cmp[Z] * y.cmp[Y],
+        .cmp[Y] = x.cmp[Z] * y.cmp[X] - x.cmp[X] * y.cmp[Z],
+        .cmp[Z] = x.cmp[X] * y.cmp[Y] - x.cmp[Y] * y.cmp[X],
+    };
+}
+
 
 vec4f_t vec4f_add(const vec4f_t x, const vec4f_t y)
 {
@@ -310,6 +321,8 @@ f32 vec4f_distance(const vec4f_t x, const vec4f_t y)
 {
     return Q_rsqrt(pow((x.cmp[X] - y.cmp[X]), 2.0f) + pow((x.cmp[Y] - y.cmp[Y]), 2.0f) + pow((x.cmp[Z] - y.cmp[Z]), 2.0f) + pow((x.cmp[W] - y.cmp[W]), 2.0f));
 }
+
+
 
 
 #endif //__MY_LA_H__
