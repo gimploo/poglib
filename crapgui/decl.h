@@ -31,8 +31,6 @@ typedef struct crapgui_t {
     glshader_t          shaders[UITYPE_COUNT];
     map_t               frames;
 
-    frame_t             *active_frame;
-
     void (*update)(struct crapgui_t *);
     void (*render)(struct crapgui_t *);
 
@@ -62,11 +60,11 @@ typedef struct frame_t {
     vec2f_t             pos;
     vec2f_t             dim;
     vec4f_t             color;
+    vec2f_t             margin;
     slot_t              uielems;
 
     bool                is_hot;
 
-    vec2f_t             __relative_mouse_pos;
     bool                __is_changed;       // flag to check whether to rebatch the batch
     glframebuffer_t     __texture;
     quadf_t             __vertices;
@@ -92,11 +90,11 @@ typedef struct frame_t {
 
 typedef struct button_t {
 
+    vec4f_t     base_color;
     vec4f_t     hover_color;
     bool        is_active;
     bool        is_hot;
 
-    quadf_t     __vertices;
     uielem_t    *__ui;
 
 } button_t ;

@@ -1,8 +1,6 @@
 #pragma once
 #include "../decl.h"
-#include "./button.h"
 #include "./uielem.h"
-#include "./label.h"
 
 //TODO: MAKE A BATCH MANAGER URGENT !!!!!!!!!!!!!!!!!!!!!!
 
@@ -31,7 +29,9 @@ button_t *crapgui_get_button(const crapgui_t *gui, const char *frame_label, cons
 void __frame_update(frame_t *frame, const crapgui_t *gui)
 {
     // Updating the vertices for next frame
-    /*if (!frame->__is_changed) return;*/
+    if (!frame->__is_changed) return;
+
+    /*printf("Frame %s updating\n", frame->label);*/
 
     // Clearing all batches
     for (u32 i = 0; i < MAX_UI_TYPE_ALLOWED_IN_FRAME; i++)
@@ -43,12 +43,16 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
         glbatch_clear(txtbatch);
     }
 
+    // Updating frame vertices
+    frame->__vertices = 
+        quadf(vec3f(frame->pos), frame->dim.cmp[X], frame->dim.cmp[Y]);
+
     // Updating ui elements and adding its vertices to the batch
     slot_t *slot = &frame->uielems;
     slot_iterator(slot, iter) 
     {
         uielem_t *ui = (uielem_t *)iter;
-        __uielem_update(ui, gui);
+        __uielem_update(ui, frame);
 
         glquad_t *uiquad    = &ui->glvertices;
         glbatch_t *uibatch  = &frame->__uibatch[ui->type];
@@ -59,8 +63,6 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
         glbatch_combine(txtbatch, txtquads);
     }
 
-    // Updating frame vertices
-    frame->__vertices = quadf(vec3f(frame->pos), frame->dim.cmp[X], frame->dim.cmp[Y]);
 
     // Creating the framebuffer object texture
     {
@@ -90,8 +92,10 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
                 };
                 glrenderer2d_draw_from_batch(&r2d, uibatch);
 
-                const glfreetypefont_t *font = crapgui_get_font(gui, i);
-                glfreetypefont_draw(font, txtbatch);
+                if (!glbatch_is_empty(txtbatch)) {
+                    const glfreetypefont_t *font = crapgui_get_font(gui, i);
+                    glfreetypefont_draw(font, txtbatch);
+                }
             }
         glframebuffer_end_texture(fbo);
     }
@@ -112,24 +116,33 @@ void __frame_render(const frame_t *frame, const crapgui_t *gui)
                 frame->color,
                 quadf(vec3f(0.0f), 1.0f, 1.0f), 
                 0);
+    /*vec3f_t pos = {-1.0f, 1.0f, 0.0f};*/
+    /*glquad_t quad = glquad(*/
+                /*quadf(pos, 2.0f, 2.0f),*/
+                /*frame->color,*/
+                /*quadf(vec3f(0.0f), 1.0f, 1.0f), */
+                /*0);*/
 
     glrenderer2d_draw_quad(&r2d, quad);
 }
 
-vec2f_t __frame_get_pos_for_new_uielem(const frame_t *frame)
+
+vec2f_t __frame_get_pos_for_new_uielem(const frame_t *frame, const vec2f_t ndim)
 {
     vec2f_t output          = {0};
     const slot_t *uielems   = &frame->uielems;
-    const vec2f_t margin    = DEFAULT_UI_MARGIN;
+    const vec2f_t dfmargin    = DEFAULT_UI_MARGIN;
 
-    if (uielems->len == 0) 
-        return (vec2f_t ) { -1.0f + margin.cmp[X], 1.0f - margin.cmp[Y] };
+    //NOTE: since we add the ui to slot before calling this function, the previous logic 
+    //we had wont work, ik i hate this, i guess i need to live with this for now
+    if (uielems->len == 1) 
+        return (vec2f_t ) { -1.0f + dfmargin.cmp[X], 1.0f - dfmargin.cmp[Y] };
 
-    uielem_t *prev_elem = (uielem_t *)slot_get_value(uielems, uielems->len - 1);
+    uielem_t *prev_elem = (uielem_t *)slot_get_value(uielems, uielems->len - 2);
     assert(prev_elem);
+    const vec2f_t margin = prev_elem->margin;
 
-
-    if ((prev_elem->pos.cmp[X] + (2.0f * prev_elem->dim.cmp[X]) + margin.cmp[X]) >= 1.0f) {
+    if ((prev_elem->pos.cmp[X] + (prev_elem->dim.cmp[X] + ndim.cmp[X]) + margin.cmp[X]) >= 1.0f) {
 
         output = (vec2f_t ){
             .cmp[X] = -1.0f + margin.cmp[X],
@@ -145,8 +158,8 @@ vec2f_t __frame_get_pos_for_new_uielem(const frame_t *frame)
 
     }
 
-    if (output.cmp[Y] - prev_elem->dim.cmp[Y] - margin.cmp[Y] <= -1.0f)
-        eprint("This frame cannot fit in the window");
+    if (output.cmp[Y] - prev_elem->dim.cmp[Y] - ndim.cmp[Y] - margin.cmp[Y] <= -1.0f)
+        eprint("This uielem cannot fit in the window");
 
     return output;
 }
@@ -154,14 +167,14 @@ vec2f_t __frame_get_pos_for_new_uielem(const frame_t *frame)
 
 frame_t frame_init(const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim)
 {
-    const u64 cap_per_batch = 
-        MAX_UI_CAPACITY_PER_FRAME / MAX_UI_TYPE_ALLOWED_IN_FRAME;
+    const u64 cap_per_batch = KB;
 
     return (frame_t ) {
         .label              = label,
         .pos                = pos,
         .dim                = dim,
         .color              = color,
+        .margin             = DEFAULT_FRAME_MARGIN,
         .uielems            = slot_init(MAX_UI_CAPACITY_PER_FRAME, uielem_t ),
         .is_hot             = false,
 
@@ -207,44 +220,28 @@ void frame_destroy(frame_t *self)
 
 }
 
-
-void __crapgui_frame_add_uielem(crapgui_t *gui, frame_t *frame, const char *label, uitype type)
+//NOTE: this code took me 3 full days to figure out 💀
+vec2f_t __frame_get_mouse_position(const frame_t *frame)
 {
-    assert(type != UI_FRAME);
+    const vec2f_t mpos  = window_mouse_get_norm_position(global_window);
+    const quadf_t rect  = frame->__vertices;
+    const vec2f_t dim   = frame->dim;
 
-    vec2f_t uipos =__frame_get_pos_for_new_uielem(frame); 
+    const vec2f_t origin = {
+        .cmp[X] = rect.vertex[TOP_LEFT].cmp[X] + (dim.cmp[X]/2),
+        .cmp[Y] = rect.vertex[TOP_LEFT].cmp[Y] - (dim.cmp[Y]/2)
+    };
 
-    uielem_t tmp; 
-    memset(&tmp, 0, sizeof(tmp));
+    const vec2f_t nmpos = {
+        mpos.cmp[X] - origin.cmp[X],
+        mpos.cmp[Y] - origin.cmp[Y],
+    };
 
-    slot_t *slot = &frame->uielems;
-    uielem_t *ui = (uielem_t *)slot_append(slot, tmp);
-
-    switch(type)
-    {
-        case UI_BUTTON:
-            ui->button       = button_init(ui);
-            ui->dim          = DEFAULT_BUTTON_DIMENSIONS;
-            ui->color        = DEFAULT_BUTTON_COLOR;
-            ui->update       = __button_update;
-        break;
-
-        case UI_LABEL:
-            ui->label    = label_init();
-            ui->dim      = DEFAULT_LABEL_DIMENSIONS;
-            ui->color    = DEFAULT_LABEL_COLOR;
-            ui->update   = __label_update;
-        break;
-
-        default: eprint("type not accounted for ");
-    }
-
-    ui->title = label;
-    ui->type = type;
-    ui->pos  = uipos;
-    ui->font = crapgui_get_font(gui, type);
-    ui->textbatch = glbatch_init(KB/2, glquad_t );
-    ui->is_changed = true;
-        
+    return (vec2f_t ) {
+        .cmp[X] = normalize(nmpos.cmp[X], 0.0f, 0.4f) ,
+        .cmp[Y] = normalize(nmpos.cmp[Y], 0.0f, 0.4f) 
+    };
 }
+
+
 

@@ -1,11 +1,54 @@
 #pragma once
 #include "../decl.h"
+#include "./uielem.h"
+#include "./button.h"
+#include "./label.h"
 #include "./frame.h"
 
 
 #define COMMON_VS   "lib/poglib/crapgui/res/common.vs"
 #define FRAME_FS    "lib/poglib/crapgui/res/frame.fs"
 #define BUTTON_FS   "lib/poglib/crapgui/res/button.fs"
+
+void __crapgui_frame_add_uielem(crapgui_t *gui, frame_t *frame, const char *label, uitype type)
+{
+    assert(type != UI_FRAME);
+
+    uielem_t tmp; 
+    memset(&tmp, 0, sizeof(tmp));
+
+    slot_t *slot = &frame->uielems;
+    uielem_t *ui = (uielem_t *)slot_append(slot, tmp);
+
+    switch(type)
+    {
+        case UI_BUTTON:
+            ui->button       = button_init(ui);
+            ui->dim          = DEFAULT_BUTTON_DIMENSIONS;
+            ui->color        = DEFAULT_BUTTON_COLOR;
+            ui->update_ui    = __button_update;
+        break;
+
+        case UI_LABEL:
+            ui->label    = label_init();
+            ui->dim      = DEFAULT_LABEL_DIMENSIONS;
+            ui->color    = DEFAULT_LABEL_COLOR;
+            ui->update_ui= __label_update;
+        break;
+
+        default: eprint("type not accounted for ");
+    }
+
+    ui->title       = label;
+    ui->type        = type;
+    ui->pos         = __frame_get_pos_for_new_uielem(frame, ui->dim);
+    ui->font        = crapgui_get_font(gui, type);
+    ui->textbatch   = glbatch_init(KB, glquad_t );
+    ui->is_changed  = true;
+    ui->margin      = DEFAULT_UI_MARGIN;
+    ui->frame       = frame;
+        
+}
 
 bool __crapgui_is_mouse_over_frame(const crapgui_t *gui, const frame_t *frame)
 {
@@ -15,26 +58,6 @@ bool __crapgui_is_mouse_over_frame(const crapgui_t *gui, const frame_t *frame)
     return quadf_is_point_in_quad(frame->__vertices, norm_mouse_position);
 }
 
-vec2f_t __crapgui_get_mouse_position_relative_to_frame_coordinate_axis(const crapgui_t *gui, const frame_t *frame)
-{
-    //NOTE: here we convert the mouse position in the frame to the window position, 
-    //because all the ui components holds the quad vertices relative to the window and not to the frame 
-    //
-    window_t *win = gui->win;
-
-    vec2f_t mp = window_mouse_get_norm_position(win);
-
-    /*u32 frame_width = ((frame->dim.cmp[X])/2.0f) *  win->width;*/
-    /*u32 frame_height = ((frame->dim.cmp[Y])/2.0f) * win->height;*/
-
-    //TODO: herer !!!!!!!!!!!!
-    vec2f_t delta = {
-        mp.cmp[X],
-        mp.cmp[Y],
-    };
-
-    return vec2f_add(mp, delta);
-}
 
 void __crapgui_update(crapgui_t *gui)
 {
@@ -46,10 +69,6 @@ void __crapgui_update(crapgui_t *gui)
         if (__crapgui_is_mouse_over_frame(gui, frame)) {
             frame->is_hot       = true;
             frame->__is_changed = true;
-            frame->__relative_mouse_pos = 
-                __crapgui_get_mouse_position_relative_to_frame_coordinate_axis(gui, frame);
-            printf(VEC2F_FMT "\n", VEC2F_ARG(&frame->__relative_mouse_pos));
-            gui->active_frame   = frame;
         }     
 
         frame->update(frame, gui);
