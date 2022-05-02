@@ -10,27 +10,22 @@ void appinit(application_t *app)
 
         frame("FRAME01") {
             /*label("Test");*/
-            button("Yes"); button("No");
-            button("Yes"); button("No");
-            /*label("Confirm"); button("Submit");*/
+            button("Button01"); button("Button02");
+            button("Button03"); button("Button04");
+            label("Confirm"); button("Submit");
             label("THIS IS A LABEL");
         }
 
         frame("FRAME02") {
-            button("Yes"); button("No");
-            button("Yes"); button("No");
+            label("Confirm"); button("Submit");
             label("THIS IS A LABEL");
         }
         frame("FRAME03") {
-            button("Yes"); button("No");
-            button("Yes"); button("No");
             label("THIS IS A LABEL");
         }
 
         frame("FRAME04") {
-            button("Yes"); button("No");
-            button("Yes"); button("No");
-            label("THIS IS A LABEL");
+            button("Button03"); button("Button04");
         }
 
     };
@@ -42,8 +37,8 @@ void appupdate(application_t *app)
     window_update_user_input(global_window);
 
     crapgui_update(gui);
-    button_t *button = crapgui_get_button(gui, "FRAME01", "Yes");
-    if (button->is_active)
+    button_t *button = crapgui_get_button(gui, "FRAME01", "Button01");
+    if (button->is_hot)
         printf("button SUBMIT clicked\n");
 
 }
