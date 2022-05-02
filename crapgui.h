@@ -1,11 +1,11 @@
 #pragma once
 #include "./crapgui/impl/manager.h"
-#include "./crapgui/impl/button.h"
 #include "./crapgui/impl/frame.h"
 
-//TODO: fix relative frame mouse position
-//TODO: desgin better state managamenet (__is_change ) shit
-//TODO: frame design 
+//FIXME: the lable is alone in a frame, it doesnt render the color behind the text 
+//TODO: when checking whether the mouse is over the button, have a system that only checks for those in that region and not the entire frame
+//TODO: ui/ux frame design 
+//TODO: have glfreetypefont accept opengl coordinates for position
 
 crapgui_t   crapgui_init(void);
 #define     crapgui_update(PGUI)                (PGUI)->update(PGUI)
@@ -21,9 +21,11 @@ void        crapgui_destroy(crapgui_t *gui);
 
 #define button(LABEL)\
     assert(__frame);\
-    __crapgui_frame_add_uielem(__gui, __frame, LABEL, UI_BUTTON)
+    __frame_add_ui(__frame, LABEL, UI_BUTTON)
 
 #define label(LABEL)\
     assert(__frame);\
-    __crapgui_frame_add_uielem(__gui, __frame, LABEL, UI_LABEL)
+    __frame_add_ui(__frame, LABEL, UI_LABEL)
 
+
+#define crapgui_get_button(PGUI, FLABEL, BLABEL)                              __impl_crapgui_get_button_from_frame((PGUI), (FLABEL), (BLABEL)) 
