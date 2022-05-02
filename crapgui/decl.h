@@ -6,8 +6,9 @@
 // CRAPGUI ( IMMEDIATE UI INSPIRED GUI LIB )
 =============================================================================*/
 
-typedef struct uielem_t uielem_t ;
+typedef struct crapgui_t crapgui_t ;
 typedef struct frame_t  frame_t ;
+typedef struct ui_t ui_t ;
 
 typedef enum uitype {
 
@@ -22,6 +23,39 @@ typedef enum uitype {
     UITYPE_COUNT
 
 } uitype;
+
+typedef struct ui_t {
+
+    //name
+    const char          *title;
+
+    // ui type (like button ,label, ...)
+    uitype              type;
+
+    //positoning
+    vec2f_t             pos;
+    vec2f_t             dim;
+    vec2f_t             margin;
+
+    // color
+    vec4f_t             textcolor;
+    vec4f_t             basecolor;
+    vec4f_t             hovercolor;
+
+    glfreetypefont_t    *font;
+
+    // mouse related things ..
+    bool                is_hot;
+    bool                is_active;
+
+    // opengl specifics
+    bool                __is_changed;
+    quadf_t             __vertices;
+    glquad_t            __glvertices;
+    glbatch_t           __textbatch;
+
+} ui_t ;
+
 
 typedef struct crapgui_t {
 
@@ -46,6 +80,7 @@ typedef struct crapgui_t {
 //NOTE: write now 10 here for the batch stuff, better to give the 10 a name
 #define MAX_UI_CAPACITY_PER_FRAME           10 * MAX_UI_TYPE_ALLOWED_IN_FRAME
 
+#define DEFAULT_UI_TEXT_COLOR               COLOR_WHITE
 #define DEFAULT_UI_MARGIN                   (vec2f_t ){0.08f, 0.08f}
 
 #define DEFAULT_FRAME_FONT_PATH             "lib/poglib/res/ttf_fonts/Roboto-Medium.ttf"
@@ -61,9 +96,10 @@ typedef struct frame_t {
     vec2f_t             dim;
     vec4f_t             color;
     vec2f_t             margin;
-    slot_t              uielems;
+    slot_t              uis;
 
     bool                is_hot;
+    const crapgui_t     *gui;
 
     bool                __is_changed;       // flag to check whether to rebatch the batch
     glframebuffer_t     __texture;
@@ -75,6 +111,11 @@ typedef struct frame_t {
     void (*render)(const struct frame_t * self, const crapgui_t *gui);
 
 } frame_t ;
+
+frame_t frame_init(const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim);
+vec2f_t frame_get_mouse_position(const frame_t *frame);
+void frame_destroy(frame_t *self);
+#define frame_get_font(PFRAME, UITYPE)      (glfreetypefont_t *)&(PFRAME)->gui->fonts[UITYPE]
 
 
 /*=============================================================================
@@ -88,17 +129,6 @@ typedef struct frame_t {
 #define DEFAULT_BUTTON_DIMENSIONS       (vec2f_t ){0.4f, 0.2f}
 
 
-typedef struct button_t {
-
-    vec4f_t     base_color;
-    vec4f_t     hover_color;
-    bool        is_active;
-    bool        is_hot;
-
-    uielem_t    *__ui;
-
-} button_t ;
-
 /*=============================================================================
  // LABEL 
 =============================================================================*/
@@ -108,9 +138,4 @@ typedef struct button_t {
 #define DEFAULT_LABEL_DIMENSIONS       (vec2f_t ){0.9f, 0.2f}
 #define DEFAULT_LABEL_COLOR            COLOR_BLACK
 
-typedef struct label_t {
-
-    vec4f_t     textcolor;
-
-} label_t ;
 

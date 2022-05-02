@@ -1,53 +1,31 @@
 #pragma once
 #include "../decl.h"
-#include "./uielem.h"
-#include "./button.h"
-#include "./label.h"
 #include "./frame.h"
 
 
 #define COMMON_VS   "lib/poglib/crapgui/res/common.vs"
 #define FRAME_FS    "lib/poglib/crapgui/res/frame.fs"
 #define BUTTON_FS   "lib/poglib/crapgui/res/button.fs"
+#define LABEL_FS   "lib/poglib/crapgui/res/label.fs"
 
-void __crapgui_frame_add_uielem(crapgui_t *gui, frame_t *frame, const char *label, uitype type)
+ui_t * __impl_crapgui_get_button_from_frame(const crapgui_t *gui, const char *frame_label, const char *button_label)
 {
-    assert(type != UI_FRAME);
+    assert(frame_label);
+    assert(button_label);
 
-    uielem_t tmp; 
-    memset(&tmp, 0, sizeof(tmp));
+    const map_t *map = &gui->frames;
+    frame_t *frame = (frame_t *)map_get_value(map, frame_label);
 
-    slot_t *slot = &frame->uielems;
-    uielem_t *ui = (uielem_t *)slot_append(slot, tmp);
-
-    switch(type)
+    const slot_t *slot = &frame->uis;
+    slot_iterator(slot, iter) 
     {
-        case UI_BUTTON:
-            ui->button       = button_init(ui);
-            ui->dim          = DEFAULT_BUTTON_DIMENSIONS;
-            ui->color        = DEFAULT_BUTTON_COLOR;
-            ui->update_ui    = __button_update;
-        break;
-
-        case UI_LABEL:
-            ui->label    = label_init();
-            ui->dim      = DEFAULT_LABEL_DIMENSIONS;
-            ui->color    = DEFAULT_LABEL_COLOR;
-            ui->update_ui= __label_update;
-        break;
-
-        default: eprint("type not accounted for ");
-    }
-
-    ui->title       = label;
-    ui->type        = type;
-    ui->pos         = __frame_get_pos_for_new_uielem(frame, ui->dim);
-    ui->font        = crapgui_get_font(gui, type);
-    ui->textbatch   = glbatch_init(KB, glquad_t );
-    ui->is_changed  = true;
-    ui->margin      = DEFAULT_UI_MARGIN;
-    ui->frame       = frame;
+        ui_t *ui = (ui_t *)iter;
+        if (ui->type != UI_BUTTON) continue;
         
+        if (strcmp(ui->title, button_label) == 0) 
+            return ui;
+    }
+    eprint("no button found");
 }
 
 bool __crapgui_is_mouse_over_frame(const crapgui_t *gui, const frame_t *frame)
@@ -101,7 +79,7 @@ crapgui_t crapgui_init(void)
 
         .shaders = {
             [UI_BUTTON] = glshader_from_file_init(COMMON_VS, BUTTON_FS),
-            [UI_LABEL]  = glshader_default_init(),
+            [UI_LABEL] = glshader_from_file_init(COMMON_VS, LABEL_FS),
             [UI_FRAME]  = glshader_from_file_init(COMMON_VS, FRAME_FS),
         },
 
@@ -155,6 +133,7 @@ frame_t * __crapgui_add_frame(crapgui_t *gui, const char *label)
                         pos, 
                         DEFAULT_FRAME_BACKGROUNDCOLOR, 
                         DEFAULT_FRAME_DIMENSIONS);
+    frame.gui       = gui;
 
     return (frame_t *)map_insert(map, label, frame);
 }

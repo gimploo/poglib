@@ -37,9 +37,13 @@ void appupdate(application_t *app)
     window_update_user_input(global_window);
 
     crapgui_update(gui);
-    button_t *button = crapgui_get_button(gui, "FRAME01", "Button01");
-    if (button->is_hot)
+    ui_t *button = crapgui_get_button(gui, "FRAME01", "Button01");
+    if (button->is_active)
         printf("button SUBMIT clicked\n");
+
+    ui_t *button02 = crapgui_get_button(gui, "FRAME02", "Submit");
+    if (button02->is_active)
+        printf("Submitted\n");
 
 }
 
