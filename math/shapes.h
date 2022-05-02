@@ -77,14 +77,10 @@ struct quadf_t {
 
 void quadf_print(quadf_t quad)
 {
-    for (int i = 0; i < 4; i++)
-    {
-        printf(VEC3F_FMT", ", VEC3F_ARG(&quad.vertex[0]));
-        printf(VEC3F_FMT", \n", VEC3F_ARG(&quad.vertex[1]));
-        printf(VEC3F_FMT", ", VEC3F_ARG(&quad.vertex[3]));
-        printf(VEC3F_FMT", \n", VEC3F_ARG(&quad.vertex[3]));
-    }
-    printf("\n");
+    printf(VEC3F_FMT", ", VEC3F_ARG(&quad.vertex[0]));
+    printf(VEC3F_FMT", \n", VEC3F_ARG(&quad.vertex[1]));
+    printf(VEC3F_FMT", ", VEC3F_ARG(&quad.vertex[2]));
+    printf(VEC3F_FMT", \n", VEC3F_ARG(&quad.vertex[3]));
 }
 
 
@@ -96,10 +92,15 @@ quadf_t quadf(vec3f_t position, f32 width, f32 height)
     output.vertex[0] = position;
     output.vertex[1].cmp[X] = position.cmp[X] + width;
     output.vertex[1].cmp[Y] = position.cmp[Y];
+    output.vertex[1].cmp[Z] = position.cmp[Z];
+
     output.vertex[2].cmp[X] = position.cmp[X] + width;
     output.vertex[2].cmp[Y] = position.cmp[Y] - height;
+    output.vertex[2].cmp[Z] = position.cmp[Z];
+
     output.vertex[3].cmp[X] = position.cmp[X];
     output.vertex[3].cmp[Y] = position.cmp[Y] - height;
+    output.vertex[3].cmp[Z] = position.cmp[Z];
 
     return output;
 }
