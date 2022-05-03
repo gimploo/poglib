@@ -7,7 +7,7 @@ int main(void)
 {    
     dbg_init();
     window_t * win = window_init("main.c", 700, 800, SDL_INIT_VIDEO);
-    window_set_background(win, COLOR_WHITE);
+    window_set_background(win, COLOR_BLACK);
 
     glfreetypefont_t font = glfreetypefont_init("../../res/ttf_fonts/Roboto-Medium.ttf", 42);
 
@@ -47,8 +47,8 @@ int main(void)
             .texture = &fbo.texture2d,
         };
         const glquad_t fbo_quad = glquad(
-                                quadf(vec3f(0.0f), 1.0f, 1.0f), 
-                                vec4f(0.0f), 
+                                quadf((vec3f_t ){-1.0f, 1.0f, 1.0f}, 2.0f, 2.0f), 
+                                vec4f(1.0f), 
                                 quadf((vec3f_t ){0.0f, 1.0f, 1.0f}, 1.0f, 1.0f), 0);
         glrenderer2d_draw_quad(&r2d, fbo_quad);
 
