@@ -6,6 +6,7 @@
 //TODO: when checking whether the mouse is over the button, have a system that only checks for those in that region and not the entire frame
 //TODO: ui/ux frame design 
 //TODO: have glfreetypefont accept opengl coordinates for position
+//TODO: MAKE A BATCH MANAGER URGENT !!!!!!!!!!!!!!!!!!!!!!
 
 crapgui_t   crapgui_init(void);
 #define     crapgui_update(PGUI)                (PGUI)->update(PGUI)
@@ -17,15 +18,17 @@ void        crapgui_destroy(crapgui_t *gui);
 
 #define frame(LABEL)\
     assert(__gui);\
-    for (frame_t *__frame = __crapgui_add_frame(__gui, LABEL); __frame != NULL; __frame = NULL)
+    for (frame_t *__frame = __crapgui_add_frame(__gui, LABEL); __frame != NULL; __frame_update(__frame, __gui), __frame = NULL)
 
 #define button(LABEL)\
     assert(__frame);\
-    __frame_add_ui(__frame, LABEL, UI_BUTTON)
+    assert(__gui);\
+    __frame_add_ui(__frame, __gui, LABEL, UI_BUTTON)
 
 #define label(LABEL)\
     assert(__frame);\
-    __frame_add_ui(__frame, LABEL, UI_LABEL)
+    assert(__gui);\
+    __frame_add_ui(__frame, __gui, LABEL, UI_LABEL)
 
 
 #define crapgui_get_button(PGUI, FLABEL, BLABEL)                              __impl_crapgui_get_button_from_frame((PGUI), (FLABEL), (BLABEL)) 

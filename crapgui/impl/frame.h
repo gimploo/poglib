@@ -2,42 +2,42 @@
 #include "../decl.h"
 #include "./ui.h"
 
-//TODO: MAKE A BATCH MANAGER URGENT !!!!!!!!!!!!!!!!!!!!!!
-
-
 
 void __frame_update(frame_t *frame, const crapgui_t *gui)
 {
-    // Updating the vertices for next frame
-    if (!frame->__is_changed) return;
+    // Updating frame vertices
+    if (frame->__update_cache_now) {
 
+        frame->__vertices = 
+            quadf(vec3f(frame->pos), frame->dim.cmp[X], frame->dim.cmp[Y]);
 
-    // Clearing all batches
-    for (u32 i = 0; i < MAX_UI_TYPE_ALLOWED_IN_FRAME; i++)
+        frame->__update_cache_now = false;
+
+    }
+
+    if (!frame->uis.len) return;
+
+    for (int type = 0; type < MAX_UI_TYPE_ALLOWED_IN_FRAME; type++)
     {
-        glbatch_t *uibatch = &frame->__uibatch[i];
-        glbatch_t *txtbatch = &frame->__txtbatch[i];
-
+        glbatch_t *uibatch  = &frame->__uibatch[type];
+        glbatch_t *txtbatch = &frame->__txtbatch[type];
         glbatch_clear(uibatch);
         glbatch_clear(txtbatch);
     }
-
-    // Updating frame vertices
-    frame->__vertices = 
-        quadf(vec3f(frame->pos), frame->dim.cmp[X], frame->dim.cmp[Y]);
 
     // Updating ui elements and adding its vertices to the batch
     slot_t *slot = &frame->uis;
     slot_iterator(slot, iter) 
     {
         ui_t *ui = (ui_t *)iter;
-        __ui_update(ui, frame);
-
-        glquad_t *uiquad    = &ui->__glvertices;
         glbatch_t *uibatch  = &frame->__uibatch[ui->type];
+        glbatch_t *txtbatch = &frame->__txtbatch[ui->type];
+
+        __ui_update(ui, frame, gui);
+
+        glquad_t *uiquad = &ui->__glvertices;
         glbatch_put(uibatch, *uiquad);
 
-        glbatch_t *txtbatch = &frame->__txtbatch[ui->type];
         glbatch_t *txtquads = &ui->__textbatch;
         glbatch_combine(txtbatch, txtquads);
     }
@@ -72,15 +72,12 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
                 glrenderer2d_draw_from_batch(&r2d, uibatch);
 
                 if (!glbatch_is_empty(txtbatch)) {
-                    const glfreetypefont_t *font = frame_get_font(frame, i);
+                    const glfreetypefont_t *font = crapgui_get_font(gui, i);
                     glfreetypefont_draw(font, txtbatch);
                 }
             }
         glframebuffer_end_texture(fbo);
     }
-
-    frame->__is_changed = false;
-    frame->is_hot = false;
 }
 
 void __frame_render(const frame_t *frame, const crapgui_t *gui)
@@ -154,20 +151,18 @@ frame_t frame_init(const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim)
         .dim                = dim,
         .color              = color,
         .margin             = DEFAULT_FRAME_MARGIN,
-        .uis            = slot_init(MAX_UI_CAPACITY_PER_FRAME, ui_t ),
-        .is_hot             = false,
+        .uis                = slot_init(MAX_UI_CAPACITY_PER_FRAME, ui_t ),
 
-        .gui                = NULL,
-        .__is_changed       = true,
+        .__update_cache_now = true,
         .__texture          = glframebuffer_init(global_window->width, global_window->height),
 
-        .__uibatch            = {
+        .__uibatch          = {
 
             [UI_BUTTON] = glbatch_init(cap_per_batch, glquad_t ),
             [UI_LABEL]  = glbatch_init(cap_per_batch, glquad_t ),
 
         },
-        .__txtbatch            = {
+        .__txtbatch         = {
 
             [UI_BUTTON] = glbatch_init(cap_per_batch, glquad_t ),
             [UI_LABEL]  = glbatch_init(cap_per_batch, glquad_t ),
@@ -200,7 +195,7 @@ void frame_destroy(frame_t *self)
 
 }
 
-//NOTE: this code took me 3 full days to figure out 💀
+//NOTE: this code took me 3 full days to make 💀
 vec2f_t frame_get_mouse_position(const frame_t *frame)
 {
     const vec2f_t mpos  = window_mouse_get_norm_position(global_window);
@@ -226,7 +221,7 @@ vec2f_t frame_get_mouse_position(const frame_t *frame)
     };
 }
 
-void __frame_add_ui(frame_t *frame, const char *label, uitype type)
+void __frame_add_ui(frame_t *frame, crapgui_t *gui, const char *label, uitype type)
 {
     assert(type != UI_FRAME);
 
@@ -255,12 +250,12 @@ void __frame_add_ui(frame_t *frame, const char *label, uitype type)
     ui->title       = label;
     ui->type        = type;
     ui->pos         = __frame_get_pos_for_new_ui(frame, ui->dim);
-    ui->font        = frame_get_font(frame, type);
     ui->margin      = DEFAULT_UI_MARGIN;
     ui->is_active   = false;    
     ui->is_hot      = false;
     ui->textcolor   = DEFAULT_UI_TEXT_COLOR;
 
     ui->__textbatch   = glbatch_init(KB, glquad_t );
-    ui->__is_changed  = true;
+
+    __ui_update(ui, frame, gui);
 }
