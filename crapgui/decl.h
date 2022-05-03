@@ -17,9 +17,10 @@ typedef enum uitype {
     //
     //..
     //
-
-    // dont move frame, have it stay here
-    UI_FRAME,
+    
+    // NOTE: DONT MOVE FRAME, have it stay here 
+    // (it needs to be one step above UITYPE_COUNT always!)
+    UI_FRAME,                       
     UITYPE_COUNT
 
 } uitype;
@@ -42,14 +43,12 @@ typedef struct ui_t {
     vec4f_t             basecolor;
     vec4f_t             hovercolor;
 
-    glfreetypefont_t    *font;
-
     // mouse related things ..
     bool                is_hot;
     bool                is_active;
 
     // opengl specifics
-    bool                __is_changed;
+    bool                __update_cache_now;
     quadf_t             __vertices;
     glquad_t            __glvertices;
     glbatch_t           __textbatch;
@@ -69,6 +68,8 @@ typedef struct crapgui_t {
     void (*render)(struct crapgui_t *);
 
 } crapgui_t ;
+
+#define         crapgui_get_font(PGUI, UITYPE)      (glfreetypefont_t *)&(PGUI)->fonts[UITYPE]
 
 /*=============================================================================
  // FRAME 
@@ -98,10 +99,7 @@ typedef struct frame_t {
     vec2f_t             margin;
     slot_t              uis;
 
-    bool                is_hot;
-    const crapgui_t     *gui;
-
-    bool                __is_changed;       // flag to check whether to rebatch the batch
+    bool                __update_cache_now;
     glframebuffer_t     __texture;
     quadf_t             __vertices;
     glbatch_t           __uibatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
@@ -112,10 +110,9 @@ typedef struct frame_t {
 
 } frame_t ;
 
-frame_t frame_init(const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim);
-vec2f_t frame_get_mouse_position(const frame_t *frame);
-void frame_destroy(frame_t *self);
-#define frame_get_font(PFRAME, UITYPE)      (glfreetypefont_t *)&(PFRAME)->gui->fonts[UITYPE]
+frame_t     frame_init(const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim);
+vec2f_t     frame_get_mouse_position(const frame_t *frame);
+void        frame_destroy(frame_t *self);
 
 
 /*=============================================================================

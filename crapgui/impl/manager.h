@@ -44,12 +44,8 @@ void __crapgui_update(crapgui_t *gui)
     {
         frame_t *frame = (frame_t *)iter;
 
-        if (__crapgui_is_mouse_over_frame(gui, frame)) {
-            frame->is_hot       = true;
-            frame->__is_changed = true;
-        }     
-
-        frame->update(frame, gui);
+        if (__crapgui_is_mouse_over_frame(gui, frame))
+            frame->update(frame, gui);
     }
 }
 
@@ -133,7 +129,8 @@ frame_t * __crapgui_add_frame(crapgui_t *gui, const char *label)
                         pos, 
                         DEFAULT_FRAME_BACKGROUNDCOLOR, 
                         DEFAULT_FRAME_DIMENSIONS);
-    frame.gui       = gui;
+
+    __frame_update(&frame, gui);
 
     return (frame_t *)map_insert(map, label, frame);
 }
