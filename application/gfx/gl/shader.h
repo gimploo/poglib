@@ -9,9 +9,9 @@
 // raw 
 
 #include <string.h>
+#include <poglib/ds/list.h>
 #include <poglib/application/gfx/gl/common.h>
 
-#define MAX_UNIFORM_ARRAY_CAPACITY 10
 #define MAX_UNIFORM_VALUE_SIZE (sizeof(matrixf_t ))
 
 const char * const default_vshader = 
@@ -52,7 +52,7 @@ typedef struct glshader_t {
     GLuint      id;
     const char  *vs_file_path;
     const char  *fg_file_path;
-    queue_t     uniforms;
+    list_t      uniforms;
 
 } glshader_t;
 
@@ -87,15 +87,15 @@ typedef struct __uniform_meta_data_t {
  // Declarations
 -----------------------------------------------------*/
 
-//NOTE:(macro)  glshader_default_init(void) --> glshader_t
+#define         glshader_default_init(...)                                      glshader_from_cstr_init(default_vshader, default_fshader)
 
-glshader_t     glshader_from_file_init(const char *file_vs, const char *file_fs);
-glshader_t     glshader_from_cstr_init(const char *vs_code, const char *fs_code);
+glshader_t      glshader_from_file_init(const char *file_vs, const char *file_fs);
+glshader_t      glshader_from_cstr_init(const char *vs_code, const char *fs_code);
 
 void            glshader_bind(glshader_t *shader);
-#define         glshader_set_uniform(PSHADER, UNIFORM_NAME, VALUE, TYPE) __impl_glshader_set_uniform((PSHADER), (UNIFORM_NAME), &(VALUE), sizeof(VALUE), UT_##TYPE, sizeof(TYPE)) 
+#define         glshader_set_uniform(PSHADER, UNIFORM_NAME, VALUE, TYPE)        __impl_glshader_set_uniform((PSHADER), (UNIFORM_NAME), &(VALUE), sizeof(VALUE), UT_##TYPE, sizeof(TYPE)) 
 
-void            glshader_destroy(const glshader_t *shader);
+void            glshader_destroy(glshader_t *shader);
 
 
 /*--------------------------------------------------------
@@ -103,7 +103,6 @@ void            glshader_destroy(const glshader_t *shader);
 --------------------------------------------------------*/
 #define GL_SHADER_BIND(pshader) GL_CHECK(glUseProgram((pshader)->id));
 
-#define glshader_default_init() glshader_from_cstr_init(default_vshader, default_fshader)
 
 static inline void __shader_load_code(glshader_t *shader, const char *vs_code, const char *fs_code)
 {
@@ -186,7 +185,7 @@ glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
 
     __shader_load_from_file(&shader, file_vs, file_fs);
 
-    shader.uniforms = queue_init(MAX_UNIFORM_ARRAY_CAPACITY, __uniform_meta_data_t );
+    shader.uniforms = list_init(2, __uniform_meta_data_t );
 
     return shader;
 }
@@ -202,7 +201,7 @@ glshader_t  glshader_from_cstr_init(const char *vs_code, const char *fs_code)
 
     __shader_load_code(&shader, vs_code, fs_code);
 
-    shader.uniforms = queue_init(MAX_UNIFORM_ARRAY_CAPACITY, __uniform_meta_data_t );
+    shader.uniforms = list_init(2, __uniform_meta_data_t );
 
     return shader;
 }
@@ -272,14 +271,14 @@ void __glshader_uniform_set_matrix4f(const glshader_t *shader, const char *unifo
 
 
 
-void glshader_destroy(const glshader_t *shader)
+void glshader_destroy(glshader_t *shader)
 {
     if (shader == NULL) eprint("shader argument is null");
 
     GL_CHECK(glDeleteProgram(shader->id));
 
-    queue_t *queue =(queue_t *) &shader->uniforms;
-    queue_destroy(queue);
+    list_t *queue = &shader->uniforms;
+    list_destroy(queue);
 
     GL_LOG("Shader `%i` successfully deleted", shader->id);
 }
@@ -309,6 +308,7 @@ void __impl_glshader_set_uniform(glshader_t *shader, const char *uniform_name, v
 {
     if (shader == NULL) eprint("shader arg is null");    
     if (value_ref == NULL) eprint("value ref is null");
+    if (value_size != type_size) eprint("type size (%li) and value size (%li) dont not match", type_size, value_size);
 
     assert(type_size == value_size);
 
@@ -318,12 +318,7 @@ void __impl_glshader_set_uniform(glshader_t *shader, const char *uniform_name, v
             value_size, 
             type);
 
-    queue_put(&shader->uniforms, data);
-}
-
-void __glshader_get_uniform(glshader_t *shader)
-{
-    queue_get(&shader->uniforms);
+    list_append(&shader->uniforms, data);
 }
 
 void glshader_bind(glshader_t *shader)
@@ -332,8 +327,8 @@ void glshader_bind(glshader_t *shader)
 
     GL_SHADER_BIND(shader);
 
-    queue_t *queue = &shader->uniforms;
-    queue_iterator(queue, iter)
+    list_t *queue = &shader->uniforms;
+    list_iterator(queue, iter)
     {
         __uniform_meta_data_t *uniform = (__uniform_meta_data_t *)iter;
         GL_LOG("Shader `%i` setting uniform `%s`", shader->id, uniform->variable_name);
@@ -371,7 +366,6 @@ void glshader_bind(glshader_t *shader)
             case UT_COUNT:
             break;
         }
-        __glshader_get_uniform(shader);
     }
         
 }
