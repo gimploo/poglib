@@ -22,6 +22,7 @@ typedef struct list_t {
 
 #define         list_append(PLIST, VALUE)                       __impl_list_append((PLIST), &(VALUE), sizeof(VALUE)) 
 void            list_delete(list_t *list, const u64 index);
+#define         list_get(PLIST)                                 list_delete((PLIST), 0)
 #define         list_clear(PLIST)                               __impl_list_clear(PLIST)
 
 void            list_dump(const list_t *list);
