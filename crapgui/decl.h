@@ -64,6 +64,8 @@ typedef struct crapgui_t {
     glshader_t          shaders[UITYPE_COUNT];
     map_t               frames;
 
+    glshader_t          __common_shader;
+
     void (*update)(struct crapgui_t *);
     void (*render)(struct crapgui_t *);
 
@@ -84,6 +86,7 @@ typedef struct crapgui_t {
 #define DEFAULT_UI_TEXT_COLOR               COLOR_WHITE
 #define DEFAULT_UI_MARGIN                   (vec2f_t ){0.08f, 0.08f}
 
+#define FRAME_HEADER_HEIGHT                 0.2f
 #define DEFAULT_FRAME_FONT_PATH             "lib/poglib/res/ttf_fonts/Roboto-Medium.ttf"
 #define DEFAULT_FRAME_FONT_SIZE             20 
 #define DEFAULT_FRAME_DIMENSIONS            (vec2f_t ){ 0.8f, 0.8f }
@@ -98,6 +101,9 @@ typedef struct frame_t {
     vec4f_t             color;
     vec2f_t             margin;
     slot_t              uis;
+
+    glbatch_t           __frametxt;
+    glbatch_t           __framequads;
 
     bool                __update_cache_now;
     glframebuffer_t     __texture;
@@ -122,7 +128,7 @@ void        frame_destroy(frame_t *self);
 #define DEFAULT_BUTTON_FONT_PATH        "lib/poglib/res/ttf_fonts/Roboto-Medium.ttf"
 #define DEFAULT_BUTTON_FONT_SIZE        28 
 #define DEFAULT_BUTTON_COLOR            COLOR_BLUE
-#define DEFAULT_BUTTON_HOVER_COLOR      COLOR_GRAY
+#define DEFAULT_BUTTON_HOVER_COLOR      (vec4f_t ){0.0f, 0.0f, 1.0f, 0.7f}
 #define DEFAULT_BUTTON_DIMENSIONS       (vec2f_t ){0.4f, 0.2f}
 
 

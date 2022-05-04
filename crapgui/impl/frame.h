@@ -8,8 +8,24 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
     // Updating frame vertices
     if (frame->__update_cache_now) {
 
+        // The entire frame vertices
         frame->__vertices = 
             quadf(vec3f(frame->pos), frame->dim.cmp[X], frame->dim.cmp[Y]);
+
+        // frame header
+        glbatch_clear(&frame->__framequads);
+        glquad_t header = glquad(
+                quadf((vec3f_t ){-1.0f, 1.0f, 1.0f}, 2.0f, 0.2f), 
+                COLOR_BLACK, quadf(vec3f(0.0f),0.0f,0.0f), 0);
+        glbatch_put(&frame->__framequads, header);
+
+        glbatch_clear(&frame->__frametxt); 
+        glfreetypefont_add_text_to_batch(
+                crapgui_get_font(gui, UI_FRAME), 
+                &frame->__frametxt, 
+                frame->label, 
+                (vec2f_t ) {-1.0f, 0.9f}, 
+                COLOR_WHITE);
 
         frame->__update_cache_now = false;
 
@@ -42,42 +58,52 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
         glbatch_combine(txtbatch, txtquads);
     }
 
+    GL_CHECK(glClearColor(
+            frame->color.cmp[0],
+            frame->color.cmp[1],
+            frame->color.cmp[2],
+            frame->color.cmp[3]
+    ));
+    GL_CHECK(glEnable(GL_BLEND));
+    GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-    // Creating the framebuffer object texture
+    glframebuffer_t *fbo = &frame->__texture;
+    glframebuffer_begin_texture(fbo);
+
+    // Texturing the uis together
     {
-        GL_CHECK(glClearColor(
-                frame->color.cmp[0],
-                frame->color.cmp[1],
-                frame->color.cmp[2],
-                frame->color.cmp[3]
-        ));
-        GL_CHECK(glEnable(GL_BLEND));
-        GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+        for (u32 i = 0; i < MAX_UI_TYPE_ALLOWED_IN_FRAME; i++)
+        {
+            glbatch_t *uibatch      = &frame->__uibatch[i]; 
+            glbatch_t *txtbatch     = &frame->__txtbatch[i];
 
-        glframebuffer_t *fbo = &frame->__texture;
-        glframebuffer_begin_texture(fbo);
-            for (u32 i = 0; i < MAX_UI_TYPE_ALLOWED_IN_FRAME; i++)
-            {
-                glbatch_t *uibatch      = &frame->__uibatch[i]; 
-                glbatch_t *txtbatch     = &frame->__txtbatch[i];
-
-                if (glbatch_is_empty(uibatch)) {
-                    continue;
-                }
-
-                glrenderer2d_t r2d = {
-                    .shader = &gui->shaders[i],
-                    .texture = NULL,
-                };
-                glrenderer2d_draw_from_batch(&r2d, uibatch);
-
-                if (!glbatch_is_empty(txtbatch)) {
-                    const glfreetypefont_t *font = crapgui_get_font(gui, i);
-                    glfreetypefont_draw(font, txtbatch);
-                }
+            if (glbatch_is_empty(uibatch)) {
+                continue;
             }
-        glframebuffer_end_texture(fbo);
+
+            glrenderer2d_t r2d = {
+                .shader = &gui->shaders[i],
+                .texture = NULL,
+            };
+            glrenderer2d_draw_from_batch(&r2d, uibatch);
+
+            if (!glbatch_is_empty(txtbatch)) {
+                const glfreetypefont_t *font = crapgui_get_font(gui, i);
+                glfreetypefont_draw(font, txtbatch);
+            }
+        }
+
+        // header
+        glrenderer2d_t R2d = {
+            .shader = &gui->__common_shader,
+            .texture = NULL
+        };
+        glrenderer2d_draw_from_batch(&R2d, &frame->__framequads);
+        glfreetypefont_draw(
+                crapgui_get_font(gui, UI_FRAME), 
+                &frame->__frametxt);
     }
+    glframebuffer_end_texture(fbo);
 }
 
 void __frame_render(const frame_t *frame, const crapgui_t *gui)
@@ -106,13 +132,13 @@ void __frame_render(const frame_t *frame, const crapgui_t *gui)
 vec2f_t __frame_get_pos_for_new_ui(const frame_t *frame, const vec2f_t ndim)
 {
     vec2f_t output          = {0};
-    const slot_t *uis   = &frame->uis;
-    const vec2f_t dfmargin    = DEFAULT_UI_MARGIN;
+    const slot_t *uis       = &frame->uis;
+    const vec2f_t dfmargin  = DEFAULT_UI_MARGIN;
 
     //NOTE: since we add the ui to slot before calling this function, the previous logic 
     //we had wont work, ik i hate this, i guess i need to live with this for now
     if (uis->len == 1) 
-        return (vec2f_t ) { -1.0f + dfmargin.cmp[X], 1.0f - dfmargin.cmp[Y] };
+        return (vec2f_t ) { -1.0f + dfmargin.cmp[X], 1.0f - FRAME_HEADER_HEIGHT - dfmargin.cmp[Y] };
 
     ui_t *prev_elem = (ui_t *)slot_get_value(uis, uis->len - 2);
     assert(prev_elem);
@@ -153,6 +179,9 @@ frame_t frame_init(const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim)
         .margin             = DEFAULT_FRAME_MARGIN,
         .uis                = slot_init(MAX_UI_CAPACITY_PER_FRAME, ui_t ),
 
+        .__frametxt         = glbatch_init(cap_per_batch, glquad_t ),
+        .__framequads       = glbatch_init(cap_per_batch, glquad_t ),
+
         .__update_cache_now = true,
         .__texture          = glframebuffer_init(global_window->width, global_window->height),
 
@@ -192,6 +221,9 @@ void frame_destroy(frame_t *self)
         glbatch_destroy(&self->__uibatch[i]);
         glbatch_destroy(&self->__txtbatch[i]);
     }
+
+    glbatch_destroy(&self->__frametxt);
+    glbatch_destroy(&self->__framequads);
 
 }
 
