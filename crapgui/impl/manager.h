@@ -4,6 +4,7 @@
 
 
 #define COMMON_VS   "lib/poglib/crapgui/res/common.vs"
+#define COMMON_FS   "lib/poglib/crapgui/res/common.fs"
 #define FRAME_FS    "lib/poglib/crapgui/res/frame.fs"
 #define BUTTON_FS   "lib/poglib/crapgui/res/button.fs"
 #define LABEL_FS   "lib/poglib/crapgui/res/label.fs"
@@ -55,6 +56,7 @@ void __crapgui_render(crapgui_t *gui)
     map_iterator(map, iter) 
     {
         frame_t *frame = (frame_t *)iter;
+
         frame->render(frame,gui);
     }
 }
@@ -79,12 +81,15 @@ crapgui_t crapgui_init(void)
             [UI_FRAME]  = glshader_from_file_init(COMMON_VS, FRAME_FS),
         },
 
+        .__common_shader = glshader_from_file_init(COMMON_VS, COMMON_FS),
+
         .frames = map_init(MAX_FRAMES_ALLOWED, frame_t ),
         .update = __crapgui_update,
         .render = __crapgui_render
 
     };
 }
+
 
 vec2f_t __crapgui_get_pos_for_new_frame(const crapgui_t *gui)
 {
@@ -123,6 +128,7 @@ frame_t * __crapgui_add_frame(crapgui_t *gui, const char *label)
 {
     map_t *map = &gui->frames;
 
+
     vec2f_t pos     = __crapgui_get_pos_for_new_frame(gui);
     frame_t frame   = frame_init(
                         label, 
@@ -156,5 +162,7 @@ void crapgui_destroy(crapgui_t *gui)
         glshader_destroy(shader);
         glfreetypefont_destroy(font);
     }
+
+    glshader_destroy(&gui->__common_shader);
 }
 

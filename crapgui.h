@@ -4,7 +4,6 @@
 
 //FIXME: the lable is alone in a frame, it doesnt render the color behind the text 
 //TODO: when checking whether the mouse is over the button, have a system that only checks for those in that region and not the entire frame
-//TODO: ui/ux frame design 
 //TODO: have glfreetypefont accept opengl coordinates for position
 //TODO: MAKE A BATCH MANAGER URGENT !!!!!!!!!!!!!!!!!!!!!!
 
