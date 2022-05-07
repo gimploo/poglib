@@ -556,18 +556,21 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
 
                 static bool polymode_flag = false;
 
-                if (window_keyboard_is_key_pressed(window, SDLK_F5)) polymode_flag = !polymode_flag;
+                if (window_keyboard_is_key_pressed(window, SDLK_F5)) 
+                {
+                    polymode_flag = !polymode_flag;
+                    if (polymode_flag) {
 
-                if (polymode_flag) {
+                        printf("[!] OPENGL DEBUG MODE (ACTIVATED)\n");
+                        GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
 
-                    printf("[!] OPENGL DEBUG MODE (ACTIVATED)\n");
-                    GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
+                    } else {
+                        printf("[!] OPENGL DEBUG MODE (DISABLED), press `F5` to enable\n");
+                        GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 
-                } else {
-                    printf("[!] OPENGL DEBUG MODE (DISABLED), press `F5` to enable\n");
-                    GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
-
+                    }
                 }
+
 #endif
 
             }
