@@ -21,7 +21,6 @@ typedef struct action_t action_t ;
 
 struct action_t {
 
-    bool                __is_active;
     const char          *label;
     union {
         const SDL_Keycode   key;
@@ -32,7 +31,6 @@ struct action_t {
 action_t __impl_action_init(const char *label, const SDL_Keycode key)
 {
     return (action_t ) {
-        .__is_active = false,
         .label = label,
         .key = key
     };

@@ -35,13 +35,13 @@ typedef struct scene_t {
 } scene_t ;
 
 
-scene_t     scene_init(const char *scene_label);
-void        scene_add_action(scene_t *scene, const action_t action);
+scene_t             scene_init(const char *scene_label);
+void                scene_register_action(scene_t *scene, const action_t action);
 
-#define     scene_get_type(PSCENE) (PSCENE)->__enum_id
-#define     scene_get_engine(...)   global_poggen; assert(global_poggen)
+#define             scene_get_type(PSCENE)                                     (PSCENE)->__enum_id
+#define             scene_get_engine(...)                                      global_poggen
 
-void        scene_destroy(scene_t *scene);
+void                scene_destroy(scene_t *scene);
 
 
 /*-----------------------------------------------------------------------------*/
@@ -49,7 +49,7 @@ void        scene_destroy(scene_t *scene);
 #ifndef IGNORE_POGGEN_SCENE_IMPLEMENTATION
 
 
-void scene_add_action(scene_t *scene, const action_t action)
+void scene_register_action(scene_t *scene, const action_t action)
 {
     assert(scene);
     if (scene->input == NULL) eprint("`%s` scene is missing a input() function", scene->label);
