@@ -21,12 +21,12 @@ typedef struct poggen_t {
 global poggen_t     *global_poggen = NULL;
 
 poggen_t *          poggen_init(void);
-#define             poggen_add_scene(PGEN, SCENE_NAME)                          __impl_poggen_add_scene(PGEN, SCENE_NAME)
+#define             poggen_add_scene(PGEN, SCENE_NAME)                          __impl_poggen_add_scene((PGEN), __impl_scene_init(SCENE_NAME))
 void                poggen_remove_scene(poggen_t *self, const char *label);
 void                poggen_change_scene(poggen_t *self, const char *scene_label);
 
 void                poggen_update(poggen_t *self);
-#define             poggen_render(PGEN)                                         (PGEN)->current_scene->render((PGEN)->current_scene)
+#define             poggen_render(PGEN)                                         (PGEN)->current_scene->__render((PGEN)->current_scene)
 
 void                poggen_destroy(poggen_t *self);
 
@@ -41,10 +41,8 @@ void                poggen_destroy(poggen_t *self);
 
 poggen_t * poggen_init(void)
 {
-    if (!global_window) eprint("A window is required to run poggen\n");
-
-    if (global_poggen)
-        eprint("Trying to initialize a second `poggen` in the same instance");
+    if (!global_window)     eprint("A window is required to run poggen\n");
+    if (global_poggen)      eprint("Trying to initialize a second `poggen` in the same instance");
 
     poggen_t tmp =  {
         .assets         = assetmanager_init(),
@@ -56,37 +54,23 @@ poggen_t * poggen_init(void)
     poggen_t *output = (poggen_t *)calloc(1, sizeof(poggen_t ));
     assert(output);
 
-
-    *output = tmp;
-
-    global_poggen = output;
+    *output         = tmp;
+    global_poggen   = output;
 
     return output;
 }
 
+void __impl_poggen_add_scene(poggen_t *self, const scene_t scene)
+{
+    assert(self);
+    map_t *map = &self->scenes;
+    scene_t *tmp = (scene_t *)map_insert(map, scene.label, scene);
 
-#define __impl_poggen_add_scene(PGEN, SCENE_NAME) do {\
-\
-    scene_t __TMP##SCENE_NAME = scene_init(#SCENE_NAME);\
-\
-    __TMP##SCENE_NAME.init      = SCENE_NAME##_init;\
-    __TMP##SCENE_NAME.update    = SCENE_NAME##_update;\
-    __TMP##SCENE_NAME.input     = SCENE_NAME##_input;\
-    __TMP##SCENE_NAME.render    = SCENE_NAME##_render;\
-    __TMP##SCENE_NAME.destroy   = SCENE_NAME##_destroy;\
-\
-    (__TMP##SCENE_NAME).assets              = &(PGEN)->assets;\
-\
-    scene_t *scene = NULL;\
-\
-    if (!(PGEN)->current_scene)\
-        (PGEN)->current_scene = scene = map_insert(&(PGEN)->scenes, #SCENE_NAME, __TMP##SCENE_NAME);\
-    else\
-        scene = map_insert(&(PGEN)->scenes, #SCENE_NAME, __TMP##SCENE_NAME);\
-\
-    scene->init(scene);\
-\
-} while (0)
+    if (!self->current_scene)
+        self->current_scene = tmp;
+
+    tmp->__init(tmp);
+}
 
 
 void poggen_remove_scene(poggen_t *self, const char *label)
@@ -113,12 +97,14 @@ void poggen_change_scene(poggen_t *self, const char *scene_label)
 
 void __poggen_update_user_input(poggen_t *self)
 {    
-    window_t *window = self->__window;
+    window_t *window = global_window;
+    assert(window);
 
     SDL_Event *event = &window->__sdl_event;
     assert(event);
 
     scene_t *current_scene = self->current_scene;
+    assert(current_scene);
     
     while(SDL_PollEvent(event) > 0) 
     {
@@ -157,14 +143,14 @@ void __poggen_update_user_input(poggen_t *self)
                 __keyboard_update_buffers(
                         window, event->type, event->key.keysym.scancode);
 
-                const list_t *actions = &current_scene->actions;
+                const list_t *actions = &current_scene->__actions;
                 list_iterator(actions, i) {
 
                     assert(i); 
                     action_t action = *(action_t *)i; 
 
                     if (action.key == event->key.keysym.sym) {
-                        current_scene->input(action); 
+                        current_scene->__input(action); 
                     } 
                 }
             break;
@@ -177,9 +163,10 @@ void poggen_update(poggen_t *self)
 {
     assert(self);
     scene_t *current_scene = self->current_scene;
+    if (current_scene == NULL) eprint("Current scene is null");
 
     __poggen_update_user_input(self);
-    current_scene->update(current_scene);
+    current_scene->__update(current_scene);
 
 }
 
@@ -192,7 +179,7 @@ void poggen_destroy(poggen_t *self)
     map_t *map = &self->scenes;
 
     map_iterator(map, tmp) {
-        scene_destroy((scene_t *)tmp);
+        __scene_destroy((scene_t *)tmp);
     }
     map_destroy(&self->scenes);
 
