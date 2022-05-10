@@ -20,6 +20,8 @@ typedef struct slot_t {
     bool                *__index_table;
     bool                __are_values_pointers;
 
+    u64                __iter_next_index;
+
 } slot_t ;
 
 
@@ -45,11 +47,24 @@ void                slot_dump(const slot_t *table);
 ------------------------------------------------------------------------------*/
 
 #define __impl_slot_for_loop_iterator(PSLOTARRAY, TMP)\
-                if ((PSLOTARRAY)->len != 0)\
-                    for (void *index = 0, *(TMP) = (void *)slot_get_value((PSLOTARRAY), 0);\
-                             (u64)(index) < (PSLOTARRAY)->len;\
-                             index = (void *)((u64)index + 1),\
-                             (TMP) = (void *)slot_get_value((PSLOTARRAY), ((u64)index < (PSLOTARRAY)->len) ? (u64)index : (u64)((u64)index - 1)))
+            if ((PSLOTARRAY)->len != 0)\
+                for (void *(TMP) = __slot_get_next_value((PSLOTARRAY));\
+                         (TMP) != NULL;\
+                         (TMP) = __slot_get_next_value((PSLOTARRAY)))
+
+void *__slot_get_next_value(slot_t *slot)
+{
+    for (u32 i = slot->__iter_next_index; i < slot->__capacity; i++)
+    {
+        if (slot->__index_table[i] == true) {
+            slot->__iter_next_index = i + 1;
+            return slot_get_value(slot, slot->__iter_next_index - 1);
+        }
+    }
+
+    slot->__iter_next_index = 0;
+    return NULL;
+}
 
 
 slot_t __impl_slot_init(const u64 array_capacity, const char *elem_type, const u64 elem_size)
@@ -65,6 +80,7 @@ slot_t __impl_slot_init(const u64 array_capacity, const char *elem_type, const u
         .__capacity             = array_capacity,
         .__index_table          = (bool *)calloc(array_capacity, sizeof(bool)),
         .__are_values_pointers  = flag,
+        .__iter_next_index           = 0 
     };
 
     return o;

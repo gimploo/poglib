@@ -21,25 +21,28 @@ int test01(void)
     };
 
 
-    slotarray_t table = slotarray_init(100, str_t );
+    slot_t table = slot_init(100, str_t );
 
     for (int i = 0; i < 5; i++)
     {
-        slotarray_insert(&table, i, names[i]);
-        slotarray_print(&table, print_str);
+        slot_insert(&table, i * 4, names[i]);
     }
-    /*slotarray_dump(&table);*/
+
+    slot_iterator(&table, iter) {
+        str_t *name = (str_t *)iter;
+        print_str(name);
+        printf("\n");
+    }
 
     for (int i = 0; i < 5; i++)
     {
-        slotarray_delete(&table, i);
-        slotarray_print(&table, print_str);
+        slot_delete(&table, i);
     }
 
-    /*slotarray_print(&table, print_str);*/
-    slotarray_dump(&table);
+    /*slot_print(&table, print_str);*/
+    /*slot_dump(&table);*/
 
-    slotarray_destroy(&table);
+    slot_destroy(&table);
 
     dbg_destroy();
     return 0;
@@ -59,7 +62,7 @@ void print_foo(void *x)
     printf("\n");
 }
 
-void insert_foo_in_table_lul(slotarray_t *table)
+void insert_foo_in_table_lul(slot_t *table)
 {
     foo a = {
         .label = "a",
@@ -76,65 +79,32 @@ void insert_foo_in_table_lul(slotarray_t *table)
         .list = {11,12,13,14,15}
     };
 
-    slotarray_insert(table, 0, a);
-    slotarray_insert(table, 1, b);
-    slotarray_insert(table, 2, c);
+    slot_insert(table, 0, a);
+    slot_insert(table, 1, b);
+    slot_insert(table, 2, c);
 }
 
 void test03(void)
 {
-    slotarray_t table = slotarray_init(10, foo);
+    slot_t table = slot_init(10, foo);
 
     insert_foo_in_table_lul(&table);
 
-    /*slotarray_print(&table, print_foo);*/
-    slotarray_iterator(&table, iter) {
+    /*slot_print(&table, print_foo);*/
+    slot_iterator(&table, iter) {
         foo *tmp = (foo *)iter;
         print_foo(tmp);
     }
-    slotarray_dump(&table);
+    slot_dump(&table);
 
-    slotarray_destroy(&table);
-}
-
-int test02(void)
-{
-    str_t name = str("gokul");
-    u32 x = hash_cstr(name.buf, name.len);
-
-    printf("string: "STR_FMT"\n", STR_ARG(&name));
-    printf("index: %i\n", x % 10);
-
-    str_t lol = str("gikul");
-    u32 y = hash_cstr(lol.buf, lol.len);
-    printf("string: "STR_FMT"\n", STR_ARG(&lol));
-    printf("index: %i \n", y % 10);
-
-
-    str_t juice = str("juice");
-    u32 z = hash_cstr(juice.buf, lol.len);
-    printf("string: "STR_FMT"\n", STR_ARG(&juice));
-    printf("index: %i \n", z % 10);
-
-    for (int i = 0; i < 100; i++)
-    {
-        char buff[4] = {0}; 
-        snprintf(buff, sizeof(buff), "%i", i);
-        u32 z = hash_cstr(buff, strlen(buff));
-        printf("key: %s\n", buff);
-        printf("index: %i \n", z % 100);
-    }
-
-    return 0;
+    slot_destroy(&table);
 }
 
 int main(void)
 {
     printf("test01\n");
     test01();
-    printf("test02\n");
-    test02();
     printf("test03\n");
-    test03();
+    /*test03();*/
     return 0;
 }
