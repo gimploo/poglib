@@ -17,31 +17,27 @@
 
 typedef struct scene_t {
 
-    const char          *label;
-    assetmanager_t      *assets;
-    entitymanager_t     manager;
-    bool                is_paused;
-    bool                is_over;
-
-    // Action map
-    list_t              actions;
-
-    void (*init)        (struct scene_t *);
-    void (*update)      (struct scene_t *);
-    void (*input)       (const action_t );
-    void (*render)      (struct scene_t *);
-    void (*destroy)     (struct scene_t *);
+    const char       *label;
+    assetmanager_t   *assets;
+    entitymanager_t  manager;
+    
+    list_t           __actions;                     // Action map
+    bool             __is_paused;
+    bool             __is_over;
+    void             (*__init)(struct scene_t *);
+    void             (*__update)(struct scene_t *);
+    void             (*__input)(const action_t );
+    void             (*__render)(struct scene_t *);
+    void             (*__destroy)(struct scene_t *);
 
 } scene_t ;
 
 
-scene_t             scene_init(const char *scene_label);
 void                scene_register_action(scene_t *scene, const action_t action);
 
 #define             scene_get_type(PSCENE)                                     (PSCENE)->__enum_id
 #define             scene_get_engine(...)                                      global_poggen
 
-void                scene_destroy(scene_t *scene);
 
 
 /*-----------------------------------------------------------------------------*/
@@ -52,52 +48,47 @@ void                scene_destroy(scene_t *scene);
 void scene_register_action(scene_t *scene, const action_t action)
 {
     assert(scene);
-    if (scene->input == NULL) eprint("`%s` scene is missing a input() function", scene->label);
+    if (scene->__input == NULL) eprint("`%s` scene is missing a input() function", scene->label);
 
-    list_t *list = &scene->actions;
+    list_t *list = &scene->__actions;
     assert(list);
 
     list_append(list, action);
 }
 
-
-scene_t scene_init(const char *scene_label)
-{
-    scene_t scene = {
-        .label      = scene_label,
-        .assets     = NULL,
-        .manager    = entitymanager_init(10),
-        .is_paused  = false,
-        .is_over    = false,
-        .actions    = list_init(MAX_ACTIONS_ALLOWED_PER_SCENE, action_t ),
-
-        .init       = NULL,
-        .update     = NULL,
-        .input      = NULL,
-        .render     = NULL,
-        .destroy    = NULL 
-    };
-
-    return scene;
-}
+#define __impl_scene_init(SCENE_NAME)\
+    (scene_t ){\
+        .label          = #SCENE_NAME,\
+        .assets         = NULL,\
+        .manager        = entitymanager_init(10),\
+        .__actions      = list_init(MAX_ACTIONS_ALLOWED_PER_SCENE, action_t ),\
+        .__is_paused    = false,\
+        .__is_over      = false,\
+        .__init         = SCENE_NAME##_init,\
+        .__update       = SCENE_NAME##_update,\
+        .__input        = SCENE_NAME##_input,\
+        .__render       = SCENE_NAME##_render,\
+        .__destroy      = SCENE_NAME##_destroy,\
+   }
 
 
-void scene_destroy(scene_t *scene)
+
+void __scene_destroy(scene_t *scene)
 {
     assert(scene);
 
     entitymanager_destroy(&scene->manager);
-    scene->destroy(scene);
+    scene->__destroy(scene);
 
     scene->assets = NULL;
     scene->label = NULL;
-    scene->init  = NULL;
-    scene->update = NULL;
-    scene->render = NULL;
-    scene->destroy = NULL;
-    scene->input = NULL;
+    scene->__init  = NULL;
+    scene->__update = NULL;
+    scene->__render = NULL;
+    scene->__destroy = NULL;
+    scene->__input = NULL;
 
-    list_destroy(&scene->actions);
+    list_destroy(&scene->__actions);
 }
 
 #endif
