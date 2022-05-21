@@ -29,6 +29,7 @@ glcircle_t      glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
 #define         glbatch_put(PBATCH, ELEM)       queue_put(&(PBATCH)->globjs, (ELEM))
 #define         glbatch_get(PBATCH, ELEM)       queue_get_in_buffer(&(PBATCH)->globjs, (ELEM))
 #define         glbatch_is_empty(PBATCH)        queue_is_empty(&(PBATCH)->globjs)
+void            glbatch_combine(glbatch_t *dest, glbatch_t *src);
 #define         glbatch_clear(PBATCH)           queue_clear(&(PBATCH)->globjs)
 void            glbatch_destroy(glbatch_t *batch);
 
