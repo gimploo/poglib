@@ -20,8 +20,6 @@ typedef struct slot_t {
     bool                *__index_table;
     bool                __are_values_pointers;
 
-    u64                __iter_next_index;
-
 } slot_t ;
 
 
@@ -46,25 +44,28 @@ void                slot_dump(const slot_t *table);
                              IMPLEMENTATION 
 ------------------------------------------------------------------------------*/
 
-#define __impl_slot_for_loop_iterator(PSLOTARRAY, TMP)\
-            if ((PSLOTARRAY)->len != 0)\
-                for (void *(TMP) = __slot_get_next_value((PSLOTARRAY));\
-                         (TMP) != NULL;\
-                         (TMP) = __slot_get_next_value((PSLOTARRAY)))
 
-void *__slot_get_next_value(slot_t *slot)
+void * __slot_iter_get_value(const slot_t *slot, u32 *hits, u32 *index)
 {
-    for (u32 i = slot->__iter_next_index; i < slot->__capacity; i++)
-    {
-        if (slot->__index_table[i] == true) {
-            slot->__iter_next_index = i + 1;
-            return slot_get_value(slot, slot->__iter_next_index - 1);
+    while(*index < slot->__capacity && *hits < slot->len) {
+
+        if (slot->__index_table[*index]) {
+            *hits = *hits + 1;
+            return slot_get_value(slot, *index);
         }
+
+        *index = *index + 1;
     }
 
-    slot->__iter_next_index = 0;
     return NULL;
 }
+
+#define __impl_slot_for_loop_iterator(PSLOTARRAY, ITER)\
+            if ((PSLOTARRAY)->len != 0)\
+                for (void **SLT__index = 0, **SLT__hits = 0, *(ITER) = (void *)__slot_iter_get_value((PSLOTARRAY),(u32 *)&SLT__hits, (u32 *)&SLT__index);\
+                    (ITER) != NULL;\
+                    SLT__index = (void **)((u64)SLT__index + 1),\
+                        (ITER) = (void *)__slot_iter_get_value(PSLOTARRAY, (u32 *)&SLT__hits, (u32 *)&SLT__index))
 
 
 slot_t __impl_slot_init(const u64 array_capacity, const char *elem_type, const u64 elem_size)
@@ -80,7 +81,6 @@ slot_t __impl_slot_init(const u64 array_capacity, const char *elem_type, const u
         .__capacity             = array_capacity,
         .__index_table          = (bool *)calloc(array_capacity, sizeof(bool)),
         .__are_values_pointers  = flag,
-        .__iter_next_index           = 0 
     };
 
     return o;

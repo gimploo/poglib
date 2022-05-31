@@ -23,24 +23,25 @@ int test01(void)
 
     slot_t table = slot_init(100, str_t );
 
-    for (int i = 0; i < 5; i++)
-    {
-        slot_insert(&table, i * 4, names[i]);
-    }
+    slot_insert(&table, 2, names[0]);
+    slot_insert(&table, 3, names[1]);
+    slot_insert(&table, 4, names[2]);
+    slot_insert(&table, 0, names[3]);
 
+    int i = 0;
     slot_iterator(&table, iter) {
         str_t *name = (str_t *)iter;
         print_str(name);
-        printf("\n");
+        printf(" %i \n", (u32 )SLT__index);
     }
 
-    for (int i = 0; i < 5; i++)
-    {
-        slot_delete(&table, i);
-    }
+    /*for (int i = 0; i < 5; i++)*/
+    /*{*/
+        /*slot_delete(&table, i);*/
+    /*}*/
 
     /*slot_print(&table, print_str);*/
-    /*slot_dump(&table);*/
+    slot_dump(&table);
 
     slot_destroy(&table);
 
@@ -105,6 +106,6 @@ int main(void)
     printf("test01\n");
     test01();
     printf("test03\n");
-    /*test03();*/
+    test03();
     return 0;
 }
