@@ -26,7 +26,7 @@ ui_t * __impl_crapgui_get_button_from_frame(const crapgui_t *gui, const char *fr
         if (strcmp(ui->title, button_label) == 0) 
             return ui;
     }
-    eprint("no button found");
+    eprint("no button (%s) found in frame (%s)", button_label, frame->label);
 }
 
 bool __crapgui_is_mouse_over_frame(const crapgui_t *gui, const frame_t *frame)
@@ -34,7 +34,7 @@ bool __crapgui_is_mouse_over_frame(const crapgui_t *gui, const frame_t *frame)
     window_t *win = gui->win;
 
     vec2f_t norm_mouse_position = window_mouse_get_norm_position(win);
-    return quadf_is_point_in_quad(frame->__vertices, norm_mouse_position);
+    return quadf_is_point_in_quad(frame->__frame_cache.quad, norm_mouse_position);
 }
 
 

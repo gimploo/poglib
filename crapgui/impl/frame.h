@@ -6,28 +6,28 @@
 void __frame_update(frame_t *frame, const crapgui_t *gui)
 {
     // Updating frame vertices
-    if (frame->__update_cache_now) {
+    if (frame->__update_both_caches) {
 
         // The entire frame vertices
-        frame->__vertices = 
+        frame->__frame_cache.quad = 
             quadf(vec3f(frame->pos), frame->dim.cmp[X], frame->dim.cmp[Y]);
 
         // frame header
-        glbatch_clear(&frame->__framequads);
+        glbatch_clear(&frame->__frame_cache.glquads);
         glquad_t header = glquad(
                 quadf((vec3f_t ){-1.0f, 1.0f, 1.0f}, 2.0f, 0.2f), 
                 COLOR_BLACK, quadf(vec3f(0.0f),0.0f,0.0f), 0);
-        glbatch_put(&frame->__framequads, header);
+        glbatch_put(&frame->__frame_cache.glquads, header);
 
-        glbatch_clear(&frame->__frametxt); 
+        gltext_clear(&frame->__frame_cache.texts); 
         glfreetypefont_add_text_to_batch(
                 crapgui_get_font(gui, UI_FRAME), 
-                &frame->__frametxt, 
+                &frame->__frame_cache.texts.text, 
                 frame->label, 
                 (vec2f_t ) {-1.0f, 0.9f}, 
                 COLOR_WHITE);
 
-        frame->__update_cache_now = false;
+        frame->__update_both_caches = false;
 
     }
 
@@ -35,10 +35,10 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
 
     for (int type = 0; type < MAX_UI_TYPE_ALLOWED_IN_FRAME; type++)
     {
-        glbatch_t *uibatch  = &frame->__uibatch[type];
-        glbatch_t *txtbatch = &frame->__txtbatch[type];
+        glbatch_t   *uibatch  = &frame->__frame_ui_cache.uibatch[type];
+        gltext_t    *txtbatch = &frame->__frame_ui_cache.txtbatch[type];
         glbatch_clear(uibatch);
-        glbatch_clear(txtbatch);
+        gltext_clear(txtbatch);
     }
 
     // Updating ui elements and adding its vertices to the batch
@@ -46,15 +46,15 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
     slot_iterator(slot, iter) 
     {
         ui_t *ui = (ui_t *)iter;
-        glbatch_t *uibatch  = &frame->__uibatch[ui->type];
-        glbatch_t *txtbatch = &frame->__txtbatch[ui->type];
+        glbatch_t   *uibatch  = &frame->__frame_ui_cache.uibatch[ui->type];
+        glbatch_t   *txtbatch = &frame->__frame_ui_cache.txtbatch[ui->type].text;
 
         __ui_update(ui, frame, gui);
 
-        glquad_t *uiquad = &ui->__glvertices;
+        glquad_t *uiquad = &ui->__cache.glquad;
         glbatch_put(uibatch, *uiquad);
 
-        glbatch_t *txtquads = &ui->__textbatch;
+        glbatch_t *txtquads = &ui->__cache.texts.text;
         glbatch_combine(txtbatch, txtquads);
     }
 
@@ -67,15 +67,15 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
     GL_CHECK(glEnable(GL_BLEND));
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-    glframebuffer_t *fbo = &frame->__texture;
+    glframebuffer_t *fbo = &frame->__frame_ui_cache.texture;
     glframebuffer_begin_texture(fbo);
 
     // Texturing the uis together
     {
         for (u32 i = 0; i < MAX_UI_TYPE_ALLOWED_IN_FRAME; i++)
         {
-            glbatch_t *uibatch      = &frame->__uibatch[i]; 
-            glbatch_t *txtbatch     = &frame->__txtbatch[i];
+            glbatch_t *uibatch      = &frame->__frame_ui_cache.uibatch[i]; 
+            glbatch_t *txtbatch     = &frame->__frame_ui_cache.txtbatch[i].text;
 
             if (glbatch_is_empty(uibatch)) {
                 continue;
@@ -98,10 +98,10 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
             .shader = &gui->__common_shader,
             .texture = NULL
         };
-        glrenderer2d_draw_from_batch(&R2d, &frame->__framequads);
+        glrenderer2d_draw_from_batch(&R2d, &frame->__frame_cache.glquads);
         glfreetypefont_draw(
                 crapgui_get_font(gui, UI_FRAME), 
-                &frame->__frametxt);
+                &frame->__frame_cache.texts.text);
     }
     glframebuffer_end_texture(fbo);
 }
@@ -110,11 +110,11 @@ void __frame_render(const frame_t *frame, const crapgui_t *gui)
 {
     glrenderer2d_t r2d = {
         .shader = &gui->shaders[UI_FRAME],
-        .texture = &frame->__texture.texture2d,
+        .texture = &frame->__frame_ui_cache.texture.texture2d,
     };
 
     glquad_t quad = glquad(
-                frame->__vertices,
+                frame->__frame_cache.quad,
                 frame->color,
                 quadf(vec3f(0.0f), 1.0f, 1.0f), 
                 0);
@@ -179,23 +179,29 @@ frame_t frame_init(const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim)
         .margin             = DEFAULT_FRAME_MARGIN,
         .uis                = slot_init(MAX_UI_CAPACITY_PER_FRAME, ui_t ),
 
-        .__frametxt         = glbatch_init(cap_per_batch, glquad_t ),
-        .__framequads       = glbatch_init(cap_per_batch, glquad_t ),
+        .__update_both_caches = true,
 
-        .__update_cache_now = true,
-        .__texture          = glframebuffer_init(global_window->width, global_window->height),
-
-        .__uibatch          = {
-
-            [UI_BUTTON] = glbatch_init(cap_per_batch, glquad_t ),
-            [UI_LABEL]  = glbatch_init(cap_per_batch, glquad_t ),
-
+        .__frame_cache = {
+            .quad                 = {0},
+            .texts                 = gltext_init(cap_per_batch),
+            .glquads              = glbatch_init(cap_per_batch, glquad_t ),
         },
-        .__txtbatch         = {
 
-            [UI_BUTTON] = glbatch_init(cap_per_batch, glquad_t ),
-            [UI_LABEL]  = glbatch_init(cap_per_batch, glquad_t ),
+        .__frame_ui_cache = {
 
+            .texture = glframebuffer_init(global_window->width, global_window->height),
+            .uibatch = {
+
+                [UI_BUTTON] = glbatch_init(cap_per_batch, glquad_t ),
+                [UI_LABEL]  = glbatch_init(cap_per_batch, glquad_t ),
+
+            },
+            .txtbatch = {
+
+                [UI_BUTTON] = gltext_init(cap_per_batch),
+                [UI_LABEL]  = gltext_init(cap_per_batch),
+
+            },
         },
 
         .update             = __frame_update,
@@ -206,7 +212,6 @@ frame_t frame_init(const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim)
 
 void frame_destroy(frame_t *self)
 {
-    glframebuffer_destroy(&self->__texture);
 
     slot_t *slot = &self->uis;
     slot_iterator(slot, iter) {
@@ -218,12 +223,13 @@ void frame_destroy(frame_t *self)
 
     for (u32 i = 0; i < MAX_UI_TYPE_ALLOWED_IN_FRAME; i++)
     {
-        glbatch_destroy(&self->__uibatch[i]);
-        glbatch_destroy(&self->__txtbatch[i]);
+        glbatch_destroy(&self->__frame_ui_cache.uibatch[i]);
+        gltext_destroy(&self->__frame_ui_cache.txtbatch[i]);
     }
 
-    glbatch_destroy(&self->__frametxt);
-    glbatch_destroy(&self->__framequads);
+    glframebuffer_destroy(&self->__frame_ui_cache.texture);
+    gltext_destroy(&self->__frame_cache.texts);
+    glbatch_destroy(&self->__frame_cache.glquads);
 
 }
 
@@ -231,7 +237,7 @@ void frame_destroy(frame_t *self)
 vec2f_t frame_get_mouse_position(const frame_t *frame)
 {
     const vec2f_t mpos  = window_mouse_get_norm_position(global_window);
-    const quadf_t rect  = frame->__vertices;
+    const quadf_t rect  = frame->__frame_cache.quad;
     const vec2f_t dim_half = {
         frame->dim.cmp[X] / 2.0f, 
         frame->dim.cmp[Y] / 2.0f 
@@ -287,7 +293,7 @@ void __frame_add_ui(frame_t *frame, crapgui_t *gui, const char *label, uitype ty
     ui->is_hot      = false;
     ui->textcolor   = DEFAULT_UI_TEXT_COLOR;
 
-    ui->__textbatch   = glbatch_init(KB, glquad_t );
+    ui->__cache.texts  = gltext_init(KB);
 
     __ui_update(ui, frame, gui);
 }

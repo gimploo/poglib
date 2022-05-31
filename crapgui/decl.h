@@ -6,9 +6,9 @@
 // CRAPGUI ( IMMEDIATE UI INSPIRED GUI LIB )
 =============================================================================*/
 
-typedef struct crapgui_t crapgui_t ;
-typedef struct frame_t  frame_t ;
-typedef struct ui_t ui_t ;
+typedef struct crapgui_t    crapgui_t ;
+typedef struct frame_t      frame_t ;
+typedef struct ui_t         ui_t ;
 
 typedef enum uitype {
 
@@ -48,10 +48,13 @@ typedef struct ui_t {
     bool                is_active;
 
     // opengl specifics
-    bool                __update_cache_now;
-    quadf_t             __vertices;
-    glquad_t            __glvertices;
-    glbatch_t           __textbatch;
+    
+    bool                __update_cache;
+    struct {
+        quadf_t         quad;
+        glquad_t        glquad;
+        gltext_t        texts;
+    } __cache;
 
 } ui_t ;
 
@@ -102,14 +105,19 @@ typedef struct frame_t {
     vec2f_t             margin;
     slot_t              uis;
 
-    glbatch_t           __frametxt;
-    glbatch_t           __framequads;
+    bool                __update_both_caches;
 
-    bool                __update_cache_now;
-    glframebuffer_t     __texture;
-    quadf_t             __vertices;
-    glbatch_t           __uibatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
-    glbatch_t           __txtbatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
+    struct {
+        quadf_t             quad;
+        gltext_t            texts;
+        glbatch_t           glquads;
+    } __frame_cache;
+
+    struct {
+        glframebuffer_t         texture;
+        glbatch_t               uibatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
+        gltext_t                txtbatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
+    } __frame_ui_cache;
 
     void (*update)(struct frame_t * self, const crapgui_t *gui);
     void (*render)(const struct frame_t * self, const crapgui_t *gui);
