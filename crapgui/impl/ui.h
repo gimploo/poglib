@@ -4,15 +4,15 @@
 
 void __ui_destroy(ui_t *elem)
 {
-    glbatch_destroy(&elem->__textbatch);
+    gltext_destroy(&elem->__cache.texts);
 }
 
 void __ui_cache_vertices(ui_t *ui, const crapgui_t *gui)
 {
-    ui->__vertices = 
+    ui->__cache.quad = 
         quadf(vec3f(ui->pos), ui->dim.cmp[X], ui->dim.cmp[Y]);
 
-    glbatch_t *txtbatch = &ui->__textbatch;
+    glbatch_t *txtbatch = &ui->__cache.texts.text;
 
     vec2f_t centerpos = {
         .cmp[X] = ui->pos.cmp[X] ,
@@ -32,7 +32,7 @@ void __ui_check_is_mouse_over(ui_t *ui, const frame_t *frame)
     window_t *win = window_get_current_active_window();
     vec2f_t mouse_position = frame_get_mouse_position(frame);
 
-    if(quadf_is_point_in_quad(ui->__vertices, mouse_position)) {
+    if(quadf_is_point_in_quad(ui->__cache.quad, mouse_position)) {
         ui->is_hot      = true;
         ui->is_active   = false;
     } else {
@@ -64,18 +64,18 @@ void __ui_update(ui_t *ui, const frame_t *frame, const crapgui_t *gui)
             __ui_check_is_mouse_clicked(ui, gui);
 
             if (ui->is_hot)
-                ui->__glvertices = glquad(ui->__vertices,
+                ui->__cache.glquad = glquad(ui->__cache.quad,
                                     ui->hovercolor,
                                     quadf(vec3f(0.0f), 0.0f, 0.0f), 0);
             else
-                ui->__glvertices = glquad(ui->__vertices,
+                ui->__cache.glquad = glquad(ui->__cache.quad,
                                     ui->basecolor,
                                     quadf(vec3f(0.0f), 0.0f, 0.0f), 0);
         break;
 
         case UI_LABEL:
-            ui->__glvertices = 
-                glquad(ui->__vertices, ui->basecolor,
+            ui->__cache.glquad = 
+                glquad(ui->__cache.quad, ui->basecolor,
                         quadf(vec3f(0.0f), 0.0f, 0.0f), 0);
         break;
 
