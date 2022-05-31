@@ -8,7 +8,6 @@ typedef struct glvertex_t   glvertex_t;
 typedef struct gltri_t      gltri_t;
 typedef struct glquad_t     glquad_t;
 typedef struct glcircle_t   glcircle_t;
-typedef struct glbatch_t    glbatch_t;
 
 typedef enum {
 
@@ -25,6 +24,17 @@ glquad_t        glquad(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 t
 glcircle_t      glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
 
 
+typedef struct glbatch_t {
+
+    queue_t             globjs;
+    glbatch_type        type;
+
+    vao_t vao;
+    vbo_t vbo;
+    ebo_t ebo;
+
+} glbatch_t ;
+
 #define         glbatch_init(CAPACITY, TYPE)    __impl_glbatch_init((CAPACITY), GLBT_type(TYPE), #TYPE, sizeof(TYPE))
 #define         glbatch_put(PBATCH, ELEM)       queue_put(&(PBATCH)->globjs, (ELEM))
 #define         glbatch_get(PBATCH, ELEM)       queue_get_in_buffer(&(PBATCH)->globjs, (ELEM))
@@ -34,11 +44,18 @@ void            glbatch_combine(glbatch_t *dest, glbatch_t *src);
 void            glbatch_destroy(glbatch_t *batch);
 
 
+typedef struct {
 
+    glbatch_t text;
 
+} gltext_t;
 
-
-
+#define         gltext_init(CAPACITY)           __impl_gltext_init((CAPACITY), GLBT_type(glquad_t), "glquad_t", sizeof(glquad_t))
+#define         gltext_put(PTEXT, ELEM)         queue_put(&(PTEXT)->text.globjs, (ELEM))
+#define         gltext_get(PTEXT, ELEM)         queue_get_in_buffer(&(PTEXT)->text.globjs, (ELEM))
+#define         gltext_is_empty(PTEXT)          queue_is_empty(&(PTEXT)->text.globjs)
+#define         gltext_clear(PTEXT)             queue_clear(&(PTEXT)->text.globjs)
+#define         gltext_destroy(PTEXT)           glbatch_destroy(&(PTEXT)->text)
 
 
 
@@ -174,16 +191,6 @@ glcircle_t glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
 
 #define GLBT_type(TYPE) GLBT_##TYPE
 
-struct glbatch_t {
-
-    queue_t             globjs;
-    glbatch_type        type;
-
-    vao_t vao;
-    vbo_t vbo;
-    ebo_t ebo;
-
-};
 
 
 void __gen_quad_indices(u32 indices[], const u32 shape_count)
@@ -212,6 +219,18 @@ void __gen_quad_indices(u32 indices[], const u32 shape_count)
     //}
 
 //}
+//
+gltext_t __impl_gltext_init(u64 capacity, glbatch_type type, const char *type_name, u64 type_size)
+{
+    glbatch_t o =  {
+        .globjs   = __impl_queue_init(capacity, type_size, type_name),
+        .type     = type
+    };
+
+    return (gltext_t ) {
+        .text = o
+    };
+}
 glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, const char *type_name, u64 type_size)
 {
     glbatch_t o =  {
