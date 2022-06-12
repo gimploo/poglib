@@ -9,7 +9,7 @@
 #include "./ds/linkedlist.h"
 
 
-const char *IGNORE_FILES[] = { "stb_image.h" };
+const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h" };
 
 
 /*=============================================================================
