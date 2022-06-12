@@ -24,6 +24,7 @@ int main(void)
 
     glfreetypefont_add_text_to_batch(&font, &sbatch, "JUICE", (vec2f_t ){0.6f,-0.6f},  COLOR_CYAN);
     glframebuffer_t fbo = glframebuffer_init(700, 800);
+    glshader_t shader = glshader_default_init();
 
     int i = 0;
     while(win->is_open)
@@ -41,7 +42,6 @@ int main(void)
         glframebuffer_end_texture(&fbo);
 
         glbatch_clear(&dbatch);
-        glshader_t shader = glshader_default_init();
         glrenderer2d_t r2d = {
             .shader = &shader,
             .texture = &fbo.texture2d,
@@ -58,7 +58,9 @@ int main(void)
 
     glbatch_destroy(&sbatch);
     glbatch_destroy(&dbatch);
+    glshader_destroy(&shader);
 
+    glframebuffer_destroy(&fbo);
     glfreetypefont_destroy(&font);
     window_destroy();
     dbg_destroy();
