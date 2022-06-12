@@ -10,7 +10,7 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
 
         // The entire frame vertices
         frame->__frame_cache.quad = 
-            quadf(vec3f(frame->pos), frame->dim.cmp[X], frame->dim.cmp[Y]);
+            quadf(vec3f(frame->pos), frame->styles.width, frame->styles.height);
 
         // frame header
         glbatch_clear(&frame->__frame_cache.glquads);
@@ -59,10 +59,10 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
     }
 
     GL_CHECK(glClearColor(
-            frame->color.cmp[0],
-            frame->color.cmp[1],
-            frame->color.cmp[2],
-            frame->color.cmp[3]
+            frame->styles.color.cmp[0],
+            frame->styles.color.cmp[1],
+            frame->styles.color.cmp[2],
+            frame->styles.color.cmp[3]
     ));
     GL_CHECK(glEnable(GL_BLEND));
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
@@ -115,7 +115,7 @@ void __frame_render(const frame_t *frame, const crapgui_t *gui)
 
     glquad_t quad = glquad(
                 frame->__frame_cache.quad,
-                frame->color,
+                frame->styles.color,
                 quadf(vec3f(0.0f), 1.0f, 1.0f), 
                 0);
     /*vec3f_t pos = {-1.0f, 1.0f, 0.0f};*/
@@ -142,41 +142,39 @@ vec2f_t __frame_get_pos_for_new_ui(const frame_t *frame, const vec2f_t ndim)
 
     ui_t *prev_elem = (ui_t *)slot_get_value(uis, uis->len - 2);
     assert(prev_elem);
-    const vec2f_t margin = prev_elem->margin;
+    const vec2f_t margin = prev_elem->styles.margin;
 
-    if ((prev_elem->pos.cmp[X] + (prev_elem->dim.cmp[X] + ndim.cmp[X]) + margin.cmp[X]) >= 1.0f) {
+    if ((prev_elem->pos.cmp[X] + (prev_elem->styles.width + ndim.cmp[X]) + margin.cmp[X]) >= 1.0f) {
 
         output = (vec2f_t ){
             .cmp[X] = -1.0f + margin.cmp[X],
-            .cmp[Y] = prev_elem->pos.cmp[Y] - prev_elem->dim.cmp[Y] - margin.cmp[Y],
+            .cmp[Y] = prev_elem->pos.cmp[Y] - prev_elem->styles.height - margin.cmp[Y],
         };
 
     } else {
 
         output = (vec2f_t ){
-            .cmp[X] = prev_elem->pos.cmp[X] + prev_elem->dim.cmp[X] + margin.cmp[X],
+            .cmp[X] = prev_elem->pos.cmp[X] + prev_elem->styles.width + margin.cmp[X],
             .cmp[Y] = prev_elem->pos.cmp[Y],
         };
 
     }
 
-    if (output.cmp[Y] - prev_elem->dim.cmp[Y] - ndim.cmp[Y] - margin.cmp[Y] <= -1.0f)
+    if (output.cmp[Y] - prev_elem->styles.height - ndim.cmp[Y] - margin.cmp[Y] <= -1.0f)
         eprint("This ui cannot fit in the window");
 
     return output;
 }
 
 
-frame_t frame_init(const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim)
+frame_t frame_init(const char *label, vec2f_t pos, uistyle_t styles)
 {
     const u64 cap_per_batch = KB;
 
     return (frame_t ) {
         .label              = label,
         .pos                = pos,
-        .dim                = dim,
-        .color              = color,
-        .margin             = DEFAULT_FRAME_MARGIN,
+        .styles             = styles,
         .uis                = slot_init(MAX_UI_CAPACITY_PER_FRAME, ui_t ),
 
         .__update_both_caches = true,
@@ -239,8 +237,8 @@ vec2f_t frame_get_mouse_position(const frame_t *frame)
     const vec2f_t mpos  = window_mouse_get_norm_position(global_window);
     const quadf_t rect  = frame->__frame_cache.quad;
     const vec2f_t dim_half = {
-        frame->dim.cmp[X] / 2.0f, 
-        frame->dim.cmp[Y] / 2.0f 
+        frame->styles.width / 2.0f, 
+        frame->styles.height / 2.0f 
     };
 
     const vec2f_t origin = {
@@ -259,7 +257,7 @@ vec2f_t frame_get_mouse_position(const frame_t *frame)
     };
 }
 
-void __frame_add_ui(frame_t *frame, crapgui_t *gui, const char *label, uitype type)
+void __frame_add_ui(frame_t *frame, crapgui_t *gui, const char *label, uitype type, uistyle_t styles)
 {
     assert(type != UI_FRAME);
 
@@ -269,31 +267,15 @@ void __frame_add_ui(frame_t *frame, crapgui_t *gui, const char *label, uitype ty
     slot_t *slot = &frame->uis;
     ui_t *ui = (ui_t *)slot_append(slot, tmp);
 
-    switch(type)
-    {
-        case UI_BUTTON:
-            ui->dim         = DEFAULT_BUTTON_DIMENSIONS;
-            ui->basecolor   = DEFAULT_BUTTON_COLOR;
-            ui->hovercolor  = DEFAULT_BUTTON_HOVER_COLOR;
-        break;
-
-        case UI_LABEL:
-            ui->dim         = DEFAULT_LABEL_DIMENSIONS;
-            ui->basecolor   = DEFAULT_LABEL_COLOR;
-        break;
-
-        default: eprint("type not accounted for ");
-    }
-
-    ui->title       = label;
-    ui->type        = type;
-    ui->pos         = __frame_get_pos_for_new_ui(frame, ui->dim);
-    ui->margin      = DEFAULT_UI_MARGIN;
-    ui->is_active   = false;    
-    ui->is_hot      = false;
-    ui->textcolor   = DEFAULT_UI_TEXT_COLOR;
-
-    ui->__cache.texts  = gltext_init(KB);
+    ui->styles          = styles;
+    ui->title           = label;
+    ui->type            = type;
+    ui->pos             = __frame_get_pos_for_new_ui(
+                            frame, 
+                            (vec2f_t ){ styles.width, styles.height });
+    ui->is_active       = false;    
+    ui->is_hot          = false;
+    ui->__cache.texts   = gltext_init(KB);
 
     __ui_update(ui, frame, gui);
 }

@@ -8,24 +8,29 @@ void appinit(application_t *app)
 
     crapgui_layout(gui) {
 
-        frame("FRAME01") {
+        frame("FRAME01", DEFAULT_FRAME_STYLE ) {
             /*label("Test");*/
-            button("Button01"); button("Button02");
-            button("Button03"); button("Button04");
-            label("Confirm"); button("Submit");
-            label("THIS IS A LABEL");
+            button("Button01", DEFAULT_BUTTON_STYLE); 
+            button("Button02", DEFAULT_BUTTON_STYLE);
+            button("Button03", DEFAULT_BUTTON_STYLE); 
+            button("Button04", DEFAULT_BUTTON_STYLE);
+            label("Confirm", DEFAULT_LABEL_STYLE); 
+            button("Submit", DEFAULT_BUTTON_STYLE);
+            label("THIS IS A LABEL", DEFAULT_LABEL_STYLE);
         }
 
-        frame("FRAME02") {
-            label("Confirm"); button("Submit");
-            label("THIS IS A LABEL");
+        frame("FRAME02", DEFAULT_FRAME_STYLE) {
+            label("Confirm", DEFAULT_LABEL_STYLE); 
+            button("Submit", DEFAULT_BUTTON_STYLE);
+            label("THIS IS A LABEL", DEFAULT_LABEL_STYLE);
         }
-        frame("FRAME03") {
-            label("THIS IS A LABEL");
+        frame("FRAME03", DEFAULT_FRAME_STYLE) {
+            label("THIS IS A LABEL", DEFAULT_LABEL_STYLE);
         }
 
-        frame("FRAME04") {
-            button("Button03"); button("Button04");
+        frame("FRAME04", DEFAULT_FRAME_STYLE) {
+            button("Button03", DEFAULT_BUTTON_STYLE); 
+            button("Button04", DEFAULT_BUTTON_STYLE);
         }
 
     };

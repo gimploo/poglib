@@ -10,19 +10,19 @@ void __ui_destroy(ui_t *elem)
 void __ui_cache_vertices(ui_t *ui, const crapgui_t *gui)
 {
     ui->__cache.quad = 
-        quadf(vec3f(ui->pos), ui->dim.cmp[X], ui->dim.cmp[Y]);
+        quadf(vec3f(ui->pos), ui->styles.width, ui->styles.height);
 
     glbatch_t *txtbatch = &ui->__cache.texts.text;
 
     vec2f_t centerpos = {
         .cmp[X] = ui->pos.cmp[X] ,
-        .cmp[Y] = ui->pos.cmp[Y] - ui->dim.cmp[Y]/2
+        .cmp[Y] = ui->pos.cmp[Y] - ui->styles.height/2
     };
 
     glfreetypefont_t *font = crapgui_get_font(gui, ui->type);
     glbatch_clear(txtbatch);
     glfreetypefont_add_text_to_batch(
-            font, txtbatch, ui->title, centerpos, ui->textcolor);
+            font, txtbatch, ui->title, centerpos, ui->styles.textcolor);
 
 }
 
@@ -65,17 +65,17 @@ void __ui_update(ui_t *ui, const frame_t *frame, const crapgui_t *gui)
 
             if (ui->is_hot)
                 ui->__cache.glquad = glquad(ui->__cache.quad,
-                                    ui->hovercolor,
+                                    ui->styles.hovercolor,
                                     quadf(vec3f(0.0f), 0.0f, 0.0f), 0);
             else
                 ui->__cache.glquad = glquad(ui->__cache.quad,
-                                    ui->basecolor,
+                                    ui->styles.color,
                                     quadf(vec3f(0.0f), 0.0f, 0.0f), 0);
         break;
 
         case UI_LABEL:
             ui->__cache.glquad = 
-                glquad(ui->__cache.quad, ui->basecolor,
+                glquad(ui->__cache.quad, ui->styles.color,
                         quadf(vec3f(0.0f), 0.0f, 0.0f), 0);
         break;
 
