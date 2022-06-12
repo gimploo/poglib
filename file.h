@@ -30,7 +30,7 @@ struct file_t {
 
 file_t          file_init(const char *file_path);
 bool            file_open(file_t *file, const char *mode);
-void            file_read_to_buf(file_t *file, char * const buffer, size_t bytes);
+void            file_read_to_buf(file_t *file, char * const buffer, size_t bufferbytes);
 void            file_destroy(file_t * const file);
 
 #define file_close(pfile) {\
@@ -78,17 +78,17 @@ bool file_open(file_t *file, const char *mode)
 }
 
 
-void file_read_to_buf(file_t *file,  char * const buffer, size_t bytes)
+void file_read_to_buf(file_t *file,  char * const buffer, size_t bufferbytes)
 {
     assert(file != NULL);
     assert(buffer != NULL);
-    assert(bytes <= file->size);
+    assert(bufferbytes <= file->size);
 
     if (file->is_closed || file->fp == NULL) 
         if(!file_open(file, "r")) 
             eprint("Error: unable to open file");
     
-    fread(buffer, bytes, 1, file->fp);
+    fread(buffer, bufferbytes, 1, file->fp);
 }
 
 void file_readall(file_t * const file, char *buffer, u64 buffer_size)
