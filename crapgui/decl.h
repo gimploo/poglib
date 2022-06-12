@@ -25,30 +25,26 @@ typedef enum uitype {
 
 } uitype;
 
+typedef struct uistyle_t {
+
+    f32         width;
+    f32         height;
+    vec2f_t     padding;
+    vec2f_t     margin;
+    vec4f_t     color;
+    vec4f_t     hovercolor;
+    vec4f_t     textcolor;
+
+} uistyle_t ;
+
 typedef struct ui_t {
 
-    //name
     const char          *title;
-
-    // ui type (like button ,label, ...)
     uitype              type;
-
-    //positoning
+    uistyle_t           styles;
     vec2f_t             pos;
-    vec2f_t             dim;
-    vec2f_t             margin;
-
-    // color
-    vec4f_t             textcolor;
-    vec4f_t             basecolor;
-    vec4f_t             hovercolor;
-
-    // mouse related things ..
     bool                is_hot;
     bool                is_active;
-
-    // opengl specifics
-    
     bool                __update_cache;
     struct {
         quadf_t         quad;
@@ -59,14 +55,13 @@ typedef struct ui_t {
 } ui_t ;
 
 
+
 typedef struct crapgui_t {
 
     window_t            *win;
     glfreetypefont_t    fonts[UITYPE_COUNT];
-
     glshader_t          shaders[UITYPE_COUNT];
     map_t               frames;
-
     glshader_t          __common_shader;
 
     void (*update)(struct crapgui_t *);
@@ -92,39 +87,51 @@ typedef struct crapgui_t {
 #define FRAME_HEADER_HEIGHT                 0.2f
 #define DEFAULT_FRAME_FONT_PATH             "lib/poglib/res/ttf_fonts/Roboto-Medium.ttf"
 #define DEFAULT_FRAME_FONT_SIZE             20 
-#define DEFAULT_FRAME_DIMENSIONS            (vec2f_t ){ 0.8f, 0.8f }
-#define DEFAULT_FRAME_BACKGROUNDCOLOR       COLOR_RED
+#define DEFAULT_FRAME_WIDTH                 0.8f
+#define DEFAULT_FRAME_HEIGHT                0.8f
+#define DEFAULT_FRAME_COLOR                 COLOR_RED
+#define DEFAULT_FRAME_HOVER_COLOR           COLOR_BLUE
 #define DEFAULT_FRAME_MARGIN                (vec2f_t ){0.04f, 0.04f}
+
+#define DEFAULT_FRAME_STYLE\
+    (uistyle_t ) {          \
+        .width          = DEFAULT_FRAME_WIDTH,\
+        .height         = DEFAULT_FRAME_HEIGHT,\
+        .padding        = 0.0f,\
+        .margin         = DEFAULT_FRAME_MARGIN,\
+        .color          = DEFAULT_FRAME_COLOR,\
+        .hovercolor     = DEFAULT_FRAME_HOVER_COLOR,\
+        .textcolor      = DEFAULT_UI_TEXT_COLOR,\
+    }
 
 typedef struct frame_t {
 
-    const char          *label;
-    vec2f_t             pos;
-    vec2f_t             dim;
-    vec4f_t             color;
-    vec2f_t             margin;
-    slot_t              uis;
-
-    bool                __update_both_caches;
-
+    const char              *label;
+    vec2f_t                 pos;
+    uistyle_t               styles;
+    slot_t                  uis;
+    bool                    __update_both_caches;
     struct {
+
         quadf_t             quad;
         gltext_t            texts;
         glbatch_t           glquads;
-    } __frame_cache;
 
+    } __frame_cache;
     struct {
-        glframebuffer_t         texture;
-        glbatch_t               uibatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
-        gltext_t                txtbatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
-    } __frame_ui_cache;
+
+        glframebuffer_t     texture;
+        glbatch_t           uibatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
+        gltext_t            txtbatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
+
+    }__frame_ui_cache;
 
     void (*update)(struct frame_t * self, const crapgui_t *gui);
     void (*render)(const struct frame_t * self, const crapgui_t *gui);
 
 } frame_t ;
 
-frame_t     frame_init(const char *label, vec2f_t pos, vec4f_t color, vec2f_t dim);
+frame_t     frame_init(const char *label, vec2f_t pos, uistyle_t styles);
 vec2f_t     frame_get_mouse_position(const frame_t *frame);
 void        frame_destroy(frame_t *self);
 
@@ -137,7 +144,19 @@ void        frame_destroy(frame_t *self);
 #define DEFAULT_BUTTON_FONT_SIZE        28 
 #define DEFAULT_BUTTON_COLOR            COLOR_BLUE
 #define DEFAULT_BUTTON_HOVER_COLOR      (vec4f_t ){0.0f, 0.0f, 1.0f, 0.7f}
-#define DEFAULT_BUTTON_DIMENSIONS       (vec2f_t ){0.4f, 0.2f}
+#define DEFAULT_BUTTON_WIDTH            0.4f
+#define DEFAULT_BUTTON_HEIGHT           0.2f
+
+#define DEFAULT_BUTTON_STYLE\
+    (uistyle_t ) {          \
+        .width          = DEFAULT_BUTTON_WIDTH,\
+        .height         = DEFAULT_BUTTON_HEIGHT,\
+        .padding        = 0.0f,\
+        .margin         = DEFAULT_UI_MARGIN,\
+        .color          = DEFAULT_BUTTON_COLOR,\
+        .hovercolor     = DEFAULT_BUTTON_HOVER_COLOR,\
+        .textcolor      = DEFAULT_UI_TEXT_COLOR,\
+    }
 
 
 /*=============================================================================
@@ -146,7 +165,18 @@ void        frame_destroy(frame_t *self);
 
 #define DEFAULT_LABEL_FONT_PATH        "lib/poglib/res/ttf_fonts/Roboto-Medium.ttf"
 #define DEFAULT_LABEL_FONT_SIZE        38
-#define DEFAULT_LABEL_DIMENSIONS       (vec2f_t ){0.9f, 0.2f}
+#define DEFAULT_LABEL_WIDTH            0.9f
+#define DEFAULT_LABEL_HEIGHT           0.2f
 #define DEFAULT_LABEL_COLOR            COLOR_BLACK
 
+#define DEFAULT_LABEL_STYLE\
+    (uistyle_t ) {          \
+        .width          = DEFAULT_LABEL_WIDTH,\
+        .height         = DEFAULT_LABEL_HEIGHT,\
+        .padding        = 0.0f,\
+        .margin         = DEFAULT_UI_MARGIN,\
+        .color          = DEFAULT_LABEL_COLOR,\
+        .hovercolor     = vec4f(0.0f),\
+        .textcolor      = DEFAULT_UI_TEXT_COLOR,\
+    }
 

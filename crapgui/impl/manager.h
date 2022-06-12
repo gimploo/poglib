@@ -93,48 +93,45 @@ crapgui_t crapgui_init(void)
 
 vec2f_t __crapgui_get_pos_for_new_frame(const crapgui_t *gui)
 {
-    vec2f_t output      = {0};
-    const map_t *frames = &gui->frames;
-    vec2f_t margin      = DEFAULT_FRAME_MARGIN;
+    vec2f_t output       = {0};
+    const map_t *frames  = &gui->frames;
 
+    const vec2f_t df_margin = DEFAULT_FRAME_MARGIN;
     if (frames->len == 0) 
-        return (vec2f_t ) { -1.0f + margin.cmp[X], 1.0f - margin.cmp[Y] };
+        return (vec2f_t ) { -1.0f + df_margin.cmp[X], 1.0f - df_margin.cmp[Y] };
 
     const u64 last_index = frames->len - 1;
     frame_t *prev_frame = (frame_t *)map_get_value_at_index(
                             frames, 
                             last_index);
 
-    if ((prev_frame->pos.cmp[X] + (2.0f * prev_frame->dim.cmp[X]) + margin.cmp[X]) 
+    if ((prev_frame->pos.cmp[X] + (2.0f * prev_frame->styles.width) + prev_frame->styles.margin.cmp[X]) 
             >= 1.0f) {
-        output.cmp[X] = -1.0f + margin.cmp[X];
+        output.cmp[X] = -1.0f + prev_frame->styles.margin.cmp[X];
         output.cmp[Y] = 
-            prev_frame->pos.cmp[Y] - prev_frame->dim.cmp[Y] - margin.cmp[Y];
+            prev_frame->pos.cmp[Y] - prev_frame->styles.height - prev_frame->styles.margin.cmp[Y];
     } else {
         output.cmp[X] = 
-            prev_frame->pos.cmp[X] + prev_frame->dim.cmp[X] + margin.cmp[X];
+            prev_frame->pos.cmp[X] + prev_frame->styles.width + prev_frame->styles.margin.cmp[X];
         output.cmp[Y] = 
             prev_frame->pos.cmp[Y];
     }
 
-    if (output.cmp[Y] - prev_frame->dim.cmp[Y] - margin.cmp[Y] <= -1.0f)
+    if (output.cmp[Y] - prev_frame->styles.height - prev_frame->styles.margin.cmp[Y] <= -1.0f)
         eprint("This frame cannot fit in the window");
 
     return output;
 
 }
 
-frame_t * __crapgui_add_frame(crapgui_t *gui, const char *label)
+frame_t * __crapgui_add_frame(crapgui_t *gui, const char *label, uistyle_t style)
 {
     map_t *map = &gui->frames;
-
 
     vec2f_t pos     = __crapgui_get_pos_for_new_frame(gui);
     frame_t frame   = frame_init(
                         label, 
-                        pos, 
-                        DEFAULT_FRAME_BACKGROUNDCOLOR, 
-                        DEFAULT_FRAME_DIMENSIONS);
+                        pos, style);
 
     __frame_update(&frame, gui);
 
