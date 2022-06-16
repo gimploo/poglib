@@ -71,6 +71,7 @@ typedef struct crapgui_t {
     struct {
         bool                is_on;
         frame_t             *active_frame;
+        ui_t                *active_ui;
     } edit_mode;
 
     void (*update)(struct crapgui_t *);
