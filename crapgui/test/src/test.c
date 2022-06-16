@@ -1,3 +1,4 @@
+#define SDL2_ENABLE_LOG
 #include <poglib/crapgui.h>
 
 
@@ -6,12 +7,14 @@ void appinit(application_t *app)
     crapgui_t *gui = app->content;
     *gui = crapgui_init();
 
+
     crapgui_layout(gui) {
 
         frame("FRAME01", DEFAULT_FRAME_STYLE ) {
             /*label("Test");*/
             button("Button01", DEFAULT_BUTTON_STYLE); 
             button("Button02", DEFAULT_BUTTON_STYLE);
+
             button("Button03", DEFAULT_BUTTON_STYLE); 
             button("Button04", DEFAULT_BUTTON_STYLE);
             label("Confirm", DEFAULT_LABEL_STYLE); 
