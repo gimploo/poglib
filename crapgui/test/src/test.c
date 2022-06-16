@@ -1,6 +1,4 @@
-#define SDL2_ENABLE_LOG
 #include <poglib/crapgui.h>
-
 
 void appinit(application_t *app) 
 {
