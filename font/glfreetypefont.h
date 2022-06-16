@@ -7,6 +7,8 @@
 /*=============================================================================
                     - TEXT RENDERER (FreeTypeFont) -
 =============================================================================*/
+//NOTE: text texture positioning origin starts at the bottom left of the 
+//quad, when passing the position
 
 #define MAX_CHARACTERS_IN_FREETYPE 128
 
@@ -208,10 +210,8 @@ void glfreetypefont_add_text_to_batch(glfreetypefont_t *self, glbatch_t *batch, 
     assert(text);
     assert(batch);
 
-    u32 size_delta = abs(30 - self->fontsize);
-
     f32 x = pos.cmp[X];
-    f32 y = pos.cmp[Y] + (0.08f  / size_delta) ;
+    f32 y = pos.cmp[Y];
 
     f32 sx = 2.0f / global_window->width;
     f32 sy = 2.0f / global_window->height;
