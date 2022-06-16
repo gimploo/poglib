@@ -72,10 +72,9 @@ void                window_update_user_input(window_t *window);
 void                window_set_background(window_t *window, vec4f_t color);
 void                window_update_title(window_t *window, const char *title);
 
-#define             window_keyboard_is_key_just_pressed(PWINDOW, KEY)           ((PWINDOW)->keyboard_handler.just_pressed[SDL_GetScancodeFromKey(KEY)] == true)
-#define             window_keyboard_is_key_held(PWINDOW, KEY)                   ((PWINDOW)->keyboard_handler.is_held[SDL_GetScancodeFromKey(KEY)] == true)
-#define             window_keyboard_is_key_pressed(PWINDOW, KEY)                ((PWINDOW)->keyboard_handler.keystate[SDL_GetScancodeFromKey(KEY)] == true)
-#define             window_keyboard_is_key_released(PWINDOW, KEY)               ((PWINDOW)->keyboard_handler.keystate[SDL_GetScancodeFromKey(KEY)] == false)
+bool                window_keyboard_is_key_just_pressed(window_t *window, SDL_Keycode key);
+bool                window_keyboard_is_key_held(window_t *window, SDL_Keycode key);
+bool                window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key);
 
 #define             window_mouse_get_norm_position(PWINDOW)                     (PWINDOW)->mouse_handler.norm_position
 #define             window_mouse_get_position(PWINDOW)                          (PWINDOW)->mouse_handler.position
@@ -110,6 +109,31 @@ void            window_subwindow_destroy(window_t *subwindow);
 
 #define DEFAULT_BACKGROUND_COLOR (vec4f_t ){ 0.0f, 1.0f, 0.0f, 0.0f}
 
+bool window_keyboard_is_key_just_pressed(window_t *window, SDL_Keycode key)
+{
+    bool output = window->keyboard_handler.just_pressed[SDL_GetScancodeFromKey(key)];
+    window->keyboard_handler.just_pressed[SDL_GetScancodeFromKey(key)] = false;
+    return output;
+}
+
+bool window_keyboard_is_key_held(window_t *window, SDL_Keycode key)
+{
+    bool output = window->keyboard_handler.is_held[SDL_GetScancodeFromKey(key)];
+    window->keyboard_handler.is_held[SDL_GetScancodeFromKey(key)] = false;
+    return output;
+}
+
+bool window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key)
+{
+    bool output = window->keyboard_handler.is_held[SDL_GetScancodeFromKey(key)] 
+                    || window->keyboard_handler
+                        .just_pressed[SDL_GetScancodeFromKey(key)];
+
+    window->keyboard_handler.just_pressed[SDL_GetScancodeFromKey(key)] = false;
+    window->keyboard_handler.is_held[SDL_GetScancodeFromKey(key)] = false;
+
+    return output;
+}
 
 
 #define __impl_window_subwindow_gl_render_begin(PWINDOW) do {\
