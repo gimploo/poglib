@@ -76,11 +76,11 @@ bool                window_keyboard_is_key_just_pressed(window_t *window, SDL_Ke
 bool                window_keyboard_is_key_held(window_t *window, SDL_Keycode key);
 bool                window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key);
 
+bool                window_mouse_button_just_pressed(window_t *window);
+bool                window_mouse_button_is_pressed(window_t *window);
+bool                window_mouse_button_is_held(window_t *window);
 #define             window_mouse_get_norm_position(PWINDOW)                     (PWINDOW)->mouse_handler.norm_position
 #define             window_mouse_get_position(PWINDOW)                          (PWINDOW)->mouse_handler.position
-#define             window_mouse_button_just_pressed(PWINDOW)                   (PWINDOW)->mouse_handler.just_pressed
-#define             window_mouse_button_is_held(PWINDOW)                        (PWINDOW)->mouse_handler.is_held
-#define             window_mouse_button_is_pressed(PWINDOW)                     (window_mouse_button_just_pressed(PWINDOW) || window_mouse_button_is_held(PWINDOW))
 
 #define             window_gl_render_begin(PWINDOW)                             __impl_window_gl_render_begin(PWINDOW)
 #define             window_gl_render_end(PWINDOW)                               SDL_GL_SwapWindow((PWINDOW)->__sdl_window)
@@ -108,6 +108,26 @@ void            window_subwindow_destroy(window_t *subwindow);
 #ifndef IGNORE_WINDOW_IMPLEMENTATION
 
 #define DEFAULT_BACKGROUND_COLOR (vec4f_t ){ 0.0f, 1.0f, 0.0f, 0.0f}
+
+
+bool window_mouse_button_just_pressed(window_t *window)
+{
+    bool output = window->mouse_handler.just_pressed;
+    return output;
+}
+
+bool window_mouse_button_is_pressed(window_t *window)
+{
+    bool output = window_mouse_button_just_pressed(window) 
+        || window_mouse_button_is_held(window);
+    return output;
+}
+
+bool window_mouse_button_is_held(window_t *window)
+{
+    bool output = window->mouse_handler.is_held;
+    return output;
+}
 
 bool window_keyboard_is_key_just_pressed(window_t *window, SDL_Keycode key)
 {
@@ -670,20 +690,23 @@ void window_update_user_input(window_t *window)
             //NOTE: Here a mouse held down state is triggered if its just pressed and the mouse moved after.
             case SDL_MOUSEMOTION:
                 __mouse_update_position(window);
+                if (window->mouse_handler.just_pressed == true ){
+
+                    SDL_Log("Window (%s) MOUSE_HELD_DOWN\n", window->title);
+                    window->mouse_handler.just_pressed = false;
+                    window->mouse_handler.is_held = true;
+                } 
+
             break;
 
             case SDL_MOUSEBUTTONDOWN:
-                if (window->mouse_handler.just_pressed == false && window->mouse_handler.is_held == false) {
+                if (window->mouse_handler.just_pressed == false 
+                        && window->mouse_handler.is_held == false) {
 
                     SDL_Log("Window (%s) MOUSE_DOWN\n", window->title);
                     window->mouse_handler.just_pressed  = true;
 
-                } else if (window->mouse_handler.just_pressed == true && window->mouse_handler.is_held == false) {
-
-                    SDL_Log("Window (%s) MOUSE_HELD_DOWN\n", window->title);
-                    window->mouse_handler.just_pressed  = false;
-                    window->mouse_handler.is_held = true;
-                } 
+                }             
             break;
 
             case SDL_MOUSEBUTTONUP:
