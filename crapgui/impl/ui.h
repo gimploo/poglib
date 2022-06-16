@@ -48,18 +48,37 @@ void __ui_check_is_mouse_over(ui_t *ui, const frame_t *frame)
 
 }
 
-void __ui_edit_mode_is_mouse_held(ui_t *ui, const frame_t *frame)
+void __ui_edit_mode_is_mouse_over(ui_t *ui, const frame_t *frame, crapgui_t *gui)
 {
-    const window_t *win     = window_get_current_active_window();
+    if (gui->edit_mode.active_ui) return;
+
     const vec2f_t mousepos  = window_mouse_get_norm_position(global_window);
     const quadf_t rect      = quadf(
                                 vec3f(ui->pos), 
                                 ui->styles.width, 
                                 ui->styles.height); 
+    window_t *win = gui->win;
 
-    if (quadf_is_point_in_quad(rect, mousepos) 
-            && window_mouse_button_is_held(global_window))
+    if(window_mouse_button_is_held(win) 
+        && quadf_is_point_in_quad(rect, mousepos))
     {
+        gui->edit_mode.active_ui = ui;
+
+    } else {
+        printf("ui is null\n");
+        gui->edit_mode.active_ui = NULL;
+    }
+}
+
+void __ui_edit_mode_is_mouse_held(const frame_t *frame, const crapgui_t *gui)
+{
+    const vec2f_t mousepos  = window_mouse_get_norm_position(global_window);
+    const window_t *win     = window_get_current_active_window();
+
+    if (gui->edit_mode.active_ui 
+        && window_mouse_button_is_held(global_window))
+    {
+        ui_t *ui = gui->edit_mode.active_ui;
         const vec2f_t dim = { 
             ui->styles.width / 2.0f, 
             ui->styles.height / 2.0f 
@@ -85,13 +104,12 @@ void __ui_update(ui_t *ui, const frame_t *frame, const crapgui_t *gui)
     if (gui->edit_mode.is_on) {
 
         ui->is_hot = ui->is_active = false;
-      __ui_edit_mode_is_mouse_held(ui, frame);
+        __ui_edit_mode_is_mouse_over(ui, frame, (crapgui_t *)gui);
+        __ui_edit_mode_is_mouse_held(frame, gui);
 
-    } else {
-
+    } else 
         __ui_check_is_mouse_over(ui, frame);
 
-    }
     __ui_cache_vertices(ui, gui);
 
     switch(ui->type)

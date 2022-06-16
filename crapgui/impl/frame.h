@@ -108,27 +108,16 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
 
 void __frame_render(const frame_t *frame, const crapgui_t *gui)
 {
+
     glrenderer2d_t r2d = {
         .shader = &gui->frame_assets.shader,
         .texture = &frame->__frame_ui_cache.texture.texture2d,
     };
-
-    glquad_t quad = {0};
-    if (gui->edit_mode.is_on) {
-        vec3f_t pos = {-1.0f, 1.0f, 0.0f};
-        quad = glquad(
-                    quadf(pos, 2.0f, 2.0f),
-                    frame->styles.color,
-                    quadf(vec3f(0.0f), 1.0f, 1.0f), 
-                    0);
-    } else {
-        quad = glquad(
-                    frame->__frame_cache.quad,
-                    frame->styles.color,
-                    quadf(vec3f(0.0f), 1.0f, 1.0f), 
-                    0);
-    }
-
+    glquad_t quad = glquad(
+                frame->__frame_cache.quad,
+                frame->styles.color,
+                quadf(vec3f(0.0f), 1.0f, 1.0f), 
+                0);
     glrenderer2d_draw_quad(&r2d, quad);
 }
 

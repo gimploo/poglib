@@ -79,6 +79,8 @@ bool                window_keyboard_is_key_pressed(window_t *window, SDL_Keycode
 bool                window_mouse_button_just_pressed(window_t *window);
 bool                window_mouse_button_is_pressed(window_t *window);
 bool                window_mouse_button_is_held(window_t *window);
+bool                window_mouse_button_is_released(const window_t *window);
+
 #define             window_mouse_get_norm_position(PWINDOW)                     (PWINDOW)->mouse_handler.norm_position
 #define             window_mouse_get_position(PWINDOW)                          (PWINDOW)->mouse_handler.position
 
@@ -109,6 +111,12 @@ void            window_subwindow_destroy(window_t *subwindow);
 
 #define DEFAULT_BACKGROUND_COLOR (vec4f_t ){ 0.0f, 1.0f, 0.0f, 0.0f}
 
+bool window_mouse_button_is_released(const window_t *window)
+{
+    bool output = window->mouse_handler.just_pressed 
+                  || window->mouse_handler.is_held;
+    return output;
+}
 
 bool window_mouse_button_just_pressed(window_t *window)
 {
