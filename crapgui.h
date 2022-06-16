@@ -17,7 +17,9 @@ void        crapgui_destroy(crapgui_t *gui);
 
 #define frame(LABEL, STYLES)\
     assert(__gui);\
-    for (frame_t *__frame = __crapgui_add_frame(__gui, LABEL, (STYLES)); __frame != NULL; __frame_update(__frame, __gui), __frame = NULL)
+    for (frame_t *__frame = __crapgui_add_frame(__gui, LABEL, (STYLES));\
+            __frame != NULL;\
+            __frame_update(__frame, __gui), __frame = NULL)
 
 
 #define button(LABEL, STYLES)\

@@ -64,10 +64,7 @@ void __ui_edit_mode_is_mouse_over(ui_t *ui, const frame_t *frame, crapgui_t *gui
     {
         gui->edit_mode.active_ui = ui;
 
-    } else {
-        printf("ui is null\n");
-        gui->edit_mode.active_ui = NULL;
-    }
+    } 
 }
 
 void __ui_edit_mode_is_mouse_held(const frame_t *frame, const crapgui_t *gui)
