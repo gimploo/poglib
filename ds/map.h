@@ -21,7 +21,7 @@ typedef struct map_t {
 #define         map_insert(PMAP, KEY, VALUE)            __impl_map_insert(PMAP, (KEY), &(VALUE), sizeof(VALUE))
 #define         map_delete(PMAP, KEY)                   __impl_map_delete((PMAP), (KEY))
 
-#define         map_get_value(PMAP, KEY)                hashtable_get_value(&(PMAP)->__values, KEY) 
+void *          map_get_value(const map_t *map, const char *key);
 #define         map_get_value_at_index(PMAP, INDEX)     __impl_map_get_reference_to_value_at_index(PMAP, (INDEX))
 
 #define         map_iterator(PMAP, TMP)                 __impl_map_for_loop_iterator(PMAP, TMP)
@@ -36,6 +36,22 @@ void            map_destroy(map_t *);
 
 #ifndef IGNORE_MAP_IMPLEMENTATION
 
+
+void * map_get_value(const map_t *map, const char *key)
+{
+    assert(map);
+    assert(key);
+
+    const list_t *keys = &map->__keys;
+    list_iterator(keys, iter) {
+        if (strcmp(key, (const char *)iter) == 0) {
+            const hashtable_t *table = &map->__values;
+            return hashtable_get_value(table, key);
+        } 
+    }
+
+    eprint("`%s` key not found in map\n", key);
+}
 
 #define __impl_map_for_loop_iterator(PMAP, TMP)\
                 if ((PMAP)->len != 0)\
@@ -90,8 +106,8 @@ void *__impl_map_get_reference_to_value_at_index(const map_t *map, const u32 ind
     if (index >= map->__keys.len) 
         eprint("Index value exceeds map.__keys length");
 
-    const list_t *list  = &map->__keys;
-    const char *key     = (char *)list_get_value(list, index);
+    const list_t *keys  = &map->__keys;
+    const char *key     = (char *)list_get_value(keys, index);
     const u64 hash      = hash_cstr(key, strlen(key)) % map->__values.__capacity;
 
     return __hashtable_get_reference_to_only_value_at_index(&map->__values, hash);

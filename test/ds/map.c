@@ -1,4 +1,4 @@
-#include "./../map.h"
+#include <poglib/ds/map.h>
 
 void print_int(void *arg)
 {
