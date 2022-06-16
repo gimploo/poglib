@@ -10,19 +10,25 @@ void __ui_destroy(ui_t *elem)
 void __ui_cache_vertices(ui_t *ui, const crapgui_t *gui)
 {
     ui->__cache.quad = 
-        quadf(vec3f(ui->pos), ui->styles.width, ui->styles.height);
+        quadf(vec3f(ui->pos), 
+                ui->styles.width, 
+                ui->styles.height);
 
     glbatch_t *txtbatch = &ui->__cache.texts.text;
 
     vec2f_t centerpos = {
-        .cmp[X] = ui->pos.cmp[X] ,
-        .cmp[Y] = ui->pos.cmp[Y] - ui->styles.height/2
+        .cmp[X] = ui->__cache.quad.vertex[BOTTOM_LEFT].cmp[X],
+        .cmp[Y] = ui->__cache.quad.vertex[BOTTOM_LEFT].cmp[Y] //- ui->styles.height/2
     };
 
-    glfreetypefont_t *font = crapgui_get_font(gui, ui->type);
+    const glfreetypefont_t *font = &gui->ui_assets.fonts[ui->type];
     glbatch_clear(txtbatch);
     glfreetypefont_add_text_to_batch(
-            font, txtbatch, ui->title, centerpos, ui->styles.textcolor);
+            font, 
+            txtbatch, 
+            ui->title, 
+            centerpos, 
+            ui->styles.textcolor);
 
 }
 
@@ -42,6 +48,30 @@ void __ui_check_is_mouse_over(ui_t *ui, const frame_t *frame)
 
 }
 
+void __ui_edit_mode_is_mouse_held(ui_t *ui, const frame_t *frame)
+{
+    const window_t *win     = window_get_current_active_window();
+    const vec2f_t mousepos  = window_mouse_get_norm_position(global_window);
+    const quadf_t rect      = quadf(
+                                vec3f(ui->pos), 
+                                ui->styles.width, 
+                                ui->styles.height); 
+
+    if (quadf_is_point_in_quad(rect, mousepos) 
+            && window_mouse_button_is_held(global_window))
+    {
+        const vec2f_t dim = { 
+            ui->styles.width / 2.0f, 
+            ui->styles.height / 2.0f 
+        };
+
+        ui->pos = (vec2f_t ){
+            mousepos.cmp[X] - dim.cmp[X],
+            mousepos.cmp[Y] + dim.cmp[Y],
+        };
+    }
+}
+
 void __ui_check_is_mouse_clicked(ui_t *ui, const crapgui_t *gui)
 {
     window_t *win = gui->win;
@@ -52,9 +82,16 @@ void __ui_check_is_mouse_clicked(ui_t *ui, const crapgui_t *gui)
 
 void __ui_update(ui_t *ui, const frame_t *frame, const crapgui_t *gui)
 {
-    assert(ui->type != UI_FRAME);
+    if (gui->edit_mode.is_on) {
 
-    __ui_check_is_mouse_over(ui, frame);
+        ui->is_hot = ui->is_active = false;
+      __ui_edit_mode_is_mouse_held(ui, frame);
+
+    } else {
+
+        __ui_check_is_mouse_over(ui, frame);
+
+    }
     __ui_cache_vertices(ui, gui);
 
     switch(ui->type)

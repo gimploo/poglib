@@ -40,13 +40,23 @@ bool __crapgui_is_mouse_over_frame(const crapgui_t *gui, const frame_t *frame)
 
 void __crapgui_update(crapgui_t *gui)
 {
+    if (window_keyboard_is_key_just_pressed(global_window, SDLK_e))
+        gui->edit_mode.is_on = !gui->edit_mode.is_on;
+
     map_t *map = &gui->frames;
     map_iterator(map, iter) 
     {
         frame_t *frame = (frame_t *)iter;
 
         if (__crapgui_is_mouse_over_frame(gui, frame))
-            frame->update(frame, gui);
+        {
+            if (gui->edit_mode.is_on && gui->edit_mode.active_frame) {
+                frame->update(gui->edit_mode.active_frame, gui);
+            } else {
+                gui->edit_mode.active_frame = frame;
+                frame->update(frame, gui);
+            }
+        }
     }
 }
 
@@ -57,7 +67,10 @@ void __crapgui_render(crapgui_t *gui)
     {
         frame_t *frame = (frame_t *)iter;
 
-        frame->render(frame,gui);
+        if(gui->edit_mode.is_on && gui->edit_mode.active_frame) 
+            frame->render(gui->edit_mode.active_frame, gui);
+        else
+            frame->render(frame,gui);
     }
 }
 
@@ -67,25 +80,29 @@ crapgui_t crapgui_init(void)
 
     return (crapgui_t ) {
 
-        .win    = global_window,
-
-        .fonts = {
-            [UI_BUTTON] = glfreetypefont_init(DEFAULT_BUTTON_FONT_PATH, DEFAULT_BUTTON_FONT_SIZE),
-            [UI_LABEL]  = glfreetypefont_init(DEFAULT_LABEL_FONT_PATH, DEFAULT_LABEL_FONT_SIZE),
-            [UI_FRAME]  = glfreetypefont_init(DEFAULT_FRAME_FONT_PATH, DEFAULT_FRAME_FONT_SIZE)
+        .win                = global_window,
+        .frames             = map_init(MAX_FRAMES_ALLOWED, frame_t ),
+        .frame_assets = {
+            .font           = glfreetypefont_init(DEFAULT_FRAME_FONT_PATH, DEFAULT_FRAME_FONT_SIZE),
+            .shader         = glshader_from_file_init(COMMON_VS, FRAME_FS),
         },
-
-        .shaders = {
-            [UI_BUTTON] = glshader_from_file_init(COMMON_VS, BUTTON_FS),
-            [UI_LABEL] = glshader_from_file_init(COMMON_VS, LABEL_FS),
-            [UI_FRAME]  = glshader_from_file_init(COMMON_VS, FRAME_FS),
+        .ui_assets = {
+            .fonts = {
+                [UI_BUTTON]     = glfreetypefont_init(DEFAULT_BUTTON_FONT_PATH, DEFAULT_BUTTON_FONT_SIZE),
+                [UI_LABEL]      = glfreetypefont_init(DEFAULT_LABEL_FONT_PATH, DEFAULT_LABEL_FONT_SIZE),
+            },
+            .shaders = {
+                [UI_BUTTON]     = glshader_from_file_init(COMMON_VS, BUTTON_FS),
+                [UI_LABEL]      = glshader_from_file_init(COMMON_VS, LABEL_FS),
+            },
         },
-
-        .__common_shader = glshader_from_file_init(COMMON_VS, COMMON_FS),
-
-        .frames = map_init(MAX_FRAMES_ALLOWED, frame_t ),
-        .update = __crapgui_update,
-        .render = __crapgui_render
+        .__common_shader    = glshader_from_file_init(COMMON_VS, COMMON_FS),
+        .edit_mode = {
+            .is_on          = true, 
+            .active_frame   = NULL,
+        },
+        .update             = __crapgui_update,
+        .render             = __crapgui_render
 
     };
 }
@@ -151,10 +168,13 @@ void crapgui_destroy(crapgui_t *gui)
     }
     map_destroy(map);
 
+    glfreetypefont_destroy(&gui->frame_assets.font);
+    glshader_destroy(&gui->frame_assets.shader);
+
     for (u32 i = 0; i < UITYPE_COUNT; i++)
     {
-        glshader_t *shader      = &gui->shaders[i];
-        glfreetypefont_t *font  = &gui->fonts[i];
+        glshader_t *shader      = &gui->ui_assets.shaders[i];
+        glfreetypefont_t *font  = &gui->ui_assets.fonts[i];
 
         glshader_destroy(shader);
         glfreetypefont_destroy(font);

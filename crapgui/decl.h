@@ -17,10 +17,6 @@ typedef enum uitype {
     //
     //..
     //
-    
-    // NOTE: DONT MOVE FRAME, have it stay here 
-    // (it needs to be one step above UITYPE_COUNT always!)
-    UI_FRAME,                       
     UITYPE_COUNT
 
 } uitype;
@@ -58,28 +54,39 @@ typedef struct ui_t {
 
 typedef struct crapgui_t {
 
-    window_t            *win;
-    glfreetypefont_t    fonts[UITYPE_COUNT];
-    glshader_t          shaders[UITYPE_COUNT];
-    map_t               frames;
-    glshader_t          __common_shader;
+    window_t                *win;
+    map_t                   frames;
+
+    struct {
+        glfreetypefont_t    font;
+        glshader_t          shader;
+    } frame_assets ;
+    struct {
+        glfreetypefont_t    fonts[UITYPE_COUNT];
+        glshader_t          shaders[UITYPE_COUNT];
+    } ui_assets;
+
+    glshader_t              __common_shader;
+
+    struct {
+        bool                is_on;
+        frame_t             *active_frame;
+    } edit_mode;
 
     void (*update)(struct crapgui_t *);
     void (*render)(struct crapgui_t *);
 
 } crapgui_t ;
 
-#define         crapgui_get_font(PGUI, UITYPE)      (glfreetypefont_t *)&(PGUI)->fonts[UITYPE]
 
 /*=============================================================================
  // FRAME 
 =============================================================================*/
 
 #define MAX_FRAMES_ALLOWED                  10 
-#define MAX_UI_TYPE_ALLOWED_IN_FRAME        UITYPE_COUNT - 1
 
 //NOTE: write now 10 here for the batch stuff, better to give the 10 a name
-#define MAX_UI_CAPACITY_PER_FRAME           10 * MAX_UI_TYPE_ALLOWED_IN_FRAME
+#define MAX_UI_CAPACITY_PER_FRAME           10 * UITYPE_COUNT
 
 #define DEFAULT_UI_TEXT_COLOR               COLOR_WHITE
 #define DEFAULT_UI_MARGIN                   (vec2f_t ){0.08f, 0.08f}
@@ -121,8 +128,8 @@ typedef struct frame_t {
     struct {
 
         glframebuffer_t     texture;
-        glbatch_t           uibatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
-        gltext_t            txtbatch[MAX_UI_TYPE_ALLOWED_IN_FRAME];
+        glbatch_t           uibatch[UITYPE_COUNT];
+        gltext_t            txtbatch[UITYPE_COUNT];
 
     }__frame_ui_cache;
 
@@ -133,6 +140,7 @@ typedef struct frame_t {
 
 frame_t     frame_init(const char *label, vec2f_t pos, uistyle_t styles);
 vec2f_t     frame_get_mouse_position(const frame_t *frame);
+vec2f_t     frame_convert_to_relative_value(const frame_t *frame, const vec2f_t value);
 void        frame_destroy(frame_t *self);
 
 

@@ -21,7 +21,7 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
 
         gltext_clear(&frame->__frame_cache.texts); 
         glfreetypefont_add_text_to_batch(
-                crapgui_get_font(gui, UI_FRAME), 
+                &gui->frame_assets.font,
                 &frame->__frame_cache.texts.text, 
                 frame->label, 
                 (vec2f_t ) {-1.0f, 0.9f}, 
@@ -33,7 +33,7 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
 
     if (!frame->uis.len) return;
 
-    for (int type = 0; type < MAX_UI_TYPE_ALLOWED_IN_FRAME; type++)
+    for (int type = 0; type < UITYPE_COUNT; type++)
     {
         glbatch_t   *uibatch  = &frame->__frame_ui_cache.uibatch[type];
         gltext_t    *txtbatch = &frame->__frame_ui_cache.txtbatch[type];
@@ -72,7 +72,7 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
 
     // Texturing the uis together
     {
-        for (u32 i = 0; i < MAX_UI_TYPE_ALLOWED_IN_FRAME; i++)
+        for (u32 i = 0; i < UITYPE_COUNT; i++)
         {
             glbatch_t *uibatch      = &frame->__frame_ui_cache.uibatch[i]; 
             glbatch_t *txtbatch     = &frame->__frame_ui_cache.txtbatch[i].text;
@@ -82,13 +82,13 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
             }
 
             glrenderer2d_t r2d = {
-                .shader = &gui->shaders[i],
+                .shader = &gui->ui_assets.shaders[i],
                 .texture = NULL,
             };
             glrenderer2d_draw_from_batch(&r2d, uibatch);
 
             if (!glbatch_is_empty(txtbatch)) {
-                const glfreetypefont_t *font = crapgui_get_font(gui, i);
+                const glfreetypefont_t *font = &gui->ui_assets.fonts[i];
                 glfreetypefont_draw(font, txtbatch);
             }
         }
@@ -100,7 +100,7 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
         };
         glrenderer2d_draw_from_batch(&R2d, &frame->__frame_cache.glquads);
         glfreetypefont_draw(
-                crapgui_get_font(gui, UI_FRAME), 
+                &gui->frame_assets.font,
                 &frame->__frame_cache.texts.text);
     }
     glframebuffer_end_texture(fbo);
@@ -109,58 +109,72 @@ void __frame_update(frame_t *frame, const crapgui_t *gui)
 void __frame_render(const frame_t *frame, const crapgui_t *gui)
 {
     glrenderer2d_t r2d = {
-        .shader = &gui->shaders[UI_FRAME],
+        .shader = &gui->frame_assets.shader,
         .texture = &frame->__frame_ui_cache.texture.texture2d,
     };
 
-    glquad_t quad = glquad(
-                frame->__frame_cache.quad,
-                frame->styles.color,
-                quadf(vec3f(0.0f), 1.0f, 1.0f), 
-                0);
-    /*vec3f_t pos = {-1.0f, 1.0f, 0.0f};*/
-    /*glquad_t quad = glquad(*/
-                /*quadf(pos, 2.0f, 2.0f),*/
-                /*frame->color,*/
-                /*quadf(vec3f(0.0f), 1.0f, 1.0f), */
-                /*0);*/
+    glquad_t quad = {0};
+    if (gui->edit_mode.is_on) {
+        vec3f_t pos = {-1.0f, 1.0f, 0.0f};
+        quad = glquad(
+                    quadf(pos, 2.0f, 2.0f),
+                    frame->styles.color,
+                    quadf(vec3f(0.0f), 1.0f, 1.0f), 
+                    0);
+    } else {
+        quad = glquad(
+                    frame->__frame_cache.quad,
+                    frame->styles.color,
+                    quadf(vec3f(0.0f), 1.0f, 1.0f), 
+                    0);
+    }
 
     glrenderer2d_draw_quad(&r2d, quad);
 }
 
 
-vec2f_t __frame_get_pos_for_new_ui(const frame_t *frame, const vec2f_t ndim)
+//FIXME: the margin here is very wrong, because we take the positioning of the 
+//prev element and then give a position that is besides it if the element 
+//doesnt go out the frame, the y position is fixed and when we include margin 
+//here we get a staircase like positioning, as of now i am thinking of having 
+//an edit mode where u could drag the button and then place it where ever 
+//u want this might be better idea than coding the styles. I am thinking the 
+//after the editing is done, it saves all the stuff into a file. 
+//This could be a better and easier approach than going the css route
+
+vec2f_t __frame_get_pos_for_new_ui(const frame_t *frame, ui_t *ui)
 {
+    assert(ui);
     vec2f_t output          = {0};
     const slot_t *uis       = &frame->uis;
-    const vec2f_t dfmargin  = DEFAULT_UI_MARGIN;
 
     //NOTE: since we add the ui to slot before calling this function, the previous logic 
     //we had wont work, ik i hate this, i guess i need to live with this for now
     if (uis->len == 1) 
-        return (vec2f_t ) { -1.0f + dfmargin.cmp[X], 1.0f - FRAME_HEADER_HEIGHT - dfmargin.cmp[Y] };
+        return (vec2f_t ) { -1.0f + frame->styles.margin.cmp[X] + ui->styles.margin.cmp[X], 1.0f - FRAME_HEADER_HEIGHT - frame->styles.margin.cmp[Y] - ui->styles.margin.cmp[Y] };
 
     ui_t *prev_elem = (ui_t *)slot_get_value(uis, uis->len - 2);
     assert(prev_elem);
-    const vec2f_t margin = prev_elem->styles.margin;
+    const vec2f_t prev_margin   = prev_elem->styles.margin;
+    const quadf_t prev_rect     = prev_elem->__cache.quad;
 
-    if ((prev_elem->pos.cmp[X] + (prev_elem->styles.width + ndim.cmp[X]) + margin.cmp[X]) >= 1.0f) {
+    if ((prev_rect.vertex[TOP_RIGHT].cmp[X] + prev_margin.cmp[X] + ( 2.0f * ui->styles.margin.cmp[X]) + ui->styles.width) >= 1.0f) {
 
         output = (vec2f_t ){
-            .cmp[X] = -1.0f + margin.cmp[X],
-            .cmp[Y] = prev_elem->pos.cmp[Y] - prev_elem->styles.height - margin.cmp[Y],
+            .cmp[X] = -1.0f + ui->styles.margin.cmp[X] + frame->styles.margin.cmp[X],
+            .cmp[Y] = prev_rect.vertex[BOTTOM_LEFT].cmp[Y] - prev_margin.cmp[Y] - ui->styles.margin.cmp[Y],
         };
 
     } else {
 
         output = (vec2f_t ){
-            .cmp[X] = prev_elem->pos.cmp[X] + prev_elem->styles.width + margin.cmp[X],
+            .cmp[X] = prev_rect.vertex[TOP_RIGHT].cmp[X] + prev_margin.cmp[X] + ui->styles.margin.cmp[X],
             .cmp[Y] = prev_elem->pos.cmp[Y],
         };
 
     }
 
-    if (output.cmp[Y] - prev_elem->styles.height - ndim.cmp[Y] - margin.cmp[Y] <= -1.0f)
+    if ((prev_rect.vertex[BOTTOM_LEFT].cmp[Y] - prev_margin.cmp[Y] - (2.0f * ui->styles.margin.cmp[Y]) + ui->styles.height) <= -1.0f)
         eprint("This ui cannot fit in the window");
 
     return output;
@@ -176,7 +190,6 @@ frame_t frame_init(const char *label, vec2f_t pos, uistyle_t styles)
         .pos                = pos,
         .styles             = styles,
         .uis                = slot_init(MAX_UI_CAPACITY_PER_FRAME, ui_t ),
-
         .__update_both_caches = true,
 
         .__frame_cache = {
@@ -219,7 +232,7 @@ void frame_destroy(frame_t *self)
     }
     slot_destroy(slot);
 
-    for (u32 i = 0; i < MAX_UI_TYPE_ALLOWED_IN_FRAME; i++)
+    for (u32 i = 0; i < UITYPE_COUNT; i++)
     {
         glbatch_destroy(&self->__frame_ui_cache.uibatch[i]);
         gltext_destroy(&self->__frame_ui_cache.txtbatch[i]);
@@ -230,6 +243,7 @@ void frame_destroy(frame_t *self)
     glbatch_destroy(&self->__frame_cache.glquads);
 
 }
+
 
 //NOTE: this code took me 3 full days to make 💀
 vec2f_t frame_get_mouse_position(const frame_t *frame)
@@ -259,8 +273,6 @@ vec2f_t frame_get_mouse_position(const frame_t *frame)
 
 void __frame_add_ui(frame_t *frame, crapgui_t *gui, const char *label, uitype type, uistyle_t styles)
 {
-    assert(type != UI_FRAME);
-
     ui_t tmp; 
     memset(&tmp, 0, sizeof(tmp));
 
@@ -268,13 +280,13 @@ void __frame_add_ui(frame_t *frame, crapgui_t *gui, const char *label, uitype ty
     ui_t *ui = (ui_t *)slot_append(slot, tmp);
 
     ui->styles          = styles;
-    ui->title           = label;
+    ui->styles.margin   = vec2f_add(styles.margin, frame->styles.padding);
     ui->type            = type;
-    ui->pos             = __frame_get_pos_for_new_ui(
-                            frame, 
-                            (vec2f_t ){ styles.width, styles.height });
+    ui->title           = label;
     ui->is_active       = false;    
     ui->is_hot          = false;
+    ui->pos             = __frame_get_pos_for_new_ui(
+                            frame, ui);
     ui->__cache.texts   = gltext_init(KB);
 
     __ui_update(ui, frame, gui);
