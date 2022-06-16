@@ -41,7 +41,7 @@ typedef struct glfreetypefont_t {
 
 
 glfreetypefont_t    glfreetypefont_init(const char *filepath, const u32 fontsize);
-void                glfreetypefont_add_text_to_batch(glfreetypefont_t *self, glbatch_t *batch, const char *text, vec2f_t pos, vec4f_t color);
+void                glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *batch, const char *text, vec2f_t pos, vec4f_t color);
 void                glfreetypefont_draw(const glfreetypefont_t *self, const glbatch_t *batch);
 void                glfreetypefont_destroy(glfreetypefont_t *self);
 
@@ -204,7 +204,7 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize)
     return o;
 }
 
-void glfreetypefont_add_text_to_batch(glfreetypefont_t *self, glbatch_t *batch, const char *text, vec2f_t pos, vec4f_t color)
+void glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *batch, const char *text, vec2f_t pos, vec4f_t color)
 {
     assert(self);
     assert(text);
