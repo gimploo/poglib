@@ -51,7 +51,6 @@ typedef struct ui_t {
 } ui_t ;
 
 
-
 typedef struct crapgui_t {
 
     window_t                *win;
@@ -72,7 +71,7 @@ typedef struct crapgui_t {
         bool                is_on;
         frame_t             *active_frame;
         ui_t                *active_ui;
-    } edit_mode;
+    } editmode;
 
     void (*update)(struct crapgui_t *);
     void (*render)(struct crapgui_t *);

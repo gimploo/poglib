@@ -40,29 +40,10 @@ bool __crapgui_is_mouse_over_frame(const crapgui_t *gui, const frame_t *frame)
 
 void __crapgui_update(crapgui_t *gui)
 {
-    //EDIT MODE 
-    {
-        if (window_keyboard_is_key_just_pressed(global_window, SDLK_e))
-        {
-            gui->edit_mode.is_on        = !gui->edit_mode.is_on;
-            gui->edit_mode.active_ui    = NULL;
-        }
-
-        if (gui->edit_mode.is_on 
-            && window_mouse_button_is_released(gui->win))
-        {
-            gui->edit_mode.active_ui = NULL;
-        }
-
-        if (gui->edit_mode.is_on 
-            && gui->edit_mode.active_frame)
-        {
-            gui->edit_mode.active_frame->update(
-                    gui->edit_mode.active_frame,
-                    gui);
-            return;
-        }
-
+    __crapgui_editmode_is_keypressed(gui, SDLK_e);
+    if(__crapgui_in_editmode(gui)) {
+        __crapgui_editmode_update(gui);
+        return;
     }
 
     map_t *map = &gui->frames;
@@ -72,8 +53,8 @@ void __crapgui_update(crapgui_t *gui)
 
         if (__crapgui_is_mouse_over_frame(gui, frame))
         {
-            if (!gui->edit_mode.is_on) 
-                gui->edit_mode.active_frame = frame;
+            if (!__crapgui_in_editmode(gui)) 
+                __crapgui_editmode_set_active_frame(gui, frame);
 
             frame->update(frame, gui);
         }
@@ -82,28 +63,9 @@ void __crapgui_update(crapgui_t *gui)
 
 void __crapgui_render(crapgui_t *gui)
 {
-    //EDIT MODE
-    {
-        if (gui->edit_mode.is_on && gui->edit_mode.active_frame) {
-
-            const frame_t *frame = gui->edit_mode.active_frame;
-
-            vec3f_t pos = {-1.0f, 1.0f, 0.0f};
-            glquad_t quad = glquad(
-                        quadf(pos, 2.0f, 2.0f),
-                        frame->styles.color,
-                        quadf(vec3f(0.0f), 1.0f, 1.0f), 
-                        0);
-            glrenderer2d_t r2d = {
-                .shader = &gui->frame_assets.shader,
-                .texture = &gui
-                            ->edit_mode.active_frame
-                            ->__frame_ui_cache.texture.texture2d,
-            };
-
-            glrenderer2d_draw_quad(&r2d, quad);
-            return;
-        } 
+    if (__crapgui_in_editmode(gui)) {
+        __crapgui_editmode_render(gui);
+        return;
     }
 
     map_t *map = &gui->frames;
@@ -137,7 +99,7 @@ crapgui_t crapgui_init(void)
             },
         },
         .__common_shader    = glshader_from_file_init(COMMON_VS, COMMON_FS),
-        .edit_mode = {
+        .editmode = {
             .is_on          = false, 
             .active_frame   = NULL,
             .active_ui      = NULL,
