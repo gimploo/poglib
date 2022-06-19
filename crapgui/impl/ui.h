@@ -59,13 +59,13 @@ void __ui_is_mouse_clicked(ui_t *ui, const crapgui_t *gui)
 
 void __ui_update(ui_t *ui, frame_t *frame, crapgui_t *gui)
 {
+    printf("Recaching ui %s\n", ui->title);
     if (ui->__cache.cache_again)
         __ui_cache_vertices(ui, gui);
 
     switch(ui->type)
     {
         case UI_BUTTON:
-
             __ui_is_mouse_over(ui, frame, gui);
             __ui_is_mouse_clicked(ui, gui);
 

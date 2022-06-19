@@ -35,9 +35,9 @@ void __frame_update(frame_t *frame, crapgui_t *gui)
     }
 
     if (!frame->__cache.uis.cache_again) {
-        printf("Caching all uis in frame %s\n", frame->label);
         return;
     }
+    printf("Caching all uis in frame %s\n", frame->label);
 
     for (int type = 0; type < UITYPE_COUNT; type++)
     {
