@@ -67,10 +67,8 @@ void __crapgui_input(crapgui_t *gui)
 
     if (window_mouse_button_is_released(gui->win))
     {
-        if (gui->editmode.focused.frame)
-            gui->currently_active.frame = NULL;
-        else 
-            gui->currently_active.ui = NULL;
+        if (gui->editmode.focused.frame)    gui->currently_active.frame = NULL;
+        else if (gui->editmode.focused.ui)  gui->currently_active.ui = NULL;
     }
 }
 
@@ -113,10 +111,23 @@ crapgui_t crapgui_init(void)
 {
     if (!global_window) eprint("global window is null");
 
-    return (crapgui_t ) {
+    file_t *config = NULL;
+    bool editmode;
+    if (file_check_exist(DEFAULT_CRAPGUI_CONFIG_PATH)) {
+        printf("[CRAPGUI] config file found in `%s`\n", DEFAULT_CRAPGUI_CONFIG_PATH);
+        editmode = false;
+        config = file_init(DEFAULT_CRAPGUI_CONFIG_PATH, "w+");
+    } else {
+        printf("[CRAPGUI] config file not found `%s`\n", DEFAULT_CRAPGUI_CONFIG_PATH);
+        printf("[CRAPGUI] config file created `%s`\n", DEFAULT_CRAPGUI_CONFIG_PATH);
+        editmode = true;
+        config = file_init(DEFAULT_CRAPGUI_CONFIG_PATH, "w");
+    }
 
+    return (crapgui_t ) {
         .win                    = global_window,
         .frames                 = map_init(MAX_FRAMES_ALLOWED, frame_t ),
+        .config                 = config,
         .frame_assets = {
             .font               = glfreetypefont_init(DEFAULT_FRAME_FONT_PATH, DEFAULT_FRAME_FONT_SIZE),
             .shader             = glshader_from_file_init(COMMON_VS, FRAME_FS),
@@ -133,10 +144,7 @@ crapgui_t crapgui_init(void)
         },
         .__common_shader        = glshader_from_file_init(COMMON_VS, COMMON_FS),
         .editmode = {
-
-            //FIXME: have this flag be depended on whether the 
-            //saved config file is found
-            .is_on              = false, 
+            .is_on              = editmode, 
             .focused = {
                 .frame          = false, 
                 .ui             = false, 
@@ -227,5 +235,7 @@ void crapgui_destroy(crapgui_t *gui)
     gui->currently_active.frame = NULL;
 
     glshader_destroy(&gui->__common_shader);
+    file_destroy(gui->config);
+    gui->config = NULL;
 }
 
