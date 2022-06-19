@@ -71,6 +71,7 @@ typedef struct crapgui_t {
 
     window_t                *win;
     map_t                   frames;
+    file_t                  *config;
     struct {
         glfreetypefont_t    font;
         glshader_t          shader;
@@ -97,7 +98,7 @@ typedef struct crapgui_t {
 
 } crapgui_t ;
 
-
+#define DEFAULT_CRAPGUI_CONFIG_PATH "bin/crapgui.config"
 
 /*=============================================================================
  // FRAME 
