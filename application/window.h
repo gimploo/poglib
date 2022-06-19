@@ -23,35 +23,36 @@
                     - PLATFORM LAYER (SDL2 Wrapper) -
 ============================================================================*/
 
+typedef enum {
+    NONE,
+    RELEASED,
+    JUST_PRESSED,
+    HELD,
+} mousestate;
+
 typedef struct window_t {
 
-    bool            is_open;
-    const char      *title;
-    u64             width; 
-    u64             height;
-    vec4f_t         background_color;
-
+    bool                is_open;
+    const char          *title;
+    u64                 width; 
+    u64                 height;
+    vec4f_t             background_color;
     struct {
-
-        bool    just_pressed;
-        bool    is_held;
-        vec2f_t norm_position;
-        vec2i_t position;
+        mousestate      state;
+        vec2f_t         norm_position;
+        vec2i_t         position;
 
     } mouse_handler;
-
     struct {
 
-        bool keystate[SDL_NUM_SCANCODES]; 
-        bool just_pressed[SDL_NUM_SCANCODES]; 
-        bool is_held[SDL_NUM_SCANCODES];
+        bool            keystate[SDL_NUM_SCANCODES]; 
+        bool            just_pressed[SDL_NUM_SCANCODES]; 
+        bool            is_held[SDL_NUM_SCANCODES];
 
     } keyboard_handler;
-
     u32                 SDL_Window_ID;                                            // useful for managing multiple windows
     struct window_t     *__subwindow;                                             // Holds subwindow address
     bool                is_subwindow_active;
-
     SDL_Window          *__sdl_window;                                            // initializes the window 
     SDL_Event           __sdl_event;
 #ifndef __gl_h_                                                                   // initializes the renderer
@@ -59,7 +60,6 @@ typedef struct window_t {
 #else 
     SDL_GLContext       __glcontext;
 #endif 
-
 
 } window_t ;
 
@@ -79,7 +79,6 @@ bool                window_keyboard_is_key_pressed(window_t *window, SDL_Keycode
 bool                window_mouse_button_just_pressed(window_t *window);
 bool                window_mouse_button_is_pressed(window_t *window);
 bool                window_mouse_button_is_held(window_t *window);
-bool                window_mouse_button_is_released(const window_t *window);
 
 #define             window_mouse_get_norm_position(PWINDOW)                     (PWINDOW)->mouse_handler.norm_position
 #define             window_mouse_get_position(PWINDOW)                          (PWINDOW)->mouse_handler.position
@@ -111,30 +110,25 @@ void            window_subwindow_destroy(window_t *subwindow);
 
 #define DEFAULT_BACKGROUND_COLOR (vec4f_t ){ 0.0f, 1.0f, 0.0f, 0.0f}
 
-bool window_mouse_button_is_released(const window_t *window)
-{
-    bool output = window->mouse_handler.just_pressed 
-                  || window->mouse_handler.is_held;
-    return output;
-}
-
 bool window_mouse_button_just_pressed(window_t *window)
 {
-    bool output = window->mouse_handler.just_pressed;
-    return output;
+    return window->mouse_handler.state == JUST_PRESSED;
 }
 
 bool window_mouse_button_is_pressed(window_t *window)
 {
-    bool output = window_mouse_button_just_pressed(window) 
-        || window_mouse_button_is_held(window);
-    return output;
+    return window->mouse_handler.state == JUST_PRESSED 
+            || window->mouse_handler.state == HELD;
 }
 
 bool window_mouse_button_is_held(window_t *window)
 {
-    bool output = window->mouse_handler.is_held;
-    return output;
+    return window->mouse_handler.state == HELD;
+}
+
+bool window_mouse_button_is_released(window_t *window)
+{
+    return window->mouse_handler.state == RELEASED;
 }
 
 bool window_keyboard_is_key_just_pressed(window_t *window, SDL_Keycode key)
@@ -154,8 +148,7 @@ bool window_keyboard_is_key_held(window_t *window, SDL_Keycode key)
 bool window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key)
 {
     bool output = window->keyboard_handler.is_held[SDL_GetScancodeFromKey(key)] 
-                    || window->keyboard_handler
-                        .just_pressed[SDL_GetScancodeFromKey(key)];
+                    || window->keyboard_handler.just_pressed[SDL_GetScancodeFromKey(key)];
 
     window->keyboard_handler.just_pressed[SDL_GetScancodeFromKey(key)] = false;
     window->keyboard_handler.is_held[SDL_GetScancodeFromKey(key)] = false;
@@ -318,6 +311,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     win.background_color = DEFAULT_BACKGROUND_COLOR;
 
     __mouse_update_position(&win);
+    win.mouse_handler.state = NONE;
 
     win.__subwindow = NULL;
     win.is_subwindow_active = false;
@@ -436,16 +430,9 @@ INTERNAL void __window_handle_sdlwindow_event(window_t *window, SDL_Event *event
               break;
 
             case SDL_WINDOWEVENT_LEAVE:
-              SDL_Log("Mouse left main window (%s)", window->title);
-              window->mouse_handler.is_held = false;
-              window->mouse_handler.just_pressed = false;
-              memset(window->keyboard_handler.is_held, false,
-                     sizeof(window->keyboard_handler.is_held));
-              memset(window->keyboard_handler.just_pressed, false,
-                     sizeof(window->keyboard_handler.just_pressed));
-              memset(window->keyboard_handler.keystate, false,
-                     sizeof(window->keyboard_handler.keystate));
-              break;
+                  SDL_Log("Mouse left main window (%s)", window->title);
+                  window->mouse_handler.state = NONE;
+            break;
 
             case SDL_WINDOWEVENT_FOCUS_GAINED:
               SDL_Log("Window (%s) gained keyboard focus", window->title);
@@ -687,6 +674,9 @@ void window_update_user_input(window_t *window)
 {
     SDL_Event *event = &window->__sdl_event;
 
+    if (window->mouse_handler.state == RELEASED)
+        window->mouse_handler.state = NONE;
+
     while(SDL_PollEvent(event) > 0) 
     {
         switch (event->type) 
@@ -698,29 +688,50 @@ void window_update_user_input(window_t *window)
             //NOTE: Here a mouse held down state is triggered if its just pressed and the mouse moved after.
             case SDL_MOUSEMOTION:
                 __mouse_update_position(window);
-                if (window->mouse_handler.just_pressed == true ){
+                switch(window->mouse_handler.state)
+                {
+                    case RELEASED:
+                    case NONE:
+                        window->mouse_handler.state = NONE;
+                    break;
 
-                    SDL_Log("Window (%s) MOUSE_HELD_DOWN\n", window->title);
-                    window->mouse_handler.just_pressed = false;
-                    window->mouse_handler.is_held = true;
-                } 
-
-            break;
-
-            case SDL_MOUSEBUTTONDOWN:
-                if (window->mouse_handler.just_pressed == false 
-                        && window->mouse_handler.is_held == false) {
-
-                    SDL_Log("Window (%s) MOUSE_DOWN\n", window->title);
-                    window->mouse_handler.just_pressed  = true;
-
-                }             
+                    case JUST_PRESSED:
+                    case HELD:
+                        window->mouse_handler.state = HELD;
+                    break;
+                }
             break;
 
             case SDL_MOUSEBUTTONUP:
+                SDL_Log("Window (%s) MOUSE_DOWN\n", window->title);
+                switch(window->mouse_handler.state)
+                {
+                    case RELEASED:
+                    case NONE:
+                        window->mouse_handler.state = NONE;
+                    break;
+
+                    case JUST_PRESSED:
+                    case HELD:
+                        window->mouse_handler.state = RELEASED;
+                    break;
+                }
+            break;
+
+            case SDL_MOUSEBUTTONDOWN:
                 SDL_Log("Window (%s) MOUSE_UP\n", window->title);
-                window->mouse_handler.just_pressed  = false;
-                window->mouse_handler.is_held       = false;
+                switch(window->mouse_handler.state)
+                {
+                    case RELEASED:
+                    case NONE:
+                        window->mouse_handler.state = JUST_PRESSED;
+                    break;
+
+                    case JUST_PRESSED:
+                    case HELD:
+                        window->mouse_handler.state = HELD;
+                    break;
+                }
             break;
 
             case SDL_KEYDOWN:
