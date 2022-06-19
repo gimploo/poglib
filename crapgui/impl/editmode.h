@@ -89,7 +89,6 @@ void __crapgui_editmode_ui_is_mouse_held(const crapgui_t *gui)
     const vec2f_t mousepos  = window_mouse_get_norm_position(gui->win);
     if (window_mouse_button_is_held(gui->win))
     {
-        printf("this is not working\n");
         const vec2f_t dim = { 
             ui->styles.width / 2.0f, 
             ui->styles.height / 2.0f 
