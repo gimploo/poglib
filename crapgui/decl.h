@@ -41,8 +41,8 @@ typedef struct ui_t {
     vec2f_t             pos;
     bool                is_hot;
     bool                is_active;
-    bool                __update_cache;
     struct {
+        bool            cache_again;
         quadf_t         quad;
         glquad_t        glquad;
         gltext_t        texts;
@@ -50,12 +50,27 @@ typedef struct ui_t {
 
 } ui_t ;
 
+#define __crapgui_recache_only_frame(PFRAME) do {\
+    (PFRAME)->__cache.self.cache_again = true;\
+} while (0)
+
+#define __crapgui_recache_both(PFRAME) do {\
+    (PFRAME)->__cache.uis.cache_again = true;\
+    (PFRAME)->__cache.self.cache_again = true;\
+} while(0)
+
+#define __crapgui_recache_only_uis(PFRAME) do {\
+    (PFRAME)->__cache.uis.cache_again = true;\
+} while (0)
+
+#define __crapgui_recache_ui(PUI) do {\
+    (PUI)->__cache.cache_again = true;\
+} while(0)
 
 typedef struct crapgui_t {
 
     window_t                *win;
     map_t                   frames;
-
     struct {
         glfreetypefont_t    font;
         glshader_t          shader;
@@ -64,19 +79,24 @@ typedef struct crapgui_t {
         glfreetypefont_t    fonts[UITYPE_COUNT];
         glshader_t          shaders[UITYPE_COUNT];
     } ui_assets;
-
     glshader_t              __common_shader;
-
     struct {
         bool                is_on;
-        frame_t             *active_frame;
-        ui_t                *active_ui;
+        struct {
+            bool            frame;
+            bool            ui;
+        } focused;
     } editmode;
+    struct {
+        frame_t             *frame;
+        ui_t                *ui;
+    } currently_active;
 
     void (*update)(struct crapgui_t *);
     void (*render)(struct crapgui_t *);
 
 } crapgui_t ;
+
 
 
 /*=============================================================================
@@ -117,30 +137,28 @@ typedef struct frame_t {
     vec2f_t                 pos;
     uistyle_t               styles;
     slot_t                  uis;
-    bool                    __update_both_caches;
     struct {
+        struct {
+            bool            cache_again;
+            quadf_t         quad;
+            gltext_t        texts;
+            glbatch_t       glquads;
+        } self;
+        struct {
+            bool            cache_again;
+            glframebuffer_t texture;
+            glbatch_t       uibatch[UITYPE_COUNT];
+            gltext_t        txtbatch[UITYPE_COUNT];
+        } uis;
+    } __cache;
 
-        quadf_t             quad;
-        gltext_t            texts;
-        glbatch_t           glquads;
-
-    } __frame_cache;
-    struct {
-
-        glframebuffer_t     texture;
-        glbatch_t           uibatch[UITYPE_COUNT];
-        gltext_t            txtbatch[UITYPE_COUNT];
-
-    }__frame_ui_cache;
-
-    void (*update)(struct frame_t * self, const crapgui_t *gui);
+    void (*update)(struct frame_t * self, crapgui_t *gui);
     void (*render)(const struct frame_t * self, const crapgui_t *gui);
 
 } frame_t ;
 
 frame_t     frame_init(const char *label, vec2f_t pos, uistyle_t styles);
 vec2f_t     frame_get_mouse_position(const frame_t *frame);
-vec2f_t     frame_convert_to_relative_value(const frame_t *frame, const vec2f_t value);
 void        frame_destroy(frame_t *self);
 
 

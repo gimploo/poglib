@@ -5,7 +5,6 @@
 //FIXME: the lable is alone in a frame, it doesnt render the color behind the text 
 //TODO: when checking whether the mouse is over the button, have a system that only checks for those in that region and not the entire frame
 //TODO: MAKE A BATCH MANAGER URGENT !!!!!!!!!!!!!!!!!!!!!!
-//TODO: move all edit mode stuff into a separate compartment
 
 crapgui_t   crapgui_init(void);
 #define     crapgui_update(PGUI)                (PGUI)->update(PGUI)
