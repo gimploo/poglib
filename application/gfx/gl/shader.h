@@ -160,13 +160,13 @@ static inline void __shader_load_from_file(glshader_t *shader, const char *verte
     char vs_code[KB]; 
     char fs_code[KB]; 
 
-    file_t vs_file = file_init(vertex_source_path);
-        file_readall(&vs_file, vs_code, sizeof(vs_code));
-    file_destroy(&vs_file);
+    file_t *vs_file = file_init(vertex_source_path, "r");
+        file_readall(vs_file, vs_code, sizeof(vs_code));
+    file_destroy(vs_file);
 
-    file_t fg_file = file_init(fragment_source_path);
-        file_readall(&fg_file, fs_code, sizeof(fs_code));
-    file_destroy(&fg_file);
+    file_t *fg_file = file_init(fragment_source_path, "r");
+        file_readall(fg_file, fs_code, sizeof(fs_code));
+    file_destroy(fg_file);
 
     __shader_load_code(shader, vs_code, fs_code);
 
