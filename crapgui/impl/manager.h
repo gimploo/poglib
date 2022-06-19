@@ -1,13 +1,16 @@
 #pragma once
 #include "../decl.h"
 #include "./frame.h"
-
+#include "./editmode.h"
 
 #define COMMON_VS   "lib/poglib/crapgui/res/common.vs"
 #define COMMON_FS   "lib/poglib/crapgui/res/common.fs"
 #define FRAME_FS    "lib/poglib/crapgui/res/frame.fs"
 #define BUTTON_FS   "lib/poglib/crapgui/res/button.fs"
-#define LABEL_FS   "lib/poglib/crapgui/res/label.fs"
+#define LABEL_FS    "lib/poglib/crapgui/res/label.fs"
+
+#define __crapgui_in_editmode(PGUI)\
+    (PGUI)->editmode.is_on
 
 ui_t * __impl_crapgui_get_button_from_frame(const crapgui_t *gui, const char *frame_label, const char *button_label)
 {
@@ -29,19 +32,52 @@ ui_t * __impl_crapgui_get_button_from_frame(const crapgui_t *gui, const char *fr
     eprint("no button (%s) found in frame (%s)", button_label, frame->label);
 }
 
-bool __crapgui_is_mouse_over_frame(const crapgui_t *gui, const frame_t *frame)
+bool __crapgui_is_mouse_over_frame(crapgui_t *gui, frame_t *frame)
 {
     window_t *win = gui->win;
 
     vec2f_t norm_mouse_position = window_mouse_get_norm_position(win);
-    return quadf_is_point_in_quad(frame->__frame_cache.quad, norm_mouse_position);
+    bool output = quadf_is_point_in_quad(frame->__cache.self.quad, norm_mouse_position);
+
+    frame->__cache.uis.cache_again = output;
+    return output;
 }
 
+void __crapgui_input(crapgui_t *gui)
+{
+    if (window_keyboard_is_key_pressed(gui->win, SDLK_e))
+    {
+        gui->editmode.focused.ui = true;
+        gui->editmode.focused.frame = false;
+    }
+
+    if (window_keyboard_is_key_pressed(gui->win, SDLK_q))
+    {
+        gui->editmode.focused.frame = true;
+        gui->editmode.focused.ui    = false;
+    }
+
+    if (window_keyboard_is_key_pressed(gui->win, SDLK_w))
+    {
+        gui->editmode.is_on = !gui->editmode.is_on;
+        gui->editmode.focused.frame = true;
+        gui->editmode.focused.ui = false;
+        printf("MODE: %s\n", gui->editmode.is_on ? "EDIT" : "NORMAL");
+    }
+
+    if (window_mouse_button_is_released(gui->win))
+    {
+        if (gui->editmode.focused.frame)
+            gui->currently_active.frame = NULL;
+        else 
+            gui->currently_active.ui = NULL;
+    }
+}
 
 void __crapgui_update(crapgui_t *gui)
 {
-    __crapgui_editmode_is_keypressed(gui, SDLK_e);
-    if(__crapgui_in_editmode(gui)) {
+    __crapgui_input(gui);
+    if (__crapgui_in_editmode(gui)) {
         __crapgui_editmode_update(gui);
         return;
     }
@@ -50,12 +86,9 @@ void __crapgui_update(crapgui_t *gui)
     map_iterator(map, iter) 
     {
         frame_t *frame = (frame_t *)iter;
-
         if (__crapgui_is_mouse_over_frame(gui, frame))
         {
-            if (!__crapgui_in_editmode(gui)) 
-                __crapgui_editmode_set_active_frame(gui, frame);
-
+            gui->currently_active.frame = frame;
             frame->update(frame, gui);
         }
     }
@@ -82,11 +115,11 @@ crapgui_t crapgui_init(void)
 
     return (crapgui_t ) {
 
-        .win                = global_window,
-        .frames             = map_init(MAX_FRAMES_ALLOWED, frame_t ),
+        .win                    = global_window,
+        .frames                 = map_init(MAX_FRAMES_ALLOWED, frame_t ),
         .frame_assets = {
-            .font           = glfreetypefont_init(DEFAULT_FRAME_FONT_PATH, DEFAULT_FRAME_FONT_SIZE),
-            .shader         = glshader_from_file_init(COMMON_VS, FRAME_FS),
+            .font               = glfreetypefont_init(DEFAULT_FRAME_FONT_PATH, DEFAULT_FRAME_FONT_SIZE),
+            .shader             = glshader_from_file_init(COMMON_VS, FRAME_FS),
         },
         .ui_assets = {
             .fonts = {
@@ -98,14 +131,23 @@ crapgui_t crapgui_init(void)
                 [UI_LABEL]      = glshader_from_file_init(COMMON_VS, LABEL_FS),
             },
         },
-        .__common_shader    = glshader_from_file_init(COMMON_VS, COMMON_FS),
+        .__common_shader        = glshader_from_file_init(COMMON_VS, COMMON_FS),
         .editmode = {
-            .is_on          = false, 
-            .active_frame   = NULL,
-            .active_ui      = NULL,
+
+            //FIXME: have this flag be depended on whether the 
+            //saved config file is found
+            .is_on              = false, 
+            .focused = {
+                .frame          = false, 
+                .ui             = false, 
+            },
         },
-        .update             = __crapgui_update,
-        .render             = __crapgui_render
+        .currently_active = {
+            .frame              = NULL,
+            .ui                 = NULL
+        },
+        .update                 = __crapgui_update,
+        .render                 = __crapgui_render
 
     };
 }
@@ -146,13 +188,12 @@ vec2f_t __crapgui_get_pos_for_new_frame(const crapgui_t *gui)
 
 frame_t * __crapgui_add_frame(crapgui_t *gui, const char *label, uistyle_t style)
 {
-    map_t *map = &gui->frames;
-
+    map_t *map      = &gui->frames;
     vec2f_t pos     = __crapgui_get_pos_for_new_frame(gui);
+
     frame_t frame   = frame_init(
                         label, 
                         pos, style);
-
     __frame_update(&frame, gui);
 
     return (frame_t *)map_insert(map, label, frame);
@@ -182,6 +223,8 @@ void crapgui_destroy(crapgui_t *gui)
         glshader_destroy(shader);
         glfreetypefont_destroy(font);
     }
+    gui->currently_active.ui    = NULL;
+    gui->currently_active.frame = NULL;
 
     glshader_destroy(&gui->__common_shader);
 }

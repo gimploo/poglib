@@ -1,6 +1,5 @@
 #pragma once
 #include "../decl.h"
-#include "editmode.h"
 
 void __ui_destroy(ui_t *elem)
 {
@@ -33,12 +32,13 @@ void __ui_cache_vertices(ui_t *ui, const crapgui_t *gui)
 }
 
 
-void __ui_check_is_mouse_over(ui_t *ui, const frame_t *frame)
+void __ui_is_mouse_over(ui_t *ui, const frame_t *frame, crapgui_t *gui)
 {
     window_t *win = window_get_current_active_window();
     vec2f_t mouse_position = frame_get_mouse_position(frame);
 
     if(quadf_is_point_in_quad(ui->__cache.quad, mouse_position)) {
+        gui->currently_active.ui = ui;
         ui->is_hot      = true;
         ui->is_active   = false;
     } else {
@@ -49,7 +49,7 @@ void __ui_check_is_mouse_over(ui_t *ui, const frame_t *frame)
 }
 
 
-void __ui_check_is_mouse_clicked(ui_t *ui, const crapgui_t *gui)
+void __ui_is_mouse_clicked(ui_t *ui, const crapgui_t *gui)
 {
     window_t *win = gui->win;
 
@@ -57,24 +57,17 @@ void __ui_check_is_mouse_clicked(ui_t *ui, const crapgui_t *gui)
         ui->is_active   = true;
 }
 
-void __ui_update(ui_t *ui, const frame_t *frame, const crapgui_t *gui)
+void __ui_update(ui_t *ui, frame_t *frame, crapgui_t *gui)
 {
-    if (__crapgui_in_editmode(gui)) {
-
-        ui->is_hot = ui->is_active = false;
-        __crapgui_editmode_ui_is_mouse_over(ui, frame, (crapgui_t *)gui);
-        __crapgui_editmode_ui_is_mouse_held(frame, gui);
-
-    } else 
-        __ui_check_is_mouse_over(ui, frame);
-
-    __ui_cache_vertices(ui, gui);
+    if (ui->__cache.cache_again)
+        __ui_cache_vertices(ui, gui);
 
     switch(ui->type)
     {
         case UI_BUTTON:
 
-            __ui_check_is_mouse_clicked(ui, gui);
+            __ui_is_mouse_over(ui, frame, gui);
+            __ui_is_mouse_clicked(ui, gui);
 
             if (ui->is_hot)
                 ui->__cache.glquad = glquad(ui->__cache.quad,
@@ -88,11 +81,14 @@ void __ui_update(ui_t *ui, const frame_t *frame, const crapgui_t *gui)
 
         case UI_LABEL:
             ui->__cache.glquad = 
-                glquad(ui->__cache.quad, ui->styles.color,
+                glquad(ui->__cache.quad, 
+                        ui->styles.color,
                         quadf(vec3f(0.0f), 0.0f, 0.0f), 0);
         break;
 
         default: eprint("type not accounted for ");
     }
+
+    ui->__cache.cache_again = false;
 
 }
