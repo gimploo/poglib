@@ -1,13 +1,24 @@
 #pragma once
-
 #include "./globjects.h"
 #include "./common.h"
 
 
-typedef struct glvertex_t   glvertex_t;
-typedef struct gltri_t      gltri_t;
-typedef struct glquad_t     glquad_t;
-typedef struct glcircle_t   glcircle_t;
+typedef struct glvertex_t {
+
+    vec3f_t position;
+    vec4f_t color;
+    vec2f_t texture_coord;
+    u8      texture_id;
+
+} glvertex_t ;
+
+typedef struct { glvertex_t vertex[3]; } gltri_t;
+typedef struct { glvertex_t vertex[4]; } glquad_t;
+typedef struct { glvertex_t vertex[MAX_VERTICES_PER_CIRCLE]; } glcircle_t;
+
+gltri_t         gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid);
+glquad_t        glquad(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id);
+glcircle_t      glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
 
 typedef enum {
 
@@ -17,12 +28,6 @@ typedef enum {
     GLBT_COUNT
 
 } glbatch_type;
-
-
-gltri_t         gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid);
-glquad_t        glquad(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id);
-glcircle_t      glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
-
 
 typedef struct glbatch_t {
 
@@ -74,32 +79,7 @@ const u32 DEFAULT_QUAD_INDICES[] = {
     2, 3, 0
 };
 
-struct glvertex_t {
 
-    vec3f_t position;
-    vec4f_t color;
-    vec2f_t texture_coord;
-    u8      texture_id;
-
-} ;
-
-
-struct gltri_t { 
-
-    glvertex_t vertex[3]; 
-
-};
-
-struct glquad_t { 
-
-    glvertex_t vertex[4]; 
-
-};
-
-struct glcircle_t {
-
-    glvertex_t  vertex[MAX_VERTICES_PER_CIRCLE];
-};
 
 // Creates a quad suited for OpenGL
 glquad_t glquad(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id)
