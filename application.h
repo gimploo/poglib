@@ -67,10 +67,10 @@ void application_run(application_t *app)
     if (!app->window_title)         eprint("application title is missing ");
     if (app->window_width <= 0)     eprint("provide a proper width to the application");
     if (app->window_height <= 0)    eprint("provide a proper height to the application");
-    if(!app->init)                  eprint("application init funciton is missing");
-    if(!app->update)                eprint("application update function is missing");
-    if(!app->render)                eprint("application render function is missing");
-    if(!app->destroy)              eprint("application shutdown function is missing");
+    if (!app->init)                 eprint("application init funciton is missing");
+    if (!app->update)               eprint("application update function is missing");
+    if (!app->render)               eprint("application render function is missing");
+    if (!app->destroy)              eprint("application shutdown function is missing");
 
     window_t * win = window_init(
             app->window_title, 
