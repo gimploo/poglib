@@ -135,4 +135,5 @@ void __crapgui_editmode_update(crapgui_t *gui)
     } 
 
     active_frame->update(active_frame, gui);
+
 }

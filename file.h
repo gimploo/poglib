@@ -50,6 +50,8 @@ u64 file_get_size(const char *filepath)
 void __file_set_size(file_t *file)
 {
     FILE *old_pos = file->fp;
+    if (strcmp("w", file->mode) == 0)
+        return;
 
     fseek(file->fp, 0L, SEEK_END);
     const u64 size = ftell(file->fp);
