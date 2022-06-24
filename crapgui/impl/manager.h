@@ -47,7 +47,7 @@ void __crapgui_input(crapgui_t *gui)
 {
     if (window_keyboard_is_key_pressed(gui->win, SDLK_e))
     {
-        gui->editmode.focused.ui = true;
+        gui->editmode.focused.ui    = true;
         gui->editmode.focused.frame = false;
     }
 
@@ -59,13 +59,13 @@ void __crapgui_input(crapgui_t *gui)
 
     if (window_keyboard_is_key_pressed(gui->win, SDLK_w))
     {
-        gui->editmode.is_on = !gui->editmode.is_on;
+        gui->editmode.is_on         = !gui->editmode.is_on;
         gui->editmode.focused.frame = true;
-        gui->editmode.focused.ui = false;
+        gui->editmode.focused.ui    = false;
         printf("MODE: %s\n", gui->editmode.is_on ? "EDIT" : "NORMAL");
     }
 
-    if (window_mouse_button_is_released(gui->win))
+    if (window_mouse_button_is_released(gui->win, SDL_MOUSEBUTTON_LEFT))
     {
         if (gui->editmode.focused.frame)    gui->currently_active.frame = NULL;
         else if (gui->editmode.focused.ui)  gui->currently_active.ui = NULL;
