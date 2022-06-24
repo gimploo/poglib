@@ -53,13 +53,16 @@ void __ui_is_mouse_clicked(ui_t *ui, const crapgui_t *gui)
 {
     window_t *win = gui->win;
 
-    if (window_mouse_button_just_pressed(win) && ui->is_hot)
+    if (window_mouse_button_just_pressed(win, SDL_MOUSEBUTTON_LEFT) 
+        && ui->is_hot) 
+    {
         ui->is_active   = true;
+    }
 }
 
 void __ui_update(ui_t *ui, frame_t *frame, crapgui_t *gui)
 {
-    printf("Recaching ui %s\n", ui->title);
+    /*printf("Recaching ui %s\n", ui->title);*/
     if (ui->__cache.cache_again)
         __ui_cache_vertices(ui, gui);
 

@@ -7,7 +7,7 @@ void __frame_update(frame_t *frame, crapgui_t *gui)
     // Updating frame vertices
     if (frame->__cache.self.cache_again) 
     {
-        printf("Caching only frame %s\n", frame->label);
+        /*printf("Caching only frame %s\n", frame->label);*/
         // The entire frame vertices
         frame->__cache.self.quad = quadf(
                                 vec3f(frame->pos), 
@@ -37,7 +37,7 @@ void __frame_update(frame_t *frame, crapgui_t *gui)
     if (!frame->__cache.uis.cache_again) {
         return;
     }
-    printf("Caching all uis in frame %s\n", frame->label);
+    /*printf("Caching all uis in frame %s\n", frame->label);*/
 
     for (int type = 0; type < UITYPE_COUNT; type++)
     {

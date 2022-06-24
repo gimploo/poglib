@@ -51,7 +51,7 @@ bool __crapgui_editmode_ui_is_mouse_over(ui_t *ui, crapgui_t *gui)
                                 ui->styles.height); 
 
     if(quadf_is_point_in_quad(rect, mousepos) 
-        && window_mouse_button_just_pressed(gui->win))
+        && window_mouse_button_just_pressed(gui->win, SDL_MOUSEBUTTON_LEFT))
     {
         gui->currently_active.ui = ui;
         return true;
@@ -65,7 +65,7 @@ void __crapgui_editmode_frame_is_mouse_held(const crapgui_t *gui)
     if (!frame) return;
 
     const vec2f_t mousepos  = window_mouse_get_norm_position(gui->win);
-    if (window_mouse_button_is_held(gui->win))
+    if (window_mouse_button_is_held(gui->win, SDL_MOUSEBUTTON_LEFT))
     {
         const vec2f_t dim = { 
             frame->styles.width / 2.0f, 
@@ -87,7 +87,7 @@ void __crapgui_editmode_ui_is_mouse_held(const crapgui_t *gui)
     if (!ui) return;
 
     const vec2f_t mousepos  = window_mouse_get_norm_position(gui->win);
-    if (window_mouse_button_is_held(gui->win))
+    if (window_mouse_button_is_held(gui->win, SDL_MOUSEBUTTON_LEFT))
     {
         const vec2f_t dim = { 
             ui->styles.width / 2.0f, 
