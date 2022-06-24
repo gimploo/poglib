@@ -1,8 +1,5 @@
-#ifndef __INTERNAL_COMMON_H__
-#define __INTERNAL_COMMON_H__
-
+#pragma once
 #include <GL/glew.h>
-
 #include <poglib/basic.h>
 #include <poglib/ds/stack.h>
 #include <poglib/ds/queue.h>
@@ -24,5 +21,3 @@
         eprint("[GL_CHECK] (%s): %s -> %s\n", __func__, #CMD, gluErrorString(err));\
 \
 } while(0)
-
-#endif //__INTERNAL_COMMON_H__

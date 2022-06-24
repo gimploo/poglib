@@ -153,7 +153,6 @@ void application_run(application_t *app)
 #ifdef DEBUG
     dbg_destroy();
 #endif
-
 }
 
 #endif 
