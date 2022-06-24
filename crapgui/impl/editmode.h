@@ -1,5 +1,6 @@
 #pragma once
 #include "../decl.h"
+#include "editmode/editwheel.h"
 
 
 void __crapgui_editmode_render(crapgui_t *gui)
@@ -32,6 +33,8 @@ void __crapgui_editmode_render(crapgui_t *gui)
         glrenderer2d_draw_quad(&r2d, quad);
 
     } 
+
+    /*editwheel_render();*/
 }
 
 void __crapgui_editmode_frame_is_mouse_over(crapgui_t *gui, frame_t *frame)
