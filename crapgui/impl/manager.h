@@ -146,7 +146,7 @@ crapgui_t crapgui_init(void)
         .editmode = {
             .is_on              = editmode, 
             .focused = {
-                .frame          = false, 
+                .frame          = editmode, 
                 .ui             = false, 
             },
         },
