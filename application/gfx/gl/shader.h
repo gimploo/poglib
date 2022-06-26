@@ -157,8 +157,8 @@ static inline void __shader_load_from_file(glshader_t *shader, const char *verte
 {
     if (shader == NULL) eprint("shader argument is null");
 
-    char vs_code[KB]; 
-    char fs_code[KB]; 
+    char vs_code[KB] = {0}; 
+    char fs_code[KB] = {0}; 
 
     file_t *vs_file = file_init(vertex_source_path, "r");
         file_readall(vs_file, vs_code, sizeof(vs_code));
@@ -169,9 +169,6 @@ static inline void __shader_load_from_file(glshader_t *shader, const char *verte
     file_destroy(fg_file);
 
     __shader_load_code(shader, vs_code, fs_code);
-
-    GL_LOG("Shader `%i` successfully linked", shader->id);
-
 }
 
 glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
@@ -185,7 +182,7 @@ glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
 
     __shader_load_from_file(&shader, file_vs, file_fs);
 
-    shader.uniforms = list_init(2, __uniform_meta_data_t );
+    shader.uniforms = list_init(1, __uniform_meta_data_t );
 
     return shader;
 }
@@ -201,7 +198,7 @@ glshader_t  glshader_from_cstr_init(const char *vs_code, const char *fs_code)
 
     __shader_load_code(&shader, vs_code, fs_code);
 
-    shader.uniforms = list_init(2, __uniform_meta_data_t );
+    shader.uniforms = list_init(1, __uniform_meta_data_t );
 
     return shader;
 }
