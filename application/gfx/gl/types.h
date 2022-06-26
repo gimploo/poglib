@@ -16,23 +16,35 @@ typedef struct { glvertex_t vertex[3]; } gltri_t;
 typedef struct { glvertex_t vertex[4]; } glquad_t;
 typedef struct { glvertex_t vertex[MAX_VERTICES_PER_CIRCLE]; } glcircle_t;
 
+typedef struct {
+    glcircle_t  vertices;
+    u8          sides;
+} glpolygon_t ;
+
 gltri_t         gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid);
 glquad_t        glquad(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id);
 glcircle_t      glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
+glpolygon_t     glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv, u8 texid);
+
 
 typedef enum {
 
     GLBT_gltri_t = 0,
     GLBT_glquad_t,
     GLBT_glcircle_t,
+    GLBT_glpolygon_t,
     GLBT_COUNT
 
 } glbatch_type;
 
 typedef struct glbatch_t {
 
-    queue_t             globjs;
-    glbatch_type        type;
+    queue_t globjs;
+
+    struct {
+        const glbatch_type type;
+        i8 nvertices;
+    } __meta;
 
     vao_t vao;
     vbo_t vbo;
@@ -40,8 +52,8 @@ typedef struct glbatch_t {
 
 } glbatch_t ;
 
-#define         glbatch_init(CAPACITY, TYPE)    __impl_glbatch_init((CAPACITY), GLBT_type(TYPE), #TYPE, sizeof(TYPE))
-#define         glbatch_put(PBATCH, ELEM)       queue_put(&(PBATCH)->globjs, (ELEM))
+#define         glbatch_init(CAPACITY, TYPE)    __impl_glbatch_init((CAPACITY), GLBT_type(TYPE), #TYPE)
+#define         glbatch_put(PBATCH, ELEM)       __impl_glbatch_put((PBATCH), &(ELEM), sizeof(ELEM))
 #define         glbatch_get(PBATCH, ELEM)       queue_get_in_buffer(&(PBATCH)->globjs, (ELEM))
 #define         glbatch_is_empty(PBATCH)        queue_is_empty(&(PBATCH)->globjs)
 void            glbatch_combine(glbatch_t *dest, glbatch_t *src);
@@ -65,6 +77,52 @@ typedef struct {
 
 
 #ifndef IGNORE_GL_TYPE_IMPLEMENTATION
+
+void __impl_glbatch_put(glbatch_t *batch, const void *elem, const u64 elemsize)
+{
+    switch(batch->__meta.type)
+    {
+        case GLBT_gltri_t:
+        case GLBT_glquad_t:
+        case GLBT_glcircle_t:
+            __impl_queue_put(&batch->globjs, elem, elemsize);
+        break;
+
+        case GLBT_glpolygon_t: {
+
+            glpolygon_t *poly = (glpolygon_t *)elem;
+
+            if (batch->__meta.nvertices == -1) {
+
+                batch->__meta.nvertices = poly->sides * 3;
+
+                queue_t oldqueue = batch->globjs;
+                queue_destroy(&batch->globjs);
+                batch->globjs = __impl_queue_init(
+                        oldqueue.__capacity,
+                        poly->sides * 3 * sizeof(glvertex_t ),
+                        "glpolygon_t");
+            }
+
+            if ((poly->sides * 3) != batch->__meta.nvertices)
+               eprint("Trying to push a polygon of `%i` vertices to a batch expecting polygon of `%u` vertices", 
+                       poly->sides,
+                       batch->__meta.nvertices);
+
+            const u64 size = 
+                sizeof(glvertex_t ) * batch->__meta.nvertices;
+
+            __impl_queue_put(
+                    &batch->globjs, 
+                    &poly->vertices, 
+                    size);
+        } break;
+
+        default: eprint("batch type not accounted for");
+    }
+
+}
+
 
 #define MAX_TRI_INDICES_CAPACITY 3
 #define MAX_QUAD_INDICES_CAPACITY 6
@@ -140,6 +198,34 @@ gltri_t gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid)
     };
 }
 
+glpolygon_t glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv, u8 texid)
+{
+    glpolygon_t output = {0} ;
+
+    glvertex_t *vertices = output.vertices.vertex;
+
+    // TODO: Textures on polygons
+    //for (u64 i = 0; i < MAX_TRIANGLES_PER_CIRCLE; i++)
+    //{
+        //uv.vertex[i].cmp[X] = (polygon.points[i].cmp[X] /polygon.radius + 1)*0.5;
+        //uv.vertex[i].cmp[Y] = (polygon.points[i].cmp[Y]/polygon.radius + 1)*0.5;
+
+         //float tx = (x/r + 1)*0.5;
+         //float ty = (y/r + 1)*0.5;
+
+    //}
+
+    output.sides = polygon.sides;
+    for (u64 i = 0; i < (polygon.sides * 3); i++)
+    {
+        vertices[i].position = polygon.vertices.points[i];
+        vertices[i].color = color; 
+        vertices[i].texture_coord = vec2f(uv.vertex[i]);
+        vertices[i].texture_id = texid;
+    }
+    return output;
+}
+
 glcircle_t glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
 {
     glcircle_t output = {0} ;
@@ -164,7 +250,6 @@ glcircle_t glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
         vertices[i].texture_coord = vec2f(uv.vertex[i]);
         vertices[i].texture_id = texid;
     }
-
     return output;
 }
 
@@ -204,18 +289,50 @@ gltext_t __impl_gltext_init(u64 capacity, glbatch_type type, const char *type_na
 {
     glbatch_t o =  {
         .globjs   = __impl_queue_init(capacity, type_size, type_name),
-        .type     = type
+        .__meta = {
+            .type = type,
+            .nvertices = 6 
+        }
     };
 
     return (gltext_t ) {
         .text = o
     };
 }
-glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, const char *type_name, u64 type_size)
+glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, const char *type_name)
 {
+    i8 nvertices = 0;
+    u64 typesize = 0;
+    switch(type)
+    {
+        case GLBT_gltri_t:
+            nvertices =  3;
+            typesize = sizeof(gltri_t );
+        break;
+
+        case GLBT_glquad_t:
+            nvertices =  6;
+            typesize = sizeof(glquad_t);
+        break;
+
+        case GLBT_glcircle_t:
+            nvertices =  MAX_VERTICES_PER_CIRCLE;
+            typesize = sizeof(glcircle_t );
+        break;
+
+        case GLBT_glpolygon_t:
+            nvertices   =  -1;
+            typesize    = 0;
+        break;
+
+        default: eprint("batch type not accounted for");
+    }
     glbatch_t o =  {
-        .globjs   = __impl_queue_init(capacity, type_size, type_name),
-        .type     = type
+        .globjs   = __impl_queue_init(capacity, typesize, type_name),
+        .__meta = {
+            .type = type,
+            .nvertices = nvertices
+        }
     };
 
     return o;
@@ -223,13 +340,13 @@ glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, const char *type_
 
 void glbatch_combine(glbatch_t *dest, glbatch_t *src)
 {
-    assert(dest->type == src->type);
+    assert(dest->__meta.type == src->__meta.type);
 
     queue_t *queue = &src->globjs;
 
     queue_iterator(queue, iter)
     {
-        switch(dest->type)
+        switch(dest->__meta.type)
         {
             case GLBT_glquad_t: {
                 glquad_t *quad = (glquad_t *)iter;
