@@ -8,7 +8,7 @@
 #endif
 #include "./ds/linkedlist.h"
 
-
+#define DEFAULT_DBG_MEM_LOG_PATH "bin/dbg_mem_log.txt"
 const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h" };
 
 
@@ -101,7 +101,7 @@ bool __is_file_in_ignore_files(const char *filepath)
 // Init function required to start the debugger
 bool dbg_init(void)
 {
-    FILE *fp = fopen("dbg_mem_log.txt", "w");
+    FILE *fp = fopen(DEFAULT_DBG_MEM_LOG_PATH, "w");
     assert(fp);
 
     global_debug.fp = fp;
