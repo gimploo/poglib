@@ -24,6 +24,7 @@ glrenderer2d_t      glrenderer2d(const glshader_t *shader, const gltexture2d_t *
 void                glrenderer2d_draw_quad(const glrenderer2d_t *renderer, const glquad_t quad);
 void                glrenderer2d_draw_triangle(const glrenderer2d_t *renderer, const gltri_t tri);
 void                glrenderer2d_draw_circle(const glrenderer2d_t *renderer, const glcircle_t circle);
+void                glrenderer2d_draw_polygon(const glrenderer2d_t *renderer, const glpolygon_t polygon);
 
 void                glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_t *batch);
 
@@ -103,7 +104,41 @@ void glrenderer2d_draw_circle(const glrenderer2d_t *renderer, const glcircle_t c
             }
 
             glshader_bind((glshader_t *)renderer->shader);
-            vao_draw_with_vbo(&vao, &vbo);
+            vao_draw_with_vbo_in_mode(&vao, &vbo, GL_TRIANGLE_FAN);
+
+    vao_unbind();
+
+    vbo_destroy(&vbo);
+    vao_destroy(&vao);
+
+}
+
+void glrenderer2d_draw_polygon(const glrenderer2d_t *renderer, const glpolygon_t polygon)
+{    
+    if (renderer == NULL) eprint("renderer argument is null");
+    assert(renderer->shader);
+
+    vao_t vao = vao_init();
+    vbo_t vbo; 
+
+    vao_bind(&vao);
+
+            u64 vsize = polygon.sides * 3 * sizeof(glvertex_t );
+            u64 vertex_count = polygon.sides * 3;
+            vbo = vbo_static_init(
+                 polygon.vertices.vertex , 
+                 vsize, vertex_count);
+            vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, position));
+            vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, color));
+
+            if (renderer->texture != NULL) {
+                vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_coord));
+                vao_set_attributes(&vao, &vbo,1, GL_UNSIGNED_INT, false, sizeof(glvertex_t), offsetof(glvertex_t, texture_id));
+                gltexture2d_bind(renderer->texture, 0);
+            }
+
+            glshader_bind((glshader_t *)renderer->shader);
+            vao_draw_with_vbo_in_mode(&vao, &vbo, GL_TRIANGLE_FAN);
 
     vao_unbind();
 
@@ -157,24 +192,7 @@ void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_
 
     assert(renderer->shader);
 
-    u64 vertices_count = 0;
-    switch(batch->type)
-    {
-        case GLBT_gltri_t:
-            vertices_count = 3 * batch->globjs.len;
-        break;
-
-        case GLBT_glquad_t:
-            vertices_count = 6 * batch->globjs.len;
-        break;
-
-        case GLBT_glcircle_t:
-            vertices_count = MAX_VERTICES_PER_CIRCLE * batch->globjs.len;
-        break;
-
-        default: eprint("batch type not accounted for");
-    }
-
+    const u64 vertices_count = batch->__meta.nvertices * batch->globjs.len;
     vao_t vao  = vao_init();
     vbo_t vbo   = vbo_static_init(
                     batch->globjs.__array, 
@@ -185,9 +203,10 @@ void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_
     vao_bind(&vao);
 
         // Ebo setup
-        switch(batch->type)
+        switch(batch->__meta.type)
         {
             case GLBT_gltri_t:
+            case GLBT_glpolygon_t:
             case GLBT_glcircle_t:
                 // skipping ...
             break;
@@ -216,7 +235,7 @@ void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_
         glshader_bind((glshader_t *)renderer->shader);
 
         // Draw calls
-        switch(batch->type)
+        switch(batch->__meta.type)
         {
             case GLBT_gltri_t:
                 vao_draw_with_vbo(&vao, &vbo);
@@ -227,8 +246,8 @@ void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_
             break;
 
             case GLBT_glcircle_t:
-                //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-                vao_draw_with_vbo(&vao, &vbo);
+            case GLBT_glpolygon_t:
+                vao_draw_with_vbo_in_mode(&vao, &vbo, GL_TRIANGLE_FAN);
             break;
 
             default: eprint("batch type not accounted for");
@@ -238,9 +257,10 @@ void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_
 
 
     // Deleting ebo
-    switch(batch->type)
+    switch(batch->__meta.type)
     {
         case GLBT_glcircle_t:
+        case GLBT_glpolygon_t:
         case GLBT_gltri_t:
             // skipping
         break;
