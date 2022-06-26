@@ -27,6 +27,7 @@ typedef enum {
 
     SDL_MOUSESTATE_NONE,
     SDL_MOUSESTATE_JUST_PRESSED,
+    SDL_MOUSESTATE_PRESSED,
     SDL_MOUSESTATE_RELEASED,
     SDL_MOUSESTATE_HELD,
 
@@ -145,6 +146,7 @@ bool window_mouse_button_is_pressed(
 {
   return window->mouse.button == button 
          && (window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED 
+             || window->mouse.state == SDL_MOUSESTATE_PRESSED
              || window->mouse.state == SDL_MOUSESTATE_HELD);
 }
 
@@ -710,6 +712,8 @@ void window_update_user_input(window_t *window)
     if (window->mouse.state == SDL_MOUSESTATE_RELEASED) {
         window->mouse.state = SDL_MOUSESTATE_NONE;
         window->mouse.button = SDL_MOUSEBUTTON_NONE;
+    } else if (window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED ) {
+        window->mouse.state = SDL_MOUSESTATE_PRESSED;
     }
 
     while(SDL_PollEvent(event) > 0) 
@@ -731,6 +735,7 @@ void window_update_user_input(window_t *window)
                     break;
 
                     case SDL_MOUSESTATE_JUST_PRESSED:
+                    case SDL_MOUSESTATE_PRESSED:
                     case SDL_MOUSESTATE_HELD:
                         window->mouse.state = SDL_MOUSESTATE_HELD;
                     break;
@@ -748,6 +753,7 @@ void window_update_user_input(window_t *window)
                     break;
 
                     case SDL_MOUSESTATE_JUST_PRESSED:
+                    case SDL_MOUSESTATE_PRESSED:
                     case SDL_MOUSESTATE_HELD:
                         window->mouse.state = SDL_MOUSESTATE_RELEASED;
                     break;
@@ -767,6 +773,7 @@ void window_update_user_input(window_t *window)
                     break;
 
                     case SDL_MOUSESTATE_JUST_PRESSED:
+                    case SDL_MOUSESTATE_PRESSED:
                     case SDL_MOUSESTATE_HELD:
                         window->mouse.state = SDL_MOUSESTATE_HELD;
                     break;
