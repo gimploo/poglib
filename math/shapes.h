@@ -1,18 +1,25 @@
 #pragma once
 #include "vec.h"
 
+#define TOP_LEFT     0
+#define TOP_RIGHT    1
+#define BOTTOM_RIGHT 2
+#define BOTTOM_LEFT  3
+
 // Triangle
-typedef struct trif_t trif_t;
+typedef struct trif_t {
+    vec3f_t vertex[3]; 
+} trif_t ; 
 
 trif_t          trif(vec3f_t pos, f32 side);
 
 #define         TRI_FMT         VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT ",\n"
 #define         TRI_ARG(TRI)    VEC3F_ARG(&(TRI.vertex[0])), VEC3F_ARG(&(TRI.vertex[1])), VEC3F_ARG(&(TRI.vertex[3]))
 
-
-
 //Quad
-typedef struct quadf_t quadf_t;
+typedef struct quadf_t { 
+    vec3f_t vertex[4]; 
+} quadf_t ;
 
 #define         QUAD_FMT                        VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT "\n" 
 #define         QUAD_ARG(QUAD)                  VEC3F_ARG(&(QUAD.vertex[0])), VEC3F_ARG(&(QUAD.vertex[1])), VEC3F_ARG(&(QUAD.vertex[3])), VEC3F_ARG(&(QUAD.vertex[3]))
@@ -28,32 +35,36 @@ void            quadf_print(quadf_t quad);
 #define         quadf_get_height(PQUADF)        abs((PQUADF)->vertex[1].cmp[Y] - (PQUADF)->vertex[3].cmp[Y])
 #define         quadf_copy(DESTINATION, SRC)    memcpy(DESTINATION, SRC, sizeof(quadf_t))
 
-
-
 //Circle
-typedef struct circle_t circle_t;
+#define MAX_VERTICES_PER_CIRCLE     60 
+#define MAX_TRIANGLES_PER_CIRCLE    (MAX_VERTICES_PER_CIRCLE / 3)
+
+typedef struct circle_t {
+
+    vec3f_t points[MAX_VERTICES_PER_CIRCLE];
+
+} circle_t ;
 
 circle_t        circle(vec3f_t pos, f32 radius);
 
+//Polygon
+static_assert(MAX_VERTICES_PER_CIRCLE <= 255, "EXCEEDED U8 MAX");
+
+typedef struct polygon_t { 
+
+    circle_t vertices;
+    u8       sides;
+
+} polygon_t ;
+
+polygon_t       polygon(const vec3f_t pos, const f32 radius, const u8 nsides);
 
 
 
-
+/*-----------------------------------------------------------------------------
+                        -- IMPLEMENTATION --
+-----------------------------------------------------------------------------*/
 #ifndef IGNORE_SHAPES_IMPLEMENTATION
-
-#define TOP_LEFT     0
-#define TOP_RIGHT    1
-#define BOTTOM_RIGHT 2
-#define BOTTOM_LEFT  3
-
-#define MAX_VERTICES_PER_CIRCLE     60
-#define MAX_TRIANGLES_PER_CIRCLE    (MAX_VERTICES_PER_CIRCLE / 3)
-
-struct trif_t { 
-
-    vec3f_t vertex[3]; 
-}; 
-
 
 trif_t trif(vec3f_t pos, f32 side)
 {
@@ -69,10 +80,6 @@ trif_t trif(vec3f_t pos, f32 side)
 
 
 
-struct quadf_t { 
-
-    vec3f_t vertex[4]; 
-};
 
 
 void quadf_print(quadf_t quad)
@@ -142,11 +149,6 @@ bool quadf_is_point_in_quad(const quadf_t quad, const vec2f_t point)
 
 
 
-struct circle_t {
-
-    vec3f_t     points[MAX_VERTICES_PER_CIRCLE];
-
-};
 
 circle_t circle(vec3f_t pos, f32 radius)
 {
@@ -157,11 +159,6 @@ circle_t circle(vec3f_t pos, f32 radius)
     output.points[0] = pos;
     for (u64 i = 1; i < MAX_VERTICES_PER_CIRCLE; i++)
     {
-        if (i%3 == 0) {
-            output.points[i] = pos;
-            continue;
-        }
-
         f32 angle = i * twicepi / MAX_TRIANGLES_PER_CIRCLE;
 
         vec3f_t point = {
@@ -170,11 +167,36 @@ circle_t circle(vec3f_t pos, f32 radius)
             .cmp[Z] = pos.cmp[Z]
         };
         output.points[i] = point; 
-
-
     }
     return output;
 }
+
+polygon_t polygon(const vec3f_t pos, const f32 radius, const u8 nsides)
+{
+    assert(nsides * 3 <= MAX_VERTICES_PER_CIRCLE);
+    circle_t output;
+
+    const f32 twicepi = 2.0f * (f32)PI;
+
+    output.points[0] = pos;
+    for (u64 i = 1; i < (nsides * 3); i++)
+    {
+        f32 angle = i * twicepi / nsides;
+
+        vec3f_t point = {
+            .cmp[X] = pos.cmp[X] + (f32)cos(angle) * radius,
+            .cmp[Y] = pos.cmp[Y] + (f32)sin(angle) * radius,
+            .cmp[Z] = pos.cmp[Z]
+        };
+        output.points[i] = point; 
+    }
+    const u8 nvertices = nsides * 3;
+    return (polygon_t ) {
+        .vertices       = output,
+        .sides          = nsides,
+    };
+}
+
 
 f32 circle_get_radius(circle_t *circle)
 {
