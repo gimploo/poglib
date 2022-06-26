@@ -83,10 +83,19 @@ typedef struct crapgui_t {
     glshader_t              __common_shader;
     struct {
         bool                is_on;
+
         struct {
             bool            frame;
             bool            ui;
         } focused;
+
+        // Clicking on the middle mouse allows to the user to select from 
+        // different options to do edit the gui
+        struct {
+            vec2f_t         pos;
+            bool            is_active;
+        } optionwheel;
+
     } editmode;
     struct {
         frame_t             *frame;

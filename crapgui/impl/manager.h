@@ -43,8 +43,19 @@ bool __crapgui_is_mouse_over_frame(crapgui_t *gui, frame_t *frame)
     return output;
 }
 
-void __crapgui_input(crapgui_t *gui)
+void __crapgui_input_update(crapgui_t *gui)
 {
+    if (window_mouse_button_just_pressed(gui->win, SDL_MOUSEBUTTON_MIDDLE)) {
+            gui->editmode.optionwheel.is_active = 
+                !gui->editmode.optionwheel.is_active;
+            gui->editmode.optionwheel.pos = 
+                window_mouse_get_norm_position(gui->win);
+    }
+
+    if (gui->editmode.optionwheel.is_active) {
+        return;
+    }
+
     if (window_keyboard_is_key_pressed(gui->win, SDLK_e))
     {
         gui->editmode.focused.ui    = true;
@@ -70,11 +81,13 @@ void __crapgui_input(crapgui_t *gui)
         if (gui->editmode.focused.frame)    gui->currently_active.frame = NULL;
         else if (gui->editmode.focused.ui)  gui->currently_active.ui = NULL;
     }
+
 }
+
 
 void __crapgui_update(crapgui_t *gui)
 {
-    __crapgui_input(gui);
+    __crapgui_input_update(gui);
     if (__crapgui_in_editmode(gui)) {
         __crapgui_editmode_update(gui);
         return;
