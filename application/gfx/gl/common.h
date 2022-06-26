@@ -8,9 +8,9 @@
 #include <poglib/math/shapes.h>
 
 #ifdef GL_LOG_ENABLE
-#   define GL_LOG(fmt, ...) fprintf(stderr, "[LOG]\t " fmt "\n", ##__VA_ARGS__)
+#   define GL_LOG(FMT, ...) fprintf(stderr, "[OpenGL][LOG]\t " FMT "\n", ##__VA_ARGS__)
 #else
-#   define GL_LOG(fmt, ...) 
+#   define GL_LOG(FMT, ...) 
 #endif
 
 #define GL_CHECK(CMD) do {\
@@ -18,6 +18,6 @@
     CMD;\
     GLenum err = glGetError();\
     if (err != GL_NO_ERROR)\
-        eprint("[GL_CHECK] (%s): %s -> %s\n", __func__, #CMD, gluErrorString(err));\
+        eprint("[OpenGL][ERROR] (%s): %s -> %s\n", __func__, #CMD, gluErrorString(err));\
 \
 } while(0)
