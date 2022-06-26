@@ -20,6 +20,8 @@ typedef struct scene_t {
     const char       *label;
     assetmanager_t   *assets;
     entitymanager_t  manager;
+
+    void             *content;
     
     list_t           __actions;                     // Action map
     bool             __is_paused;
