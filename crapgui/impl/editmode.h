@@ -1,7 +1,6 @@
 #pragma once
 #include "../decl.h"
-#include "editmode/editwheel.h"
-
+#include "editmode/optionwheel.h"
 
 void __crapgui_editmode_render(crapgui_t *gui)
 {
@@ -34,7 +33,8 @@ void __crapgui_editmode_render(crapgui_t *gui)
 
     } 
 
-    /*editwheel_render();*/
+    __crapgui_editmode_editwheel_render(gui);
+
 }
 
 void __crapgui_editmode_frame_is_mouse_over(crapgui_t *gui, frame_t *frame)
@@ -110,11 +110,13 @@ void __crapgui_editmode_ui_is_mouse_held(const crapgui_t *gui)
 
 void __crapgui_editmode_update(crapgui_t *gui)
 {
+    if (gui->editmode.optionwheel.is_active) return;
+
     frame_t *active_frame = gui->currently_active.frame;
     ui_t    *active_ui    = gui->currently_active.ui;
 
-    if (gui->editmode.focused.ui) 
-    {
+    if (gui->editmode.focused.ui) {
+
         assert(active_frame);
         const slot_t *uis = &active_frame->uis;
         slot_iterator(uis, iter)
@@ -138,5 +140,5 @@ void __crapgui_editmode_update(crapgui_t *gui)
     } 
 
     active_frame->update(active_frame, gui);
-
+    __crapgui_editmode_editwheel_update(gui);
 }
