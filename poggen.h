@@ -2,7 +2,7 @@
 #include "./util/assetmanager.h"
 #include "./poggen/scene.h"
 
-//TODO: Actions
+//TODO: ARE ACTIONS REALLY NECESSARY
 
 /*=============================================================================
                              - GAME ENGINE -
@@ -97,66 +97,24 @@ void poggen_change_scene(poggen_t *self, const char *scene_label)
 
 void __poggen_update_user_input(poggen_t *self)
 {    
-    window_t *window = global_window;
+    window_t *window = self->__window;
     assert(window);
-
-    SDL_Event *event = &window->__sdl_event;
-    assert(event);
 
     scene_t *current_scene = self->current_scene;
     assert(current_scene);
-    
-    while(SDL_PollEvent(event) > 0) 
-    {
-        switch (event->type) 
-        {
-            case SDL_WINDOWEVENT:
-                __window_handle_sdlwindow_event(window, event);
-            break;
 
-            case SDL_MOUSEMOTION:
-                __mouse_update_position(window);
-            break;
+    window_update_user_input(window);
 
-            case SDL_MOUSEBUTTONDOWN:
-                if (window->mouse_handler.just_pressed == false && window->mouse_handler.is_held == false) {
+    /*const list_t *actions = &current_scene->__actions;*/
+    /*list_iterator(actions, i) {*/
 
-                    SDL_Log("Window (%s) MOUSE_DOWN\n", window->title);
-                    window->mouse_handler.just_pressed  = true;
+        /*assert(i); */
+        /*action_t action = *(action_t *)i; */
 
-                } else if (window->mouse_handler.just_pressed == true && window->mouse_handler.is_held == false) {
-
-                    SDL_Log("Window (%s) MOUSE_HELD_DOWN\n", window->title);
-                    window->mouse_handler.just_pressed  = false;
-                    window->mouse_handler.is_held = true;
-                } 
-            break;
-
-            case SDL_MOUSEBUTTONUP:
-                SDL_Log("Window (%s) MOUSE_UP\n", window->title);
-                window->mouse_handler.just_pressed  = false;
-                window->mouse_handler.is_held       = false;
-            break;
-
-            case SDL_KEYDOWN:
-            case SDL_KEYUP:
-                __keyboard_update_buffers(
-                        window, event->type, event->key.keysym.scancode);
-
-                const list_t *actions = &current_scene->__actions;
-                list_iterator(actions, i) {
-
-                    assert(i); 
-                    action_t action = *(action_t *)i; 
-
-                    if (action.key == event->key.keysym.sym) {
-                        current_scene->__input(action); 
-                    } 
-                }
-            break;
-        }
-
-    }
+        /*if (action.key == event->key.keysym.sym) {*/
+            /*current_scene->__input(action); */
+        /*} */
+    /*}*/
 }
 
 void poggen_update(poggen_t *self)
