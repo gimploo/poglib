@@ -52,9 +52,7 @@ void __crapgui_input_update(crapgui_t *gui)
                 window_mouse_get_norm_position(gui->win);
     }
 
-    if (gui->editmode.optionwheel.is_active) {
-        return;
-    }
+    if (gui->editmode.optionwheel.is_active) return;
 
     if (window_keyboard_is_key_pressed(gui->win, SDLK_e))
     {
