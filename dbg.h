@@ -105,7 +105,7 @@ bool dbg_init(void)
     assert(fp);
 
     global_debug.fp = fp;
-    global_debug.fname = "dbg_mem_log.txt";
+    global_debug.fname = DEFAULT_DBG_MEM_LOG_PATH;
     global_debug.list = llist_init();
 
     fprintf(stdout, "[*] DBG: INITALIZED\n");
