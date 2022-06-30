@@ -192,7 +192,7 @@ void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_
 
     assert(renderer->shader);
 
-    const u64 vertices_count = batch->__meta.nvertices * batch->globjs.len;
+    const u64 vertices_count = batch->__meta.nvertex * batch->globjs.len;
     vao_t vao  = vao_init();
     vbo_t vbo   = vbo_static_init(
                     batch->globjs.__array, 
