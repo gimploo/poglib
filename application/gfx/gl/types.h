@@ -42,8 +42,8 @@ typedef struct glbatch_t {
     queue_t globjs;
 
     struct {
-        const glbatch_type type;
-        i8 nvertices;
+        const glbatch_type  type;
+        i8                  nvertex;
     } __meta;
 
     vao_t vao;
@@ -92,9 +92,9 @@ void __impl_glbatch_put(glbatch_t *batch, const void *elem, const u64 elemsize)
 
             glpolygon_t *poly = (glpolygon_t *)elem;
 
-            if (batch->__meta.nvertices == -1) {
+            if (batch->__meta.nvertex == -1) {
 
-                batch->__meta.nvertices = poly->sides * 3;
+                batch->__meta.nvertex = poly->sides * 3;
 
                 queue_t oldqueue = batch->globjs;
                 queue_destroy(&batch->globjs);
@@ -104,13 +104,13 @@ void __impl_glbatch_put(glbatch_t *batch, const void *elem, const u64 elemsize)
                         "glpolygon_t");
             }
 
-            if ((poly->sides * 3) != batch->__meta.nvertices)
+            if ((poly->sides * 3) != batch->__meta.nvertex)
                eprint("Trying to push a polygon of `%i` vertices to a batch expecting polygon of `%u` vertices", 
                        poly->sides,
-                       batch->__meta.nvertices);
+                       batch->__meta.nvertex);
 
             const u64 size = 
-                sizeof(glvertex_t ) * batch->__meta.nvertices;
+                sizeof(glvertex_t ) * batch->__meta.nvertex;
 
             __impl_queue_put(
                     &batch->globjs, 
@@ -291,7 +291,7 @@ gltext_t __impl_gltext_init(u64 capacity, glbatch_type type, const char *type_na
         .globjs   = __impl_queue_init(capacity, type_size, type_name),
         .__meta = {
             .type = type,
-            .nvertices = 6 
+            .nvertex = 6 
         }
     };
 
@@ -301,27 +301,27 @@ gltext_t __impl_gltext_init(u64 capacity, glbatch_type type, const char *type_na
 }
 glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, const char *type_name)
 {
-    i8 nvertices = 0;
+    i8 nvertex = 0;
     u64 typesize = 0;
     switch(type)
     {
         case GLBT_gltri_t:
-            nvertices =  3;
+            nvertex =  3;
             typesize = sizeof(gltri_t );
         break;
 
         case GLBT_glquad_t:
-            nvertices =  6;
+            nvertex =  6;
             typesize = sizeof(glquad_t);
         break;
 
         case GLBT_glcircle_t:
-            nvertices =  MAX_VERTICES_PER_CIRCLE;
+            nvertex =  MAX_VERTICES_PER_CIRCLE;
             typesize = sizeof(glcircle_t );
         break;
 
         case GLBT_glpolygon_t:
-            nvertices   =  -1;
+            nvertex   =  -1;
             typesize    = 0;
         break;
 
@@ -331,7 +331,7 @@ glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, const char *type_
         .globjs   = __impl_queue_init(capacity, typesize, type_name),
         .__meta = {
             .type = type,
-            .nvertices = nvertices
+            .nvertex = nvertex
         }
     };
 
