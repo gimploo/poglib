@@ -21,8 +21,10 @@ typedef struct file_t {
 
 file_t *        file_init(const char *file_path, const char *mode);
 void            file_readall(const file_t * const file, char *buffer, const u64 buffer_size);
-void            file_writeline(file_t *file, const char *line, const u64 linesize);
 void            file_readline(const file_t *file, char *buffer, u64 buffersize);
+void            file_writeline(file_t *file, const char *line, const u64 linesize);
+void            file_readbytes(const file_t *file, void * const buffer, const u64 buffersize);
+void            file_writebytes(const file_t *file, void * const buffer, const u64 buffersize);
 void            file_destroy(file_t * const file);
 
 #define file(NAME, MODE)\
@@ -33,6 +35,24 @@ void            file_destroy(file_t * const file);
 /*------------------------------------------
  // Implementataion
 ------------------------------------------*/
+
+void file_readbytes(const file_t *file, void * const buffer, const u64 buffersize)
+{
+    assert(buffer);
+    assert(buffersize > 0);
+    assert(!file->is_closed);
+
+    fread(buffer, buffersize, 1, file->fp);
+}
+
+void file_writebytes(const file_t *file, void * const buffer, const u64 buffersize)
+{
+    assert(buffer);
+    assert(buffersize > 0);
+    assert(!file->is_closed);
+
+    fwrite(buffer, buffersize, 1, file->fp);
+}
 
 u64 file_get_size(const char *filepath)
 {    

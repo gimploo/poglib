@@ -18,3 +18,4 @@ test/application/test
 font/test/lib/
 gui/tests/lib/
 simple/test/gl/2d_renderer/lib/
+test/file/lib
