@@ -32,8 +32,7 @@ void __crapgui_editmode_editwheel_render(crapgui_t *gui)
     if (!gui->editmode.optionwheel.is_active) return;
 
     vec2f_t mpos    = gui->editmode.optionwheel.pos;
-    polygon_t wheel  = polygon(vec3f(mpos), EDIT_WHEEL_RADIUS, OT_COUNT);
-
+    polygon_t wheel = polygon(vec3f(mpos), EDIT_WHEEL_RADIUS, OT_COUNT);
 
     glrenderer2d_t r2d = {
         .shader = &gui->__common_shader,

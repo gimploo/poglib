@@ -20,7 +20,6 @@ void        crapgui_destroy(crapgui_t *gui);
             __frame != NULL;\
             __frame_update(__frame, __gui), __frame = NULL)
 
-
 #define button(LABEL, STYLES)\
     assert(__frame);\
     assert(__gui);\
