@@ -67,7 +67,7 @@ typedef struct {
 
 } gltext_t;
 
-#define         gltext_init(CAPACITY)           __impl_gltext_init((CAPACITY), GLBT_type(glquad_t), "glquad_t", sizeof(glquad_t))
+gltext_t        gltext_init(const u64 capacity);
 #define         gltext_put(PTEXT, ELEM)         queue_put(&(PTEXT)->text.globjs, (ELEM))
 #define         gltext_get(PTEXT, ELEM)         queue_get_in_buffer(&(PTEXT)->text.globjs, (ELEM))
 #define         gltext_is_empty(PTEXT)          queue_is_empty(&(PTEXT)->text.globjs)
@@ -75,8 +75,11 @@ typedef struct {
 #define         gltext_destroy(PTEXT)           glbatch_destroy(&(PTEXT)->text)
 
 
-
 #ifndef IGNORE_GL_TYPE_IMPLEMENTATION
+
+#define GLBT_type(TYPE) GLBT_##TYPE
+#define MAX_TRI_INDICES_CAPACITY 3
+#define MAX_QUAD_INDICES_CAPACITY 6
 
 void __impl_glbatch_put(glbatch_t *batch, const void *elem, const u64 elemsize)
 {
@@ -124,8 +127,6 @@ void __impl_glbatch_put(glbatch_t *batch, const void *elem, const u64 elemsize)
 }
 
 
-#define MAX_TRI_INDICES_CAPACITY 3
-#define MAX_QUAD_INDICES_CAPACITY 6
 
 const u32 DEFAULT_TRI_INDICES[] = {
     0, 1, 2
@@ -254,7 +255,6 @@ glcircle_t glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
 }
 
 
-#define GLBT_type(TYPE) GLBT_##TYPE
 
 
 
@@ -285,20 +285,19 @@ void __gen_quad_indices(u32 indices[], const u32 shape_count)
 
 //}
 //
-gltext_t __impl_gltext_init(u64 capacity, glbatch_type type, const char *type_name, u64 type_size)
+gltext_t gltext_init(const u64 capacity)
 {
-    glbatch_t o =  {
-        .globjs   = __impl_queue_init(capacity, type_size, type_name),
-        .__meta = {
-            .type = type,
-            .nvertex = 6 
+    return (gltext_t ) {
+        .text =  {
+            .globjs = __impl_queue_init(capacity, sizeof(glquad_t ), "glquad_t"),
+            .__meta = {
+                .type       = GLBT_type(glquad_t ),
+                .nvertex    = 6 
+            }
         }
     };
-
-    return (gltext_t ) {
-        .text = o
-    };
 }
+
 glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, const char *type_name)
 {
     i8 nvertex = 0;
