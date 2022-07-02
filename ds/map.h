@@ -44,7 +44,6 @@ void * map_get_value(const map_t *map, const char *key)
 
     const list_t *keys = &map->__keys;
     list_iterator(keys, iter) {
-        printf("%s == %s\n", key, (const char *)iter);
         if (strcmp(key, (const char *)iter) == 0) {
             const hashtable_t *table = &map->__values;
             return hashtable_get_value(table, key);

@@ -15,7 +15,6 @@ typedef struct hashtable_t {
     u64                 len;
 
     //private
-    char                **__keys;
     u8                  *__values;
     char                *__value_type;
     u64                 __value_size;
@@ -57,17 +56,8 @@ hashtable_t __impl_hashtable_init(const u64 array_capacity, const char *elem_typ
     bool flag = false;
     if (elem_type[strlen(elem_type) - 1] == '*') flag = true;
 
-    char **keys = (char **)calloc(array_capacity, sizeof(char *));
-    assert(keys);
-    for (u32 i = 0; i < array_capacity; i++)
-    {
-        keys[i] = (char *)calloc(HT_MAX_KEY_SIZE, sizeof(char));
-        assert(keys[i]);
-    }
-
     hashtable_t o = {
         .len = 0,
-        .__keys                 = keys,
         .__values               = (u8 *)calloc(array_capacity, elem_size),
         .__value_type           = (char *)elem_type,
         .__value_size           = elem_size,
@@ -113,8 +103,6 @@ void * __impl_hashtable_insert_key_value_pair_by_value(
             value_addr, 
             table->__value_size);
 
-        memcpy(table->__keys[index], key, HT_MAX_KEY_SIZE);
-        printf("%s\n", table->__keys[index]);
         table->__index_table[index] = true;
 
     } else {
@@ -147,9 +135,6 @@ void __impl_hashtable_destroy(hashtable_t *table)
 
     free(table->__values);
     free(table->__index_table);
-    for (u32 i = 0; i < table->__capacity; i++)
-        free(table->__keys[i]);
-    free(table->__keys);
 }
 
 void hashtable_print(const hashtable_t *table, void (*print)(void*))
@@ -157,16 +142,13 @@ void hashtable_print(const hashtable_t *table, void (*print)(void*))
     assert(table);
     assert(print);
 
-    printf("{");
+    printf("{\n");
 
     for (u64 i = 0; i < table->__capacity; i++)
     {
         if (!table->__index_table[i]) continue;
-
-        printf("\n\t`%s` := ", table->__keys[i]);
-        print(hashtable_get_value(table, table->__keys[i]));
-
-        printf("\n");
+        print(__hashtable_get_reference_to_only_value_at_index(table, i));
+        printf(",\n");
     }
     printf("}\n");
 
@@ -198,13 +180,13 @@ void hashtable_dump(const hashtable_t *table)
 
     const char *output = 
         "=====================\n"
-        "   KEY | INDEX | OCCUPIED \n"
+        "   INDEX | OCCUPIED \n"
         "=====================\n";
 
     printf("%s", output);
     for (u64 i = 0; i < table->__capacity; i++)
     {
-        printf("%s | %02li | %s \n",table->__keys[i], i, table->__index_table[i] ? "TRUE" : "FALSE");
+        printf("%02li | %s \n", i, table->__index_table[i] ? "TRUE" : "FALSE");
     }
     printf("=====================\n");
 }
