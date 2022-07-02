@@ -27,10 +27,10 @@ void            file_readbytes(const file_t *file, void * const buffer, const u6
 void            file_writebytes(const file_t *file, void * const buffer, const u64 buffersize);
 void            file_destroy(file_t * const file);
 
-#define file(NAME, MODE)\
-    for (file_t *file = file_init(NAME, MODE);\
-            !file->is_closed;\
-            file_destroy(file)) 
+#define file(NAME, MODE, VAR)\
+    for (file_t *(VAR) = file_init(NAME, MODE);\
+            !(VAR)->is_closed;\
+            file_destroy((VAR))) 
 
 /*------------------------------------------
  // Implementataion
