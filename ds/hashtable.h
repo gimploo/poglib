@@ -3,13 +3,27 @@
 #include "../str.h"
 #include "./list.h"
 
-
-
 //NOTE: better to have hashtable take str_t type key instead of a number to avoid confusion
 //NOTE: This hashtable allows to insert values either by reference or by value
 
+#define HT_MAX_KEY_LENGTH   63
+#define HT_MAX_KEY_SIZE     HT_MAX_KEY_LENGTH + 1
 
-typedef struct hashtable_t hashtable_t;
+typedef struct hashtable_t {
+
+    // public 
+    u64                 len;
+
+    //private
+    char                **__keys;
+    u8                  *__values;
+    char                *__value_type;
+    u64                 __value_size;
+    u64                 __capacity;
+    bool                *__index_table;
+    bool                __are_values_pointers;
+
+} hashtable_t ;
 
 #define         hashtable_init(CAPACITY, TYPE)                      __impl_hashtable_init((CAPACITY), (#TYPE), sizeof(TYPE))
 #define         hashtable_insert(PTABLE, KEY, VALUE)                __impl_hashtable_insert_key_value_pair_by_value((PTABLE), (KEY), &(VALUE), sizeof(VALUE))
@@ -24,26 +38,6 @@ void            hashtable_dump(const hashtable_t *table);
 
 
 #ifndef IGNORE_HASHTABLE_IMPLEMENTATION
-
-#define HT_MAX_KEY_SIZE 64
-
-
-struct hashtable_t {
-
-    // public 
-    u64                 len;
-
-    //private
-    char                **__keys;
-    u8                  *__values;
-    char                *__value_type;
-    u64                 __value_size;
-    u64                 __capacity;
-    bool                *__index_table;
-    bool                __are_values_pointers;
-
-};
-
 
 
 //NOTE: hashfunction from python3 docs
@@ -63,9 +57,17 @@ hashtable_t __impl_hashtable_init(const u64 array_capacity, const char *elem_typ
     bool flag = false;
     if (elem_type[strlen(elem_type) - 1] == '*') flag = true;
 
+    char **keys = (char **)calloc(array_capacity, sizeof(char *));
+    assert(keys);
+    for (u32 i = 0; i < array_capacity; i++)
+    {
+        keys[i] = (char *)calloc(HT_MAX_KEY_SIZE, sizeof(char));
+        assert(keys[i]);
+    }
+
     hashtable_t o = {
         .len = 0,
-        .__keys                 = (char **)calloc(array_capacity, sizeof(char *)),
+        .__keys                 = keys,
         .__values               = (u8 *)calloc(array_capacity, elem_size),
         .__value_type           = (char *)elem_type,
         .__value_size           = elem_size,
@@ -97,7 +99,8 @@ void * __impl_hashtable_insert_key_value_pair_by_value(
         const void  *value_addr, 
         const u64   value_size)
 { 
-    if (table == NULL) eprint("table argument is null");
+    assert(table);
+    if (strlen(key) > HT_MAX_KEY_LENGTH) eprint("%s key cant be greater than %i character long\n", key, HT_MAX_KEY_SIZE);
     if (value_size != table->__value_size) eprint("expected value size (%li) but got (%li)", table->__value_size, value_size);
 
     u64 index = hash_cstr(key, strlen(key)) % table->__capacity;
@@ -110,7 +113,8 @@ void * __impl_hashtable_insert_key_value_pair_by_value(
             value_addr, 
             table->__value_size);
 
-        table->__keys[index] = (char *)key;
+        memcpy(table->__keys[index], key, HT_MAX_KEY_SIZE);
+        printf("%s\n", table->__keys[index]);
         table->__index_table[index] = true;
 
     } else {
@@ -132,7 +136,6 @@ void __impl_hashtable_delete_key_value_pair(hashtable_t *table, const char *key_
     assert(index_cstr >= 0 && index_cstr < table->__capacity);
 
     table->__index_table[index_cstr] = false;
-    table->__keys[index_cstr] = NULL;
 
     table->len--;
 }
@@ -144,6 +147,8 @@ void __impl_hashtable_destroy(hashtable_t *table)
 
     free(table->__values);
     free(table->__index_table);
+    for (u32 i = 0; i < table->__capacity; i++)
+        free(table->__keys[i]);
     free(table->__keys);
 }
 

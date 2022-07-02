@@ -44,6 +44,7 @@ void * map_get_value(const map_t *map, const char *key)
 
     const list_t *keys = &map->__keys;
     list_iterator(keys, iter) {
+        printf("%s == %s\n", key, (const char *)iter);
         if (strcmp(key, (const char *)iter) == 0) {
             const hashtable_t *table = &map->__values;
             return hashtable_get_value(table, key);
@@ -68,7 +69,7 @@ map_t __impl_map_init(const u64 capacity, const char *type_name, const u32 elem_
 {
     map_t o = {
         .len = 0,
-        .__keys = list_init(capacity, char * ),
+        .__keys = list_init(capacity, char[HT_MAX_KEY_SIZE]),
         .__values = __impl_hashtable_init(capacity, type_name, elem_size),
     };
 
@@ -78,8 +79,10 @@ map_t __impl_map_init(const u64 capacity, const char *type_name, const u32 elem_
 void * __impl_map_insert(map_t *self, const char *key, const void *value_addr, const u64 value_size)
 {
     assert(self);
+    char buf[HT_MAX_KEY_SIZE] = {0};
+    memcpy(buf, key, HT_MAX_KEY_SIZE);
 
-    list_append(&self->__keys, key);
+    list_append(&self->__keys, buf);
     self->len++;
     return __impl_hashtable_insert_key_value_pair_by_value(&self->__values, key, value_addr, value_size);
 }
