@@ -1,8 +1,4 @@
-#include "../../basic.h"
-#include "../list.h"
-#include "../../str.h"
-
-
+#include <poglib/ds.h>
 
 
 typedef struct foo {
@@ -338,10 +334,10 @@ void test06()
 
 int main(void)
 {
-    /*test01();*/
-    /*test02();*/
-    /*test03();*/
-    /*test04();*/
+    test01();
+    test02();
+    test03();
+    test04();
     test06();
 
     return 0;

@@ -1,5 +1,4 @@
-#include <stdio.h>
-#include "../hashtable.h"
+#include <poglib/ds.h>
 
 
 void print_str(void *arg)
@@ -10,8 +9,6 @@ void print_str(void *arg)
 
 int test01(void)
 {
-    dbg_init();
-
     str_t names[5] = {
         str("asldkfjas"),
         str("oqoewiruqweyr"),
@@ -48,7 +45,6 @@ int test01(void)
 
     hashtable_destroy(&table);
 
-    dbg_destroy();
     return 0;
 }
 
@@ -133,11 +129,11 @@ int test02(void)
 
 int main(void)
 {
-    /*printf("test01\n");*/
-    /*test01();*/
-    printf("test02\n");
-    test02();
-    /*printf("test03\n");*/
-    /*test03();*/
+    printf("test01\n");
+    test01();
+    /*printf("test02\n");*/
+    /*test02();*/
+    printf("test03\n");
+    test03();
     return 0;
 }

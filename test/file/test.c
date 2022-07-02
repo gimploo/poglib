@@ -24,7 +24,7 @@ void test02(void)
         "line04\n"
     };
 
-    file("tmp.txt", "w") {
+    file("tmp.txt", "w", file) {
         for (int i = 0; i < 4; i++)
             file_writebytes(
                     file, 
