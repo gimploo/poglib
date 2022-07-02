@@ -102,7 +102,10 @@ bool __is_file_in_ignore_files(const char *filepath)
 bool dbg_init(void)
 {
     FILE *fp = fopen(DEFAULT_DBG_MEM_LOG_PATH, "w");
-    assert(fp);
+    if (!fp) {
+        printf("%s not found \n", DEFAULT_DBG_MEM_LOG_PATH);
+        fp = fopen("dbg_mem_log.txt", "w");
+    }
 
     global_debug.fp = fp;
     global_debug.fname = DEFAULT_DBG_MEM_LOG_PATH;
