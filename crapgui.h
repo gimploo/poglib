@@ -12,7 +12,9 @@ crapgui_t   crapgui_init(void);
 void        crapgui_destroy(crapgui_t *gui);
 
 #define crapgui_layout(PGUI)\
-        for (crapgui_t *__gui = (PGUI); __gui != NULL; __gui = NULL)
+        for (crapgui_t *__gui = (PGUI); \
+                __gui != NULL && !__crapgui_check_config_exist();\
+                __gui = NULL)
 
 #define frame(LABEL, STYLES)\
     assert(__gui);\

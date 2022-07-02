@@ -180,8 +180,6 @@ vec2f_t __frame_get_pos_for_new_ui(const frame_t *frame, ui_t *ui)
 
 frame_t frame_init(const char *label, vec2f_t pos, uistyle_t styles)
 {
-    const u64 cap_per_batch = KB;
-
     return (frame_t ) {
         .label              = label,
         .pos                = pos,
@@ -191,22 +189,22 @@ frame_t frame_init(const char *label, vec2f_t pos, uistyle_t styles)
             .self = {
                 .cache_again    = true,
                 .quad           = {0},
-                .texts          = gltext_init(cap_per_batch),
-                .glquads        = glbatch_init(cap_per_batch, glquad_t ),
+                .texts          = gltext_init(KB),
+                .glquads        = glbatch_init(KB, glquad_t ),
             },
             .uis = {
                 .cache_again    = false,
                 .texture        = glframebuffer_init(global_window->width, global_window->height),
                 .uibatch = {
 
-                    [UI_BUTTON] = glbatch_init(cap_per_batch, glquad_t ),
-                    [UI_LABEL]  = glbatch_init(cap_per_batch, glquad_t ),
+                    [UI_BUTTON] = glbatch_init(KB, glquad_t ),
+                    [UI_LABEL]  = glbatch_init(KB, glquad_t ),
 
                 },
                 .txtbatch = {
 
-                    [UI_BUTTON] = gltext_init(cap_per_batch),
-                    [UI_LABEL]  = gltext_init(cap_per_batch),
+                    [UI_BUTTON] = gltext_init(KB),
+                    [UI_LABEL]  = gltext_init(KB),
 
                 },
             },
@@ -266,26 +264,39 @@ vec2f_t frame_get_mouse_position(const frame_t *frame)
     };
 }
 
-void __frame_add_ui(frame_t *frame, crapgui_t *gui, const char *label, uitype type, uistyle_t styles)
+ui_t __ui_init(const char *label, uitype type, uistyle_t styles)
+{
+    return (ui_t ) {
+        .title              = label,
+        .type               = type,
+        .styles             = styles,
+        .is_hot             = false,
+        .is_active          = false,    
+        .__cache = {
+            .cache_again    = true,
+            .texts          = gltext_init(KB),
+        }
+    };
+}
+
+void __frame_add_ui(
+        frame_t     *frame, 
+        crapgui_t   *gui, 
+        const char  *label, 
+        uitype      type, 
+        uistyle_t   styles)
 {
     frame->__cache.uis.cache_again = true;
 
-    ui_t tmp; 
+    ui_t tmp = {0}; 
     memset(&tmp, 0, sizeof(tmp));
 
     slot_t *slot = &frame->uis;
-    ui_t *ui = (ui_t *)slot_append(slot, tmp);
-
-    ui->styles                  = styles;
-    ui->styles.margin           = vec2f_add(styles.margin, frame->styles.padding);
-    ui->type                    = type;
-    ui->title                   = label;
-    ui->is_active               = false;    
-    ui->is_hot                  = false;
-    ui->pos                     = __frame_get_pos_for_new_ui(frame, ui);
-    ui->__cache.texts           = gltext_init(KB);
+    ui_t *ui            = (ui_t *)slot_append(slot, tmp);
+    *ui                 = __ui_init(label, type, styles);
+    ui->pos             = __frame_get_pos_for_new_ui(frame, ui);
+    ui->styles.margin   = vec2f_add(styles.margin, frame->styles.padding);
 
     // NOTE: dont move this anywhere else
-    ui->__cache.cache_again     = true;
     __ui_update(ui, frame, gui);
 }
