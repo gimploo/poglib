@@ -3,39 +3,11 @@
 #include <stdlib.h>
 #include "../basic.h"
 
+/*=============================================================================
+                            - STACK DATA STRUCTURE -
+=============================================================================*/
 
-
-typedef struct stack_t stack_t ;
-
-
-
-#define             stack_init(CAPACITY, TYPE)          __impl_stack_init((CAPACITY), #TYPE, sizeof(TYPE))
-
-#define             stack_push(PSTACK, ELEM)            __impl_stack_push((PSTACK), &(ELEM), sizeof(ELEM))
-
-void *              stack_pop(stack_t *);
-
-void                stack_destroy(stack_t *);
-
-void                stack_print(stack_t *stack, void (*print_elem)(void *));
-
-#define             stack_is_empty(pstack)              ((pstack)->top == -1 ? true : false)
-#define             stack_is_full(pstack)               ((pstack)->top == ((pstack)->capacity - 1) ? true : false)
-
-
-
-
-
-
-
-
-
-
-
-
-#ifndef IGNORE_STACK_IMPLEMENTATION
-
-struct stack_t {
+typedef struct stack_t {
 
     u64     len;
     u8      *__array;
@@ -43,8 +15,22 @@ struct stack_t {
     u64     __capacity;
     u64     __elem_size;
     bool    __are_values_pointers;     // This variable checks if the list is a list of pointers 
-};
+                                       
+} stack_t ;
 
+
+#define             stack_init(CAPACITY, TYPE)          __impl_stack_init((CAPACITY), #TYPE, sizeof(TYPE))
+#define             stack_push(PSTACK, ELEM)            __impl_stack_push((PSTACK), &(ELEM), sizeof(ELEM))
+void *              stack_pop(stack_t *);
+void                stack_destroy(stack_t *);
+void                stack_print(stack_t *stack, void (*print_elem)(void *));
+#define             stack_is_empty(pstack)              ((pstack)->top == -1 ? true : false)
+#define             stack_is_full(pstack)               ((pstack)->top == ((pstack)->capacity - 1) ? true : false)
+
+#ifndef IGNORE_STACK_IMPLEMENTATION
+/*-----------------------------------------------------------------------------
+                                IMPLEMENTATION
+-----------------------------------------------------------------------------*/
 
 stack_t __impl_stack_init(u64 capacity, const char *elem_name, u64 elem_size)
 {

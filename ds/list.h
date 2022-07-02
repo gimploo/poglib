@@ -87,8 +87,6 @@ void __impl_list_append(list_t *list, const void *value_addr, u64 value_size)
 {
     assert(list);
     assert(value_addr);
-    assert(value_size == list->__elem_size);
-
     if (value_size != list->__elem_size) eprint("trying to push a value of size %lu to slot of size %lu", value_size, list->__elem_size);
 
 
