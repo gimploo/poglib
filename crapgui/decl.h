@@ -44,7 +44,7 @@ typedef struct __ui_cache_t {
 
 typedef struct ui_t {
 
-    const char          *title;
+    const char          title[16];
     uitype              type;
     uistyle_t           styles;
     vec2f_t             pos;
@@ -170,7 +170,7 @@ typedef struct __frame_cache_t {
 
 typedef struct frame_t {
 
-    const char              *label;
+    const char              label[16];
     vec2f_t                 pos;
     uistyle_t               styles;
     slot_t                  uis;
