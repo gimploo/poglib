@@ -1,6 +1,9 @@
 #pragma once
 #include <poglib/crapgui/decl.h>
+#include <stddef.h>
 #include "frame.h"
+
+//FIXME: read the gui, member by member
 
 void __crapgui_saveall_to_config(crapgui_t *gui)
 {
@@ -24,7 +27,7 @@ crapgui_t __crapgui_init_from_config(void)
     file_t *file = file_init(DEFAULT_CRAPGUI_CONFIG_PATH, "r");
 
     crapgui_t saved_gui;
-    file_readbytes(file, &saved_gui, sizeof(crapgui_t ));
+    file_readbytes(file, &saved_gui, );
     
     crapgui_t gui = __crapgui_init();
     gui.frames = file_load_map(file);
