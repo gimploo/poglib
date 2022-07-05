@@ -1,5 +1,6 @@
 #pragma once
 #include <poglib/crapgui/decl.h>
+#include "frame.h"
 
 void __crapgui_saveall_to_config(crapgui_t *gui)
 {
@@ -7,25 +8,13 @@ void __crapgui_saveall_to_config(crapgui_t *gui)
     file_t *file = file_init(DEFAULT_CRAPGUI_CONFIG_PATH, "w");
     
     file_writebytes(file, gui, sizeof(crapgui_t ));
-    file_writebytes(file, 
-            gui->frames.__keys.__array, 
-            gui->frames.__keys.__capacity * gui->frames.__keys.__elem_size);
-    file_writebytes(file, 
-            gui->frames.__values.__values, 
-            gui->frames.__values.__capacity * gui->frames.__values.__value_size);
+    file_save_map(file, gui->frames);
 
     map_t *frames = &gui->frames;
     map_iterator(frames, iter01)
     {
         frame_t *frame = (frame_t *)iter01;
-        file_writebytes(file, frame, sizeof(frame_t ));
-
-        slot_t *uis = &frame->uis;
-        slot_iterator(uis, iter02)
-        {
-            ui_t *ui = (ui_t *)iter02;
-            file_writebytes(file, ui, sizeof(ui_t ));
-        }
+        file_save_slot(file, frame->uis);
     }
     file_destroy(file);
 }
@@ -34,26 +23,22 @@ crapgui_t __crapgui_init_from_config(void)
 {    
     file_t *file = file_init(DEFAULT_CRAPGUI_CONFIG_PATH, "r");
 
-    crapgui_t tmp;
-    file_readbytes(file, &tmp, sizeof(crapgui_t ));
+    crapgui_t saved_gui;
+    file_readbytes(file, &saved_gui, sizeof(crapgui_t ));
     
     crapgui_t gui = __crapgui_init();
-    gui.editmode.is_on = false;
-    gui.frames = tmp.frames;
-    map_t *frames = &gui.frames;
-    map_iterator(frames, iter01)
+    gui.frames = file_load_map(file);
+
+    map_iterator(&gui.frames, iter01)
     {
         frame_t *frame = (frame_t *)iter01;
-        file_readbytes(file, frame, sizeof(frame_t ));
-        frame->__cache = frame_init(NULL, vec2f(0.0f), (uistyle_t ){0}).__cache;
+        frame->__cache = __frame_cache_init();
+        frame->uis = file_load_slot(file);
 
-        frame->uis = slot_init(MAX_UI_CAPACITY_PER_FRAME, ui_t );
-        slot_t *uis = &frame->uis;
-        slot_iterator(uis, iter02)
+        slot_iterator(&frame->uis, iter02)
         {
             ui_t *ui = (ui_t *)iter02;
-            file_readbytes(file, ui, sizeof(ui_t ));
-            ui->__cache.texts = gltext_init(KB);
+            ui->__cache = __ui_cache_init();
         }
     }
     file_destroy(file);

@@ -15,6 +15,7 @@ typedef struct queue_t {
     u64     __end;
     u64     __capacity;
     u64     __elem_size;
+    const char *__elem_type;
     bool    __are_values_pointers;   // This variable checks if the list is a list of pointers 
                                    
 } queue_t ;
@@ -106,6 +107,7 @@ queue_t __impl_queue_init(u64 __capacity, u64 __elem_size, const char *type_in_s
         .__end = 0,
         .__capacity = __capacity,
         .__elem_size = __elem_size,
+        .__elem_type = type_in_strings,
         .__are_values_pointers = flag
     };
 }

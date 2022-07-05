@@ -177,15 +177,9 @@ vec2f_t __frame_get_pos_for_new_ui(const frame_t *frame, ui_t *ui)
     return output;
 }
 
-
-frame_t frame_init(const char *label, vec2f_t pos, uistyle_t styles)
+__frame_cache_t __frame_cache_init(void)
 {
-    return (frame_t ) {
-        .label              = label,
-        .pos                = pos,
-        .styles             = styles,
-        .uis                = slot_init(MAX_UI_CAPACITY_PER_FRAME, ui_t ),
-        .__cache = {
+    return (__frame_cache_t ) {
             .self = {
                 .cache_again    = true,
                 .quad           = {0},
@@ -208,7 +202,17 @@ frame_t frame_init(const char *label, vec2f_t pos, uistyle_t styles)
 
                 },
             },
-        },
+    };
+}
+
+frame_t frame_init(const char *label, vec2f_t pos, uistyle_t styles)
+{
+    return (frame_t ) {
+        .label              = label,
+        .pos                = pos,
+        .styles             = styles,
+        .uis                = slot_init(MAX_UI_CAPACITY_PER_FRAME, ui_t ),
+        .__cache            = __frame_cache_init(), 
         .update             = __frame_update,
         .render             = __frame_render
     };
@@ -264,20 +268,6 @@ vec2f_t frame_get_mouse_position(const frame_t *frame)
     };
 }
 
-ui_t __ui_init(const char *label, uitype type, uistyle_t styles)
-{
-    return (ui_t ) {
-        .title              = label,
-        .type               = type,
-        .styles             = styles,
-        .is_hot             = false,
-        .is_active          = false,    
-        .__cache = {
-            .cache_again    = true,
-            .texts          = gltext_init(KB),
-        }
-    };
-}
 
 void __frame_add_ui(
         frame_t     *frame, 

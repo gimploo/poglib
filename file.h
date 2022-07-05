@@ -25,7 +25,7 @@ void            file_readline(const file_t *file, char *buffer, u64 buffersize);
 void            file_writeline(file_t *file, const char *line, const u64 linesize);
 void            file_readbytes(const file_t *file, void * const buffer, const u64 buffersize);
 void            file_writebytes(const file_t *file, void * const buffer, const u64 buffersize);
-void            file_destroy(file_t * const file);
+void            file_destroy(file_t * file);
 
 #define file(NAME, MODE, VAR)\
     for (file_t *(VAR) = file_init(NAME, MODE);\
@@ -153,7 +153,7 @@ void file_readline(const file_t *file, char *buffer, u64 buffersize)
     }
 }
 
-void file_destroy(file_t * const file)
+void file_destroy(file_t * file)
 {
     assert(file != NULL);
 

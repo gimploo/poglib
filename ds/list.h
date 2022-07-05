@@ -12,6 +12,7 @@ typedef struct list_t {
     u8      *__array;
     i64     __top;
     u64     __elem_size;
+    char    __elem_type[16];
     u64     __original_capacity;
     bool    __are_values_pointers;     // This variable checks if the list is a list of pointers 
                                        
@@ -65,22 +66,29 @@ void __impl_list_clear(list_t *list)
     memset(list->__array, 0, list->__elem_size * list->__capacity);
 }
 
-list_t __impl_list_init(const u64 capacity, const char *type_name, u64 elem_size) 
+list_t __impl_list_init(const u64 capacity, const char *elem_type, u64 elem_size) 
 {
     bool flag = false;
+    u32 len = strlen(elem_type);
+    if (elem_type[len] > 15) eprint("variable name is too big, exceeded the 16 limit threshold\n");
+    if (elem_type[len - 1] == '*') flag = true;
 
-    if (type_name[strlen(type_name) - 1] == '*') flag = true;
-
-    return (list_t ) {
+    list_t o = {
 
         .len = 0,
         .__capacity = capacity,
         .__array = (u8 *)calloc(capacity, elem_size),
         .__top = -1,
         .__elem_size = elem_size,
+        .__elem_type = {0},
         .__original_capacity = capacity,
         .__are_values_pointers = flag,
     };
+
+    if (!flag) memcpy(o.__elem_type, elem_type, 15);
+    else memcpy(o.__elem_type, elem_type, len - 1);
+
+    return o;
 }
 
 void __impl_list_append(list_t *list, const void *value_addr, u64 value_size)
