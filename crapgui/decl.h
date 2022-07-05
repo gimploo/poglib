@@ -33,6 +33,15 @@ typedef struct uistyle_t {
 
 } uistyle_t ;
 
+typedef struct __ui_cache_t {
+
+    bool            cache_again;
+    quadf_t         quad;
+    glquad_t        glquad;
+    gltext_t        texts;
+
+} __ui_cache_t;
+
 typedef struct ui_t {
 
     const char          *title;
@@ -41,12 +50,7 @@ typedef struct ui_t {
     vec2f_t             pos;
     bool                is_hot;
     bool                is_active;
-    struct {
-        bool            cache_again;
-        quadf_t         quad;
-        glquad_t        glquad;
-        gltext_t        texts;
-    } __cache;
+    __ui_cache_t        __cache;
 
 } ui_t ;
 
@@ -147,26 +151,30 @@ crapgui_t __crapgui_init(void);
         .textcolor      = DEFAULT_UI_TEXT_COLOR,\
     }
 
+typedef struct __frame_cache_t {
+
+    struct {
+        bool            cache_again;
+        quadf_t         quad;
+        gltext_t        texts;
+        glbatch_t       glquads;
+    } self;
+    struct {
+        bool            cache_again;
+        glframebuffer_t texture;
+        glbatch_t       uibatch[UITYPE_COUNT];
+        gltext_t        txtbatch[UITYPE_COUNT];
+    } uis;
+
+} __frame_cache_t;
+
 typedef struct frame_t {
 
     const char              *label;
     vec2f_t                 pos;
     uistyle_t               styles;
     slot_t                  uis;
-    struct {
-        struct {
-            bool            cache_again;
-            quadf_t         quad;
-            gltext_t        texts;
-            glbatch_t       glquads;
-        } self;
-        struct {
-            bool            cache_again;
-            glframebuffer_t texture;
-            glbatch_t       uibatch[UITYPE_COUNT];
-            gltext_t        txtbatch[UITYPE_COUNT];
-        } uis;
-    } __cache;
+    __frame_cache_t         __cache;
 
     void (*update)(struct frame_t * self, crapgui_t *gui);
     void (*render)(const struct frame_t * self, const crapgui_t *gui);

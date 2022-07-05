@@ -127,13 +127,14 @@ int test02(void)
     return 0;
 }
 
+
 int main(void)
 {
-    printf("test01\n");
-    test01();
+    /*printf("test01\n");*/
+    /*test01();*/
     /*printf("test02\n");*/
     /*test02();*/
-    printf("test03\n");
-    test03();
+    /*printf("test03\n");*/
+    /*test03();*/
     return 0;
 }

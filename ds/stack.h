@@ -1,6 +1,4 @@
 #pragma once
-#include <stdio.h>
-#include <stdlib.h>
 #include "../basic.h"
 
 /*=============================================================================
@@ -14,6 +12,7 @@ typedef struct stack_t {
     i64     __top;
     u64     __capacity;
     u64     __elem_size;
+    char    __elem_type[16];
     bool    __are_values_pointers;     // This variable checks if the list is a list of pointers 
                                        
 } stack_t ;
@@ -32,19 +31,25 @@ void                stack_print(stack_t *stack, void (*print_elem)(void *));
                                 IMPLEMENTATION
 -----------------------------------------------------------------------------*/
 
-stack_t __impl_stack_init(u64 capacity, const char *elem_name, u64 elem_size)
+stack_t __impl_stack_init(u64 capacity, const char *elem_type, u64 elem_size)
 {
     bool flag = false;
-    if (elem_name[strlen(elem_name) - 1] == '*') flag = true;
+    u32 len = strlen(elem_type);
+    if (elem_type[len] > 15) eprint("variable type is too big, exceeded the 16 limit threshold\n");
+    if (elem_type[len - 1] == '*') flag = true;
 
     stack_t o = {
-        .len = 0,
-        .__array = (u8 *)calloc(capacity, elem_size),
-        .__top = -1,
-        .__capacity = capacity,
-        .__elem_size = elem_size,
-        .__are_values_pointers = flag
+        .len                    = 0,
+        .__array                = (u8 *)calloc(capacity, elem_size),
+        .__top                  = -1,
+        .__capacity             = capacity,
+        .__elem_size            = elem_size,
+        .__elem_type            = {0},
+        .__are_values_pointers  = flag
     };
+
+    if (!flag)  memcpy(o.__elem_type, elem_type, 15);
+    else        memcpy(o.__elem_type, elem_type, len - 1);
 
     return o;
 }

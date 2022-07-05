@@ -35,7 +35,7 @@ void test02(void)
 int main(void)
 {
     dbg_init();
-    test02();
+    test01();
     dbg_destroy();
     return 0;
 }

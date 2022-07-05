@@ -16,7 +16,7 @@ typedef struct hashtable_t {
 
     //private
     u8                  *__values;
-    char                *__value_type;
+    char                __value_type[16];
     u64                 __value_size;
     u64                 __capacity;
     bool                *__index_table;
@@ -54,17 +54,22 @@ u64 hash_cstr(const char *word, const u64 word_len)
 hashtable_t __impl_hashtable_init(const u64 array_capacity, const char *elem_type, const u64 elem_size)
 {
     bool flag = false;
-    if (elem_type[strlen(elem_type) - 1] == '*') flag = true;
+    u32 len = strlen(elem_type);
+    if (elem_type[len] > 15) eprint("variable name is too big, exceeded the 16 limit threshold\n");
+    if (elem_type[len - 1] == '*') flag = true;
 
     hashtable_t o = {
         .len = 0,
         .__values               = (u8 *)calloc(array_capacity, elem_size),
-        .__value_type           = (char *)elem_type,
+        .__value_type           = {0},
         .__value_size           = elem_size,
         .__capacity             = array_capacity,
         .__index_table          = (bool *)calloc(array_capacity, sizeof(bool)),
         .__are_values_pointers  = flag,
     };
+
+    if (!flag) memcpy(o.__value_type, elem_type, 15);
+    else memcpy(o.__value_type, elem_type, len - 1);
 
     return o;
 }

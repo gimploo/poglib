@@ -95,3 +95,23 @@ void __ui_update(ui_t *ui, frame_t *frame, crapgui_t *gui)
     ui->__cache.cache_again = false;
 
 }
+
+__ui_cache_t __ui_cache_init(void)
+{
+    return (__ui_cache_t ) {
+        .cache_again    = true,
+        .texts          = gltext_init(KB),
+    };
+}
+
+ui_t __ui_init(const char *label, uitype type, uistyle_t styles)
+{
+    return (ui_t ) {
+        .title              = label,
+        .type               = type,
+        .styles             = styles,
+        .is_hot             = false,
+        .is_active          = false,    
+        .__cache            = __ui_cache_init()
+    };
+}
