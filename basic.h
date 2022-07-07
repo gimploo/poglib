@@ -12,6 +12,8 @@
 #include <poglib/basic/color.h>
 #include "./dbg.h"
 
+#define MAX_TYPE_CHARACTER_LENGTH 32
+
 // GET ONLY FILENAME AND NOT THE ENTIRE PATH
 #if defined(_WIN64)
     #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)

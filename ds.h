@@ -1,14 +1,13 @@
 #pragma once
 #include "basic.h"
-#include "./ds/stack.h"
-#include "./ds/queue.h"
-#include "./ds/list.h"
-#include "./ds/hashtable.h"
-#include "./ds/map.h"
-#include "./ds/linkedlist.h"
-#include "./ds/slot.h"
 #include "file.h"
-#include <string.h>
+#include "ds/stack.h"
+#include "ds/queue.h"
+#include "ds/list.h"
+#include "ds/hashtable.h"
+#include "ds/map.h"
+#include "ds/linkedlist.h"
+#include "ds/slot.h"
 
 #define file_save_stack(PFILE, INPUT)\
     __impl_file_save_ds((PFILE), &(INPUT), sizeof(INPUT), DS_Type(stack_t ))

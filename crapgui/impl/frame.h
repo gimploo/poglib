@@ -34,9 +34,7 @@ void __frame_update(frame_t *frame, crapgui_t *gui)
         frame->__cache.self.cache_again = false;
     }
 
-    if (!frame->__cache.uis.cache_again) {
-        return;
-    }
+    if (!frame->__cache.uis.cache_again) return;
     /*printf("Caching all uis in frame %s\n", frame->label);*/
 
     for (int type = 0; type < UITYPE_COUNT; type++)
@@ -207,8 +205,9 @@ __frame_cache_t __frame_cache_init(void)
 
 frame_t frame_init(const char *label, vec2f_t pos, uistyle_t styles)
 {
-    return (frame_t ) {
-        .label              = label,
+    assert(strlen(label) < 16 );
+    frame_t o = {
+        .label              = {0},
         .pos                = pos,
         .styles             = styles,
         .uis                = slot_init(MAX_UI_CAPACITY_PER_FRAME, ui_t ),
@@ -216,6 +215,9 @@ frame_t frame_init(const char *label, vec2f_t pos, uistyle_t styles)
         .update             = __frame_update,
         .render             = __frame_render
     };
+
+    memcpy(o.label, label, sizeof(o.label));
+    return o;
 }
 
 
@@ -276,6 +278,7 @@ void __frame_add_ui(
         uitype      type, 
         uistyle_t   styles)
 {
+    assert(strlen(label) < 16 );
     frame->__cache.uis.cache_again = true;
 
     ui_t tmp = {0}; 

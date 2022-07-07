@@ -26,8 +26,22 @@ void test01(void)
     hashtable_destroy(&output);
 }
 
+void test02(void)
+{    
+    printf("loading\n");
+    slot_t output;
+    file_t *file = file_init("config", "rb");
+    output = file_load_slot(file);
+    file_destroy(file);
+
+    slot_dump(&output);
+    slot_print(&output, print_foo);
+    slot_destroy(&output);
+}
+
 int main(void)
 {
-    test01();
+    /*test01();*/
+    test02();
     return 0;
 }

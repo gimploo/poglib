@@ -12,7 +12,7 @@ typedef struct stack_t {
     i64     __top;
     u64     __capacity;
     u64     __elem_size;
-    char    __elem_type[16];
+    char    __elem_type[MAX_TYPE_CHARACTER_LENGTH];
     bool    __are_values_pointers;     // This variable checks if the list is a list of pointers 
                                        
 } stack_t ;
@@ -33,9 +33,12 @@ void                stack_print(stack_t *stack, void (*print_elem)(void *));
 
 stack_t __impl_stack_init(u64 capacity, const char *elem_type, u64 elem_size)
 {
+    assert(elem_type);
+    assert(elem_size > 0);
+
     bool flag = false;
     u32 len = strlen(elem_type);
-    if (elem_type[len] > 15) eprint("variable type is too big, exceeded the 16 limit threshold\n");
+    if (elem_type[len] > MAX_TYPE_CHARACTER_LENGTH) eprint("variable type is too big, exceeded the %i limit threshold\n", MAX_TYPE_CHARACTER_LENGTH);
     if (elem_type[len - 1] == '*') flag = true;
 
     stack_t o = {
@@ -48,7 +51,7 @@ stack_t __impl_stack_init(u64 capacity, const char *elem_type, u64 elem_size)
         .__are_values_pointers  = flag
     };
 
-    if (!flag)  memcpy(o.__elem_type, elem_type, 15);
+    if (!flag)  memcpy(o.__elem_type, elem_type, MAX_TYPE_CHARACTER_LENGTH);
     else        memcpy(o.__elem_type, elem_type, len - 1);
 
     return o;

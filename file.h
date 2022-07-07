@@ -22,7 +22,7 @@ typedef struct file_t {
 file_t *        file_init(const char *file_path, const char *mode);
 void            file_readall(const file_t * const file, char *buffer, const u64 buffer_size);
 void            file_readline(const file_t *file, char *buffer, u64 buffersize);
-void            file_writeline(file_t *file, const char *line, const u64 linesize);
+void            file_writeline(file_t *file, const char *line);
 void            file_readbytes(const file_t *file, void * const buffer, const u64 buffersize);
 void            file_writebytes(const file_t *file, void * const buffer, const u64 buffersize);
 void            file_destroy(file_t * file);
@@ -126,12 +126,12 @@ void file_readall(const file_t * const file, char *buffer, const u64 buffer_size
     buffer[file->size - 1] = '\0';
 }
 
-void file_writeline(file_t *file, const char *line, const u64 linesize)
+void file_writeline(file_t *file, const char *line)
 {
-    if(file->is_closed) eprint("`%s` file is closed\n", file->name);;
+    if(file->is_closed) eprint("`%s` file is closed\n", file->name);
     assert(line);
 
-    fwrite(line, linesize, 1, file->fp);
+    fwrite(line, strlen(line), 1, file->fp);
 }
 
 

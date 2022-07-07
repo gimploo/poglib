@@ -14,7 +14,7 @@ typedef struct slot_t {
 
     //private
     u8                  *__values;
-    char                *__value_type;
+    char                __value_type[MAX_TYPE_CHARACTER_LENGTH];
     u64                 __value_size;
     u64                 __capacity;
     bool                *__index_table;
@@ -70,18 +70,26 @@ void * __slot_iter_get_value(const slot_t *slot, u32 *hits, u32 *index)
 
 slot_t __impl_slot_init(const u64 array_capacity, const char *elem_type, const u64 elem_size)
 {
+    assert(elem_type);
+    assert(elem_size > 0);
+
     bool flag = false;
-    if (elem_type[strlen(elem_type) - 1] == '*') flag = true;
+    u32 len = strlen(elem_type);
+    if (elem_type[len] > 15) eprint("variable name is too big, exceeded the 16 limit threshold\n");
+    if (elem_type[len - 1] == '*') flag = true;
 
     slot_t o = {
         .len = 0,
         .__values               = (u8 *)calloc(array_capacity, elem_size),
-        .__value_type           = (char *)elem_type,
+        .__value_type           = {0},
         .__value_size           = elem_size,
         .__capacity             = array_capacity,
         .__index_table          = (bool *)calloc(array_capacity, sizeof(bool)),
         .__are_values_pointers  = flag,
     };
+
+    if (!flag)  memcpy(o.__value_type, elem_type, MAX_TYPE_CHARACTER_LENGTH);
+    else        memcpy(o.__value_type, elem_type, len - 1);
 
     return o;
 }
@@ -146,7 +154,9 @@ void __impl_slot_destroy(slot_t *table)
     if (table == NULL) eprint("table arguemnt is null");
 
     free(table->__values);
+    table->__values = NULL;
     free(table->__index_table);
+    table->__index_table = NULL;
 }
 
 void slot_print(const slot_t *table, void (*print)(void*))

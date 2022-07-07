@@ -106,12 +106,15 @@ __ui_cache_t __ui_cache_init(void)
 
 ui_t __ui_init(const char *label, uitype type, uistyle_t styles)
 {
-    return (ui_t ) {
-        .title              = label,
-        .type               = type,
-        .styles             = styles,
-        .is_hot             = false,
-        .is_active          = false,    
-        .__cache            = __ui_cache_init()
+    assert(strlen(label) < 16);
+    ui_t o = {
+        .title      = {0},
+        .type       = type,
+        .styles     = styles,
+        .is_hot     = false,
+        .is_active  = false,    
+        .__cache    = __ui_cache_init()
     };
+    memcpy(o.title, label, sizeof(o.title));
+    return o;
 }
