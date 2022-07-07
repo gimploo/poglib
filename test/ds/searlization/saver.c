@@ -13,7 +13,7 @@ void print_foo(void *x)
         printf(" %i",tmp->list[i]);
     printf("\n");
 }
-void insert_foo_in_table_lul(hashtable_t *table)
+void insert_foo_in_table_lul(void *table)
 {
     foo a = {
         .label = "a",
@@ -30,9 +30,29 @@ void insert_foo_in_table_lul(hashtable_t *table)
         .list = {11,12,13,14,15}
     };
 
-    hashtable_insert(table, a.label, a);
-    hashtable_insert(table, b.label, b);
-    hashtable_insert(table, c.label, c);
+    /*hashtable_insert(table, a.label, a);*/
+    /*hashtable_insert(table, b.label, b);*/
+    /*hashtable_insert(table, c.label, c);*/
+    slot_insert(table, 0, a);
+    slot_insert(table, 1, b);
+    slot_insert(table, 2, c);
+}
+
+void test02(void)
+{
+    slot_t table = slot_init(10, foo);
+
+    insert_foo_in_table_lul(&table);
+
+    slot_print(&table, print_foo);
+    slot_dump(&table);
+
+    file_t *input = file_init("config", "wb");
+    file_save_slot(input, table);
+    file_destroy(input);
+
+    slot_destroy(&table);
+
 }
 
 void test01(void)
@@ -55,6 +75,7 @@ void test01(void)
 
 int main(void)
 {
-    test01();
+    /*test01();*/
+    test02();
     return 0;
 }

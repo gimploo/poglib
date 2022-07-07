@@ -62,6 +62,12 @@ void __crapgui_input_update(crapgui_t *gui)
         gui->editmode.focused.ui    = false;
     }
 
+    if (window_keyboard_is_key_pressed(gui->win, SDLK_s))
+    {
+        printf("Saving to config file\n");
+        __crapgui_saveall_to_config(gui);
+    }
+
     if (window_keyboard_is_key_pressed(gui->win, SDLK_w))
     {
         gui->editmode.is_on         = !gui->editmode.is_on;
@@ -84,7 +90,6 @@ void __crapgui_update(crapgui_t *gui)
     __crapgui_input_update(gui);
     if (__crapgui_in_editmode(gui)) {
         __crapgui_editmode_update(gui);
-        __crapgui_saveall_to_config(gui);
         return;
     }
 
@@ -124,7 +129,7 @@ crapgui_t __crapgui_init(void)
 {
     return (crapgui_t ) {
         .win                    = global_window,
-        .frames                 = map_init(MAX_FRAMES_ALLOWED, frame_t ),
+        .frames                 = NULL,
         .frame_assets = {
             .font               = glfreetypefont_init(DEFAULT_FRAME_FONT_PATH, DEFAULT_FRAME_FONT_SIZE),
             .shader             = glshader_from_file_init(COMMON_VS, FRAME_FS),
@@ -168,7 +173,9 @@ crapgui_t crapgui_init(void)
     } 
 
     printf("[CRAPGUI] config file not found `%s`\n", DEFAULT_CRAPGUI_CONFIG_PATH);
-    return __crapgui_init();
+    crapgui_t output = __crapgui_init();
+    output.frames = map_init(MAX_FRAMES_ALLOWED, frame_t );
+    return output;
 }
 
 
@@ -213,7 +220,7 @@ frame_t * __crapgui_add_frame(crapgui_t *gui, const char *label, uistyle_t style
     frame_t frame   = frame_init(
                         label, 
                         pos, style);
-    __frame_update(&frame, gui);
+    /*__frame_update(&frame, gui);*/
 
     return (frame_t *)map_insert(map, label, frame);
 }

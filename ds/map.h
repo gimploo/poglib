@@ -20,12 +20,10 @@ typedef struct map_t {
 #define         map_init(CAPACITY, TYPE)                __impl_map_init(CAPACITY, #TYPE, sizeof(TYPE))
 #define         map_insert(PMAP, KEY, VALUE)            __impl_map_insert(PMAP, (KEY), &(VALUE), sizeof(VALUE))
 #define         map_delete(PMAP, KEY)                   __impl_map_delete((PMAP), (KEY))
-
 void *          map_get_value(const map_t *map, const char *key);
 #define         map_get_value_at_index(PMAP, INDEX)     __impl_map_get_reference_to_value_at_index(PMAP, (INDEX))
-
 #define         map_iterator(PMAP, TMP)                 __impl_map_for_loop_iterator(PMAP, TMP)
-
+void            map_dump(const map_t *map);
 void            map_destroy(map_t *);
 
 
@@ -113,6 +111,13 @@ void *__impl_map_get_reference_to_value_at_index(const map_t *map, const u32 ind
     const u64 hash      = hash_cstr(key, strlen(key)) % map->__values.__capacity;
 
     return __hashtable_get_reference_to_only_value_at_index(&map->__values, hash);
+}
+
+void map_dump(const map_t *map)
+{
+    assert(map);
+    list_dump(&map->__keys);
+    hashtable_dump(&map->__values);
 }
 
 void map_destroy(map_t *map)

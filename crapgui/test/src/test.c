@@ -5,7 +5,6 @@ void appinit(application_t *app)
     crapgui_t *gui = app->content;
     *gui = crapgui_init();
 
-
     crapgui_layout(gui) {
 
         frame("FRAME01", DEFAULT_FRAME_STYLE ) {

@@ -15,7 +15,7 @@ typedef struct queue_t {
     u64     __end;
     u64     __capacity;
     u64     __elem_size;
-    const char *__elem_type;
+    char    __elem_type[MAX_TYPE_CHARACTER_LENGTH];
     bool    __are_values_pointers;   // This variable checks if the list is a list of pointers 
                                    
 } queue_t ;
@@ -92,24 +92,32 @@ void queue_dump(queue_t *queue)
 
 
 
-queue_t __impl_queue_init(u64 __capacity, u64 __elem_size, const char *type_in_strings)
+queue_t __impl_queue_init(u64 capacity, u64 elem_size, const char *elem_type)
 {
-    if (__capacity == 0) eprint("queue_init: __capacity not greater than zero");
-    assert(__elem_size != 0);
+    assert(capacity > 0);
+    assert(elem_type);
+    assert(elem_size > 0);
 
     bool flag = false;
-    if (type_in_strings[strlen(type_in_strings) - 1] == '*') flag = true;
+    u32 len = strlen(elem_type);
+    if (elem_type[len] > MAX_TYPE_CHARACTER_LENGTH) eprint("variable type is too big, exceeded the %i limit threshold\n", MAX_TYPE_CHARACTER_LENGTH);
+    if (elem_type[len - 1] == '*') flag = true;
 
-    return (queue_t) {
+    queue_t o = {
         .len = 0 ,
-        .__array = (u8 *)calloc(__capacity, __elem_size),
+        .__array = (u8 *)calloc(capacity, elem_size),
         .__start = 0,
         .__end = 0,
-        .__capacity = __capacity,
-        .__elem_size = __elem_size,
-        .__elem_type = type_in_strings,
+        .__capacity = capacity,
+        .__elem_size = elem_size,
+        .__elem_type = {0},
         .__are_values_pointers = flag
     };
+
+    if (!flag)  memcpy(o.__elem_type, elem_type, MAX_TYPE_CHARACTER_LENGTH);
+    else        memcpy(o.__elem_type, elem_type, len - 1);
+
+    return o;
 }
 
 void queue_clear(queue_t *queue)
