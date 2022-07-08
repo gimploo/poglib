@@ -1,6 +1,7 @@
 #pragma once
 #include "../decl.h"
 #include "editmode/optionwheel.h"
+#include "frame.h"
 
 void __crapgui_editmode_render(crapgui_t *gui)
 {
@@ -12,7 +13,7 @@ void __crapgui_editmode_render(crapgui_t *gui)
         map_iterator(map, iter) 
         {
             frame_t *frame = (frame_t *)iter;
-            frame->render(frame,gui);
+            __frame_render(frame,gui);
         }
         
     } else if (gui->editmode.focused.ui) {
@@ -139,6 +140,6 @@ void __crapgui_editmode_update(crapgui_t *gui)
         if (!active_frame) return;
     } 
 
-    active_frame->update(active_frame, gui);
+    __frame_update(active_frame, gui);
     __crapgui_editmode_editwheel_update(gui);
 }

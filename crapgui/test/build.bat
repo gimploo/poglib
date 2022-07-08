@@ -14,7 +14,7 @@ set POGLIB_URL=https://github.com/gimploo/poglib/archive/refs/heads/main.zip
 
 
 REM Include compiler of choice (here its msvc)
-set CC=clang
+set CC=cl
 set CC_PATH="C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
 set CC_DEFAULT_FLAGS=/std:c11 /W4 /wd4244 /wd4996 /wd4477 /wd4267 /FC /TC /Zi 
 set CC_DEFAULT_LIBS=User32.lib Gdi32.lib Shell32.lib winmm.lib dbghelp.lib shlwapi.lib
