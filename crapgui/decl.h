@@ -176,9 +176,6 @@ typedef struct frame_t {
     slot_t                  uis;
     __frame_cache_t         __cache;
 
-    void (*update)(struct frame_t * self, crapgui_t *gui);
-    void (*render)(const struct frame_t * self, const crapgui_t *gui);
-
 } frame_t ;
 
 frame_t     frame_init(const char *label, vec2f_t pos, uistyle_t styles);

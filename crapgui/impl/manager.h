@@ -100,7 +100,7 @@ void __crapgui_update(crapgui_t *gui)
         if (__crapgui_is_mouse_over_frame(gui, frame))
         {
             gui->currently_active.frame = frame;
-            frame->update(frame, gui);
+            __frame_update(frame, gui);
         }
     }
 }
@@ -116,7 +116,7 @@ void __crapgui_render(crapgui_t *gui)
     map_iterator(map, iter) 
     {
         frame_t *frame = (frame_t *)iter;
-        frame->render(frame,gui);
+        __frame_render(frame,gui);
     }
 }
 
@@ -220,7 +220,7 @@ frame_t * __crapgui_add_frame(crapgui_t *gui, const char *label, uistyle_t style
     frame_t frame   = frame_init(
                         label, 
                         pos, style);
-    /*__frame_update(&frame, gui);*/
+    __frame_update(&frame, gui);
 
     return (frame_t *)map_insert(map, label, frame);
 }

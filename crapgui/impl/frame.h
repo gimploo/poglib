@@ -212,8 +212,6 @@ frame_t frame_init(const char *label, vec2f_t pos, uistyle_t styles)
         .styles             = styles,
         .uis                = slot_init(MAX_UI_CAPACITY_PER_FRAME, ui_t ),
         .__cache            = __frame_cache_init(), 
-        .update             = __frame_update,
-        .render             = __frame_render
     };
 
     memcpy(o.label, label, sizeof(o.label));
