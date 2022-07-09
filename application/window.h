@@ -31,7 +31,7 @@ typedef enum {
     SDL_MOUSESTATE_RELEASED,
     SDL_MOUSESTATE_HELD,
 
-} mousestate;
+} sdl_mousestate;
 
 typedef enum {
 
@@ -54,25 +54,29 @@ typedef struct window_t {
     struct {
 
         sdl_mousebuttontype button;
-        mousestate          state;
+        sdl_mousestate      state;
         vec2f_t             norm_position;
         vec2i_t             position;
 
     } mouse;
     struct {
 
-        bool            keystate[SDL_NUM_SCANCODES]; 
-        bool            just_pressed[SDL_NUM_SCANCODES]; 
-        bool            is_held[SDL_NUM_SCANCODES];
+        bool     keystate[SDL_NUM_SCANCODES]; 
+        bool     just_pressed[SDL_NUM_SCANCODES]; 
+        bool     is_held[SDL_NUM_SCANCODES];
 
     } keyboard;
-
     struct {
 
         bool                is_active;
         struct window_t     *window;        // Holds subwindow address
                                       
     } subwindow;
+
+    struct {
+        SDL_Keycode     key; 
+        SDL_EventType   state;
+    } lastframe;
 
     u32                 __sdl_window_id;    // useful for managing multiple windows
     SDL_Window          *__sdl_window;      // initializes the window 
@@ -705,6 +709,8 @@ void window_subwindow_render_stuff(window_t *subwindow, void (*stuff)(void *), v
     
 }
 
+#define SDL_KEYSTATE_UNKNOWN SDL_FIRSTEVENT
+
 void window_update_user_input(window_t *window)
 {
     SDL_Event *event = &window->__sdl_event;
@@ -715,6 +721,9 @@ void window_update_user_input(window_t *window)
     } else if (window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED ) {
         window->mouse.state = SDL_MOUSESTATE_PRESSED;
     }
+
+    window->lastframe.key = SDLK_UNKNOWN;
+    window->lastframe.state = SDL_KEYSTATE_UNKNOWN;
 
     while(SDL_PollEvent(event) > 0) 
     {
@@ -781,10 +790,16 @@ void window_update_user_input(window_t *window)
             break;
 
             case SDL_KEYDOWN:
+                window->lastframe.key      = event->key.keysym.sym;
+                window->lastframe.state    = SDL_KEYDOWN;
+
                 __keyboard_update_buffers(window, SDL_KEYDOWN, event->key.keysym.scancode);
             break;
 
             case SDL_KEYUP:
+                window->lastframe.key      = event->key.keysym.sym;
+                window->lastframe.state    = SDL_KEYUP;
+
                 __keyboard_update_buffers(window, SDL_KEYUP, event->key.keysym.scancode);
             break;
 
