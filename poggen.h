@@ -2,8 +2,6 @@
 #include "./util/assetmanager.h"
 #include "./poggen/scene.h"
 
-//TODO: ARE ACTIONS REALLY NECESSARY
-
 /*=============================================================================
                              - GAME ENGINE -
 ==============================================================================*/
@@ -97,24 +95,28 @@ void poggen_change_scene(poggen_t *self, const char *scene_label)
 
 void __poggen_update_user_input(poggen_t *self)
 {    
-    window_t *window = self->__window;
-    assert(window);
-
     scene_t *current_scene = self->current_scene;
     assert(current_scene);
 
-    window_update_user_input(window);
+    window_t *win = self->__window;
+    window_update_user_input(win);
 
-    /*const list_t *actions = &current_scene->__actions;*/
-    /*list_iterator(actions, i) {*/
+    const list_t *actions = &current_scene->__actions;
+    list_iterator(actions, i) {
 
-        /*assert(i); */
-        /*action_t action = *(action_t *)i; */
+        assert(i); 
+        action_t action = *(action_t *)i; 
 
-        /*if (action.key == event->key.keysym.sym) {*/
-            /*current_scene->__input(action); */
-        /*} */
-    /*}*/
+        switch(win->lastframe.state)
+        {
+            case SDL_KEYUP:
+            case SDL_KEYDOWN:
+                if (action.key == win->lastframe.key) {
+                    current_scene->__input(action); 
+                } 
+            break;
+        }
+    }
 }
 
 void poggen_update(poggen_t *self)
