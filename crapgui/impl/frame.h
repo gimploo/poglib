@@ -72,10 +72,8 @@ void __frame_update(frame_t *frame, crapgui_t *gui)
     GL_CHECK(glEnable(GL_BLEND));
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
-    glframebuffer_t *fbo = &frame->__cache.uis.texture;
-    glframebuffer_begin_texture(fbo);
-
     // Texturing the uis together
+    glframebuffer_begin_texture(&frame->__cache.uis.texture);
     {
         for (u32 i = 0; i < UITYPE_COUNT; i++)
         {
@@ -108,7 +106,7 @@ void __frame_update(frame_t *frame, crapgui_t *gui)
                 &gui->frame_assets.font,
                 &frame->__cache.self.texts.text);
     }
-    glframebuffer_end_texture(fbo);
+    glframebuffer_end_texture(&frame->__cache.uis.texture);
 
     frame->__cache.uis.cache_again = false;
 }
