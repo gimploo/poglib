@@ -11,7 +11,6 @@ typedef struct poggen_t {
     assetmanager_t      assets;
     map_t               scenes;
     scene_t             *current_scene;
-
     window_t            *__window;
 
 } poggen_t ;

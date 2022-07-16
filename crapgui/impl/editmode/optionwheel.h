@@ -27,7 +27,7 @@ void __crapgui_editmode_editwheel_update(crapgui_t *gui)
 {
 }
 
-void __crapgui_editmode_editwheel_render(crapgui_t *gui)
+void __crapgui_editmode_editwheel_render(const crapgui_t *gui)
 {
     if (!gui->editmode.optionwheel.is_active) return;
 
@@ -41,7 +41,7 @@ void __crapgui_editmode_editwheel_render(crapgui_t *gui)
 
     glrenderer2d_draw_polygon(
             &r2d, 
-            glpolygon(wheel, COLOR_WHITE, quadf(vec3f(0.0f), 0.0f, 0.0f), 0));
+            glpolygon(wheel, COLOR_BLUE, quadf(vec3f(0.0f), 0.0f, 0.0f), 0));
 }
 
 

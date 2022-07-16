@@ -4,7 +4,6 @@
 #include "./editmode.h"
 #include "./config.h"
 
-
 #define __crapgui_in_editmode(PGUI)\
     (PGUI)->editmode.is_on
 
@@ -83,7 +82,6 @@ void __crapgui_input_update(crapgui_t *gui)
     }
 
 }
-
 
 void __crapgui_update(crapgui_t *gui)
 {
