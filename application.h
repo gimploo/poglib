@@ -3,7 +3,6 @@
 #include "application/glrenderer2d.h"
 #include "application/window.h"
 #include "application/stopwatch.h"
-#include "ecs.h"
 #include "font/glfreetypefont.h"
 
 

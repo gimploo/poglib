@@ -34,7 +34,7 @@ void transform_mesh2d_update(c_transform_t *t, c_mesh2d_t *mesh)
 
         matrixf_t origin_shift          = matrix4f((vec4f_t *)mat01);
         matrixf_t origin_shift_reset    = matrix4f((vec4f_t *)mat02);
-        matrixf_t rot                   = matrix4f_rotation(t->angular_radians);
+        matrixf_t rot                   = matrix4f_rotation(t->angular_radians, 'z');
 
         matrixf_t rtransform = matrixf_product(
                 origin_shift_reset, 
