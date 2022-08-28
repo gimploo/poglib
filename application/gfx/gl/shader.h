@@ -20,12 +20,14 @@ const char * const default_vshader =
     "layout (location = 1) in vec4 v_color;\n"
     "layout (location = 2) in vec2 v_tex_coord;\n"
     "\n"
+    "uniform mat4 cameraViewProjection;\n"
+    "\n"
     "out vec4 color;\n"
     "out vec2 tex_coord;\n"
     "\n"
     "void main()\n"
     "{\n"
-        "gl_Position = vec4(v_pos, 1.0f);\n"
+        "gl_Position = cameraViewProjection * vec4(v_pos, 1.0f);\n"
         "color = v_color;\n"
         "tex_coord = v_tex_coord;\n"
     "}";
@@ -274,8 +276,8 @@ void glshader_destroy(glshader_t *shader)
 
     GL_CHECK(glDeleteProgram(shader->id));
 
-    list_t *queue = &shader->uniforms;
-    list_destroy(queue);
+    list_t *uniforms = &shader->uniforms;
+    list_destroy(uniforms);
 
     GL_LOG("Shader `%i` successfully deleted", shader->id);
 }
@@ -324,8 +326,8 @@ void glshader_bind(glshader_t *shader)
 
     GL_SHADER_BIND(shader);
 
-    list_t *queue = &shader->uniforms;
-    list_iterator(queue, iter)
+    list_t *uniforms = &shader->uniforms;
+    list_iterator(uniforms, iter)
     {
         __uniform_meta_data_t *uniform = (__uniform_meta_data_t *)iter;
         GL_LOG("Shader `%i` setting uniform `%s`", shader->id, uniform->variable_name);
