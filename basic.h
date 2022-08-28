@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <time.h>
+#include <ctype.h>
 
 #include <poglib/basic/color.h>
 #include "./dbg.h"
