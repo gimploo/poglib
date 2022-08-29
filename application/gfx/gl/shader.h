@@ -12,7 +12,8 @@
 #include <poglib/ds/list.h>
 #include <poglib/application/gfx/gl/common.h>
 
-#define MAX_UNIFORM_VALUE_SIZE (sizeof(matrixf_t ))
+#define MAX_UNIFORM_VALUE_SIZE          (sizeof(matrixf_t ))
+#define MAX_UNIFORMS_ALLOWED_CAPACITY   50
 
 const char * const default_vshader = 
     "#version 330 core\n"
@@ -54,7 +55,7 @@ typedef struct glshader_t {
     GLuint      id;
     const char  *vs_file_path;
     const char  *fg_file_path;
-    list_t      uniforms;
+    queue_t     uniforms;
 
 } glshader_t;
 
@@ -69,7 +70,7 @@ typedef enum glshader_uniform_type {
     UT_vec3f_t,
     UT_vec4f_t,
 
-    UT_matrix4f_t,
+    UT_matrixf_t,
 
     UT_COUNT
 
@@ -172,7 +173,6 @@ static inline void __shader_load_from_file(glshader_t *shader, const char *verte
 
     __shader_load_code(shader, vs_code, fs_code);
 }
-
 glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
 {
     if (file_vs == NULL) eprint("file_vs argument is null");
@@ -184,7 +184,7 @@ glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
 
     __shader_load_from_file(&shader, file_vs, file_fs);
 
-    shader.uniforms = list_init(1, __uniform_meta_data_t );
+    shader.uniforms = queue_init(MAX_UNIFORMS_ALLOWED_CAPACITY, __uniform_meta_data_t );
 
     return shader;
 }
@@ -200,7 +200,7 @@ glshader_t  glshader_from_cstr_init(const char *vs_code, const char *fs_code)
 
     __shader_load_code(&shader, vs_code, fs_code);
 
-    shader.uniforms = list_init(1, __uniform_meta_data_t );
+    shader.uniforms = queue_init(MAX_UNIFORMS_ALLOWED_CAPACITY, __uniform_meta_data_t );
 
     return shader;
 }
@@ -276,8 +276,8 @@ void glshader_destroy(glshader_t *shader)
 
     GL_CHECK(glDeleteProgram(shader->id));
 
-    list_t *uniforms = &shader->uniforms;
-    list_destroy(uniforms);
+    queue_t *uniforms = &shader->uniforms;
+    queue_destroy(uniforms);
 
     GL_LOG("Shader `%i` successfully deleted", shader->id);
 }
@@ -317,7 +317,7 @@ void __impl_glshader_set_uniform(glshader_t *shader, const char *uniform_name, v
             value_size, 
             type);
 
-    list_append(&shader->uniforms, data);
+    queue_put(&shader->uniforms, data);
 }
 
 void glshader_bind(glshader_t *shader)
@@ -326,47 +326,58 @@ void glshader_bind(glshader_t *shader)
 
     GL_SHADER_BIND(shader);
 
-    list_t *uniforms = &shader->uniforms;
-    list_iterator(uniforms, iter)
+    queue_t *uniforms = &shader->uniforms;
+    while(!queue_is_empty(uniforms))
     {
-        __uniform_meta_data_t *uniform = (__uniform_meta_data_t *)iter;
+        __uniform_meta_data_t uniform = {0}; 
+        queue_get_in_buffer(uniforms, uniform);
+
         GL_LOG("Shader `%i` setting uniform `%s`", shader->id, uniform->variable_name);
 
-        switch(uniform->uniform_type)
+        switch(uniform.uniform_type)
         {
             case UT_u32:
-                __glshader_uniform_set_uival(shader, uniform->variable_name, *(u32 *)uniform->data_buffer);
+                __glshader_uniform_set_uival(shader, uniform.variable_name, *(u32 *)uniform.data_buffer);
             break;
 
             case UT_i32:
-                __glshader_uniform_set_ival(shader, uniform->variable_name, *(i32 *)uniform->data_buffer);
+                __glshader_uniform_set_ival(shader, uniform.variable_name, *(i32 *)uniform.data_buffer);
             break;
 
             case UT_f32:
-                __glshader_uniform_set_fval(shader, uniform->variable_name, *(f32 *)uniform->data_buffer);
+                __glshader_uniform_set_fval(shader, uniform.variable_name, *(f32 *)uniform.data_buffer);
             break;
 
             case UT_vec2f_t:
-                __glshader_uniform_set_vec2f(shader, uniform->variable_name, *(vec2f_t *)uniform->data_buffer);
+                __glshader_uniform_set_vec2f(shader, uniform.variable_name, *(vec2f_t *)uniform.data_buffer);
             break;
 
             case UT_vec3f_t:
-                __glshader_uniform_set_vec3f(shader, uniform->variable_name, *(vec3f_t *)uniform->data_buffer);
+                __glshader_uniform_set_vec3f(shader, uniform.variable_name, *(vec3f_t *)uniform.data_buffer);
             break;
 
             case UT_vec4f_t:
-                __glshader_uniform_set_vec4f(shader, uniform->variable_name, *(vec4f_t *)uniform->data_buffer);
+                __glshader_uniform_set_vec4f(shader, uniform.variable_name, *(vec4f_t *)uniform.data_buffer);
             break;
 
-            case UT_matrix4f_t:
-                __glshader_uniform_set_matrix4f(shader, uniform->variable_name, *(matrixf_t *)uniform->data_buffer);
+            case UT_matrixf_t:
+                assert(((matrixf_t *)uniform.data_buffer)->ncol == ((matrixf_t *)uniform.data_buffer)->nrow);
+                switch(((matrixf_t *)uniform.data_buffer)->ncol) 
+                {
+                    case 4:
+                        __glshader_uniform_set_matrix4f(shader, uniform.variable_name, *(matrixf_t *)uniform.data_buffer);
+                    break;
+
+                    default: eprint("matrix with order `%iX%i` not accounted for", 
+                                     ((matrixf_t *)uniform.data_buffer)->nrow,
+                                     ((matrixf_t *)uniform.data_buffer)->ncol);
+                }
             break;
 
             case UT_COUNT:
             break;
         }
     }
-        
 }
 
 
