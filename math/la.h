@@ -275,7 +275,7 @@ matrixf_t matrixf_transpose(matrixf_t a)
     return output;
 }
 
-matrixf_t matrix4f_orthographic(f32 left, f32 right, f32 bottom, f32 top, f32 near, f32 far)
+matrixf_t matrix4f_orthographic(f32 left, f32 right, f32 bottom, f32 top, f32 far, f32 near)
 {
     matrixf_t output = MATRIX4F_IDENTITY;
 
