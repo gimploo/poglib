@@ -5,18 +5,30 @@
 //NOTE: Find the operation / transformation u need from here
 //      -- https://github.com/recp/cglm/tree/master/include/cglm 
 
-typedef struct matrixf_t matrixf_t ;
+#define MAX_MATRIX_BUFFER_SIZE WORD / 2
 
+typedef struct matrixf_t {
 
-#define         matrixf(ARR, NROW, NCOL)       __impl_matrixf_init(&(ARR), sizeof(ARR), (NROW), (NCOL))
-matrixf_t       matrix2f(vec2f_t vertex[2]);
-matrixf_t       matrix3f(vec3f_t vertex[3]);
-matrixf_t       matrix4f(vec4f_t vertex[4]);
+    u32 nrow;
+    u32 ncol;
+    u8  buffer[MAX_MATRIX_BUFFER_SIZE];
+
+} matrixf_t ;
+
+#define         matrixf(ARR, NROW, NCOL)        __impl_matrixf_init(&(ARR), sizeof(ARR), (NROW), (NCOL))
+#define         matrix2f(ARR)                   __impl_matrix2f(ARR, sizeof(ARR))
+#define         matrix3f(ARR)                   __impl_matrix3f(ARR, sizeof(ARR))
+#define         matrix4f(ARR)                   __impl_matrix4f(ARR, sizeof(ARR))
 
 matrixf_t       matrix4f_rotation(const f32 angle_in_radians, const char along_axis);
 matrixf_t       matrix4f_translation(vec3f_t vec);
-matrixf_t       matrix4f_orthographic(f32 left, f32 right, f32 bottom, f32 top, f32 near, f32 far);
+matrixf_t       matrix4f_orthographic(f32 left, f32 right, f32 bottom, f32 top, f32 far, f32 near);
+matrixf_t       matrix4f_perpective(f32 fov, f32 aspect, f32 nearz, f32 farz);
 matrixf_t       matrix4f_inverse(matrixf_t mat);
+
+matrixf_t       matrix2f_identity(void);
+matrixf_t       matrix3f_identity(void);
+matrixf_t       matrix4f_identity(void);
 
 matrixf_t       matrixf_scale(matrixf_t matrix, f32 s);
 matrixf_t       matrixf_sum(matrixf_t a, matrixf_t b);
@@ -27,41 +39,10 @@ matrixf_t       matrixf_transpose(matrixf_t a);
 
 void            matrixf_print(matrixf_t *m);
 
-#define MATRIX4F_IDENTITY \
-    matrix4f(\
-        (vec4f_t [4]) {\
-            1.0f,1.0f,1.0f,1.0f,\
-            1.0f,1.0f,1.0f,1.0f,\
-            1.0f,1.0f,1.0f,1.0f,\
-            1.0f,1.0f,1.0f,1.0f,\
-        })
 
-#define MATRIX3F_IDENTITY \
-    matrix3f(\
-        (vec3f_t [3]) {\
-            1.0f,1.0f,1.0f,\
-            1.0f,1.0f,1.0f,\
-            1.0f,1.0f,1.0f,\
-        })
-
-#define MATRIX2F_IDENTITY \
-    matrix2f(\
-        (vec2f_t [2]) {\
-            1.0f,1.0f,\
-            1.0f,1.0f,\
-        })
 
 
 #ifndef IGNORE_LA_IMPLEMENTATION
-
-#define MAX_MATRIX_BUFFER_SIZE WORD / 2
-
-struct matrixf_t {
-
-    u32 nrow;
-    u32 ncol;
-    u8  buffer[MAX_MATRIX_BUFFER_SIZE];
-};
 
 
 void __impl_matrixf_add_row(matrixf_t *m, void *value, u64 value_size)
@@ -91,8 +72,10 @@ matrixf_t __impl_matrixf_init(void *array, u64 array_size, u32 nrow, u32 ncol)
     return o;
 }
 
-matrixf_t matrix2f(vec2f_t vertex[2])
+matrixf_t __impl_matrix2f(vec2f_t *vertex, const u64 size)
 {
+    assert(size == sizeof(vec2f_t [2]));
+
     matrixf_t o = (matrixf_t ){
         .nrow = 2,
         .ncol = 2
@@ -103,8 +86,10 @@ matrixf_t matrix2f(vec2f_t vertex[2])
     return o;
 }
 
-matrixf_t matrix3f(vec3f_t vertex[3])
+matrixf_t __impl_matrix3f(vec3f_t *vertex, const u64 size)
 {
+    assert(size == sizeof(vec3f_t [3]));
+
     matrixf_t o = (matrixf_t ){
         .nrow = 3,
         .ncol = 3
@@ -115,8 +100,10 @@ matrixf_t matrix3f(vec3f_t vertex[3])
 
 }
 
-matrixf_t matrix4f(vec4f_t vertex[4])
+matrixf_t __impl_matrix4f(const vec4f_t *vertex, const u64 size)
 {    
+    assert(size == sizeof(vec4f_t [4]));
+
     matrixf_t o = (matrixf_t ){
         .nrow = 4,
         .ncol = 4
@@ -215,10 +202,10 @@ matrixf_t matrix4f_rotation(const f32 angle_in_radians, const char along_axis)
 matrixf_t matrix4f_translation(vec3f_t vec)
 {
     vec4f_t tran[4] = {
-        [0] = { 1.0f, 0.0f, 0.0f, vec.cmp[X]},
-        [1] = { 0.0f, 1.0f, 0.0f, vec.cmp[Y]},
-        [2] = { 0.0f, 0.0f, 1.0f, vec.cmp[Z]},
-        [3] = { 0.0f, 0.0f, 0.0f, 1.0f }
+         1.0f, 0.0f, 0.0f, vec.cmp[X],
+         0.0f, 1.0f, 0.0f, vec.cmp[Y],
+         0.0f, 0.0f, 1.0f, vec.cmp[Z],
+         0.0f, 0.0f, 0.0f, 1.0f 
     };
 
     matrixf_t o = {
@@ -275,21 +262,21 @@ matrixf_t matrixf_transpose(matrixf_t a)
     return output;
 }
 
-matrixf_t matrix4f_orthographic(f32 left, f32 right, f32 bottom, f32 top, f32 far, f32 near)
-{
-    matrixf_t output = MATRIX4F_IDENTITY;
+/*matrixf_t matrix4f_orthographic(f32 left, f32 right, f32 bottom, f32 top, f32 far, f32 near)*/
+/*{*/
+    /*matrixf_t output = matrix4f_identity();*/
 
-    f32 **buffer = (f32 **)output.buffer;
+    /*f32 **buffer = (f32 **)output.buffer;*/
 
-    buffer[0][0] = 2 / (right - left);
-    buffer[1][1] = 2 / (top - bottom);
-    buffer[2][2] = 1 / (far - near);
-    buffer[3][0] = - (right + left) / (top - bottom);
-    buffer[3][1] = - (top + bottom) / (top - bottom);
-    buffer[3][2] = - near / (far - near);
+    /*buffer[0][0] = 2 / (right - left);*/
+    /*buffer[1][1] = 2 / (top - bottom);*/
+    /*buffer[2][2] = 1 / (far - near);*/
+    /*buffer[3][0] = - (right + left) / (top - bottom);*/
+    /*buffer[3][1] = - (top + bottom) / (top - bottom);*/
+    /*buffer[3][2] = - near / (far - near);*/
 
-    return output;
-}
+    /*return output;*/
+/*}*/
 
 matrixf_t matrix4f_inverse(matrixf_t matrix)
 {
@@ -359,5 +346,81 @@ matrixf_t matrixf_scale(matrixf_t matrix, f32 s)
     return output;
 }
 
+matrixf_t matrix4f_perpective(f32 fovy, f32 aspect, f32 nearZ, f32 farZ)
+{
+    float f, fn;
+    matrixf_t o = {
+        .nrow = 4,
+        .ncol = 4,
+        .buffer = {0}
+    };
+
+    f32 **dest = (f32 **)o.buffer;
+
+    f  = 1.0f / tanf(fovy * 0.5f);
+    fn = 1.0f / (nearZ - farZ);
+
+    dest[0][0] = f / aspect;
+    dest[1][1] = f;
+    dest[2][2] = farZ * fn;
+    dest[2][3] =-1.0f;
+    dest[3][2] = nearZ * farZ * fn;
+
+    return o;
+}
+
+matrixf_t matrix4f_identity(void)
+{
+    matrixf_t o = {
+        .nrow = 4,
+        .ncol = 4,
+        .buffer = {0}
+    };
+
+    const f32 mati[] = {
+        1.0f,1.0f,1.0f,1.0f, 
+        1.0f,1.0f,1.0f,1.0f, 
+        1.0f,1.0f,1.0f,1.0f, 
+        1.0f,1.0f,1.0f,1.0f 
+    };
+
+    memcpy(o.buffer, mati, sizeof(mati));
+    return o;
+}
+
+matrixf_t matrix2f_identity(void)
+{
+    matrixf_t o = {
+        .nrow = 2,
+        .ncol = 2,
+        .buffer = {0}
+    };
+
+    const f32 mati[] = {
+        1.0f,1.0f, 
+        1.0f,1.0f, 
+    };
+
+    memcpy(o.buffer, mati, sizeof(mati));
+    return o;
+}
+
+matrixf_t matrix3f_identity(void)
+{
+    matrixf_t o = {
+        .nrow = 3,
+        .ncol = 3,
+        .buffer = {0}
+    };
+
+    const f32 mati[] = {
+        1.0f,1.0f,1.0f, 
+        1.0f,1.0f,1.0f, 
+        1.0f,1.0f,1.0f, 
+    };
+
+    memcpy(o.buffer, mati, sizeof(mati));
+    return o;
+}
 #endif
 
