@@ -60,7 +60,6 @@ typedef struct polygon_t {
 polygon_t       polygon(const vec3f_t pos, const f32 radius, const u8 nsides);
 
 
-
 /*-----------------------------------------------------------------------------
                         -- IMPLEMENTATION --
 -----------------------------------------------------------------------------*/
@@ -78,10 +77,6 @@ trif_t trif(vec3f_t pos, f32 side)
     };
 }
 
-
-
-
-
 void quadf_print(quadf_t quad)
 {
     printf(VEC3F_FMT", ", VEC3F_ARG(&quad.vertex[0]));
@@ -89,8 +84,6 @@ void quadf_print(quadf_t quad)
     printf(VEC3F_FMT", ", VEC3F_ARG(&quad.vertex[2]));
     printf(VEC3F_FMT", \n", VEC3F_ARG(&quad.vertex[3]));
 }
-
-
 
 quadf_t quadf(vec3f_t position, f32 width, f32 height)
 {
@@ -146,9 +139,6 @@ bool quadf_is_point_in_quad(const quadf_t quad, const vec2f_t point)
             && quad.vertex[TOP_LEFT].cmp[Y] > point.cmp[Y]
             && quad.vertex[BOTTOM_LEFT].cmp[Y] <  point.cmp[Y]);
 }
-
-
-
 
 circle_t circle(vec3f_t pos, f32 radius)
 {
