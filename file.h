@@ -104,7 +104,7 @@ file_t * file_init(const char *file_path, const char *mode)
 
     file.fp         = fopen(file_path, mode) ;
     if (!file.fp) 
-        eprint("unable to open file");
+        eprint("unable to open file `%s`", file_path);
 
     __file_set_size(&file);
 
