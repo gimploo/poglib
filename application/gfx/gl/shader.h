@@ -55,35 +55,8 @@ typedef struct glshader_t {
     GLuint      id;
     const char  *vs_file_path;
     const char  *fg_file_path;
-    queue_t     uniforms;
 
 } glshader_t;
-
-
-typedef enum glshader_uniform_type {
-
-    UT_u32 = 0,
-    UT_i32,
-    UT_f32,
-
-    UT_vec2f_t ,
-    UT_vec3f_t,
-    UT_vec4f_t,
-
-    UT_matrixf_t,
-
-    UT_COUNT
-
-} gl_uniform_type;
-
-typedef struct __uniform_meta_data_t {
-
-    const char                      *variable_name;
-    const u64                       data_size;
-    const gl_uniform_type           uniform_type;
-    u8                              data_buffer[MAX_UNIFORM_VALUE_SIZE];
-
-} __uniform_meta_data_t;
 
 
 /*-----------------------------------------------------
@@ -95,8 +68,15 @@ typedef struct __uniform_meta_data_t {
 glshader_t      glshader_from_file_init(const char *file_vs, const char *file_fs);
 glshader_t      glshader_from_cstr_init(const char *vs_code, const char *fs_code);
 
-void            glshader_bind(glshader_t *shader);
-#define         glshader_set_uniform(PSHADER, UNIFORM_NAME, VALUE, TYPE)        __impl_glshader_set_uniform((PSHADER), (UNIFORM_NAME), &(VALUE), sizeof(VALUE), UT_##TYPE, sizeof(TYPE)) 
+void            glshader_uniform_set_fval(const glshader_t *shader, const char *uniform, float val);
+void            glshader_uniform_set_uival(const glshader_t *shader, const char *uniform, unsigned int val);
+void            glshader_uniform_set_ival(const glshader_t *shader, const char *uniform, int val);
+void            glshader_uniform_set_vec2f(const glshader_t *shader, const char *uniform, vec2f_t val);
+void            glshader_uniform_set_vec3f(const glshader_t *shader, const char *uniform, vec3f_t val);
+void            glshader_uniform_set_vec4f(const glshader_t *shader, const char *uniform, vec4f_t val);
+void            glshader_uniform_set_matrix4f(const glshader_t *shader, const char *uniform, matrixf_t val);
+
+void            glshader_bind(const glshader_t *shader);
 
 void            glshader_destroy(glshader_t *shader);
 
@@ -106,6 +86,12 @@ void            glshader_destroy(glshader_t *shader);
 --------------------------------------------------------*/
 #define GL_SHADER_BIND(pshader) GL_CHECK(glUseProgram((pshader)->id));
 
+void glshader_bind(const glshader_t *shader)
+{
+    if (shader == NULL) eprint("shader argument is null");
+
+    GL_SHADER_BIND(shader);
+}
 
 static inline void __shader_load_code(glshader_t *shader, const char *vs_code, const char *fs_code)
 {
@@ -173,6 +159,7 @@ static inline void __shader_load_from_file(glshader_t *shader, const char *verte
 
     __shader_load_code(shader, vs_code, fs_code);
 }
+
 glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
 {
     if (file_vs == NULL) eprint("file_vs argument is null");
@@ -183,8 +170,6 @@ glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
     shader.vs_file_path = file_vs;
 
     __shader_load_from_file(&shader, file_vs, file_fs);
-
-    shader.uniforms = queue_init(MAX_UNIFORMS_ALLOWED_CAPACITY, __uniform_meta_data_t );
 
     return shader;
 }
@@ -200,14 +185,13 @@ glshader_t  glshader_from_cstr_init(const char *vs_code, const char *fs_code)
 
     __shader_load_code(&shader, vs_code, fs_code);
 
-    shader.uniforms = queue_init(MAX_UNIFORMS_ALLOWED_CAPACITY, __uniform_meta_data_t );
-
     return shader;
 }
 
 
-void __glshader_uniform_set_ival(const glshader_t *shader, const char *uniform, int val)
+void glshader_uniform_set_ival(const glshader_t *shader, const char *uniform, int val)
 {
+    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
@@ -215,48 +199,54 @@ void __glshader_uniform_set_ival(const glshader_t *shader, const char *uniform, 
     GL_CHECK(glUniform1i(location, val));
 }
 
-void __glshader_uniform_set_uival(const glshader_t *shader, const char *uniform, unsigned int val)
+void glshader_uniform_set_uival(const glshader_t *shader, const char *uniform, unsigned int val)
 {
+    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
     GL_CHECK(glUniform1ui(location, val));
 }
 
-void __glshader_uniform_set_fval(const glshader_t *shader, const char *uniform, float val)
+void glshader_uniform_set_fval(const glshader_t *shader, const char *uniform, float val)
 {
+    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
     GL_CHECK(glUniform1f(location, val));
 }
 
-void __glshader_uniform_set_vec3f(const glshader_t *shader, const char *uniform, vec3f_t val)
+void glshader_uniform_set_vec3f(const glshader_t *shader, const char *uniform, vec3f_t val)
 {
+    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
     GL_CHECK(glUniform3f(location, val.cmp[0], val.cmp[1], val.cmp[2]));
 }
 
-void __glshader_uniform_set_vec4f(const glshader_t *shader, const char *uniform, vec4f_t val)
+void glshader_uniform_set_vec4f(const glshader_t *shader, const char *uniform, vec4f_t val)
 {
+    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
     GL_CHECK(glUniform4f(location, val.cmp[0], val.cmp[1], val.cmp[2], val.cmp[3]));
 }
 
-void __glshader_uniform_set_vec2f(const glshader_t *shader, const char *uniform, vec2f_t val)
+void glshader_uniform_set_vec2f(const glshader_t *shader, const char *uniform, vec2f_t val)
 {
+    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
     GL_CHECK(glUniform2f(location, val.cmp[0], val.cmp[1]));
 }
 
-void __glshader_uniform_set_matrix4f(const glshader_t *shader, const char *uniform, matrixf_t val)
+void glshader_uniform_set_matrix4f(const glshader_t *shader, const char *uniform, matrixf_t val)
 {
+    GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] uniform doesnt exist");
@@ -276,109 +266,11 @@ void glshader_destroy(glshader_t *shader)
 
     GL_CHECK(glDeleteProgram(shader->id));
 
-    queue_t *uniforms = &shader->uniforms;
-    queue_destroy(uniforms);
-
     GL_LOG("Shader `%i` successfully deleted", shader->id);
 }
 
 
 
-__uniform_meta_data_t __uniform_meta_data_init(const char *var_name, void *data_ref, const u64 data_size, const gl_uniform_type type)
-{
-    if (var_name == NULL) eprint("var_name argument is null");
-    if (data_ref == NULL) eprint("data_ref argument is null");
-
-    assert(data_size != MAX_UNIFORM_VALUE_SIZE);
-
-    __uniform_meta_data_t data = {
-        .variable_name  = var_name,
-        .data_size      = data_size,
-        .uniform_type   = type,
-    };
-
-    memcpy(data.data_buffer, data_ref, data_size); 
-
-    return data;
-}
-
-
-void __impl_glshader_set_uniform(glshader_t *shader, const char *uniform_name, void *value_ref, u64 value_size, gl_uniform_type type, u64 type_size) 
-{
-    if (shader == NULL) eprint("shader arg is null");    
-    if (value_ref == NULL) eprint("value ref is null");
-    if (value_size != type_size) eprint("type size (%li) and value size (%li) dont not match", type_size, value_size);
-
-    assert(type_size == value_size);
-
-    __uniform_meta_data_t data = __uniform_meta_data_init(
-            uniform_name, 
-            value_ref, 
-            value_size, 
-            type);
-
-    queue_put(&shader->uniforms, data);
-}
-
-void glshader_bind(glshader_t *shader)
-{
-    if (shader == NULL) eprint("shader argument is null");
-
-    GL_SHADER_BIND(shader);
-
-    queue_t *uniforms = &shader->uniforms;
-    while(!queue_is_empty(uniforms))
-    {
-        __uniform_meta_data_t uniform = {0}; 
-        queue_get_in_buffer(uniforms, uniform);
-
-        GL_LOG("Shader `%i` setting uniform `%s`", shader->id, uniform->variable_name);
-
-        switch(uniform.uniform_type)
-        {
-            case UT_u32:
-                __glshader_uniform_set_uival(shader, uniform.variable_name, *(u32 *)uniform.data_buffer);
-            break;
-
-            case UT_i32:
-                __glshader_uniform_set_ival(shader, uniform.variable_name, *(i32 *)uniform.data_buffer);
-            break;
-
-            case UT_f32:
-                __glshader_uniform_set_fval(shader, uniform.variable_name, *(f32 *)uniform.data_buffer);
-            break;
-
-            case UT_vec2f_t:
-                __glshader_uniform_set_vec2f(shader, uniform.variable_name, *(vec2f_t *)uniform.data_buffer);
-            break;
-
-            case UT_vec3f_t:
-                __glshader_uniform_set_vec3f(shader, uniform.variable_name, *(vec3f_t *)uniform.data_buffer);
-            break;
-
-            case UT_vec4f_t:
-                __glshader_uniform_set_vec4f(shader, uniform.variable_name, *(vec4f_t *)uniform.data_buffer);
-            break;
-
-            case UT_matrixf_t:
-                assert(((matrixf_t *)uniform.data_buffer)->ncol == ((matrixf_t *)uniform.data_buffer)->nrow);
-                switch(((matrixf_t *)uniform.data_buffer)->ncol) 
-                {
-                    case 4:
-                        __glshader_uniform_set_matrix4f(shader, uniform.variable_name, *(matrixf_t *)uniform.data_buffer);
-                    break;
-
-                    default: eprint("matrix with order `%iX%i` not accounted for", 
-                                     ((matrixf_t *)uniform.data_buffer)->nrow,
-                                     ((matrixf_t *)uniform.data_buffer)->ncol);
-                }
-            break;
-
-            case UT_COUNT:
-            break;
-        }
-    }
-}
 
 
 
