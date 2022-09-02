@@ -17,15 +17,20 @@ typedef struct { glvertex_t vertex[4]; } glquad_t;
 typedef struct { glvertex_t vertex[MAX_VERTICES_PER_CIRCLE]; } glcircle_t;
 
 typedef struct {
+
     glcircle_t  vertices;
     u8          sides;
+
 } glpolygon_t ;
+
+#define MAX_VERTICES_PER_CUBE   72
+#define MAX_UVS_PER_CUBE        36
+
 
 gltri_t         gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid);
 glquad_t        glquad(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id);
 glcircle_t      glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
 glpolygon_t     glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv, u8 texid);
-
 
 typedef enum {
 
@@ -138,7 +143,26 @@ const u32 DEFAULT_QUAD_INDICES[] = {
     2, 3, 0
 };
 
-
+const u32 DEFAULT_CUBE_INDICES[] = {
+    // front
+    0, 1, 2,
+    2, 3, 0,
+    // right
+    1, 5, 6,
+    6, 2, 1,
+    // back
+    7, 6, 5,
+    5, 4, 7,
+    // left
+    4, 0, 3,
+    3, 7, 4,
+    // bottom
+    4, 5, 1,
+    1, 0, 4,
+    // top
+    3, 2, 6,
+    6, 7, 3
+};
 
 // Creates a quad suited for OpenGL
 glquad_t glquad(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id)
