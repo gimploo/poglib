@@ -89,6 +89,9 @@ void __ui_update(ui_t *ui, frame_t *frame, crapgui_t *gui)
                         quadf(vec3f(0.0f), 0.0f, 0.0f), 0);
         break;
 
+        case UI_DROPDOWN:
+        break;
+
         default: eprint("type not accounted for ");
     }
 
