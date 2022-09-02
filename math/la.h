@@ -18,26 +18,29 @@ typedef struct matrixf_t {
 #define         matrixf(ARR, NROW, NCOL)        __impl_matrixf_init(&(ARR), sizeof(ARR), (NROW), (NCOL))
 #define         matrix2f(ARR)                   __impl_matrix2f(ARR, sizeof(ARR))
 #define         matrix3f(ARR)                   __impl_matrix3f(ARR, sizeof(ARR))
-#define         matrix4f(ARR)                   __impl_matrix4f(ARR, sizeof(ARR))
+#define         matrix4f(ARR)                   __impl_matrix4f((ARR), sizeof(ARR))
 
-matrixf_t       matrix4f_rotation(const f32 angle_in_radians, const char along_axis);
-matrixf_t       matrix4f_translation(vec3f_t vec);
+matrixf_t       matrix4f_rotate(const matrixf_t mat, const f32 angle_in_radians, const vec3f_t along_axis);
+matrixf_t       matrix4f_translate(const matrixf_t mat, const vec3f_t vec);
 matrixf_t       matrix4f_orthographic(f32 left, f32 right, f32 bottom, f32 top, f32 far, f32 near);
-matrixf_t       matrix4f_perpective(f32 fov, f32 aspect, f32 nearz, f32 farz);
-matrixf_t       matrix4f_inverse(matrixf_t mat);
+matrixf_t       matrix4f_perpective(const f32 fov, const f32 aspect, const f32 nearz, const f32 farz);
+matrixf_t       matrix4f_inverse(const matrixf_t mat);
+matrixf_t       matrix4f_scale(const matrixf_t matrix, const f32 s);
 
+matrixf_t       matrix4f_translation(const vec3f_t vec);
+matrixf_t       matrix4f_rotation(const f32 angle_in_radians, const vec3f_t axis);
 matrixf_t       matrix2f_identity(void);
 matrixf_t       matrix3f_identity(void);
 matrixf_t       matrix4f_identity(void);
 
-matrixf_t       matrixf_scale(matrixf_t matrix, f32 s);
-matrixf_t       matrixf_sum(matrixf_t a, matrixf_t b);
-matrixf_t       matrixf_product(matrixf_t a, matrixf_t b);
-matrixf_t       matrixf_transpose(matrixf_t a);
+matrixf_t       matrix4f_lookat(const vec3f_t eye, const vec3f_t center, const vec3f_t up); 
 
-#define         matrixf_add_row(PMATRIX, ELEM) __impl_matrixf_add_row((PMATRIX), &(ELEM), sizeof(ELEM))
+matrixf_t       matrixf_sum(const matrixf_t a, const matrixf_t b);
+matrixf_t       matrixf_multiply(const matrixf_t a, const matrixf_t b);
+matrixf_t       matrixf_transpose(const matrixf_t a);
 
-void            matrixf_print(matrixf_t *m);
+#define         matrixf_copy_to_array(MAT, OUTPUT) memcpy(OUTPUT, MAT.buffer, sizeof(f32) * MAT.ncol * MAT.nrow)
+void            matrixf_print(const matrixf_t *m);
 
 
 
@@ -45,17 +48,7 @@ void            matrixf_print(matrixf_t *m);
 #ifndef IGNORE_LA_IMPLEMENTATION
 
 
-void __impl_matrixf_add_row(matrixf_t *m, void *value, u64 value_size)
-{
-    assert(value);
-    assert((m->nrow * m->ncol) * sizeof(f32) != MAX_MATRIX_BUFFER_SIZE);
-
-    f32 *pos = (f32 *)m->buffer + (m->ncol * m->nrow);
-    memcpy(pos, value, value_size);
-    m->nrow++;
-}
-
-matrixf_t __impl_matrixf_init(void *array, u64 array_size, u32 nrow, u32 ncol)
+matrixf_t __impl_matrixf_init(const void *array, const u64 array_size, const u32 nrow, const u32 ncol)
 {
     assert(ncol > 0);
     assert(nrow > 0);
@@ -72,7 +65,7 @@ matrixf_t __impl_matrixf_init(void *array, u64 array_size, u32 nrow, u32 ncol)
     return o;
 }
 
-matrixf_t __impl_matrix2f(vec2f_t *vertex, const u64 size)
+matrixf_t __impl_matrix2f(const void *vertex, const u64 size)
 {
     assert(size == sizeof(vec2f_t [2]));
 
@@ -86,7 +79,7 @@ matrixf_t __impl_matrix2f(vec2f_t *vertex, const u64 size)
     return o;
 }
 
-matrixf_t __impl_matrix3f(vec3f_t *vertex, const u64 size)
+matrixf_t __impl_matrix3f(const void *vertex, const u64 size)
 {
     assert(size == sizeof(vec3f_t [3]));
 
@@ -100,7 +93,7 @@ matrixf_t __impl_matrix3f(vec3f_t *vertex, const u64 size)
 
 }
 
-matrixf_t __impl_matrix4f(const vec4f_t *vertex, const u64 size)
+matrixf_t __impl_matrix4f(const void *vertex, const u64 size)
 {    
     assert(size == sizeof(vec4f_t [4]));
 
@@ -113,7 +106,7 @@ matrixf_t __impl_matrix4f(const vec4f_t *vertex, const u64 size)
     return o;
 }
 
-matrixf_t matrixf_product(matrixf_t a, matrixf_t b)
+matrixf_t matrixf_multiply(const matrixf_t a, const matrixf_t b)
 {
     if (a.ncol != b.nrow) eprint("num of columns in first matrix dosent match with num of rows in the second matrix");
 
@@ -138,7 +131,23 @@ matrixf_t matrixf_product(matrixf_t a, matrixf_t b)
     
 }
 
-matrixf_t matrixf_sum(matrixf_t a, matrixf_t b)
+//Note: reason these arguments are this way is cuz msvc doesnt compile otherwise
+matrixf_t matrix4f_orthographic(f32 Left, f32 Right, f32 Bottom, f32 Top, f32 Far, f32 Near)
+{
+    f32 buffer[4][4] = {0}; 
+    matrixf_copy_to_array(matrix4f_identity(), buffer);
+
+    buffer[0][0] = 2 / (Right - Left);
+    buffer[1][1] = 2 / (Top - Bottom);
+    buffer[2][2] = 1 / (Far - Near);
+    buffer[3][0] = - (Right + Left) / (Top - Bottom);
+    buffer[3][1] = - (Top + Bottom) / (Top - Bottom);
+    buffer[3][2] = - Near / (Far - Near);
+
+    return matrixf(buffer, 4, 4);
+}
+
+matrixf_t matrixf_sum(const matrixf_t a, const matrixf_t b)
 {
     assert(a.ncol == b.ncol);
     assert(b.nrow == a.nrow);
@@ -160,65 +169,94 @@ matrixf_t matrixf_sum(matrixf_t a, matrixf_t b)
     return o;
 }
 
-matrixf_t matrix4f_rotation(const f32 angle_in_radians, const char along_axis)
+matrixf_t matrix4f_rotation(const f32 angle_in_radians, const vec3f_t axis)
 {
-    vec4f_t rot[4] = {0.0f};
+    vec4f_t rot[4] = {0};
 
-    switch(tolower(along_axis))
-    {
-        case 'x':
-            rot[0] = (vec4f_t ){ 1.0f, 0.0f, 0.0f, 0.0f };
-            rot[1] = (vec4f_t ){ 0.0f, (f32)cos(angle_in_radians), (f32)-sin(angle_in_radians), 0.0f};
-            rot[2] = (vec4f_t ){ 0.0f, (f32)sin(angle_in_radians), (f32)cos(angle_in_radians), 0.0f};
-            rot[3] = (vec4f_t ){ 0.0f, 0.0f, 0.0f, 1.0f };
-        break;
-        case 'y':
-            rot[0] = (vec4f_t ){ (f32)cos(angle_in_radians), 0.0f, (f32)sin(angle_in_radians), 0.0f};
-            rot[2] = (vec4f_t ){ 0.0f, 1.0f, 0.0f, 0.0f };
-            rot[1] = (vec4f_t ){ (f32)-sin(angle_in_radians), 0.0f, (f32)cos(angle_in_radians), 0.0f};
-            rot[3] = (vec4f_t ){ 0.0f, 0.0f, 0.0f, 1.0f };
-        break;
-        case 'z':
-            rot[0] = (vec4f_t ){ (f32) cos(angle_in_radians), (f32)-sin(angle_in_radians), 0.0f, 0.0f};
-            rot[1] = (vec4f_t ){ (f32) sin(angle_in_radians), (f32)cos(angle_in_radians), 0.0f, 0.0f};
-            rot[2] = (vec4f_t ){ 0.0f, 0.0f, 1.0f, 0.0f };
-            rot[3] = (vec4f_t ){ 0.0f, 0.0f, 0.0f, 1.0f };
-        break;
+    const f32 angle       = angle_in_radians;
+    const f32 c           = cosf(angle);
+    const vec3f_t axisn   = vec3f_normalize(axis);
+    const vec3f_t v       = vec3f_scale(axisn, 1.0f - c);
+    const vec3f_t vs      = vec3f_scale(axisn, sinf(angle));
 
-        default: eprint("along axis %c ?", tolower(along_axis));
-    }
+    rot[0] = vec4f(vec3f_scale(axisn, v.cmp[0]));
+    rot[1] = vec4f(vec3f_scale(axisn, v.cmp[1]));
+    rot[2] = vec4f(vec3f_scale(axisn, v.cmp[2]));
 
+    rot[0].cmp[0] += c;           rot[1].cmp[0] -= vs.cmp[2];   rot[2].cmp[0] += vs.cmp[1];
+    rot[0].cmp[1] += vs.cmp[2];   rot[1].cmp[1] += c;           rot[2].cmp[1] -= vs.cmp[0];
+    rot[0].cmp[2] -= vs.cmp[1];   rot[1].cmp[2] += vs.cmp[0];   rot[2].cmp[2] += c;
 
-    matrixf_t o = {
-        .nrow = 4,
-        .ncol = 4
-    };
+    rot[0].cmp[3] = rot[1].cmp[3] 
+        = rot[2].cmp[3] = rot[3].cmp[0] 
+        = rot[3].cmp[1] = rot[3].cmp[2] = 0.0f;
+    rot[3].cmp[3] = 1.0f;
 
-    memcpy(o.buffer, rot, sizeof(rot));
-
-    return o;
+    return matrix4f(rot);
 }
 
-matrixf_t matrix4f_translation(vec3f_t vec)
+matrixf_t matrix4f_rotate(
+        const matrixf_t mat, 
+        const f32 angle_in_radians, 
+        const vec3f_t axis)
 {
-    vec4f_t tran[4] = {
-         1.0f, 0.0f, 0.0f, vec.cmp[X],
-         0.0f, 1.0f, 0.0f, vec.cmp[Y],
-         0.0f, 0.0f, 1.0f, vec.cmp[Z],
-         0.0f, 0.0f, 0.0f, 1.0f 
-    };
+    assert(mat.ncol == mat.nrow);
+    assert(mat.ncol == 4);
 
-    matrixf_t o = {
-        .nrow = 4,
-        .ncol = 4
-    };
+    matrixf_t rot = matrix4f_rotation(angle_in_radians, axis);
 
-    memcpy(o.buffer, tran, sizeof(tran));
+    //NOTE: glm_mul_rot(mat4 m1, mat4 m2, mat4 dest) 
+        f32 dest[4][4] = {0};
+        f32 m1[4][4]; matrixf_copy_to_array(mat, m1);
+        f32 m2[4][4]; matrixf_copy_to_array(rot, m2);
 
-    return o;
+        f32 a00 = m1[0][0], a01 = m1[0][1], a02 = m1[0][2], a03 = m1[0][3],
+        a10 = m1[1][0], a11 = m1[1][1], a12 = m1[1][2], a13 = m1[1][3],
+        a20 = m1[2][0], a21 = m1[2][1], a22 = m1[2][2], a23 = m1[2][3],
+        a30 = m1[3][0], a31 = m1[3][1], a32 = m1[3][2], a33 = m1[3][3],
+
+        b00 = m2[0][0], b01 = m2[0][1], b02 = m2[0][2],
+        b10 = m2[1][0], b11 = m2[1][1], b12 = m2[1][2],
+        b20 = m2[2][0], b21 = m2[2][1], b22 = m2[2][2];
+
+        dest[0][0] = a00 * b00 + a10 * b01 + a20 * b02;
+        dest[0][1] = a01 * b00 + a11 * b01 + a21 * b02;
+        dest[0][2] = a02 * b00 + a12 * b01 + a22 * b02;
+        dest[0][3] = a03 * b00 + a13 * b01 + a23 * b02;
+
+        dest[1][0] = a00 * b10 + a10 * b11 + a20 * b12;
+        dest[1][1] = a01 * b10 + a11 * b11 + a21 * b12;
+        dest[1][2] = a02 * b10 + a12 * b11 + a22 * b12;
+        dest[1][3] = a03 * b10 + a13 * b11 + a23 * b12;
+
+        dest[2][0] = a00 * b20 + a10 * b21 + a20 * b22;
+        dest[2][1] = a01 * b20 + a11 * b21 + a21 * b22;
+        dest[2][2] = a02 * b20 + a12 * b21 + a22 * b22;
+        dest[2][3] = a03 * b20 + a13 * b21 + a23 * b22;
+
+        dest[3][0] = a30;
+        dest[3][1] = a31;
+        dest[3][2] = a32;
+        dest[3][3] = a33;
+
+    return matrix4f(dest);
 }
 
-void matrixf_print(matrixf_t *m)
+matrixf_t matrix4f_translate(const matrixf_t mat, const vec3f_t vec)
+{
+    vec4f_t tmp[4] = {0};
+    matrixf_copy_to_array(mat, tmp);
+
+    const f32 trans[4][4] = {
+        1.0f, 0.0f, 0.0f, vec.cmp[X],
+        0.0f, 1.0f, 0.0f, vec.cmp[Y],
+        0.0f, 0.0f, 1.0f, vec.cmp[Z],
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+    return matrixf_multiply(matrix4f(trans), mat);
+}
+
+void matrixf_print(const matrixf_t *m)
 {
     assert(m);
 
@@ -235,7 +273,7 @@ void matrixf_print(matrixf_t *m)
     printf("\n");
 }
 
-matrixf_t matrixf_transpose(matrixf_t a)
+matrixf_t matrixf_transpose(const matrixf_t a)
 {
     matrixf_t output = {0};
 
@@ -262,35 +300,15 @@ matrixf_t matrixf_transpose(matrixf_t a)
     return output;
 }
 
-/*matrixf_t matrix4f_orthographic(f32 left, f32 right, f32 bottom, f32 top, f32 far, f32 near)*/
-/*{*/
-    /*matrixf_t output = matrix4f_identity();*/
 
-    /*f32 **buffer = (f32 **)output.buffer;*/
-
-    /*buffer[0][0] = 2 / (right - left);*/
-    /*buffer[1][1] = 2 / (top - bottom);*/
-    /*buffer[2][2] = 1 / (far - near);*/
-    /*buffer[3][0] = - (right + left) / (top - bottom);*/
-    /*buffer[3][1] = - (top + bottom) / (top - bottom);*/
-    /*buffer[3][2] = - near / (far - near);*/
-
-    /*return output;*/
-/*}*/
-
-matrixf_t matrix4f_inverse(matrixf_t matrix)
+matrixf_t matrix4f_inverse(const matrixf_t matrix)
 {
     assert(matrix.nrow == matrix.ncol);
     assert(matrix.nrow == 4);
 
-    matrixf_t output = {
-        .nrow = 4,
-        .ncol = 4,
-        .buffer = {0}
-    };
-
-    f32 **dest = (f32 **)output.buffer;
-    f32 **mat = (f32 **)matrix.buffer;
+    f32 dest[4][4] = {0};
+    f32 mat[4][4] = {0};
+    matrixf_copy_to_array(matrix, mat);
 
     float t[6];
     float det;
@@ -331,31 +349,24 @@ matrixf_t matrix4f_inverse(matrixf_t matrix)
     det = 1.0f / (a * dest[0][0] + b * dest[1][0]
         + c * dest[2][0] + d * dest[3][0]);
 
-    return matrixf_scale(output, det);
+    return matrix4f_scale(matrixf(dest, 4, 4), det);
 }
 
-matrixf_t matrixf_scale(matrixf_t matrix, f32 s)
+matrixf_t matrix4f_scale(const matrixf_t matrix, const f32 s)
 {
-    matrixf_t output = matrix;
-    f32 *m = (f32 *) matrix.buffer;
-    f32 *o = (f32 *) output.buffer;
-
-    for (u32 i = 0; i < (matrix.nrow * matrix.ncol); i++)
-        o[i] = m[i] * s;
-
-    return output;
+    const f32 scale[4][4] = {
+        s, 0.0f, 0.0f, 0.0f,
+        0.0f, s, 0.0f, 0.0f,
+        0.0f, 0.0f, s, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+    return matrixf_multiply(matrix4f(scale), matrix);
 }
 
-matrixf_t matrix4f_perpective(f32 fovy, f32 aspect, f32 nearZ, f32 farZ)
+matrixf_t matrix4f_perpective(const f32 fovy, const f32 aspect, const f32 nearZ, const f32 farZ)
 {
     float f, fn;
-    matrixf_t o = {
-        .nrow = 4,
-        .ncol = 4,
-        .buffer = {0}
-    };
-
-    f32 **dest = (f32 **)o.buffer;
+    f32 dest[4][4] = {0};
 
     f  = 1.0f / tanf(fovy * 0.5f);
     fn = 1.0f / (nearZ - farZ);
@@ -366,61 +377,79 @@ matrixf_t matrix4f_perpective(f32 fovy, f32 aspect, f32 nearZ, f32 farZ)
     dest[2][3] =-1.0f;
     dest[3][2] = nearZ * farZ * fn;
 
-    return o;
+    return matrix4f(dest);
 }
 
 matrixf_t matrix4f_identity(void)
 {
-    matrixf_t o = {
-        .nrow = 4,
-        .ncol = 4,
-        .buffer = {0}
+    const f32 mati[4][4] = {
+        1.0f,0.0f,0.0f,0.0f, 
+        0.0f,1.0f,0.0f,0.0f, 
+        0.0f,0.0f,1.0f,0.0f, 
+        0.0f,0.0f,0.0f,1.0f 
     };
 
-    const f32 mati[] = {
-        1.0f,1.0f,1.0f,1.0f, 
-        1.0f,1.0f,1.0f,1.0f, 
-        1.0f,1.0f,1.0f,1.0f, 
-        1.0f,1.0f,1.0f,1.0f 
-    };
-
-    memcpy(o.buffer, mati, sizeof(mati));
-    return o;
+    return matrix4f(mati);
 }
 
 matrixf_t matrix2f_identity(void)
 {
-    matrixf_t o = {
-        .nrow = 2,
-        .ncol = 2,
-        .buffer = {0}
+    const f32 mati[2][2] = {
+        1.0f,0.0f, 
+        0.0f,1.0f, 
     };
 
-    const f32 mati[] = {
-        1.0f,1.0f, 
-        1.0f,1.0f, 
-    };
-
-    memcpy(o.buffer, mati, sizeof(mati));
-    return o;
+    return matrix2f(mati);
 }
 
 matrixf_t matrix3f_identity(void)
 {
-    matrixf_t o = {
-        .nrow = 3,
-        .ncol = 3,
-        .buffer = {0}
+    const f32 mati[3][3] = {
+        1.0f,0.0f,0.0f, 
+        0.0f,1.0f,0.0f, 
+        0.0f,0.0f,1.0f, 
     };
 
-    const f32 mati[] = {
-        1.0f,1.0f,1.0f, 
-        1.0f,1.0f,1.0f, 
-        1.0f,1.0f,1.0f, 
-    };
-
-    memcpy(o.buffer, mati, sizeof(mati));
-    return o;
+    return matrix3f(mati);
 }
+
+matrixf_t matrix4f_lookat(const vec3f_t eye, const vec3f_t center, const vec3f_t up) 
+{
+    f32 dest[4][4] = {0};
+
+    const vec3f_t f = vec3f_normalize(vec3f_sub(center, eye));
+    const vec3f_t s = vec3f_normalize(vec3f_cross(f, up));
+    const vec3f_t u = vec3f_cross(s, f);
+
+    dest[0][0] = s.cmp[0];
+    dest[0][1] = u.cmp[0];
+    dest[0][2] =-f.cmp[0];
+    dest[1][0] = s.cmp[1];
+    dest[1][1] = u.cmp[1];
+    dest[1][2] =-f.cmp[1];
+    dest[2][0] = s.cmp[2];
+    dest[2][1] = u.cmp[2];
+    dest[2][2] =-f.cmp[2];
+    dest[3][0] =-vec3f_dot(s, eye);
+    dest[3][1] =-vec3f_dot(u, eye);
+    dest[3][2] = vec3f_dot(f, eye);
+    dest[0][3] = dest[1][3] = dest[2][3] = 0.0f;
+    dest[3][3] = 1.0f;
+
+    return matrix4f(dest);
+}
+
+matrixf_t matrix4f_translation(const vec3f_t vec)
+{
+    const f32 tran[4][4] = {
+         1.0f, 0.0f, 0.0f, vec.cmp[X],
+         0.0f, 1.0f, 0.0f, vec.cmp[Y],
+         0.0f, 0.0f, 1.0f, vec.cmp[Z],
+         0.0f, 0.0f, 0.0f, 1.0f 
+    };
+
+    return matrix4f(tran);
+}
+
 #endif
 

@@ -322,7 +322,24 @@ f32 vec4f_distance(const vec4f_t x, const vec4f_t y)
     return Q_rsqrt(pow((x.cmp[X] - y.cmp[X]), 2.0f) + pow((x.cmp[Y] - y.cmp[Y]), 2.0f) + pow((x.cmp[Z] - y.cmp[Z]), 2.0f) + pow((x.cmp[W] - y.cmp[W]), 2.0f));
 }
 
+f32 vec3f_dot(const vec3f_t a, const vec3f_t b) 
+{
+    return a.cmp[0] * b.cmp[0] 
+        + a.cmp[1] * b.cmp[1] 
+        + a.cmp[2] * b.cmp[2];
+}
 
+f32 vec3f_norm(const vec3f_t v) 
+{
+    return sqrtf(vec3f_dot(v,v));
+}
 
+vec3f_t vec3f_normalize(const vec3f_t v) 
+{
+    f32 norm = vec3f_norm(v);
+    if (norm == 0.0f) return vec3f(0.0f);
+
+    return vec3f_scale(v, 1.0f / norm);
+}
 
 #endif //__MY_LA_H__
