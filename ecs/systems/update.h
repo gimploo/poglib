@@ -17,14 +17,15 @@ void transform_mesh2d_update(c_transform_t *t, c_mesh2d_t *mesh)
     // ROTATION
     if (t->angular_speed != 0) {
 
-        f32 mat01[] = {
+        f32 mat01[4][4] = {
 
                 1.0f, 0.0f, 0.0f, -t->position.cmp[X],
                 0.0f, 1.0f, 0.0f, -t->position.cmp[Y],
                 0.0f, 0.0f, 1.0f, -t->position.cmp[Z],
                 0.0f, 0.0f, 0.0f, 1.0f,
         };
-        f32 mat02[] = {
+
+        f32 mat02[4][4] = {
 
                 1.0f, 0.0f, 0.0f, t->position.cmp[X],
                 0.0f, 1.0f, 0.0f, t->position.cmp[Y],
@@ -32,8 +33,8 @@ void transform_mesh2d_update(c_transform_t *t, c_mesh2d_t *mesh)
                 0.0f, 0.0f, 0.0f, 1.0f,
         };
 
-        matrixf_t origin_shift          = matrix4f((vec4f_t *)mat01);
-        matrixf_t origin_shift_reset    = matrix4f((vec4f_t *)mat02);
+        matrixf_t origin_shift          = matrix4f(mat01);
+        matrixf_t origin_shift_reset    = matrix4f(mat02);
         matrixf_t rot                   = matrix4f_rotation(t->angular_radians, 'z');
 
         matrixf_t rtransform = matrixf_product(
