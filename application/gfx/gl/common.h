@@ -1,8 +1,7 @@
 #pragma once
 #include <GL/glew.h>
 #include <poglib/basic.h>
-#include <poglib/ds/stack.h>
-#include <poglib/ds/queue.h>
+#include <poglib/ds.h>
 #include <poglib/file.h>
 #include <poglib/math/la.h>
 #include <poglib/math/shapes.h>

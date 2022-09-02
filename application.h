@@ -1,6 +1,7 @@
 #pragma once
 #include "basic.h"
 #include "application/glrenderer2d.h"
+#include "application/glrenderer3d.h"
 #include "application/window.h"
 #include "application/stopwatch.h"
 #include "font/glfreetypefont.h"
@@ -14,21 +15,26 @@
 
 typedef struct application_t {
 
-    window_t            *__window;
-    stopwatch_t         *__timer;
-    glfreetypefont_t    *__fontrenderer;
+    struct {
+        char                *title;
+        u32                 width;
+        u32                 height;
+        f32                 aspect_ratio;
+    } window;
 
-    char                *window_title;
-    u32                 window_width;
-    u32                 window_height;
+    struct {
+        //NOTE: Add content related stuff in here
+        const u64           size;
+    } content;
 
-    state_t             state;
+    state_t state;
 
-    union {
-        void        *content;
-        void        *game;
-    };
-
+    struct {
+        window_t            *window;
+        stopwatch_t         *timer;
+        glfreetypefont_t    *fontrenderer;
+        void                *content;
+    } __handler;
 
     void (*init)(struct application_t *);
     void (*update)(struct application_t *);
@@ -38,14 +44,17 @@ typedef struct application_t {
 } application_t ;
 
 
+void            application_pass_content(application_t *app, const void *content);
 void            application_run(application_t *app);
 
-#define         application_set_font(PAPP, FONT)            (PAPP)->__fontrenderer = FONT
-#define         application_set_background(PAPP, COLOR)     (PAPP)->__window->background_color = COLOR
+#define         application_set_font(PAPP, FONT)            (PAPP)->__handler->fontrenderer = FONT
+#define         application_set_background(PAPP, COLOR)     (PAPP)->__handler->window->background_color = COLOR
 
-#define         application_get_window(PAPP) (PAPP)->__window
-#define         application_get_dt(PAPP)  (PAPP)->__timer->dt
-#define         application_get_fps(PAPP) (PAPP)->__timer->fps
+#define         application_get_game(PAPP)                  (PAPP)->__handler.content
+#define         application_get_content(PAPP)               (PAPP)->__handler.content
+#define         application_get_window(PAPP)                (PAPP)->__handler.window
+#define         application_get_dt(PAPP)                    (PAPP)->__handler.timer->dt
+#define         application_get_fps(PAPP)                   (PAPP)->__handler.timer->fps
 
 #define         application_update_state(PAPP, STATE)       (PAPP)->state = STATE
 
@@ -55,6 +64,14 @@ void            application_run(application_t *app);
 
 #ifndef IGNORE_APPLICATION_IMPLEMENTATION
 
+void application_pass_content(application_t *app, const void *content)
+{
+    assert(content);
+
+    app->__handler.content = calloc(1, app->content.size);
+    assert(app->__handler.content);
+    memcpy(app->__handler.content, content, app->content.size);
+}
 
 void application_run(application_t *app)
 {
@@ -63,26 +80,26 @@ void application_run(application_t *app)
 #endif
 
     if (app == NULL)                eprint("application argument is null");
-    if (!app->window_title)         eprint("application title is missing ");
-    if (app->window_width <= 0)     eprint("provide a proper width to the application");
-    if (app->window_height <= 0)    eprint("provide a proper height to the application");
+    if (!app->window.title)         eprint("application title is missing ");
+    if (app->window.width <= 0)     eprint("provide a proper width to the application");
+    if (app->window.height <= 0)    eprint("provide a proper height to the application");
     if (!app->init)                 eprint("application init funciton is missing");
     if (!app->update)               eprint("application update function is missing");
     if (!app->render)               eprint("application render function is missing");
     if (!app->destroy)              eprint("application shutdown function is missing");
 
     window_t * win = window_init(
-            app->window_title, 
-            app->window_width, 
-            app->window_height, 
+            app->window.title, 
+            app->window.width, 
+            app->window.height, 
             SDL_INIT_EVERYTHING);
     assert(win);
 
     stopwatch_t timer = stopwatch();
 
-    app->__window= win;
-    app->__timer = &timer;
-    app->__fontrenderer = NULL;
+    app->__handler.window= win;
+    app->__handler.timer = &timer;
+    app->__handler.fontrenderer = NULL;
 
     // Initialize the content in the application
     printf("[!] APPLICATION INIT!\n");
@@ -149,6 +166,8 @@ void application_run(application_t *app)
 
     window_destroy();
 
+    free(app->__handler.content);
+    app->__handler.content = NULL;
 #ifdef DEBUG
     dbg_destroy();
 #endif
