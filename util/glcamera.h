@@ -3,6 +3,9 @@
 #include <poglib/math.h>
 #include <poglib/application/gfx/gl/shader.h>
 
+#define GL_CAMERA_DIRECTION_FORWARD    (vec3f_t ){0.0f, 0.0f, 1.0f}
+#define GL_CAMERA_DIRECTION_UP         (vec3f_t ){0.0f, 1.0f, 0.0f }
+
 typedef enum glcamera_type {
 
     GLCAMERATYPE_ORTHOGRAPHIC,
@@ -16,7 +19,7 @@ typedef struct glcamera_t {
     glcamera_type   type;
     vec3f_t         position;
     union {
-        vec4f_t     quaternion; // quaternion
+        vec4f_t     quaternion;
         f32         angle;
     } rotation;
     struct { 
@@ -24,15 +27,16 @@ typedef struct glcamera_t {
         matrixf_t   projection; 
     } matrix;
     struct {
-        glshader_t          * const shader;
-        matrixf_t           viewprojection;
+        matrixf_t   viewprojection;
+        const char  uniform[32];
     } __cache;
 
 } glcamera_t ;
 
-glcamera_t      glcamera(glshader_t * const shader, glcamera_type type);
-void            glcamera_update(glcamera_t *self);
-matrixf_t       glcamera_get_viewprojection(glcamera_t *);
+glcamera_t      glcamera_perspective(const char *uniform_name, const vec3f_t pos, const f32 fov, const f32 aspect);
+glcamera_t      glcamera_orthographic(const char *uniform_name, const vec3f_t pos);
+void            glcamera_update(glcamera_t *self, const glshader_t *shader);
+matrixf_t       glcamera_get_viewprojection(const glcamera_t *);
 
 
 
@@ -41,83 +45,104 @@ matrixf_t       glcamera_get_viewprojection(glcamera_t *);
 -----------------------------------------------------------------------------*/
 #ifndef IGNORE_GL_CAMERA_IMPLEMENTATION
 
-matrixf_t glcamera_get_viewprojection(glcamera_t *self)
+matrixf_t glcamera_get_viewprojection(const glcamera_t *self)
 {
     return self->__cache.viewprojection;
 }
 
-void glcamera_update(glcamera_t *self)
+void glcamera_update(glcamera_t *self, const glshader_t *shader)
 {
     switch(self->type)
     {
         case GLCAMERATYPE_ORTHOGRAPHIC :{
 
             matrixf_t translation = matrixf_sum(
-                                        MATRIX4F_IDENTITY, 
+                                        matrix4f_identity(), 
                                         matrix4f_translation(self->position)
                                     );
             matrixf_t rotation = matrixf_product(
-                                    MATRIX4F_IDENTITY,
+                                    matrix4f_identity(),
                                     matrix4f_rotation(
                                         self->rotation.angle, 'z')
                                  );
             matrixf_t transform = matrixf_product(rotation, translation);
 
-            self->matrix.view               = matrix4f_inverse(transform);
-            self->__cache.viewprojection    = matrixf_product(
-                                                self->matrix.projection, 
-                                                self->matrix.view);
+            self->matrix.view = matrix4f_inverse(transform);
         } break;
 
         case GLCAMERATYPE_PERSPECTIVE:
+            self->matrix.view = matrix4f_lookat(
+                                   self->position, 
+                                   vec3f_add( self->position, 
+                                       GL_CAMERA_DIRECTION_FORWARD
+                                   ), 
+                                   GL_CAMERA_DIRECTION_UP);
         break;
 
         default: eprint("type not accounted for");
     }
 
-    glshader_set_uniform(
-            self->__cache.shader, 
-            "cameraViewProjection", 
-            self->__cache.viewprojection, 
-            matrixf_t );
+    self->__cache.viewprojection = matrixf_product(
+                                   self->matrix.projection, 
+                                   self->matrix.view);
+
+    glshader_send_uniform_matrix4f(shader, self->__cache.uniform, self->__cache.viewprojection);
 }
 
-glcamera_t glcamera(glshader_t * const shader, glcamera_type type)
+glcamera_t glcamera_perspective(const char *uniform_name, const vec3f_t pos, const f32 fov, const f32 aspect)
 {
-    matrixf_t projection = {0};
+    const f32 zNear = 0.01f;
+    const f32 zFar = 1000.0f;
 
-    switch(type)
-    {
-        case GLCAMERATYPE_ORTHOGRAPHIC :{
-            projection = matrix4f_orthographic(
-                            -1.0f, 1.0f, 
-                            -1.0f, 1.0f, 
-                            -1.0f, 1.0f); 
-        } break;
+    matrixf_t projection = matrix4f_perpective(
+                            fov, aspect, zNear, zFar);
 
-        case GLCAMERATYPE_PERSPECTIVE:
-            eprint("TODO"); 
-        break;
-
-        default: eprint("type not accounted for");
-    }
-
-
-    return (glcamera_t ) {
-        .type       = type,
-        .position   = vec3f(0.0f),
+    glcamera_t o = {
+        .type       = GLCAMERATYPE_PERSPECTIVE,
+        .position   = pos,
         .rotation   = vec4f(0.0f),
         .matrix = {
-            .view       = MATRIX4F_IDENTITY,
+            .view       = matrix4f_identity(),
             .projection = projection
         },
         .__cache = {
-            .shader         = shader,
             .viewprojection = matrixf_product(
                                 projection, 
-                                MATRIX4F_IDENTITY)
+                                matrix4f_identity()),
+            .uniform        = {0},
         },
     };
+    memcpy((char *)o.__cache.uniform, uniform_name, sizeof(o.__cache.uniform));
+    return o;
+}
+
+glcamera_t glcamera_orthographic(const char *uniform_name, const vec3f_t pos)
+{
+    eprint("TODO this function apprantely doesnt compile for some reason");
+    matrixf_t projection = {0};
+    /*matrixf_t projection = matrix4f_orthographic(*/
+                            /*-1.0f, 1.0f, */
+                            /*-1.0f, 1.0f, */
+                            /*-1.0f, 1.0f); */
+
+    glcamera_t o = {
+        .type       = GLCAMERATYPE_ORTHOGRAPHIC,
+        .position   = pos,
+        .rotation   = vec4f(0.0f),
+        .matrix = {
+            .view       = matrix4f_identity(),
+            .projection = projection
+        },
+        .__cache = {
+            .viewprojection = matrixf_product(
+                                projection, 
+                                matrix4f_identity()),
+            .uniform        = {0},
+        },
+    };
+
+    memcpy((char *)o.__cache.uniform, uniform_name, sizeof(o.__cache.uniform));
+    return o;
 }
 
 #endif
