@@ -17,7 +17,7 @@ vbo_t           vbo_static_init(const void *vertices, const size_t vsize, const 
 void            vbo_destroy(const vbo_t *);
 
 
-ebo_t           ebo_init(vbo_t *vbo, const u32 *indices, const u32 count);
+ebo_t           ebo_init(vbo_t *vbo, const u32 *array, const u32 nmemb);
 #define         ebo_bind(PEBO)  GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (PEBO)->id))
 void            ebo_destroy(const ebo_t *ebo);
 
