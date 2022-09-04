@@ -92,7 +92,7 @@ typedef struct window_t {
 global window_t     *global_window = NULL;
 
 window_t *          window_init(const char *title, u64 width, u64 height, const u32 SDL_flags);
-#define             window_get_current_active_window()                          global_window; assert(global_window && "GLOBAL WINDOW IS NULL")
+#define             window_get_current_active_window() global_window
 
 void                window_update_user_input(window_t *window);
 void                window_set_background(window_t *window, vec4f_t color);
@@ -206,6 +206,7 @@ bool window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key)
             (PWINDOW)->background_color.cmp[3]\
     ));\
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));\
+    GL_CHECK(glEnable(GL_DEPTH_TEST));\
     GL_CHECK(glEnable(GL_BLEND));\
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
     GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));\
