@@ -5,12 +5,12 @@
 //NOTE: Find the operation / transformation u need from here
 //      -- https://github.com/recp/cglm/tree/master/include/cglm 
 
-#define MAX_MATRIX_BUFFER_SIZE WORD / 2
+#define MAX_MATRIX_BUFFER_SIZE      WORD / 2
 
 typedef struct matrixf_t {
 
-    u32 nrow;
-    u32 ncol;
+    u8  nrow;
+    u8  ncol;
     u8  buffer[MAX_MATRIX_BUFFER_SIZE];
 
 } matrixf_t ;
@@ -23,7 +23,7 @@ typedef struct matrixf_t {
 matrixf_t       matrix4f_rotate(const matrixf_t mat, const f32 angle_in_radians, const vec3f_t along_axis);
 matrixf_t       matrix4f_translate(const matrixf_t mat, const vec3f_t vec);
 matrixf_t       matrix4f_orthographic(f32 left, f32 right, f32 bottom, f32 top, f32 far, f32 near);
-matrixf_t       matrix4f_perpective(const f32 fov, const f32 aspect, const f32 nearz, const f32 farz);
+matrixf_t       matrix4f_perspective(const f32 fov, const f32 aspect, const f32 nearz, const f32 farz);
 matrixf_t       matrix4f_inverse(const matrixf_t mat);
 matrixf_t       matrix4f_scale(const matrixf_t matrix, const f32 s);
 
@@ -48,7 +48,7 @@ void            matrixf_print(const matrixf_t *m);
 #ifndef IGNORE_LA_IMPLEMENTATION
 
 
-matrixf_t __impl_matrixf_init(const void *array, const u64 array_size, const u32 nrow, const u32 ncol)
+matrixf_t __impl_matrixf_init(const void *array, const u64 array_size, const u8 nrow, const u8 ncol)
 {
     assert(ncol > 0);
     assert(nrow > 0);
@@ -110,11 +110,10 @@ matrixf_t matrixf_multiply(const matrixf_t a, const matrixf_t b)
 {
     if (a.ncol != b.nrow) eprint("num of columns in first matrix dosent match with num of rows in the second matrix");
 
-    matrixf_t mul = {0};
     
     f32 *mata       = (f32 *)a.buffer;
     f32 *matb       = (f32 *)b.buffer;
-    f32 *product    = (f32 *)mul.buffer;
+    f32 product[MAX_MATRIX_BUFFER_SIZE] = {0};
 
     for (u32 i = 0; i < a.nrow; i++) {
         for (u32 j = 0; j < b.ncol; j++) {
@@ -125,10 +124,7 @@ matrixf_t matrixf_multiply(const matrixf_t a, const matrixf_t b)
         }
     }
 
-    mul.nrow = a.nrow;
-    mul.ncol = b.ncol;
-    return mul;
-    
+    return matrixf(product, a.nrow, b.ncol);
 }
 
 //Note: reason these arguments are this way is cuz msvc doesnt compile otherwise
@@ -242,10 +238,13 @@ matrixf_t matrix4f_rotate(
     return matrix4f(dest);
 }
 
-matrixf_t matrix4f_translate(const matrixf_t mat, const vec3f_t vec)
+matrixf_t matrix4f_translate(const matrixf_t matrix, const vec3f_t vec)
 {
-    vec4f_t tmp[4] = {0};
-    matrixf_copy_to_array(mat, tmp);
+    assert(matrix.ncol == matrix.nrow);
+    assert(matrix.ncol == 4);
+
+    vec4f_t mat[4] = {0};
+    matrixf_copy_to_array(matrix, mat);
 
     const f32 trans[4][4] = {
         1.0f, 0.0f, 0.0f, vec.cmp[X],
@@ -253,15 +252,20 @@ matrixf_t matrix4f_translate(const matrixf_t mat, const vec3f_t vec)
         0.0f, 0.0f, 1.0f, vec.cmp[Z],
         0.0f, 0.0f, 0.0f, 1.0f
     };
-    return matrixf_multiply(matrix4f(trans), mat);
+
+    mat[0] = vec4f_add(mat[0], vec4f_scale(mat[3], vec.cmp[0]));
+    mat[1] = vec4f_add(mat[1], vec4f_scale(mat[3], vec.cmp[1]));
+    mat[2] = vec4f_add(mat[2], vec4f_scale(mat[3], vec.cmp[2]));
+
+    return matrix4f(mat);
 }
 
 void matrixf_print(const matrixf_t *m)
 {
     assert(m);
 
-    u32 row     = m->nrow;
-    u32 column  = m->ncol;
+    const u8 row     = m->nrow;
+    const u8 column  = m->ncol;
 
     f32 *result = (f32 *)m->buffer;
 
@@ -275,10 +279,9 @@ void matrixf_print(const matrixf_t *m)
 
 matrixf_t matrixf_transpose(const matrixf_t a)
 {
-    matrixf_t output = {0};
+    f32 obuf[MAX_MATRIX_BUFFER_SIZE] = {0};
 
     f32 *ibuf = (f32 *)a.buffer;
-    f32 *obuf = (f32 *)output.buffer;
 
     for (u32 i = 0; i < a.nrow; ++i )
     {
@@ -294,10 +297,7 @@ matrixf_t matrixf_transpose(const matrixf_t a)
           obuf[index2] = ibuf[index1];
        }
     }
-    output.ncol = a.nrow;
-    output.nrow = a.ncol;
-
-    return output;
+    return matrixf(obuf, a.ncol, a.nrow);
 }
 
 
@@ -363,13 +363,12 @@ matrixf_t matrix4f_scale(const matrixf_t matrix, const f32 s)
     return matrixf_multiply(matrix4f(scale), matrix);
 }
 
-matrixf_t matrix4f_perpective(const f32 fovy, const f32 aspect, const f32 nearZ, const f32 farZ)
+matrixf_t matrix4f_perspective(const f32 fovy, const f32 aspect, const f32 nearZ, const f32 farZ)
 {
-    float f, fn;
-    f32 dest[4][4] = {0};
+    const f32 f  = 1.0f / tanf(fovy * 0.5f);
+    const f32 fn = 1.0f / (nearZ - farZ);
 
-    f  = 1.0f / tanf(fovy * 0.5f);
-    fn = 1.0f / (nearZ - farZ);
+    f32 dest[4][4] = {0};
 
     dest[0][0] = f / aspect;
     dest[1][1] = f;
