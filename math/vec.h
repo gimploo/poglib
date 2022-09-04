@@ -1,27 +1,7 @@
 #ifndef __MY_LA_H__
 #define __MY_LA_H__
+#include "./common.h"
 
-#include <poglib/basic.h>
-#include <math.h>
-
-
-// Fast inverse square root from Quake
-float Q_rsqrt( float number )
-{
-	long i;
-	float x2, y;
-	const float threehalfs = 1.5F;
-
-	x2 = number * 0.5F;
-	y  = number;
-	i  = * ( long * ) &y;                       // evil floating point bit level hacking
-	i  = 0x5f3759df - ( i >> 1 );               // what the fuck? 
-	y  = * ( float * ) &i;
-	y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
-//	y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
-
-	return y;
-}
 
 #define normalize(x, min, max)   (((x) - (min))/((max) - (min)))
 #define denormalize(x, min, max) ((x) * ((max) - (min)) + (min))
@@ -336,7 +316,7 @@ f32 vec3f_norm(const vec3f_t v)
 
 vec3f_t vec3f_normalize(const vec3f_t v) 
 {
-    f32 norm = vec3f_norm(v);
+    const f32 norm = vec3f_norm(v);
     if (norm == 0.0f) return vec3f(0.0f);
 
     return vec3f_scale(v, 1.0f / norm);
