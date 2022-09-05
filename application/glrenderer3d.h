@@ -1,6 +1,5 @@
 #pragma once
 #include <GL/glew.h>
-#include <poglib/math/shapes.h>
 #include <poglib/application/gfx/gl/shader.h>
 #include <poglib/application/gfx/gl/texture2d.h>
 #include <poglib/application/gfx/gl/globjects.h>
