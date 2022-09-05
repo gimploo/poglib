@@ -1,7 +1,6 @@
 #pragma once
-#include <string.h>
-#include <poglib/ds/list.h>
 #include <poglib/application/gfx/gl/common.h>
+#include <poglib/ds/list.h>
 
 /*==============================================================================
                     - OPENGL SHADER HANDLING LIBRARY -
@@ -59,7 +58,7 @@ void            glshader_send_uniform_ival(const glshader_t *shader, const char 
 void            glshader_send_uniform_vec2f(const glshader_t *shader, const char *uniform, vec2f_t val);
 void            glshader_send_uniform_vec3f(const glshader_t *shader, const char *uniform, vec3f_t val);
 void            glshader_send_uniform_vec4f(const glshader_t *shader, const char *uniform, vec4f_t val);
-void            glshader_send_uniform_matrix4f(const glshader_t *shader, const char *uniform, matrixf_t val);
+void            glshader_send_uniform_matrix4f(const glshader_t *shader, const char *uniform, matrix4f_t val);
 
 void            glshader_bind(const glshader_t *shader);
 
@@ -210,7 +209,7 @@ void glshader_send_uniform_vec3f(const glshader_t *shader, const char *uniform, 
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", uniform);
-    GL_CHECK(glUniform3f(location, val.cmp[0], val.cmp[1], val.cmp[2]));
+    GL_CHECK(glUniform3f(location, val[0], val[1], val[2]));
 }
 
 void glshader_send_uniform_vec4f(const glshader_t *shader, const char *uniform, vec4f_t val)
@@ -219,7 +218,7 @@ void glshader_send_uniform_vec4f(const glshader_t *shader, const char *uniform, 
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", uniform);
-    GL_CHECK(glUniform4f(location, val.cmp[0], val.cmp[1], val.cmp[2], val.cmp[3]));
+    GL_CHECK(glUniform4f(location, val[0], val[1], val[2], val[3]));
 }
 
 void glshader_send_uniform_vec2f(const glshader_t *shader, const char *uniform, vec2f_t val)
@@ -228,21 +227,17 @@ void glshader_send_uniform_vec2f(const glshader_t *shader, const char *uniform, 
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", uniform);
-    GL_CHECK(glUniform2f(location, val.cmp[0], val.cmp[1]));
+    GL_CHECK(glUniform2f(location, val[0], val[1]));
 }
 
-void glshader_send_uniform_matrix4f(const glshader_t *shader, const char *uniform, matrixf_t val)
+void glshader_send_uniform_matrix4f(const glshader_t *shader, const char *uniform, matrix4f_t val)
 {
     GL_SHADER_BIND(shader);
     int location;
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", uniform);
 
-    vec4f_t matrix[4];
-    memcpy(matrix, val.buffer, sizeof(matrix));
-    GLfloat *value = (GLfloat *)&matrix;
-
-    GL_CHECK(glUniformMatrix4fv(location, 1, GL_TRUE, value));
+    GL_CHECK(glUniformMatrix4fv(location, 1, GL_TRUE, (f32 *)val));
 }
 
 

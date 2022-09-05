@@ -57,9 +57,9 @@ int main(void)
     {
         window_update_user_input(window);
         window_gl_render_begin(window);
-            /*glrenderer2d_draw_quad(&renderer, glquad01);*/
-            /*glrenderer2d_draw_triangle(&renderer, tri01);*/
-            /*glrenderer2d_draw_circle(&renderer, glcircle01);*/
+            glrenderer2d_draw_quad(&renderer, glquad01);
+            glrenderer2d_draw_triangle(&renderer, tri01);
+            glrenderer2d_draw_circle(&renderer, glcircle01);
             glrenderer2d_draw_from_batch(&renderer, &batchtri);
             glrenderer2d_draw_from_batch(&renderer, &batchquads);
             glrenderer2d_draw_from_batch(&renderer, &batchcircles);
