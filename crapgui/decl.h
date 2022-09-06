@@ -14,6 +14,7 @@ typedef enum uitype {
 
     UI_BUTTON,
     UI_LABEL,
+    UI_DROPDOWN,
     //
     //..
     //

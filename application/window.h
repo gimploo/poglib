@@ -1,6 +1,6 @@
 #pragma once
-#include "../basic.h"
-#include "../math/la.h"
+#include <poglib/basic.h>
+#include <poglib/math.h>
 #include <SDL2/SDL.h>
 #ifdef __gl_h_
     #include <SDL2/SDL_opengl.h>
@@ -92,7 +92,7 @@ typedef struct window_t {
 global window_t     *global_window = NULL;
 
 window_t *          window_init(const char *title, u64 width, u64 height, const u32 SDL_flags);
-#define             window_get_current_active_window()                          global_window; assert(global_window && "GLOBAL WINDOW IS NULL")
+#define             window_get_current_active_window() global_window
 
 void                window_update_user_input(window_t *window);
 void                window_set_background(window_t *window, vec4f_t color);
@@ -200,12 +200,13 @@ bool window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key)
 \
     SDL_GL_MakeCurrent((PWINDOW)->__sdl_window, (PWINDOW)->__glcontext);\
     GL_CHECK(glClearColor(\
-            (PWINDOW)->background_color.cmp[0],\
-            (PWINDOW)->background_color.cmp[1],\
-            (PWINDOW)->background_color.cmp[2],\
-            (PWINDOW)->background_color.cmp[3]\
+            (PWINDOW)->background_color.raw[0],\
+            (PWINDOW)->background_color.raw[1],\
+            (PWINDOW)->background_color.raw[2],\
+            (PWINDOW)->background_color.raw[3]\
     ));\
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));\
+    GL_CHECK(glEnable(GL_DEPTH_TEST));\
     GL_CHECK(glEnable(GL_BLEND));\
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
     GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));\
@@ -215,16 +216,15 @@ bool window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key)
 #define __impl_window_gl_render_begin(PWINDOW) do {\
 \
     GL_CHECK(glClearColor(\
-            (PWINDOW)->background_color.cmp[0],\
-            (PWINDOW)->background_color.cmp[1],\
-            (PWINDOW)->background_color.cmp[2],\
-            (PWINDOW)->background_color.cmp[3]\
+            (PWINDOW)->background_color.raw[0],\
+            (PWINDOW)->background_color.raw[1],\
+            (PWINDOW)->background_color.raw[2],\
+            (PWINDOW)->background_color.raw[3]\
     ));\
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));\
-    GL_CHECK(glEnable(GL_DEPTH_TEST));\
+    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT));\
     GL_CHECK(glEnable(GL_BLEND));\
+    GL_CHECK(glEnable(GL_DEPTH_TEST));\
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
-    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));\
 \
 } while(0)
 
@@ -257,12 +257,12 @@ INTERNAL void __mouse_update_position(window_t *window)
     f32 normalizedX = -1.0 + 2.0 *  (f32) x / window->width;
     f32 normalizedY = (1.0 - 2.0 * (f32) y / window->height);
     
-    pos.cmp[X] = normalizedX;
-    pos.cmp[Y] = normalizedY;
+    pos.x = normalizedX;
+    pos.y = normalizedY;
     
     //SDL_Log("Mouse pos := (%f, %f)\n", normalizedX, normalizedY);
     
-    window->mouse.position = (vec2i_t){x, y};
+    window->mouse.position = (vec2i_t ){ x, y };
     window->mouse.norm_position = pos;
 
 }
@@ -276,7 +276,6 @@ static inline window_t __subwindow_init(const char *title, u64 width, u64 height
     output.width            = width;
     output.height           = height;
     output.background_color = DEFAULT_BACKGROUND_COLOR;
-
 
     output.subwindow.window = NULL;
     output.subwindow.is_active = false;
@@ -348,6 +347,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     win.is_open          = true;
     win.width            = width;
     win.height           = height;
+
     win.background_color = DEFAULT_BACKGROUND_COLOR;
 
     __mouse_update_position(&win);
@@ -678,17 +678,17 @@ void window_subwindow_render_stuff(window_t *subwindow, void (*stuff)(void *), v
 #ifdef __gl_h_
         SDL_GL_MakeCurrent(subwindow->__sdl_window, subwindow->__glcontext);
         glClearColor(
-                subwindow->background_color.cmp[0], 
-                subwindow->background_color.cmp[1],
-                subwindow->background_color.cmp[2],
-                subwindow->background_color.cmp[3]
+                subwindow->background_color.raw[0], 
+                subwindow->background_color.raw[1],
+                subwindow->background_color.raw[2],
+                subwindow->background_color.raw[3]
         );
         glClear(GL_COLOR_BUFFER_BIT);
 #else 
         u8 color[3] = {
-            (u8) denormalize(subwindow->background_color.cmp[X], 0, 255),
-            (u8) denormalize(subwindow->background_color.cmp[Y], 0, 255),
-            (u8) denormalize(subwindow->background_color.cmp[Z], 0, 255)
+            (u8) denormalize(subwindow->background_color.x, 0, 255),
+            (u8) denormalize(subwindow->background_color.y, 0, 255),
+            (u8) denormalize(subwindow->background_color.z, 0, 255)
         };
 
         SDL_FillRect(
@@ -820,17 +820,17 @@ void window_render_stuff(window_t *window, void (*render)(void *), void *arg)
 #ifdef __gl_h_
     SDL_GL_MakeCurrent(window->__sdl_window, window->__glcontext);
     glClearColor(
-            window->background_color.cmp[0], 
-            window->background_color.cmp[1],
-            window->background_color.cmp[2],
-            window->background_color.cmp[3]
+            window->background_color.raw[0], 
+            window->background_color.raw[1],
+            window->background_color.raw[2],
+            window->background_color.raw[3]
     );
     glClear(GL_COLOR_BUFFER_BIT);
 #else 
     u8 color[3] = {
-        (u8) denormalize(window->background_color.cmp[X], 0, 255),
-        (u8) denormalize(window->background_color.cmp[Y], 0, 255),
-        (u8) denormalize(window->background_color.cmp[Z], 0, 255)
+        (u8) denormalize(window->background_color.x, 0, 255),
+        (u8) denormalize(window->background_color.y, 0, 255),
+        (u8) denormalize(window->background_color.z, 0, 255)
     };
 
     SDL_FillRect(

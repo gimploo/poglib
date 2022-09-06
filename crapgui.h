@@ -33,5 +33,10 @@ void        crapgui_destroy(crapgui_t *gui);
     assert(__gui);\
     __frame_add_ui(__frame, __gui, LABEL, UI_LABEL, (STYLES))
 
+#define dropdown(LABEL, STYLES)\
+    assert(__frame);\
+    assert(__gui);\
+    __frame_add_ui(__frame, __gui, DROPDOWN, UI_DROPDOWN, (STYLES))
+
 
 #define crapgui_get_button(PGUI, FLABEL, BLABEL)                              __impl_crapgui_get_button_from_frame((PGUI), (FLABEL), (BLABEL)) 

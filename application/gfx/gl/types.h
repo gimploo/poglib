@@ -17,15 +17,20 @@ typedef struct { glvertex_t vertex[4]; } glquad_t;
 typedef struct { glvertex_t vertex[MAX_VERTICES_PER_CIRCLE]; } glcircle_t;
 
 typedef struct {
+
     glcircle_t  vertices;
     u8          sides;
+
 } glpolygon_t ;
 
+#define MAX_VERTICES_PER_CUBE   72
+#define MAX_UVS_PER_CUBE        36
+
+
 gltri_t         gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid);
-glquad_t        glquad(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id);
+glquad_t        glquad(const quadf_t pos, const vec4f_t rgba, const quadf_t uv, const u8 tex_id);
 glcircle_t      glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
 glpolygon_t     glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv, u8 texid);
-
 
 typedef enum {
 
@@ -138,36 +143,55 @@ const u32 DEFAULT_QUAD_INDICES[] = {
     2, 3, 0
 };
 
-
+const u32 DEFAULT_CUBE_INDICES[] = {
+    // front
+    0, 1, 2,
+    2, 3, 0,
+    // right
+    1, 5, 6,
+    6, 2, 1,
+    // back
+    7, 6, 5,
+    5, 4, 7,
+    // left
+    4, 0, 3,
+    3, 7, 4,
+    // bottom
+    4, 5, 1,
+    1, 0, 4,
+    // top
+    3, 2, 6,
+    6, 7, 3
+};
 
 // Creates a quad suited for OpenGL
-glquad_t glquad(quadf_t positions, vec4f_t color, quadf_t tex_coord, u8 tex_id)
+glquad_t glquad(const quadf_t positions, const vec4f_t color, const quadf_t tex_coord, const u8 tex_id)
 {
     return (glquad_t) { 
 
         .vertex = {
             [TOP_LEFT] = (glvertex_t ){ 
-                positions.vertex[0].cmp[X], positions.vertex[0].cmp[Y], positions.vertex[0].cmp[Z], 
+                positions.vertex[0].raw[X], positions.vertex[0].raw[Y], positions.vertex[0].raw[Z], 
                 color, 
-                tex_coord.vertex[0].cmp[X], tex_coord.vertex[0].cmp[Y],
+                tex_coord.vertex[0].raw[X], tex_coord.vertex[0].raw[Y],
                 tex_id
             },
             [TOP_RIGHT] = (glvertex_t ){ 
-                positions.vertex[1].cmp[X], positions.vertex[1].cmp[Y], positions.vertex[1].cmp[Z], 
+                positions.vertex[1].raw[X], positions.vertex[1].raw[Y], positions.vertex[1].raw[Z], 
                 color, 
-                tex_coord.vertex[1].cmp[X], tex_coord.vertex[1].cmp[Y],
+                tex_coord.vertex[1].raw[X], tex_coord.vertex[1].raw[Y],
                 tex_id
             }, 
             [BOTTOM_RIGHT] = (glvertex_t ){ 
-                positions.vertex[2].cmp[X], positions.vertex[2].cmp[Y], positions.vertex[2].cmp[Z], 
+                positions.vertex[2].raw[X], positions.vertex[2].raw[Y], positions.vertex[2].raw[Z], 
                 color, 
-                tex_coord.vertex[2].cmp[X], tex_coord.vertex[2].cmp[Y],
+                tex_coord.vertex[2].raw[X], tex_coord.vertex[2].raw[Y],
                 tex_id
             }, 
             [BOTTOM_LEFT] = (glvertex_t ){ 
-                positions.vertex[3].cmp[X], positions.vertex[3].cmp[Y], positions.vertex[3].cmp[Z], 
+                positions.vertex[3].raw[X], positions.vertex[3].raw[Y], positions.vertex[3].raw[Z], 
                 color, 
-                tex_coord.vertex[3].cmp[X], tex_coord.vertex[3].cmp[Y],
+                tex_coord.vertex[3].raw[X], tex_coord.vertex[3].raw[Y],
                 tex_id
             } 
         }
@@ -179,21 +203,21 @@ gltri_t gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid)
     return (gltri_t) {
 
         .vertex[0] = (glvertex_t ){ 
-            tri.vertex[0].cmp[X], tri.vertex[0].cmp[Y], tri.vertex[0].cmp[Z], 
+            tri.vertex[0].raw[X], tri.vertex[0].raw[Y], tri.vertex[0].raw[Z], 
             color, 
-            tex_coord.vertex[0].cmp[X], tex_coord.vertex[0].cmp[Y],
+            tex_coord.vertex[0].raw[X], tex_coord.vertex[0].raw[Y],
             texid
         }, 
         .vertex[1] = (glvertex_t ){ 
-            tri.vertex[1].cmp[X], tri.vertex[1].cmp[Y], tri.vertex[1].cmp[Z], 
+            tri.vertex[1].raw[X], tri.vertex[1].raw[Y], tri.vertex[1].raw[Z], 
             color, 
-            tex_coord.vertex[1].cmp[X], tex_coord.vertex[1].cmp[Y],
+            tex_coord.vertex[1].raw[X], tex_coord.vertex[1].raw[Y],
             texid
         }, 
         .vertex[2] = (glvertex_t ) { 
-            tri.vertex[2].cmp[X], tri.vertex[2].cmp[Y], tri.vertex[2].cmp[Z], 
+            tri.vertex[2].raw[X], tri.vertex[2].raw[Y], tri.vertex[2].raw[Z], 
             color, 
-            tex_coord.vertex[2].cmp[X], tex_coord.vertex[2].cmp[Y],
+            tex_coord.vertex[2].raw[X], tex_coord.vertex[2].raw[Y],
             texid
         }, 
     };
@@ -208,8 +232,8 @@ glpolygon_t glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv, u8 texid)
     // TODO: Textures on polygons
     //for (u64 i = 0; i < MAX_TRIANGLES_PER_CIRCLE; i++)
     //{
-        //uv.vertex[i].cmp[X] = (polygon.points[i].cmp[X] /polygon.radius + 1)*0.5;
-        //uv.vertex[i].cmp[Y] = (polygon.points[i].cmp[Y]/polygon.radius + 1)*0.5;
+        //uv.vertex[i].raw[X] = (polygon.points[i].raw[X] /polygon.radius + 1)*0.5;
+        //uv.vertex[i].raw[Y] = (polygon.points[i].raw[Y]/polygon.radius + 1)*0.5;
 
          //float tx = (x/r + 1)*0.5;
          //float ty = (y/r + 1)*0.5;
@@ -221,7 +245,7 @@ glpolygon_t glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv, u8 texid)
     {
         vertices[i].position = polygon.vertices.points[i];
         vertices[i].color = color; 
-        vertices[i].texture_coord = vec2f(uv.vertex[i]);
+        vertices[i].texture_coord = glms_vec2(uv.vertex[i]);
         vertices[i].texture_id = texid;
     }
     return output;
@@ -236,8 +260,8 @@ glcircle_t glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
     // TODO: Textures on circles
     //for (u64 i = 0; i < MAX_TRIANGLES_PER_CIRCLE; i++)
     //{
-        //uv.vertex[i].cmp[X] = (circle.points[i].cmp[X] /circle.radius + 1)*0.5;
-        //uv.vertex[i].cmp[Y] = (circle.points[i].cmp[Y]/circle.radius + 1)*0.5;
+        //uv.vertex[i].raw[X] = (circle.points[i].raw[X] /circle.radius + 1)*0.5;
+        //uv.vertex[i].raw[Y] = (circle.points[i].raw[Y]/circle.radius + 1)*0.5;
 
          //float tx = (x/r + 1)*0.5;
          //float ty = (y/r + 1)*0.5;
@@ -248,7 +272,7 @@ glcircle_t glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
     {
         vertices[i].position = circle.points[i];
         vertices[i].color = color; 
-        vertices[i].texture_coord = vec2f(uv.vertex[i]);
+        vertices[i].texture_coord = glms_vec2(uv.vertex[i]);
         vertices[i].texture_id = texid;
     }
     return output;
