@@ -20,7 +20,7 @@ void application_init(application_t *app)
         .texture    = gltexture2d_init("res/pepe_ez.png"),
         .camera     = glcamera_perspective(
                         "view",
-                        (vec3f_t ){ 0.0f, 0.0f, 6.0f })
+                        (vec3f_t ){ 0.0f, 0.0f, 3.0f })
     };
 
     application_pass_content(app, &test);
@@ -33,7 +33,6 @@ void application_init(application_t *app)
 
     matrix4f_t model         = glms_mat4_identity();
     model = glms_rotate(model, radians(20.0f), (vec3f_t ){1.0f, 0.3f, 0.5f});
-    model = glms_translate(model, GLMS_VEC3_ZERO);
     glshader_send_uniform_matrix4f(&test.shader, "model", model);
 }
 
@@ -71,8 +70,8 @@ int main(void)
         .window = {
             .title = "3d renderer test",
             .width = 800,
-            .height = 800,
-            .aspect_ratio = 800 / 800
+            .height = 600,
+            .aspect_ratio = 800 / 600
         },
 
         .content = {
