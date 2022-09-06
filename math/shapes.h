@@ -1,5 +1,6 @@
 #pragma once
-#include "vec.h"
+#include <poglib/basic.h>
+#include "la.h"
 
 #define TOP_LEFT     0
 #define TOP_RIGHT    1
@@ -31,8 +32,8 @@ void            quadf_scale(quadf_t *quad, f32 scale);
 bool            quadf_is_point_in_quad(const quadf_t quad, const vec2f_t point);
 void            quadf_print(quadf_t quad);
 
-#define         quadf_get_width(PQUADF)         abs((PQUADF)->vertex[1].cmp[X] - (PQUADF)->vertex[3].cmp[X])
-#define         quadf_get_height(PQUADF)        abs((PQUADF)->vertex[1].cmp[Y] - (PQUADF)->vertex[3].cmp[Y])
+#define         quadf_get_width(PQUADF)         abs((PQUADF)->vertex[1].x - (PQUADF)->vertex[3].x)
+#define         quadf_get_height(PQUADF)        abs((PQUADF)->vertex[1].y - (PQUADF)->vertex[3].y)
 #define         quadf_copy(DESTINATION, SRC)    memcpy(DESTINATION, SRC, sizeof(quadf_t))
 
 //Circle
@@ -71,18 +72,20 @@ trif_t trif(vec3f_t pos, f32 side)
     const f32 height = 1.732050807568877f * side_half; 
 
     return (trif_t ) {
-        .vertex[0] = pos,
-        .vertex[1] = { pos.cmp[X] - side_half, pos.cmp[Y] - height, pos.cmp[Z] },
-        .vertex[2] = { pos.cmp[X] + side_half, pos.cmp[Y] - height, pos.cmp[Z] }
+        .vertex[0] = { pos.x, pos.y, pos.z },
+        .vertex[1] = { pos.x - side_half, pos.y - height, pos.z },
+        .vertex[2] = { pos.x + side_half, pos.y - height, pos.z }
     };
 }
+#define VEC3F_FMT "%f %f %f"
+#define VEC3F_ARG(PVEC) PVEC.raw[0], PVEC.raw[1], PVEC.raw[2]
 
 void quadf_print(quadf_t quad)
 {
-    printf(VEC3F_FMT", ", VEC3F_ARG(&quad.vertex[0]));
-    printf(VEC3F_FMT", \n", VEC3F_ARG(&quad.vertex[1]));
-    printf(VEC3F_FMT", ", VEC3F_ARG(&quad.vertex[2]));
-    printf(VEC3F_FMT", \n", VEC3F_ARG(&quad.vertex[3]));
+    printf(VEC3F_FMT", ", VEC3F_ARG(quad.vertex[0]));
+    printf(VEC3F_FMT", \n", VEC3F_ARG(quad.vertex[1]));
+    printf(VEC3F_FMT", ", VEC3F_ARG(quad.vertex[2]));
+    printf(VEC3F_FMT", \n", VEC3F_ARG(quad.vertex[3]));
 }
 
 quadf_t quadf(vec3f_t position, f32 width, f32 height)
@@ -90,54 +93,55 @@ quadf_t quadf(vec3f_t position, f32 width, f32 height)
     quadf_t output = {0};
 
     output.vertex[0] = position;
-    output.vertex[1].cmp[X] = position.cmp[X] + width;
-    output.vertex[1].cmp[Y] = position.cmp[Y];
-    output.vertex[1].cmp[Z] = position.cmp[Z];
 
-    output.vertex[2].cmp[X] = position.cmp[X] + width;
-    output.vertex[2].cmp[Y] = position.cmp[Y] - height;
-    output.vertex[2].cmp[Z] = position.cmp[Z];
+    output.vertex[1].x = position.x + width;
+    output.vertex[1].y = position.y;
+    output.vertex[1].z = position.z;
 
-    output.vertex[3].cmp[X] = position.cmp[X];
-    output.vertex[3].cmp[Y] = position.cmp[Y] - height;
-    output.vertex[3].cmp[Z] = position.cmp[Z];
+    output.vertex[2].x = position.x + width;
+    output.vertex[2].y = position.y - height;
+    output.vertex[2].z = position.z;
+
+    output.vertex[3].x = position.x;
+    output.vertex[3].y = position.y - height;
+    output.vertex[3].z = position.z;
 
     return output;
 }
 
 void quadf_translate(quadf_t *quad, vec3f_t vec)
 {
-    quad->vertex[0] = vec3f_add(quad->vertex[0] , vec);
-    quad->vertex[1] = vec3f_add(quad->vertex[1] , vec);
-    quad->vertex[2] = vec3f_add(quad->vertex[2] , vec);
-    quad->vertex[3] = vec3f_add(quad->vertex[3] , vec);
+    quad->vertex[0] = glms_vec3_add(quad->vertex[0],vec);
+    quad->vertex[1] = glms_vec3_add(quad->vertex[1],vec);
+    quad->vertex[2] = glms_vec3_add(quad->vertex[2],vec);
+    quad->vertex[3] = glms_vec3_add(quad->vertex[3],vec);
 }
 
 quadf_t quadf_sub(quadf_t a, quadf_t b)
 {
-    quadf_t quad;
-    quad.vertex[0] = vec3f_sub(a.vertex[0] , b.vertex[0]);
-    quad.vertex[1] = vec3f_sub(a.vertex[1] , b.vertex[1]);
-    quad.vertex[2] = vec3f_sub(a.vertex[2] , b.vertex[2]);
-    quad.vertex[3] = vec3f_sub(a.vertex[3] , b.vertex[3]);
+    quadf_t quad = {0};
+    quad.vertex[0] = glms_vec3_sub(a.vertex[0] , b.vertex[0]);
+    quad.vertex[1] = glms_vec3_sub(a.vertex[1] , b.vertex[1]);
+    quad.vertex[2] = glms_vec3_sub(a.vertex[2] , b.vertex[2]);
+    quad.vertex[3] = glms_vec3_sub(a.vertex[3] , b.vertex[3]);
 
     return quad;
 }
 
 void quadf_scale(quadf_t *quad, f32 scale)
 {
-    quad->vertex[0] = vec3f_scale(quad->vertex[0], scale);
-    quad->vertex[1] = vec3f_scale(quad->vertex[1], scale);
-    quad->vertex[2] = vec3f_scale(quad->vertex[2], scale);
-    quad->vertex[3] = vec3f_scale(quad->vertex[3], scale);
+    quad->vertex[0] = glms_vec3_scale(quad->vertex[0], scale);
+    quad->vertex[1] = glms_vec3_scale(quad->vertex[1], scale);
+    quad->vertex[2] = glms_vec3_scale(quad->vertex[2], scale);
+    quad->vertex[3] = glms_vec3_scale(quad->vertex[3], scale);
 }
 
 bool quadf_is_point_in_quad(const quadf_t quad, const vec2f_t point)
 {
-    return (quad.vertex[TOP_LEFT].cmp[X] < point.cmp[X] 
-            && quad.vertex[TOP_RIGHT].cmp[X] > point.cmp[X] 
-            && quad.vertex[TOP_LEFT].cmp[Y] > point.cmp[Y]
-            && quad.vertex[BOTTOM_LEFT].cmp[Y] <  point.cmp[Y]);
+    return (quad.vertex[TOP_LEFT].x < point.x 
+            && quad.vertex[TOP_RIGHT].x > point.x 
+            && quad.vertex[TOP_LEFT].y > point.y
+            && quad.vertex[BOTTOM_LEFT].y <  point.y);
 }
 
 circle_t circle(vec3f_t pos, f32 radius)
@@ -152,11 +156,11 @@ circle_t circle(vec3f_t pos, f32 radius)
         f32 angle = i * twicepi / MAX_TRIANGLES_PER_CIRCLE;
 
         vec3f_t point = {
-            .cmp[X] = pos.cmp[X] + (f32)cos(angle) * radius,
-            .cmp[Y] = pos.cmp[Y] + (f32)sin(angle) * radius,
-            .cmp[Z] = pos.cmp[Z]
+            .x = pos.x + (f32)cos(angle) * radius,
+            .y = pos.y + (f32)sin(angle) * radius,
+            .z = pos.z
         };
-        output.points[i] = point; 
+        output.points[i] = point;
     }
     return output;
 }
@@ -174,11 +178,11 @@ polygon_t polygon(const vec3f_t pos, const f32 radius, const u8 nsides)
         f32 angle = i * twicepi / nsides;
 
         vec3f_t point = {
-            .cmp[X] = pos.cmp[X] + (f32)cos(angle) * radius,
-            .cmp[Y] = pos.cmp[Y] + (f32)sin(angle) * radius,
-            .cmp[Z] = pos.cmp[Z]
+            .x = pos.x + (f32)cos(angle) * radius,
+            .y = pos.y + (f32)sin(angle) * radius,
+            .z = pos.z
         };
-        output.points[i] = point; 
+        output.points[i] = point;
     }
     const u8 nvertices = nsides * 3;
     return (polygon_t ) {
@@ -192,6 +196,6 @@ f32 circle_get_radius(circle_t *circle)
 {
     assert(circle);
 
-    return (circle->points[1].cmp[X] - circle->points[0].cmp[X])/ (f32) cos((2.0f * PI) / MAX_TRIANGLES_PER_CIRCLE) ;
+    return (circle->points[1].x - circle->points[0].x)/ (f32) cos((2.0f * PI) / MAX_TRIANGLES_PER_CIRCLE) ;
 }
 #endif

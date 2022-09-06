@@ -1,6 +1,5 @@
 #pragma once
 #include "basic.h"
-#include "application/glrenderer2d.h"
 #include "application/glrenderer3d.h"
 #include "application/window.h"
 #include "application/stopwatch.h"

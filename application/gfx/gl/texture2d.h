@@ -130,11 +130,11 @@ gltexture2d_t gltexture2d_init(const char *file_path)
     GL_CHECK(glTexImage2D(
         GL_TEXTURE_2D, 
         0, 
-        GL_RGBA8, // The format opengl will store the pixel data in
+        GL_RGB, 
         width,
         height,
         0,
-        GL_RGB, // The format the buf variable is in
+        GL_RGBA, // The format the buf variable is in
         GL_UNSIGNED_BYTE,
         buf
      ));

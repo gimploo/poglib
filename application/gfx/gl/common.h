@@ -3,8 +3,7 @@
 #include <poglib/basic.h>
 #include <poglib/ds.h>
 #include <poglib/file.h>
-#include <poglib/math/la.h>
-#include <poglib/math/shapes.h>
+#include <poglib/math.h>
 
 #ifdef GL_LOG_ENABLE
 #   define GL_LOG(FMT, ...) fprintf(stderr, "[OpenGL][LOG]\t " FMT "\n", ##__VA_ARGS__)
