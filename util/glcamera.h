@@ -139,7 +139,7 @@ glcamera_t glcamera_perspective( const char *uniform_name, const vec3f_t pos)
             .uniform    = {0},
         },
     };
-
+    assert(strlen(uniform_name) < sizeof(o.__cache.uniform));
     memcpy((char *)o.__cache.uniform, uniform_name, sizeof(o.__cache.uniform));
     return o;
 }
@@ -158,6 +158,7 @@ glcamera_t glcamera_orthographic(const char *uniform_name, const vec3f_t pos)
         },
     };
 
+    assert(strlen(uniform_name) < sizeof(o.__cache.uniform));
     memcpy((char *)o.__cache.uniform, uniform_name, sizeof(o.__cache.uniform));
     return o;
 }
