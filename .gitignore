@@ -1,7 +1,6 @@
 
 *.lib
 *.obj
-**/external/*
 *.pdb
 *.ilk
 *.exe
