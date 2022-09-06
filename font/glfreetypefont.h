@@ -210,8 +210,8 @@ void glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *b
     assert(text);
     assert(batch);
 
-    f32 x = pos.cmp[X];
-    f32 y = pos.cmp[Y];
+    f32 x = pos.x;
+    f32 y = pos.y;
 
     f32 sx = 2.0f / global_window->width;
     f32 sy = 2.0f / global_window->height;

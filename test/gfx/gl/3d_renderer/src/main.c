@@ -20,10 +20,21 @@ void application_init(application_t *app)
         .texture    = gltexture2d_init("res/pepe_ez.png"),
         .camera     = glcamera_perspective(
                         "view",
-                        (vec3f_t ){ 0.0f, 0.0f, 0.0f })
+                        (vec3f_t ){ 0.0f, 0.0f, 6.0f })
     };
 
     application_pass_content(app, &test);
+    matrix4f_t projection    = glms_mat4_identity();
+    /*projection  = glms_perspective(*/
+                        /*radians(45.0f), */
+                        /*(f32 )app->window.aspect_ratio, */
+                        /*0.1f, 100.0f);*/
+    glshader_send_uniform_matrix4f(&test.shader, "projection", projection);
+
+    matrix4f_t model         = glms_mat4_identity();
+    model = glms_rotate(model, radians(20.0f), (vec3f_t ){1.0f, 0.3f, 0.5f});
+    model = glms_translate(model, GLMS_VEC3_ZERO);
+    glshader_send_uniform_matrix4f(&test.shader, "model", model);
 }
 
 void application_update(application_t *app)
@@ -33,21 +44,6 @@ void application_update(application_t *app)
 
     window_update_user_input(application_get_window(app));
     glcamera_process_input(&test->camera, application_get_dt(app));
-
-    matrixf_t model         = matrix4f_identity();
-    matrixf_t view          = matrix4f_identity();
-    matrixf_t projection    = matrix4f_identity();
-    model       = matrix4f_rotate(
-                        model, 
-                        ((f32)SDL_GetTicks() / 340) * radians(25.0f), 
-                        (vec3f_t ){0.5f, 1.0f, 0.0f});
-    projection  = matrix4f_perspective(
-                        radians(45.0f), 
-                        (f32 )app->window.aspect_ratio, 
-                        1.0f, 100.0f);
-
-    glshader_send_uniform_matrix4f(shader, "model", model);
-    glshader_send_uniform_matrix4f(shader, "projection", projection);
 
     glcamera_update(&test->camera, &test->shader);
 }
