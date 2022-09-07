@@ -215,13 +215,15 @@ bool window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key)
 
 #define __impl_window_gl_render_begin(PWINDOW) do {\
 \
+    GL_CHECK(glViewport(0.f, 0.f, (PWINDOW)->width, (PWINDOW)->height));\
     GL_CHECK(glClearColor(\
             (PWINDOW)->background_color.raw[0],\
             (PWINDOW)->background_color.raw[1],\
             (PWINDOW)->background_color.raw[2],\
             (PWINDOW)->background_color.raw[3]\
     ));\
-    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT));\
+    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));\
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));\
     GL_CHECK(glEnable(GL_BLEND));\
     GL_CHECK(glEnable(GL_DEPTH_TEST));\
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
@@ -374,6 +376,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     if (!SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 
                         SDL_GL_CONTEXT_PROFILE_CORE))
         eprint("SDL GL Error: %s\n", SDL_GetError());
+
 #endif 
 
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
@@ -395,13 +398,14 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     GLenum glewError = glewInit();
     if (glewError != GLEW_OK) eprint("GLEW Error: %s\n", glewGetErrorString(glewError));
 
-    printf("[OUTPUT] Using OpenGL render\n");
+    printf("[OUTPUT] Using OpenGL renderer\n");
+
 
 #else 
     win.__sdl_surface = SDL_GetWindowSurface(win.__sdl_window);
     if (!win.__sdl_surface) eprint("SDL Error: %s\n", SDL_GetError());
 
-    printf("[OUTPUT] Using standard sdl2 render\n");
+    printf("[OUTPUT] Using standard sdl2 renderer\n");
 #endif
 
     win.__sdl_window_id = SDL_GetWindowID(win.__sdl_window);

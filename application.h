@@ -165,8 +165,11 @@ void application_run(application_t *app)
 
     window_destroy();
 
-    free(app->__handler.content);
-    app->__handler.content = NULL;
+    {
+        free(app->__handler.content);
+        app->__handler.content = NULL;
+    }
+
 #ifdef DEBUG
     dbg_destroy();
 #endif
