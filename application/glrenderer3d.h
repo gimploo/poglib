@@ -39,12 +39,9 @@ glrenderer3d_t glrenderer3d(const glshader_t *shader, const gltexture2d_t *textu
 }
 
 void glrenderer3d_draw_cube(const glrenderer3d_t *self)
-{    
-    if (self == NULL) eprint("renderer argument is null");
-    assert(self->shader);
-
-    const f32 vertices[] = {
-         -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
+{
+    float vertices[] = {
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
          0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
          0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
          0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
@@ -103,15 +100,14 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    const glshader_t *shad = self->shader;
-    const gltexture2d_t *tex = self->texture;
-    glshader_bind(shad);
-    gltexture2d_bind(tex, 0);
+    gltexture2d_bind(self->texture, 0);
+    glshader_bind(self->shader);
+
+    glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, 36);
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-
 }
 
 

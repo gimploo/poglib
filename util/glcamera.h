@@ -49,7 +49,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
 {
     window_t *win = window_get_current_active_window();
 
-    if (window_keyboard_is_key_pressed(win, 'w')) {
+    if (window_keyboard_is_key_pressed(win, 'w')) 
         self->position = glms_vec3_add(
                             self->position, 
                             glms_vec3_scale(
@@ -57,7 +57,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                                 GL_CAMERA_SPEED * dt
                             )
                         );
-    }
+
     if (window_keyboard_is_key_pressed(win, 's'))
         self->position = glms_vec3_sub(
                             self->position, 

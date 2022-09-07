@@ -224,7 +224,6 @@ bool window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key)
     ));\
     GL_CHECK(glEnable(GL_BLEND));\
     GL_CHECK(glEnable(GL_DEPTH_TEST));\
-    GL_CHECK(glDepthFunc(GL_LESS));\
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));\
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
 \
