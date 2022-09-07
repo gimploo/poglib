@@ -22,11 +22,12 @@ void application_init(application_t *app)
     };
 
     application_pass_content(app, &test);
+
     matrix4f_t projection = glms_mat4_identity();
-    /*projection  = glms_perspective(*/
-                        /*radians(45.0f), */
-                        /*(f32 )app->window.aspect_ratio, */
-                        /*0.1f, 100.0f);*/
+    projection  = glms_perspective(
+                        radians(45.0f), 
+                        (f32 )app->window.aspect_ratio, 
+                        0.1f, 100.0f);
     glshader_send_uniform_matrix4f(&test.shader, "projection", projection);
 }
 
@@ -37,6 +38,8 @@ void application_update(application_t *app)
 
     window_update_user_input(application_get_window(app));
     glcamera_process_input(&test->camera, application_get_dt(app));
+
+    printf(VEC3F_FMT "\n", VEC3F_ARG(test->camera.position));
 
     glcamera_update(&test->camera, &test->shader);
     glshader_send_uniform_matrix4f(
@@ -67,10 +70,11 @@ void application_render(application_t *app)
     for (unsigned int i = 0; i < ARRAY_LEN(cubePositions); i++)
     {
         // calculate the model matrix for each object and pass it to shader before drawing
+        f32 angle = 20.0f * i;
         matrix4f_t model = glms_mat4_identity(); // make sure to initialize matrix to identity matrix first
         model = glms_translate(model, cubePositions[i]);
-        f32 angle = 20.0f * i;
         model = glms_rotate(model, radians(angle), (vec3f_t){1.0f, 0.3f, 0.5f});
+
         glshader_send_uniform_matrix4f(&test->shader, "model", model);
 
         glrenderer3d_draw_cube(&rd3d);
