@@ -222,10 +222,10 @@ bool window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key)
             (PWINDOW)->background_color.raw[2],\
             (PWINDOW)->background_color.raw[3]\
     ));\
-    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));\
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));\
     GL_CHECK(glEnable(GL_BLEND));\
     GL_CHECK(glEnable(GL_DEPTH_TEST));\
+    GL_CHECK(glDepthFunc(GL_LESS));\
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));\
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
 \
 } while(0)
@@ -376,6 +376,10 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     if (!SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 
                         SDL_GL_CONTEXT_PROFILE_CORE))
         eprint("SDL GL Error: %s\n", SDL_GetError());
+
+    // antialiased effect
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 
 #endif 
 

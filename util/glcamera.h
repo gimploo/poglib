@@ -70,11 +70,9 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
         self->position = glms_vec3_sub(
                             self->position, 
                             glms_vec3_scale(
-                                glms_vec3_normalize(
-                                    glms_vec3_cross(
-                                        GL_CAMERA_DIRECTION_FRONT, 
-                                        GL_CAMERA_DIRECTION_UP
-                                    )
+                                glms_vec3_crossn(
+                                    GL_CAMERA_DIRECTION_FRONT, 
+                                    GL_CAMERA_DIRECTION_UP
                                 ),
                                 GL_CAMERA_SPEED * dt
                             ) 
@@ -83,11 +81,9 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
         self->position = glms_vec3_add(
                             self->position, 
                             glms_vec3_scale(
-                                glms_vec3_normalize(
-                                    glms_vec3_cross(
-                                        GL_CAMERA_DIRECTION_FRONT, 
-                                        GL_CAMERA_DIRECTION_UP
-                                    )
+                                glms_vec3_crossn(
+                                    GL_CAMERA_DIRECTION_FRONT, 
+                                    GL_CAMERA_DIRECTION_UP
                                 ),
                                 GL_CAMERA_SPEED * dt
                             ) 
