@@ -1,10 +1,12 @@
 #include <poglib/application.h>
 #include <poglib/math.h>
+#include <poglib/util/glcamera.h>
 
 typedef struct TEST {
 
     glshader_t    shader;
     gltexture2d_t texture;
+    glcamera_t  camera;
 
 } TEST ;
 
@@ -16,13 +18,14 @@ void application_init(application_t *app)
                         "lib/poglib/res/shaders/simple3d.vs", 
                         "lib/poglib/res/shaders/simple3d.fs"),
         .texture    = gltexture2d_init("res/pepe_ez.png"),
+        .camera = glcamera_perspective((vec3f_t ){0.0f, 0.0f, 0.0f})
     };
 
     application_pass_content(app, &test);
 
-    matrix4f_t projection = glms_mat4_identity();
-    projection = glms_perspective(
-            glm_rad(90.0f), app->window.aspect_ratio, 0.5f, 1000.0f);
+    matrix4f_t projection = MATRIX4F_IDENTITY;
+    projection = matrix4f_perpective(
+                    radians(90.0f), app->window.aspect_ratio, 0.5f, 1000.0f);
     glshader_send_uniform_matrix4f(&test.shader, "projection", projection);
 
 }
@@ -33,17 +36,14 @@ void application_update(application_t *app)
     const glshader_t *shader    = &test->shader;
     window_t *win               = application_get_window(app);
 
-    static f32 scale = -3.0f;
-    if (window_keyboard_is_key_pressed(win, 'w'))
-        scale += 0.08f;
-    if (window_keyboard_is_key_pressed(win, 's'))
-        scale -= 0.08f;
-
     window_update_user_input(application_get_window(app));
+    glcamera_process_input(&test->camera, application_get_dt(app));
+    glcamera_update(&test->camera);
+
     glshader_send_uniform_matrix4f(
-            &test->shader, 
-            "translation", 
-            matrix4f_translation((vec3f_t ){0.0f, 0.0f, scale}));
+            &test->shader, "view", 
+            glcamera_getview(&test->camera));
+            /*MATRIX4F_IDENTITY);*/
 
 }
 
@@ -53,12 +53,10 @@ void application_render(application_t *app)
 
     glrenderer3d_t rd3d = glrenderer3d(&test->shader, &test->texture);
 
-    static f32 scale = 0.0f;
-    scale += 0.01f;
-    glshader_send_uniform_matrix4f(
-            &test->shader,
-            "rotation",
-            glms_rotate(glms_mat4_identity(), scale, (vec3f_t ){0.5f, 0.2f, 0.2f}));
+    matrix4f_t model = MATRIX4F_IDENTITY;
+    model = matrix4f_rotate(model, radians(SDL_GetTicks() / 100.0f), (vec3f_t ){0.5f, 0.2f, 0.2f});
+    model = matrix4f_translate(model, (vec3f_t ){0.0f, 0.0f, -3.0f});
+    glshader_send_uniform_matrix4f(&test->shader, "model", model);
 
     glrenderer3d_draw_cube(&rd3d);
 }
