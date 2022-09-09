@@ -30,7 +30,7 @@ typedef struct glcamera_t {
 glcamera_t      glcamera_perspective(const vec3f_t pos);
 glcamera_t      glcamera_orthographic(const vec3f_t pos);
 void            glcamera_process_input(glcamera_t *self, const f32 dt);
-void            glcamera_update(glcamera_t *self, const glshader_t *);
+void            glcamera_update(glcamera_t *self);
 matrix4f_t      glcamera_getview(const glcamera_t *self);
 
 
@@ -69,7 +69,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
         self->position = glms_vec3_sub(
                             self->position, 
                             glms_vec3_scale(
-                                glms_vec3_crossn(
+                                glms_vec3_cross(
                                     GL_CAMERA_DIRECTION_FRONT, 
                                     GL_CAMERA_DIRECTION_UP
                                 ),
@@ -80,17 +80,19 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
         self->position = glms_vec3_add(
                             self->position, 
                             glms_vec3_scale(
-                                glms_vec3_crossn(
+                                glms_vec3_cross(
                                     GL_CAMERA_DIRECTION_FRONT, 
                                     GL_CAMERA_DIRECTION_UP
                                 ),
                                 GL_CAMERA_SPEED * dt
                             ) 
                         );
+
+    printf(VEC3F_FMT"\n", VEC3F_ARG(self->position));
 }
 
 
-void glcamera_update(glcamera_t *self, const glshader_t *shader)
+void glcamera_update(glcamera_t *self)
 {
     window_t *win = window_get_current_active_window();
 
@@ -98,7 +100,7 @@ void glcamera_update(glcamera_t *self, const glshader_t *shader)
     {
         case GLCAMERATYPE_ORTHOGRAPHIC :{
 
-            matrix4f_t translation = glms_translate_make(self->position);
+            matrix4f_t translation = matrix4f_translation(self->position);
             matrix4f_t rotation = glms_mat4_mul(
                                     glms_mat4_identity(),
                                     glms_rotate_make(
