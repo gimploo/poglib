@@ -376,9 +376,14 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
                         SDL_GL_CONTEXT_PROFILE_CORE))
         eprint("SDL GL Error: %s\n", SDL_GetError());
 
-    // antialiased effect
-    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
-    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
+    if (!SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1))
+        eprint("SDL GL Error: %s\n", SDL_GetError());
+    if (!SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24))
+        eprint("SDL GL Error: %s\n", SDL_GetError());
+
+    if (!SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 
+            SDL_GL_CONTEXT_PROFILE_COMPATIBILITY))
+        eprint("SDL GL Error: %s\n", SDL_GetError());
 
 #endif 
 

@@ -19,7 +19,6 @@ typedef struct glcamera_t {
 
     glcamera_type   type;
     vec3f_t         position;
-    vec3f_t         direction;
     union {
         vec4f_t     quaternion;
         f32         angle;
