@@ -12,6 +12,7 @@ set GLEW_URL=https://github.com/nigels-com/glew/releases/download/glew-2.2.0/gle
 set FREETYPE_URL=https://github.com/ubawurinna/freetype-windows-binaries/archive/refs/heads/master.zip
 set POGLIB_URL=https://github.com/gimploo/poglib/archive/refs/heads/main.zip
 
+
 REM Include compiler of choice (here its msvc)
 set CC=cl
 set CC_PATH="C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
