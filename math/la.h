@@ -22,18 +22,20 @@ typedef mat3s matrix3f_t ;
 typedef mat4s matrix4f_t ;
 
 
-matrix4f_t       matrix4f_rotate(const matrix4f_t mat, const f32 angle_in_radians, const vec3f_t along_axis);
-matrix4f_t       matrix4f_translate(const matrix4f_t mat, const vec3f_t vec);
-matrix4f_t       matrix4f_perpective(const f32 fov, const f32 aspect, const f32 nearz, const f32 farz);
-matrix4f_t       matrix4f_inverse(const matrix4f_t mat);
-matrix4f_t       matrix4f_scale(const matrix4f_t matrix, const f32 s);
+matrix4f_t      matrix4f_rotate(const matrix4f_t mat, const f32 angle_in_radians, const vec3f_t along_axis);
+matrix4f_t      matrix4f_translate(const matrix4f_t mat, const vec3f_t vec);
+matrix4f_t      matrix4f_perpective(const f32 fov, const f32 aspect, const f32 nearz, const f32 farz);
+matrix4f_t      matrix4f_inverse(const matrix4f_t mat);
+matrix4f_t      matrix4f_scale(const matrix4f_t matrix, const f32 s);
 
-matrix4f_t       matrix4f_translation(const vec3f_t vec);
-matrix4f_t       matrix4f_rotation(const f32 angle_in_radians, const vec3f_t axis);
-matrix4f_t       matrix4f_lookat(const vec3f_t eye, const vec3f_t center, const vec3f_t up); 
+matrix4f_t      matrix4f_translation(const vec3f_t vec);
+matrix4f_t      matrix4f_rotation(const f32 angle_in_radians, const vec3f_t axis);
+matrix4f_t      matrix4f_lookat(const vec3f_t eye, const vec3f_t center, const vec3f_t up); 
 
-matrix4f_t       matrix4f_multiply(const matrix4f_t a, const matrix4f_t b);
-matrix4f_t       matrix4f_transpose(const matrix4f_t a);
+#define         MATRIX4F_IDENTITY       glms_mat4_identity()
+
+matrix4f_t      matrix4f_multiply(const matrix4f_t a, const matrix4f_t b);
+matrix4f_t      matrix4f_transpose(const matrix4f_t a);
 
 void            matrix4f_print(const matrix4f_t m);
 
@@ -60,7 +62,7 @@ matrix4f_t matrix4f_rotate(const matrix4f_t mat,const f32 angle_in_radians, cons
 
 matrix4f_t matrix4f_translate(const matrix4f_t mat, const vec3f_t vec)
 {
-    return glms_mat4_mul(matrix4f_translation(vec), mat);
+    return glms_mat4_mul(mat, matrix4f_translation(vec));
 }
 
 void matrix4f_print(const matrix4f_t m)
