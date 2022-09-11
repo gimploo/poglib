@@ -304,6 +304,7 @@ static inline window_t __subwindow_init(const char *title, u64 width, u64 height
     glewExperimental = true; // if using GLEW version 1.13 or earlier
     output.__glcontext = SDL_GL_CreateContext(output.__sdl_window);
     if (!output.__glcontext) eprint("SDL Error: %s\n", SDL_GetError());
+    SDL_GL_MakeCurrent(output.__sdl_window, output.__glcontext);
 
     GLenum glewError = glewInit();
     if (glewError != GLEW_OK) eprint("GLEW Error: %s\n", glewGetErrorString(glewError));
@@ -364,7 +365,10 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
 
-    win.__sdl_window = SDL_CreateWindow(win.title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
+    win.__sdl_window = SDL_CreateWindow(
+            win.title, 
+            SDL_WINDOWPOS_CENTERED, 
+            SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
 
     if (!win.__sdl_window) eprint("SDL Error: %s\n", SDL_GetError());
 
@@ -385,6 +389,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 
     if (SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1))
         eprint("SDL GL Error: %s\n", SDL_GetError());
+
     if (SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24))
         eprint("SDL GL Error: %s\n", SDL_GetError());
 
@@ -393,8 +398,6 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
         eprint("SDL GL Error: %s\n", SDL_GetError());
 
 #endif 
-
-
 
 
 #ifdef __gl_h_
