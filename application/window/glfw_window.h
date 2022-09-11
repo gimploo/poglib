@@ -76,6 +76,7 @@ void __glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, 
     switch(action)
     {
         case GLFW_PRESS: 
+            /*printf("%i is pressed\n", key);*/
             if (win->input.pressed[key]) {
                 win->input.is_held[key] = true;
                 win->input.just_pressed[key] = false;
@@ -84,12 +85,14 @@ void __glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, 
         break;
 
         case GLFW_RELEASE: 
+            /*printf("%i is released\n", key);*/
             win->input.pressed[key] = false;
             win->input.is_held[key] = false;
             win->input.just_pressed[key] = false;
         break;
 
         case GLFW_REPEAT:
+            /*printf("%i is pressed repeatedly\n", key);*/
             win->input.pressed[key] = true;
             win->input.is_held[key] = true;
             win->input.just_pressed[key] = false;

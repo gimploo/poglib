@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <GL/glew.h>
 
 /*#define GL_LOG_ENABLE*/
+#define WINDOW_GLFW
 #include <poglib/application.h>
 
-
+#define vec3f(x) (vec3f_t ){x,x,x}
 
 int main(void)
 {
@@ -33,9 +33,10 @@ int main(void)
     glcircle_t glcircle01 = glcircle(circle01, (vec4f_t ) {1.0f, 1.0f, 1.0f, 1.0f}, quadf(vec3f(0.0f), 1.0f, 1.0f), 0);
     glcircle_t glcircle02 = glcircle(circle02, (vec4f_t ) {1.0f, 0.0f, 1.0f, 1.0f}, quadf(vec3f(0.0f), 1.0f, 1.0f), 0);
 
-    /*glshader_t shader = glshader_from_file("./wood.vs", "./wood.fs");*/
-    glshader_t shader = glshader_default_init();
+    glshader_t shader = glshader_from_file_init("./wood.vs", "./wood.fs");
+    /*glshader_t shader = glshader_default_init();*/
     gltexture2d_t texture = gltexture2d_init("./wall.jpg");
+    printf("oh\n");
     glrenderer2d_t renderer = {
         .shader = &shader,
         .texture = &texture
@@ -53,6 +54,7 @@ int main(void)
     glbatch_put(&batchcircles, glcircle01);
     glbatch_put(&batchcircles, glcircle02);
 
+    printf("lsakdj\n");
     while(window->is_open)
     {
         window_update_user_input(window);

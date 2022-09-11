@@ -130,7 +130,7 @@ gltexture2d_t gltexture2d_init(const char *file_path)
     GL_CHECK(glTexImage2D(
         GL_TEXTURE_2D, 
         0, 
-        GL_RGB, 
+        GL_RGBA, 
         width,
         height,
         0,
@@ -138,6 +138,7 @@ gltexture2d_t gltexture2d_init(const char *file_path)
         GL_UNSIGNED_BYTE,
         buf
      ));
+    printf("alsdjf\n");
 
     GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
 
