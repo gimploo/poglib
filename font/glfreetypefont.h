@@ -1,6 +1,12 @@
 #pragma once
+#include <poglib/basic.h>
+#include <poglib/application.h>
 #include <poglib/application/glrenderer2d.h>
-#include <poglib/application/window.h>
+#if defined(WINDOW_GLFW)
+#include <poglib/application/window/glfw_window.h>
+#elif defined(WINDOW_SDL)
+#include <poglib/application/window/sdl_window.h>
+#endif
 #include <ft2build.h>
 #include FT_FREETYPE_H 
 

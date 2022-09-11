@@ -1,7 +1,15 @@
 #pragma once
 #include "basic.h"
 #include "application/glrenderer3d.h"
-#include "application/window.h"
+#include "application/glrenderer2d.h"
+#if defined(WINDOW_GLFW)
+#   include "application/window/glfw_window.h"
+#elif defined(WINDOW_SDL)
+#   include "application/window/sdl_window.h"
+#else
+#   error Choose either SDL or GLFW, as window implementation
+#endif
+
 #include "application/stopwatch.h"
 #include "font/glfreetypefont.h"
 
