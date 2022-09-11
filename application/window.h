@@ -357,35 +357,10 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     win.subwindow.window = NULL;
     win.subwindow.is_active = false;
 
-    u32 WinFlags      = 0;
-
+    u32 WinFlags = 0;
 #ifdef __gl_h_
     WinFlags = SDL_WINDOW_OPENGL;
-    int major_ver, minor_ver;
-
-    if ( !SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &major_ver) || 
-         !SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &minor_ver)) 
-        eprint("SDL GL Error: %s\n", SDL_GetError());
-
-    if ( !SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major_ver) ||
-         !SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor_ver))
-
-        eprint("SDL GL Error: %s\n", SDL_GetError());
-
-    if (!SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 
-                        SDL_GL_CONTEXT_PROFILE_CORE))
-        eprint("SDL GL Error: %s\n", SDL_GetError());
-
-    if (!SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1))
-        eprint("SDL GL Error: %s\n", SDL_GetError());
-    if (!SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24))
-        eprint("SDL GL Error: %s\n", SDL_GetError());
-
-    if (!SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 
-            SDL_GL_CONTEXT_PROFILE_COMPATIBILITY))
-        eprint("SDL GL Error: %s\n", SDL_GetError());
-
-#endif 
+#endif
 
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
 
@@ -395,6 +370,30 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 
     if (!SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1"))
         eprint("SDL Error: %s", SDL_GetError());
+
+#ifdef __gl_h_
+
+    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4))
+        eprint("SDL GL Error: %s\n", SDL_GetError());
+
+    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3))
+        eprint("SDL GL Error: %s\n", SDL_GetError());
+
+    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 
+                        SDL_GL_CONTEXT_PROFILE_CORE))
+        eprint("SDL GL Error: %s\n", SDL_GetError());
+
+    if (SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1))
+        eprint("SDL GL Error: %s\n", SDL_GetError());
+    if (SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24))
+        eprint("SDL GL Error: %s\n", SDL_GetError());
+
+    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 
+            SDL_GL_CONTEXT_PROFILE_COMPATIBILITY))
+        eprint("SDL GL Error: %s\n", SDL_GetError());
+
+#endif 
+
 
 
 
@@ -406,7 +405,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     GLenum glewError = glewInit();
     if (glewError != GLEW_OK) eprint("GLEW Error: %s\n", glewGetErrorString(glewError));
 
-    printf("[OUTPUT] Using OpenGL renderer\n");
+    printf("[OUTPUT] Using OpenGL renderer version (%s)\n", glGetString(GL_VERSION));
 
 
 #else 
