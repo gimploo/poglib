@@ -18,14 +18,14 @@ void application_init(application_t *app)
                         "lib/poglib/res/shaders/simple3d.vs", 
                         "lib/poglib/res/shaders/simple3d.fs"),
         .texture    = gltexture2d_init("res/pepe_ez.png"),
-        .camera = glcamera_perspective((vec3f_t ){0.0f, 0.0f, 0.0f})
+        .camera     = glcamera_perspective((vec3f_t ){ 0.0f, 0.0f, 0.7f})
     };
 
     application_pass_content(app, &test);
 
     matrix4f_t projection = MATRIX4F_IDENTITY;
     projection = matrix4f_perpective(
-                    radians(90.0f), app->window.aspect_ratio, 0.5f, 1000.0f);
+                    radians(90.0f), app->window.aspect_ratio, 0.1f, 1000.0f);
     glshader_send_uniform_matrix4f(&test.shader, "projection", projection);
 
 }
@@ -43,8 +43,14 @@ void application_update(application_t *app)
     glshader_send_uniform_matrix4f(
             &test->shader, "view", 
             glcamera_getview(&test->camera));
-            /*MATRIX4F_IDENTITY);*/
 
+    matrix4f_t model = MATRIX4F_IDENTITY;
+    model = matrix4f_rotate(
+                model, 
+                radians(SDL_GetTicks() / 100.0f), 
+                (vec3f_t ){0.5f, 0.2f, 0.2f});
+    model = matrix4f_translate(model, (vec3f_t ){0.0f, 0.0f, -6.0f});
+    glshader_send_uniform_matrix4f(&test->shader, "model", model);
 }
 
 void application_render(application_t *app)
@@ -53,10 +59,6 @@ void application_render(application_t *app)
 
     glrenderer3d_t rd3d = glrenderer3d(&test->shader, &test->texture);
 
-    matrix4f_t model = MATRIX4F_IDENTITY;
-    model = matrix4f_rotate(model, radians(SDL_GetTicks() / 100.0f), (vec3f_t ){0.5f, 0.2f, 0.2f});
-    model = matrix4f_translate(model, (vec3f_t ){0.0f, 0.0f, -3.0f});
-    glshader_send_uniform_matrix4f(&test->shader, "model", model);
 
     glrenderer3d_draw_cube(&rd3d);
 }
