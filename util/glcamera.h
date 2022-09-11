@@ -88,7 +88,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                             ) 
                         );
 
-    printf(VEC3F_FMT"\n", VEC3F_ARG(self->position));
+    /*printf(VEC3F_FMT"\n", VEC3F_ARG(self->position));*/
 }
 
 
