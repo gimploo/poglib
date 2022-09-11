@@ -1,6 +1,7 @@
 #pragma once
 #include <poglib/basic.h>
 #include <poglib/math.h>
+#define WINDOW_GLFW
 #include <poglib/application.h>
 
 #define GL_CAMERA_DIRECTION_FRONT    (vec3f_t ){0.0f, 0.0f, -1.0f}
@@ -48,7 +49,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
 {
     window_t *win = window_get_current_active_window();
 
-    if (window_keyboard_is_key_pressed(win, 'w')) 
+    if (window_keyboard_is_key_pressed(win, 'W')) 
         self->position = glms_vec3_add(
                             self->position, 
                             glms_vec3_scale(
@@ -57,7 +58,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                             )
                         );
 
-    if (window_keyboard_is_key_pressed(win, 's'))
+    if (window_keyboard_is_key_pressed(win, 'S'))
         self->position = glms_vec3_sub(
                             self->position, 
                             glms_vec3_scale(
@@ -65,7 +66,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                                 GL_CAMERA_SPEED *dt
                             )
                         );
-    if (window_keyboard_is_key_pressed(win, 'a'))
+    if (window_keyboard_is_key_pressed(win, 'A'))
         self->position = glms_vec3_sub(
                             self->position, 
                             glms_vec3_scale(
@@ -76,7 +77,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                                 GL_CAMERA_SPEED * dt
                             ) 
                         );
-    if (window_keyboard_is_key_pressed(win, 'd'))
+    if (window_keyboard_is_key_pressed(win, 'D'))
         self->position = glms_vec3_add(
                             self->position, 
                             glms_vec3_scale(
@@ -132,7 +133,7 @@ glcamera_t glcamera_perspective(const vec3f_t pos)
         .type       = GLCAMERATYPE_PERSPECTIVE,
         .position   = pos,
         .rotation   = {0.0f},
-        .view       = glms_mat4_identity(),
+        .view       = MATRIX4F_IDENTITY,
     };
     return o;
 }
@@ -145,7 +146,7 @@ glcamera_t glcamera_orthographic(const vec3f_t pos)
         .type       = GLCAMERATYPE_ORTHOGRAPHIC,
         .position   = pos,
         .rotation   = {0.0f},
-        .view       = glms_mat4_identity(),
+        .view       = MATRIX4F_IDENTITY,
     };
 
     return o;

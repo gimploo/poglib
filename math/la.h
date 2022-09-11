@@ -21,6 +21,9 @@ typedef mat2s matrix2f_t ;
 typedef mat3s matrix3f_t ;
 typedef mat4s matrix4f_t ;
 
+#define vec2f(x) (vec2f_t ){x,x}
+#define vec3f(x) (vec3f_t ){x,x,x}
+#define vec4f(x) (vec4f_t ){x,x,x,x}
 
 matrix4f_t      matrix4f_rotate(const matrix4f_t mat, const f32 angle_in_radians, const vec3f_t along_axis);
 matrix4f_t      matrix4f_translate(const matrix4f_t mat, const vec3f_t vec);
