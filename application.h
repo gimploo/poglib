@@ -62,6 +62,7 @@ void            application_run(application_t *app);
 #define         application_get_window(PAPP)                (PAPP)->__handler.window
 #define         application_get_dt(PAPP)                    (PAPP)->__handler.timer->dt
 #define         application_get_fps(PAPP)                   (PAPP)->__handler.timer->fps
+f32             application_get_tick(void);
 
 #define         application_update_state(PAPP, STATE)       (PAPP)->state = STATE
 
@@ -70,6 +71,17 @@ void            application_run(application_t *app);
 
 
 #ifndef IGNORE_APPLICATION_IMPLEMENTATION
+
+f32 application_get_tick(void)
+{
+#if defined(WINDOW_SDL)
+    return (f32)SDL_GetTicks();
+#elif defined(WINDOW_GLFW)
+    return (f32)glfwGetTime();
+#else
+#   error SDL nor GLFW are defined before including application.h
+#endif
+}
 
 void application_pass_content(application_t *app, const void *content)
 {
