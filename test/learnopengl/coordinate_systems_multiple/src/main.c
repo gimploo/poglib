@@ -1,4 +1,4 @@
-#define WINDOW_GLFW
+#define WINDOW_SDL
 #include <poglib/application.h>
 
 typedef struct content_t {

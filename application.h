@@ -7,7 +7,7 @@
 #elif defined(WINDOW_SDL)
 #   include "application/window/sdl_window.h"
 #else
-#   error Choose either SDL or GLFW, as window implementation
+#   error Choose either SDL or GLFW, as platform implementation
 #endif
 
 #include "application/stopwatch.h"
