@@ -1,4 +1,4 @@
-#define WINDOW_GLFW
+#define WINDOW_SDL
 #include <poglib/application.h>
 #include <poglib/math.h>
 #include <poglib/util/glcamera.h>
@@ -50,7 +50,7 @@ void application_update(application_t *app)
                 model, 
                 radians(SDL_GetTicks() / 100.0f), 
                 (vec3f_t ){0.5f, 0.2f, 0.2f});
-    model = matrix4f_translate(model, (vec3f_t ){0.0f, 0.0f, -16.0f});
+    model = matrix4f_translate(model, (vec3f_t ){0.0f, 0.0f, -8.0f});
     glshader_send_uniform_matrix4f(&test->shader, "model", model);
 }
 

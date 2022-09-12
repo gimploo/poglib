@@ -1,6 +1,5 @@
 #pragma once
 #include <poglib/basic.h>
-#define CGLM_ALL_UNALIGNED 
 #define CGLM_USE_ANONYMOUS_STRUCT 1
 #include <poglib/external/cglm/struct.h>
 
