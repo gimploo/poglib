@@ -5,6 +5,7 @@
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <GL/glew.h>
+#include "../gfx/gl/common.h"
 #include <GLFW/glfw3.h>
 
 #define DEFAULT_BACKGROUND_COLOR    (vec4f_t ){ 0.0f, 0.0f, 0.8f, 1.0f}
@@ -152,7 +153,7 @@ void __glfw_framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     // make sure the viewport matches the new window dimensions; note that width and 
     // height will be significantly larger than specified on retina displays.
-    glViewport(0, 0, width, height);
+    GL_CHECK(glViewport(0, 0, width, height));
     window_t *win = window_get_current_active_window();
     win->width = width;
     win->height = height;
@@ -168,7 +169,9 @@ window_t * window_init(const char *title, const u64 width, const u64 height, con
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    /*glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);*/
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
     glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 
     GLFWwindow * window = glfwCreateWindow(width, height, title, NULL, NULL);
