@@ -1,5 +1,6 @@
 #pragma once
 #include <poglib/basic.h>
+#define CGLM_ALL_UNALIGNED 
 #define CGLM_USE_ANONYMOUS_STRUCT 1
 #include <poglib/external/cglm/struct.h>
 
@@ -40,7 +41,7 @@ matrix4f_t      matrix4f_lookat(const vec3f_t eye, const vec3f_t center, const v
 matrix4f_t      matrix4f_multiply(const matrix4f_t a, const matrix4f_t b);
 matrix4f_t      matrix4f_transpose(const matrix4f_t a);
 
-void            matrix4f_print(const matrix4f_t m);
+void            matrix4f_print(const char *message, const matrix4f_t m);
 
 
 
@@ -68,11 +69,12 @@ matrix4f_t matrix4f_translate(const matrix4f_t mat, const vec3f_t vec)
     return glms_mat4_mul(mat, matrix4f_translation(vec));
 }
 
-void matrix4f_print(const matrix4f_t m)
+void matrix4f_print(const char *message, const matrix4f_t m)
 {
+    printf("%s", message);
     for (u32 i = 0; i < 4; ++i) 
     {
-         printf("%f %f %f %f", m.raw[0][i], m.raw[1][i], m.raw[2][i], m.raw[3][i]);
+         printf("%f \t%f\t %f\t %f\n", m.raw[i][0], m.raw[i][1], m.raw[i][2], m.raw[i][3]);
    }
     printf("\n");
 }
