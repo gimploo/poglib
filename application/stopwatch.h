@@ -1,5 +1,4 @@
 #pragma once
-
 #if defined(WINDOW_SDL)
 #include <SDL2/SDL.h>
 #elif defined(WINDOW_GLFW)
@@ -12,13 +11,11 @@
 #include <math.h>
 #include <limits.h>
 
-//FIXME: the fps is twice the actual value and i am not sure whether its the elapsed_in_ms
-// calculations fault or not, probably it might be. 
-//
+/*=============================================================================
+                        -- STOP WATCH (TIMER) --
+=============================================================================*/
 
-typedef struct stopwatch_t stopwatch_t;
-
-struct stopwatch_t {
+typedef struct stopwatch_t {
 
     f32 __now;
     f32 __last;
@@ -27,9 +24,21 @@ struct stopwatch_t {
     f32 dt; // delta time in seconds
     f32 fps;
 
-};
+} stopwatch_t ;
 
-f32 __stopwatch_get_tick(void)
+stopwatch_t         stopwatch(void);
+void                stopwatch_update(stopwatch_t *timer);
+void                stopwatch_delay(const f32 ms);
+f32                 stopwatch_get_tick(void);
+
+
+/*=============================================================================
+                        -- IMPELENTATION --
+=============================================================================*/
+
+#ifndef IGNORE_STOPWATCH_IMPLEMENTATION
+
+f32 stopwatch_get_tick(void)
 {
 #if defined(WINDOW_GLFW)
     return (f32)glfwGetTime();
@@ -40,13 +49,21 @@ f32 __stopwatch_get_tick(void)
 
 void stopwatch_delay(const f32 ms)
 {
+#if defined(WINDOW_GLFW)
+#   ifdef _WIN64
+        Sleep(ms);
+#   else
+        usleep(ms);
+#   endif
+#else
     SDL_Delay( ms );
+#endif
 }
 
 stopwatch_t stopwatch(void)
 {
     stopwatch_t output = {0};
-    output.__now = __stopwatch_get_tick();
+    output.__now = stopwatch_get_tick();
     output.dt = 0.01f;
     return output;
 }
@@ -93,7 +110,7 @@ void stopwatch_update(stopwatch_t *timer)
     if (timer == NULL) eprint("dt argument is null");
 
     timer->__last   = timer->__now;
-    timer->__now    = __stopwatch_get_tick();
+    timer->__now    = stopwatch_get_tick();
     timer->dt = (timer->__now - timer->__last) / 1000.0f;
 
     if (timer->dt > 0.25f) timer->dt = 0.25f;
@@ -102,6 +119,4 @@ void stopwatch_update(stopwatch_t *timer)
 
 }
 
-
-
-
+#endif

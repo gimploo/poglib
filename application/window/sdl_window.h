@@ -403,6 +403,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 #ifdef __gl_h_
     glewExperimental = true; // if using GLEW version 1.13 or earlier
     win.__glcontext = SDL_GL_CreateContext(win.__sdl_window);
+    SDL_GL_SetSwapInterval(0);
     if (!win.__glcontext) eprint("SDL GL Error: %s\n", SDL_GetError());
 
     GLenum glewError = glewInit();
