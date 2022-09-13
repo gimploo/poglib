@@ -100,6 +100,7 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
 
     GL_CHECK(glBindVertexArray(VAO));
     GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 36));
+
     GL_CHECK(glDeleteVertexArrays(1, &VAO));
     GL_CHECK(glDeleteBuffers(1, &VBO));
 }
