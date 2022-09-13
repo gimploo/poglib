@@ -65,7 +65,7 @@ matrix4f_t matrix4f_rotate(const matrix4f_t mat,const f32 angle_in_radians, cons
 
 matrix4f_t matrix4f_translate(const matrix4f_t mat, const vec3f_t vec)
 {
-    return glms_mat4_mul(mat, matrix4f_translation(vec));
+    return glms_translate(mat, vec);
 }
 
 void matrix4f_print(const char *message, const matrix4f_t m)
