@@ -237,7 +237,7 @@ void glshader_send_uniform_matrix4f(const glshader_t *shader, const char *unifor
     GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
     if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", uniform);
 
-    GL_CHECK(glUniformMatrix4fv(location, 1, GL_TRUE, &val.raw[0][0]));
+    GL_CHECK(glUniformMatrix4fv(location, 1, GL_FALSE, &val.raw[0][0]));
 }
 
 
