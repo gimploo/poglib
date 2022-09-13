@@ -181,6 +181,9 @@ window_t * window_init(const char *title, const u64 width, const u64 height, con
     }
     glfwMakeContextCurrent(window);
 
+    // disables vsync
+    glfwSwapInterval(0); 
+
     glewExperimental = GL_TRUE;
     GLenum glewError = glewInit();
     if (glewError != GLEW_OK) 
