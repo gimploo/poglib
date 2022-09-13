@@ -230,10 +230,10 @@ void window_destroy(void)
     GL_CHECK(glEnable(GL_DEPTH_TEST));\
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
     GL_CHECK(glClearColor(\
-            (PWINDOW)->background_color.raw[0],\
-            (PWINDOW)->background_color.raw[1],\
-            (PWINDOW)->background_color.raw[2],\
-            (PWINDOW)->background_color.raw[3]\
+            (PWINDOW)->background_color.r,\
+            (PWINDOW)->background_color.g,\
+            (PWINDOW)->background_color.b,\
+            (PWINDOW)->background_color.a\
     ));\
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));\
 \
