@@ -1,47 +1,65 @@
+#define WINDOW_GLFW
 #include <poglib/application.h>
 
-void app_init(application_t *app) { }
-void app_render(application_t *app) { }
-void app_destroy(application_t *app) { }
+typedef struct content_t {
 
-void app_update(application_t *app)
+    const char *text;
+
+} content_t ;
+
+void application_init(application_t *app) 
 {
-    window_t *win = application_get_window(app);
-    if (window_mouse_button_is_pressed(win, SDL_MOUSEBUTTON_LEFT))
-            printf("LEFT PRESSED");
-    else if (window_mouse_button_is_pressed(win, SDL_MOUSEBUTTON_RIGHT))
-            printf("RIGHT PRESSED");
-    else if (window_mouse_button_is_pressed(win, SDL_MOUSEBUTTON_MIDDLE))
-            printf("MIDDLE PRESSED");
-    else
-        printf("...\n");
+    content_t cont = {
+        .text = "Hello world\n" 
+    };
 
-    if (window_mouse_button_is_released(win, SDL_MOUSEBUTTON_LEFT))
-            printf("LEFT RELEASED");
-    else if (window_mouse_button_is_released(win, SDL_MOUSEBUTTON_RIGHT))
-            printf("RIGHT RELEASED");
-    else if (window_mouse_button_is_released(win, SDL_MOUSEBUTTON_MIDDLE))
-            printf("MIDDLE RELEASED");
-    else
-        printf("...\n");
+    application_pass_content(app, &cont);
 }
 
+void application_update(application_t *app) 
+{
+    window_t *win = application_get_window(app);
+    content_t *c = application_get_content(app);
+
+    window_update_user_input(win);
+
+    printf("FPS: %f\n", application_get_fps(app));
+    printf("DT:  %f\n", application_get_dt(app));
+}
+
+void application_render(application_t *app) 
+{
+    window_t *win = application_get_window(app);
+    content_t *c = application_get_content(app);
+}
+
+void application_destroy(application_t *app) 
+{
+    window_t *win = application_get_window(app);
+    content_t *c = application_get_content(app);
+}
 
 int main(void)
 {
-    application_t app = {0};
-    app = (application_t ){
-        .window_height = 400,
-        .window_width = 300,
-        .window_title = "TEST",
-
-        .init = app_init,
-        .update = app_update,
-        .render = app_render,
-        .destroy = app_destroy
+    application_t app = {
+        .window = {
+            .title = "application",
+            .width = 800,
+            .height = 600,
+            .aspect_ratio = (f32)800 / (f32)600,
+            .fps_limit = 60
+        },   
+        .content = {
+            .size = sizeof(content_t )
+        },
+        .init       = application_init,
+        .update     = application_update,
+        .render     = application_render,
+        .destroy    = application_destroy
     };
 
     application_run(&app);
 
     return 0;
 }
+

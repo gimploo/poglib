@@ -3,11 +3,13 @@
 #include "application/glrenderer3d.h"
 #include "application/glrenderer2d.h"
 #if defined(WINDOW_GLFW)
+#   pragma message("GLFW NOT FULLY IMPLEMENTED, REQUIRES ADDITIONAL WORK")
 #   include "application/window/glfw_window.h"
 #elif defined(WINDOW_SDL)
 #   include "application/window/sdl_window.h"
 #else
-#   error Choose either SDL or GLFW, as platform implementation
+#   pragma message("WINDOW IMPLEMENTATION NOT SPECIFIED - RUNNING SDL VERSION (DEFAULT)")
+#   include "application/window/sdl_window.h"
 #endif
 
 #include "application/stopwatch.h"
@@ -27,6 +29,7 @@ typedef struct application_t {
         u32                 width;
         u32                 height;
         f32                 aspect_ratio;
+        u32                 fps_limit;
     } window;
 
     struct {
@@ -62,7 +65,7 @@ void            application_run(application_t *app);
 #define         application_get_window(PAPP)                (PAPP)->__handler.window
 #define         application_get_dt(PAPP)                    (PAPP)->__handler.timer->dt
 #define         application_get_fps(PAPP)                   (PAPP)->__handler.timer->fps
-f32             application_get_tick(void);
+f32             application_get_tick(const application_t *);
 
 #define         application_update_state(PAPP, STATE)       (PAPP)->state = STATE
 
@@ -72,15 +75,9 @@ f32             application_get_tick(void);
 
 #ifndef IGNORE_APPLICATION_IMPLEMENTATION
 
-f32 application_get_tick(void)
+f32 application_get_tick(const application_t *app)
 {
-#if defined(WINDOW_SDL)
-    return (f32)SDL_GetTicks();
-#elif defined(WINDOW_GLFW)
-    return (f32)glfwGetTime();
-#else
-#   error SDL nor GLFW are defined before including application.h
-#endif
+    return app->__handler.timer->__now;
 }
 
 void application_pass_content(application_t *app, const void *content)
@@ -107,11 +104,16 @@ void application_run(application_t *app)
     if (!app->render)               eprint("application render function is missing");
     if (!app->destroy)              eprint("application shutdown function is missing");
 
+    u64 flags = 0;
+#if defined(WINDOW_SDL)
+    flags = SDL_INIT_EVERYTHING;
+#endif
+
     window_t * win = window_init(
             app->window.title, 
             app->window.width, 
             app->window.height, 
-            SDL_INIT_EVERYTHING);
+            flags);
     assert(win);
 
     stopwatch_t timer = stopwatch();
@@ -128,14 +130,14 @@ void application_run(application_t *app)
     state_t st_current  = app->state, 
             st_previous = 0; 
 
+    const f32 cap_dt = 1000.0f/(f32)app->window.fps_limit;
+
     printf("[!] APPLICATION RUNNING!\n");
     // Update the content in the application
     while(win->is_open)
     {
-        //u64 perf_start  = SDL_GetPerformanceCounter();
-
         timer.__last   = timer.__now;
-        timer.__now    = (f32)SDL_GetTicks();
+        timer.__now    = stopwatch_get_tick();
         timer.dt = (timer.__now - timer.__last) / 1000.0f;
 
         if (timer.dt > 0.25f) timer.dt = 0.25f;
@@ -145,39 +147,21 @@ void application_run(application_t *app)
         while(timer.accumulator >= timer.dt && timer.dt != 0.0f)
         {
             st_previous = st_current;
-
             application_update_state(app, st_current);
-
             app->update(app);
-
             timer.accumulator -= timer.dt;
         }
 
         const f32 alpha = timer.accumulator / timer.dt;
-
-
         state_t state   = st_current * alpha + st_previous * (1.0 - alpha);
         application_update_state(app, state);
 
-
         window_gl_render_begin(win);
-
             app->render(app);
-
         window_gl_render_end(win);
 
-
-        // NOTE: for now i am capping at 60 fps 
-        /*
-         * u64 perf_end = SDL_GetPerformanceCounter();
-         * timer.fps = 1.0f / ((perf_end - perf_start) / (f32)SDL_GetPerformanceFrequency());
-         */
-
-        //NOTE: here is a simple dt to fps converter dont think its accurate for physics stuff
-        //need to do more research on delta time, especially the math behind it
-        //
         timer.fps = 1.0f / timer.dt;
-        SDL_Delay(floor(1000/60 - timer.dt));
+        stopwatch_delay(floor(cap_dt - timer.dt));
     }
 
     printf("[!] APPLICATION SHUTDOWN!\n");
@@ -185,10 +169,8 @@ void application_run(application_t *app)
 
     window_destroy();
 
-    {
-        free(app->__handler.content);
-        app->__handler.content = NULL;
-    }
+    free(app->__handler.content);
+    app->__handler.content = NULL;
 
 #ifdef DEBUG
     dbg_destroy();
