@@ -34,6 +34,14 @@ typedef enum {
 } sdl_mousestate;
 
 typedef enum {
+    SDL_MOUSEWHEEL_NONE,
+    SDL_MOUSEWHEEL_UP,
+    SDL_MOUSEWHEEL_DOWN,
+    SDL_MOUSEWHEEL_LEFT,
+    SDL_MOUSEWHEEL_RIGHT,
+} sdl_mousewheelstate;
+
+typedef enum {
 
     SDL_MOUSEBUTTON_NONE,
     SDL_MOUSEBUTTON_LEFT,
@@ -57,6 +65,10 @@ typedef struct window_t {
         sdl_mousestate      state;
         vec2f_t             norm_position;
         vec2i_t             position;
+
+        struct {
+            sdl_mousewheelstate state;
+        } wheel;
 
     } mouse;
     struct {
@@ -105,6 +117,11 @@ bool                window_keyboard_is_key_pressed(window_t *window, SDL_Keycode
 bool                window_mouse_button_just_pressed(window_t *window, sdl_mousebuttontype button);
 bool                window_mouse_button_is_pressed(window_t *window, sdl_mousebuttontype button);
 bool                window_mouse_button_is_held(window_t *window, sdl_mousebuttontype button);
+
+bool                window_mouse_is_scroll_up(const window_t *w);
+bool                window_mouse_is_scroll_down(const window_t *w);
+bool                window_mouse_is_scroll_left(const window_t *w);
+bool                window_mouse_is_scroll_right(const window_t *w);
 
 #define             window_mouse_get_norm_position(PWINDOW)                     (PWINDOW)->mouse.norm_position
 #define             window_mouse_get_position(PWINDOW)                          (PWINDOW)->mouse.position
@@ -195,6 +212,22 @@ bool window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key)
     return output;
 }
 
+bool window_mouse_is_scroll_up(const window_t *w)
+{
+    return w->mouse.wheel.state == SDL_MOUSEWHEEL_UP;
+}
+bool window_mouse_is_scroll_down(const window_t *w)
+{
+    return w->mouse.wheel.state == SDL_MOUSEWHEEL_DOWN;
+}
+bool window_mouse_is_scroll_right(const window_t *w)
+{
+    return w->mouse.wheel.state == SDL_MOUSEWHEEL_RIGHT;
+}
+bool window_mouse_is_scroll_left(const window_t *w)
+{
+    return w->mouse.wheel.state == SDL_MOUSEWHEEL_LEFT;
+}
 
 #define __impl_window_subwindow_gl_render_begin(PWINDOW) do {\
 \
@@ -741,12 +774,21 @@ void window_update_user_input(window_t *window)
     window->lastframe.key = SDLK_UNKNOWN;
     window->lastframe.state = SDL_KEYSTATE_UNKNOWN;
 
+    window->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
+
     while(SDL_PollEvent(event) > 0) 
     {
         switch (event->type) 
         {
             case SDL_WINDOWEVENT:
                 __window_handle_sdlwindow_event(window, event);
+            break;
+
+            case SDL_MOUSEWHEEL:
+                if(event->wheel.y > 0)      window->mouse.wheel.state = SDL_MOUSEWHEEL_UP;
+                else if(event->wheel.y < 0) window->mouse.wheel.state = SDL_MOUSEWHEEL_DOWN;
+                else if(event->wheel.x > 0) window->mouse.wheel.state = SDL_MOUSEWHEEL_RIGHT;
+                else if(event->wheel.x < 0) window->mouse.wheel.state = SDL_MOUSEWHEEL_LEFT;
             break;
 
             //NOTE: Here a mouse held down state is triggered if its just pressed and the mouse moved after.
