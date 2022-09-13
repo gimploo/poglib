@@ -1,6 +1,13 @@
 #pragma once
 
+#if defined(WINDOW_SDL)
 #include <SDL2/SDL.h>
+#elif defined(WINDOW_GLFW)
+#include <GLFW/glfw3.h>
+#else
+#include <SDL2/SDL.h>
+#endif
+
 #include "../basic.h"
 #include <math.h>
 #include <limits.h>
@@ -22,11 +29,24 @@ struct stopwatch_t {
 
 };
 
+f32 __stopwatch_get_tick(void)
+{
+#if defined(WINDOW_GLFW)
+    return (f32)glfwGetTime();
+#else
+    return (f32)SDL_GetTicks();
+#endif
+}
+
+void stopwatch_delay(const f32 ms)
+{
+    SDL_Delay( ms );
+}
 
 stopwatch_t stopwatch(void)
 {
     stopwatch_t output = {0};
-    output.__now = (f32)SDL_GetTicks();
+    output.__now = __stopwatch_get_tick();
     output.dt = 0.01f;
     return output;
 }
@@ -73,7 +93,7 @@ void stopwatch_update(stopwatch_t *timer)
     if (timer == NULL) eprint("dt argument is null");
 
     timer->__last   = timer->__now;
-    timer->__now    = (f32)SDL_GetTicks();
+    timer->__now    = __stopwatch_get_tick();
     timer->dt = (timer->__now - timer->__last) / 1000.0f;
 
     if (timer->dt > 0.25f) timer->dt = 0.25f;
