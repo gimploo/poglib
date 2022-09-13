@@ -71,11 +71,7 @@ matrix4f_t matrix4f_translate(const matrix4f_t mat, const vec3f_t vec)
 void matrix4f_print(const char *message, const matrix4f_t m)
 {
     printf("%s", message);
-    for (u32 i = 0; i < 4; ++i) 
-    {
-         printf("%f \t%f\t %f\t %f\n", m.raw[i][0], m.raw[i][1], m.raw[i][2], m.raw[i][3]);
-   }
-    printf("\n");
+    glms_mat4_print(m, stdout);
 }
 
 matrix4f_t matrix4f_transpose(const matrix4f_t a)
