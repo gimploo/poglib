@@ -30,6 +30,7 @@ stopwatch_t         stopwatch(void);
 void                stopwatch_update(stopwatch_t *timer);
 void                stopwatch_delay(const f32 ms);
 f32                 stopwatch_get_tick(void);
+#define             stopwatch_get_tick_in_seconds() (stopwatch_get_tick() / 1000.0f)
 
 
 /*=============================================================================
@@ -41,7 +42,7 @@ f32                 stopwatch_get_tick(void);
 f32 stopwatch_get_tick(void)
 {
 #if defined(WINDOW_GLFW)
-    return (f32)glfwGetTime();
+    return (f32)glfwGetTime() * 1000.0f;
 #else
     return (f32)SDL_GetTicks();
 #endif
