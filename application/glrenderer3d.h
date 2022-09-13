@@ -85,29 +85,23 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
     };
 
     unsigned int VBO, VAO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
+    GL_CHECK(glGenVertexArrays(1, &VAO));
+    GL_CHECK(glGenBuffers(1, &VBO));
+    GL_CHECK(glBindVertexArray(VAO));
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, VBO));
+    GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW));
+    GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0));
+    GL_CHECK(glEnableVertexAttribArray(0));
+    GL_CHECK(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float))));
+    GL_CHECK(glEnableVertexAttribArray(1));
 
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    // texture coord attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    gltexture2d_bind(self->texture, 0);
     glshader_bind(self->shader);
+    gltexture2d_bind(self->texture, 0);
 
-    glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
+    GL_CHECK(glBindVertexArray(VAO));
+    GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 36));
+    GL_CHECK(glDeleteVertexArrays(1, &VAO));
+    GL_CHECK(glDeleteBuffers(1, &VBO));
 }
 
 
