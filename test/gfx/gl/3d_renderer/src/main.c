@@ -26,7 +26,7 @@ void application_init(application_t *app)
 
     matrix4f_t projection = MATRIX4F_IDENTITY;
     projection = glms_perspective(
-                    radians(45.0f), app->window.aspect_ratio, 0.1f, 100.0f);
+                    radians(60.0f), app->window.aspect_ratio, 0.1f, 100.0f);
     glshader_send_uniform_matrix4f(&test.shader, "projection", projection);
 
 }
@@ -38,14 +38,13 @@ void application_update(application_t *app)
     window_t *win               = application_get_window(app);
 
     window_update_user_input(application_get_window(app));
-    /*glcamera_update(&test->camera);*/
-    /*glcamera_process_input(&test->camera, application_get_dt(app));*/
+    glcamera_process_input(&test->camera, application_get_dt(app));
 
     matrix4f_t view = MATRIX4F_IDENTITY;
     glshader_send_uniform_matrix4f(
             &test->shader, "view", 
-            /*glcamera_getview(&test->camera));*/
-            glms_translate(view, (vec3f_t ){0.0f, 0.0f, -3.0f}));
+            glcamera_getview(&test->camera));
+            /*glms_translate(view, (vec3f_t ){0.0f, 0.0f, -3.0f}));*/
 
 }
 
