@@ -46,10 +46,6 @@ void application_update(application_t *app)
             &test->shader, "view", 
             glcamera_getview(&test->camera));
 
-
-    /*printf("%i\n", win->mouse.wheel.state);*/
-    printf("%f\n", test->camera.zoom);
-
 }
 
 void application_render(application_t *app)
