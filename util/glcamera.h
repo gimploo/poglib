@@ -10,9 +10,9 @@
 const f32 GL_CAMERA_YAW             = -90.0f;
 const f32 GL_CAMERA_PITCH           =  0.0f;
 const f32 GL_CAMERA_SPEED           =  2.5f;
-const f32 GL_CAMERA_SENSITIVITY     =  0.1f;
+const f32 GL_CAMERA_SENSITIVITY     =  10.0f;
 const f32 GL_CAMERA_ZOOM            =  45.0f;
-const f32 GL_CAMERA_ZOOM_OFFSET     =  0.2f;
+const f32 GL_CAMERA_ZOOM_OFFSET     =  2000.0f;
 
 typedef enum glcamera_type {
 
@@ -26,10 +26,12 @@ typedef struct glcamera_t {
 
     glcamera_type   type;
     vec3f_t         position;
-    vec3f_t         front;
-    vec3f_t         up;
-    vec3f_t         right;
-    vec3f_t         worldup;
+    struct {
+        vec3f_t         front;
+        vec3f_t         up;
+        vec3f_t         right;
+        vec3f_t         worldup;
+    } direction;
     struct {
         f32 yaw;
         f32 pitch;
@@ -50,6 +52,29 @@ matrix4f_t      glcamera_getview(glcamera_t *self);
 -----------------------------------------------------------------------------*/
 #ifndef IGNORE_GL_CAMERA_IMPLEMENTATION
 
+void __glcamera_update_directions(glcamera_t *self)
+{
+    self->direction.front = glms_normalize(
+                                (vec3f_t ) {
+                                    .x = cos(glm_rad(self->angle.yaw)) * cos(glm_rad(self->angle.pitch)),
+                                    .y = sin(glm_rad(self->angle.pitch)),
+                                    .z = sin(glm_rad(self->angle.yaw)) * cos(glm_rad(self->angle.pitch)),
+                                });
+    // normalize the vectors, because their length gets closer to 0 the more 
+    // you look up or down which results in slower movement.
+    self->direction.right = glms_normalize(
+                                glms_cross(
+                                    self->direction.front, 
+                                    self->direction.worldup
+                                ));  
+    self->direction.up    = glms_normalize(
+                                glms_cross(
+                                    self->direction.right, 
+                                    self->direction.front
+                                ));
+}
+
+
 void glcamera_process_input(glcamera_t *self, const f32 dt)
 {
     window_t *win = window_get_current_active_window();
@@ -61,7 +86,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
         self->position = glms_vec3_add(
                             self->position, 
                             glms_vec3_scale(
-                                self->front, 
+                                self->direction.front, 
                                 GL_CAMERA_SPEED * dt
                             )
                         );
@@ -70,7 +95,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
         self->position = glms_vec3_sub(
                             self->position, 
                             glms_vec3_scale(
-                                self->front, 
+                                self->direction.front, 
                                 GL_CAMERA_SPEED *dt
                             )
                         );
@@ -78,9 +103,9 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
         self->position = glms_vec3_sub(
                             self->position, 
                             glms_vec3_scale(
-                                glms_vec3_cross(
-                                    self->front, 
-                                    self->up
+                                glms_vec3_crossn(
+                                    self->direction.front, 
+                                    self->direction.up
                                 ),
                                 GL_CAMERA_SPEED * dt
                             ) 
@@ -89,36 +114,30 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
         self->position = glms_vec3_add(
                             self->position, 
                             glms_vec3_scale(
-                                glms_vec3_cross(
-                                    self->front, 
-                                    self->up
+                                glms_vec3_crossn(
+                                    self->direction.front, 
+                                    self->direction.up
                                 ),
                                 GL_CAMERA_SPEED * dt
                             ) 
                         );
 
-    const vec2f_t offset = glms_vec2_scale(
-                                glms_vec2_sub(newmp, oldmp), 
-                                GL_CAMERA_SENSITIVITY); 
+    const vec2f_t offset = {
+        .x = (newmp.x - oldmp.x) * GL_CAMERA_SENSITIVITY ,
+        .y = (newmp.y - oldmp.y) * GL_CAMERA_SENSITIVITY  
+    };
+                                
     self->angle.yaw     += offset.x;
     self->angle.pitch   += offset.y;
 
-    if (window_mouse_is_scroll_up(win))
-        self->zoom -= GL_CAMERA_ZOOM_OFFSET;
-    else if (window_mouse_is_scroll_down(win))
-        self->zoom -= GL_CAMERA_ZOOM_OFFSET;
+    // TODO: pitch out of bound checks
 
-    vec3f_t front = {
-        .x = cos(glm_rad(self->angle.yaw)) * cos(glm_rad(self->angle.pitch)),
-        .y = sin(glm_rad(self->angle.pitch)),
-        .z = sin(glm_rad(self->angle.yaw)) * cos(glm_rad(self->angle.pitch)),
-    };
+    if (window_mouse_wheel_is_scroll_up(win))           self->zoom += offset.y;
+    else if (window_mouse_wheel_is_scroll_down(win))    self->zoom -= offset.y;
 
-    self->front = glms_normalize(front);
-    // normalize the vectors, because their length gets closer to 0 the more 
-    // you look up or down which results in slower movement.
-    self->right = glms_normalize(glms_cross(self->front, self->worldup));  
-    self->up    = glms_normalize(glms_cross(self->right, self->front));
+    //TODO: zoom / fov edge case checks
+
+    __glcamera_update_directions(self);
 
     /*printf(VEC3F_FMT"\n", VEC3F_ARG(self->position));*/
     oldmp = newmp;
@@ -134,9 +153,9 @@ matrix4f_t glcamera_getview(glcamera_t *self)
                             self->position, 
                             glms_vec3_add(
                                 self->position, 
-                                self->front
+                                self->direction.front
                             ), 
-                            self->up);
+                            self->direction.up);
         break;
 
         case GLCAMERATYPE_ORTHOGRAPHIC:
@@ -151,10 +170,12 @@ glcamera_t glcamera_perspective(const vec3f_t pos)
     glcamera_t o = {
         .type       = GLCAMERATYPE_PERSPECTIVE,
         .position   = pos,
-        .front      = GL_CAMERA_DIRECTION_FRONT,
-        .up         = glms_normalize(glms_cross(glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)), GL_CAMERA_DIRECTION_FRONT)),
-        .right      = glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)),
-        .worldup    = GL_CAMERA_DIRECTION_UP,
+        .direction = {
+            .front      = GL_CAMERA_DIRECTION_FRONT,
+            .up         = glms_normalize(glms_cross(glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)), GL_CAMERA_DIRECTION_FRONT)),
+            .right      = glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)),
+            .worldup    = GL_CAMERA_DIRECTION_UP,
+        },
         .angle = {
             .yaw    = GL_CAMERA_YAW,
             .pitch  = GL_CAMERA_PITCH
@@ -171,10 +192,12 @@ glcamera_t glcamera_orthographic(const vec3f_t pos)
     glcamera_t o = {
         .type       = GLCAMERATYPE_ORTHOGRAPHIC,
         .position   = pos,
-        .front      = GL_CAMERA_DIRECTION_FRONT,
-        .up         = glms_normalize(glms_cross(glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)), GL_CAMERA_DIRECTION_FRONT)),
-        .right      = glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)),
-        .worldup    = GL_CAMERA_DIRECTION_UP,
+        .direction = {
+            .front      = GL_CAMERA_DIRECTION_FRONT,
+            .up         = glms_normalize(glms_cross(glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)), GL_CAMERA_DIRECTION_FRONT)),
+            .right      = glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)),
+            .worldup    = GL_CAMERA_DIRECTION_UP,
+        },
         .angle = {
             .yaw    = GL_CAMERA_YAW,
             .pitch  = GL_CAMERA_PITCH

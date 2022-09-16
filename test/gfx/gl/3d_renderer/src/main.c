@@ -24,10 +24,6 @@ void application_init(application_t *app)
 
     application_pass_content(app, &test);
 
-    matrix4f_t projection = MATRIX4F_IDENTITY;
-    projection = glms_perspective(
-                    radians(60.0f), app->window.aspect_ratio, 0.1f, 100.0f);
-    glshader_send_uniform_matrix4f(&test.shader, "projection", projection);
 
 }
 
@@ -40,11 +36,19 @@ void application_update(application_t *app)
     window_update_user_input(application_get_window(app));
     glcamera_process_input(&test->camera, application_get_dt(app));
 
+    matrix4f_t projection = MATRIX4F_IDENTITY;
+    projection = glms_perspective(
+                    radians(test->camera.zoom), app->window.aspect_ratio, 0.1f, 100.0f);
+    glshader_send_uniform_matrix4f(&test->shader, "projection", projection);
+
     matrix4f_t view = MATRIX4F_IDENTITY;
     glshader_send_uniform_matrix4f(
             &test->shader, "view", 
             glcamera_getview(&test->camera));
-            /*glms_translate(view, (vec3f_t ){0.0f, 0.0f, -3.0f}));*/
+
+
+    /*printf("%i\n", win->mouse.wheel.state);*/
+    printf("%f\n", test->camera.zoom);
 
 }
 
@@ -73,7 +77,7 @@ void application_render(application_t *app)
         model = glms_translate(model, cubePositions[i]);
         model = glms_rotate(
                     model, 
-                    radians(20.0f * i), 
+                    radians(stopwatch_get_tick() / 150.0f * (i + 1)), 
                     (vec3f_t ){1.0f, 0.3f, 0.5f});
         glshader_send_uniform_matrix4f(&test->shader, "model", model);
         glrenderer3d_draw_cube(&rd3d);
