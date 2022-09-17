@@ -3,18 +3,86 @@
 #include "./common.h"
 
 
-typedef struct glvertex_t {
+typedef struct glvertex2d_t {
 
     vec3f_t position;
     vec4f_t color;
     vec2f_t texture_coord;
     u8      texture_id;
 
-} glvertex_t ;
+} glvertex2d_t ;
 
-typedef struct { glvertex_t vertex[3]; } gltri_t;
-typedef struct { glvertex_t vertex[4]; } glquad_t;
-typedef struct { glvertex_t vertex[MAX_VERTICES_PER_CIRCLE]; } glcircle_t;
+#define MAX_BONE_INFLUENECE 4
+typedef struct glvertex3d_t {
+
+    vec3f_t position;
+    vec3f_t normal;
+    vec2f_t tex_coords;
+    vec3f_t tangent;
+    vec3f_t bitangent;
+
+    u32 BoneIDs[MAX_BONE_INFLUENECE];
+    f32 Weights[MAX_BONE_INFLUENECE];
+
+} glvertex3d_t ;
+
+typedef struct glmesh_t {
+
+    const list_t  __vertices;
+    const list_t  __indices;
+    const list_t  __textures;
+
+    const vao_t   __vao;
+    const ebo_t   __ebo;
+    const vbo_t   __vbo;
+
+} glmesh_t;
+
+glmesh_t glmesh_init(const list_t vertices, const list_t indices, list_t textures)
+{
+    vao_t vao;
+    vbo_t vbo;
+    ebo_t ebo;
+
+    vao = vao_init();
+    vao_bind(&vao);
+        vbo = vbo_static_init(
+                vertices.__array, 
+                vertices.len * vertices.__elem_size, vertices.len);
+        ebo = ebo_init(&vbo, (u32 *)indices.__array, vertices.len);
+        vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex3d_t ), 0);
+        vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, normal));   
+        vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, tex_coords));
+        vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, tangent));  
+        vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, bitangent));
+        vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, BoneIDs));
+        vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, Weights));
+    vao_unbind();
+
+    return (glmesh_t ) {
+        .__vertices = vertices,
+        .__indices  = indices,
+        .__textures = textures,
+        .__vao      = vao,
+        .__ebo      = ebo,
+        .__vbo      = vbo,
+    };
+}
+
+void glmesh_destroy(glmesh_t *self)
+{
+    vao_destroy(&self->__vao);
+    vbo_destroy(&self->__vbo);
+    ebo_destroy(&self->__ebo);
+
+    list_destroy((list_t *)&self->__vertices);
+    list_destroy((list_t *)&self->__indices);
+    list_destroy((list_t *)&self->__textures);
+}
+
+typedef struct { glvertex2d_t vertex[3]; } gltri_t;
+typedef struct { glvertex2d_t vertex[4]; } glquad_t;
+typedef struct { glvertex2d_t vertex[MAX_VERTICES_PER_CIRCLE]; } glcircle_t;
 
 typedef struct {
 
@@ -108,7 +176,7 @@ void __impl_glbatch_put(glbatch_t *batch, const void *elem, const u64 elemsize)
                 queue_destroy(&batch->globjs);
                 batch->globjs = __impl_queue_init(
                         oldqueue.__capacity,
-                        poly->sides * 3 * sizeof(glvertex_t ),
+                        poly->sides * 3 * sizeof(glvertex2d_t ),
                         "glpolygon_t");
             }
 
@@ -118,7 +186,7 @@ void __impl_glbatch_put(glbatch_t *batch, const void *elem, const u64 elemsize)
                        batch->__meta.nvertex);
 
             const u64 size = 
-                sizeof(glvertex_t ) * batch->__meta.nvertex;
+                sizeof(glvertex2d_t ) * batch->__meta.nvertex;
 
             __impl_queue_put(
                     &batch->globjs, 
@@ -170,25 +238,25 @@ glquad_t glquad(const quadf_t positions, const vec4f_t color, const quadf_t tex_
     return (glquad_t) { 
 
         .vertex = {
-            [TOP_LEFT] = (glvertex_t ){ 
+            [TOP_LEFT] = (glvertex2d_t ){ 
                 positions.vertex[0].raw[X], positions.vertex[0].raw[Y], positions.vertex[0].raw[Z], 
                 color, 
                 tex_coord.vertex[0].raw[X], tex_coord.vertex[0].raw[Y],
                 tex_id
             },
-            [TOP_RIGHT] = (glvertex_t ){ 
+            [TOP_RIGHT] = (glvertex2d_t ){ 
                 positions.vertex[1].raw[X], positions.vertex[1].raw[Y], positions.vertex[1].raw[Z], 
                 color, 
                 tex_coord.vertex[1].raw[X], tex_coord.vertex[1].raw[Y],
                 tex_id
             }, 
-            [BOTTOM_RIGHT] = (glvertex_t ){ 
+            [BOTTOM_RIGHT] = (glvertex2d_t ){ 
                 positions.vertex[2].raw[X], positions.vertex[2].raw[Y], positions.vertex[2].raw[Z], 
                 color, 
                 tex_coord.vertex[2].raw[X], tex_coord.vertex[2].raw[Y],
                 tex_id
             }, 
-            [BOTTOM_LEFT] = (glvertex_t ){ 
+            [BOTTOM_LEFT] = (glvertex2d_t ){ 
                 positions.vertex[3].raw[X], positions.vertex[3].raw[Y], positions.vertex[3].raw[Z], 
                 color, 
                 tex_coord.vertex[3].raw[X], tex_coord.vertex[3].raw[Y],
@@ -202,19 +270,19 @@ gltri_t gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid)
 {
     return (gltri_t) {
 
-        .vertex[0] = (glvertex_t ){ 
+        .vertex[0] = (glvertex2d_t ){ 
             tri.vertex[0].raw[X], tri.vertex[0].raw[Y], tri.vertex[0].raw[Z], 
             color, 
             tex_coord.vertex[0].raw[X], tex_coord.vertex[0].raw[Y],
             texid
         }, 
-        .vertex[1] = (glvertex_t ){ 
+        .vertex[1] = (glvertex2d_t ){ 
             tri.vertex[1].raw[X], tri.vertex[1].raw[Y], tri.vertex[1].raw[Z], 
             color, 
             tex_coord.vertex[1].raw[X], tex_coord.vertex[1].raw[Y],
             texid
         }, 
-        .vertex[2] = (glvertex_t ) { 
+        .vertex[2] = (glvertex2d_t ) { 
             tri.vertex[2].raw[X], tri.vertex[2].raw[Y], tri.vertex[2].raw[Z], 
             color, 
             tex_coord.vertex[2].raw[X], tex_coord.vertex[2].raw[Y],
@@ -227,7 +295,7 @@ glpolygon_t glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv, u8 texid)
 {
     glpolygon_t output = {0} ;
 
-    glvertex_t *vertices = output.vertices.vertex;
+    glvertex2d_t *vertices = output.vertices.vertex;
 
     // TODO: Textures on polygons
     //for (u64 i = 0; i < MAX_TRIANGLES_PER_CIRCLE; i++)
@@ -255,7 +323,7 @@ glcircle_t glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
 {
     glcircle_t output = {0} ;
 
-    glvertex_t *vertices = output.vertex;
+    glvertex2d_t *vertices = output.vertex;
 
     // TODO: Textures on circles
     //for (u64 i = 0; i < MAX_TRIANGLES_PER_CIRCLE; i++)

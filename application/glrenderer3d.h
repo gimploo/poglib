@@ -20,6 +20,7 @@ typedef struct glrenderer3d_t {
 
 glrenderer3d_t      glrenderer3d(const glshader_t *, const gltexture2d_t *);
 void                glrenderer3d_draw_cube(const glrenderer3d_t *renderer);
+void                glrenderer3d_draw_mesh(const glrenderer3d_t *, const glmesh_t *);
 
 
 /*-----------------------------------------------------------------------------
@@ -40,7 +41,7 @@ glrenderer3d_t glrenderer3d(const glshader_t *shader, const gltexture2d_t *textu
 
 void glrenderer3d_draw_cube(const glrenderer3d_t *self)
 {
-    float vertices[] = {
+    const f32 vertices[] = {
         -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
          0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
          0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
@@ -105,6 +106,13 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
     GL_CHECK(glDeleteBuffers(1, &VBO));
 }
 
+void glrenderer3d_draw_mesh(const glrenderer3d_t *self, const glmesh_t *mesh)
+{
+    if (self->texture)
+        gltexture2d_bind(self->texture, 0);
 
+    glshader_bind(self->shader);
+    vao_draw_with_ebo(&mesh->__vao, &mesh->__ebo);
+}
 #endif
 
