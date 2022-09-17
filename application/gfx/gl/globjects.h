@@ -30,7 +30,7 @@ void            vao_set_attributes( vao_t *vao, vbo_t *vbo, u8 component_count, 
 #define         vao_draw_with_vbo_in_mode(PVAO, PVBO, MODE)     __impl_vao_draw_with_vbo(PVAO, PVBO, MODE)
 #define         vao_draw_with_ebo(PVAO, PEBO)                   __impl_vao_draw_with_ebo(PVAO, PEBO, GL_TRIANGLES)
 #define         vao_draw_with_ebo_in_mode(PVAO, PEBO, MODE)     __impl_vao_draw_with_ebo(PVAO, PEBO, MODE)
-void            vao_destroy(vao_t *vao);
+void            vao_destroy(const vao_t *vao);
 
 
 
@@ -163,7 +163,7 @@ void vao_set_attributes(
     
 }
 
-void __impl_vao_draw_with_vbo(const vao_t *vao, vbo_t *vbo, u64 gldraw_mode)
+void __impl_vao_draw_with_vbo(const vao_t *vao, const vbo_t *vbo, u64 gldraw_mode)
 {
     if (vao == NULL) eprint("vao_draw: vao argument is null");
 
@@ -182,7 +182,7 @@ void __impl_vao_draw_with_vbo(const vao_t *vao, vbo_t *vbo, u64 gldraw_mode)
     
 }
 
-void __impl_vao_draw_with_ebo(const vao_t *vao, ebo_t *ebo, u64 gldraw_mode)
+void __impl_vao_draw_with_ebo(const vao_t *vao, const ebo_t *ebo, const u64 gldraw_mode)
 {
     if (vao == NULL) eprint("vao_draw: vao argument is null");
 
@@ -204,7 +204,7 @@ void __impl_vao_draw_with_ebo(const vao_t *vao, ebo_t *ebo, u64 gldraw_mode)
 }
 
 
-void vao_destroy(vao_t *vao)
+void vao_destroy(const vao_t *vao)
 {
     if (vao == NULL) eprint("vao_bind: vao argument is null");
 
