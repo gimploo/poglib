@@ -1,6 +1,5 @@
 #pragma once
-#include "../basic.h"
-#include "../str.h"
+#include "../common.h"
 #include "./list.h"
 
 /*============================================================================

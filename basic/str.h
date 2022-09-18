@@ -1,12 +1,14 @@
 #pragma once
-#include "./basic.h"
+#include "./common.h"
 #include "./file.h"
 
+typedef struct str_t {
 
+    char      *buf;
+    size_t    len;
+    bool      __is_heap_allocated;
 
-
-typedef struct str_t str_t ;
-
+} str_t ;
 
 #define         str(STRING)              (str_t ) { .buf = STRING, .len = strlen(STRING), .__is_heap_allocated = false }
 str_t           str_init(const char *buffer);
@@ -19,25 +21,10 @@ str_t           str_cpy_delimiter(str_t *buffer, char ch);
 bool            str_cmp(const str_t *a, const str_t *b);
 void            str_cpy(str_t *dest, str_t *source);
 
-
-
-
+#define         STR_FMT         "%.*s"
+#define         STR_ARG(pstr)   (u32)((pstr)->len+1),(pstr)->buf
 
 #ifndef IGNORE_STR_IMPLEMENTATION
-
-#define STR_FMT         "%.*s"
-#define STR_ARG(pstr)   (u32)((pstr)->len+1),(pstr)->buf
-
-struct str_t {
-
-    char      *buf;
-    size_t    len;
-
-    bool      __is_heap_allocated;
-
-} ;
-
-
 
 str_t str_init(const char * const buffer) 
 {

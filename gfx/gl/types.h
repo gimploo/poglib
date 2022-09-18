@@ -1,7 +1,6 @@
 #pragma once
-#include "./globjects.h"
+#include "./objects.h"
 #include "./common.h"
-
 
 typedef struct glvertex2d_t {
 
@@ -12,7 +11,6 @@ typedef struct glvertex2d_t {
 
 } glvertex2d_t ;
 
-#define MAX_BONE_INFLUENECE 4
 typedef struct glvertex3d_t {
 
     vec3f_t position;
@@ -21,8 +19,8 @@ typedef struct glvertex3d_t {
     vec3f_t tangent;
     vec3f_t bitangent;
 
-    u32 BoneIDs[MAX_BONE_INFLUENECE];
-    f32 Weights[MAX_BONE_INFLUENECE];
+    u32 BoneIDs[4];
+    f32 Weights[4];
 
 } glvertex3d_t ;
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "../basic.h"
+#include "../common.h"
 
 /*==============================================================================
                         - DYNAMIC ARRAY DATA STRUCTURE -

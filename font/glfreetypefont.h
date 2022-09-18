@@ -1,6 +1,6 @@
 #pragma once
 #include <poglib/basic.h>
-#include <poglib/application/glrenderer2d.h>
+#include "../gfx/glrenderer2d.h"
 #if defined(WINDOW_GLFW)
 #include <poglib/application/window/glfw_window.h>
 #elif defined(WINDOW_SDL)

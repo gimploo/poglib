@@ -1,11 +1,10 @@
 #pragma once
 #include <GL/glew.h>
-#include <poglib/math/shapes.h>
-#include <poglib/application/gfx/gl/shader.h>
-#include <poglib/application/gfx/gl/texture2d.h>
-#include <poglib/application/gfx/gl/globjects.h>
-#include <poglib/application/gfx/gl/glframebuffer.h>
-#include <poglib/application/gfx/gl/types.h>
+#include "gl/shader.h"
+#include "gl/texture2d.h"
+#include "gl/objects.h"
+#include "gl/framebuffer.h"
+#include "gl/types.h"
 
 /*=============================================================================
                         - OPENGL 2D RENDERER -
@@ -20,12 +19,10 @@ typedef struct glrenderer2d_t {
 
 
 glrenderer2d_t      glrenderer2d(const glshader_t *shader, const gltexture2d_t *texture);
-
 void                glrenderer2d_draw_quad(const glrenderer2d_t *renderer, const glquad_t quad);
 void                glrenderer2d_draw_triangle(const glrenderer2d_t *renderer, const gltri_t tri);
 void                glrenderer2d_draw_circle(const glrenderer2d_t *renderer, const glcircle_t circle);
 void                glrenderer2d_draw_polygon(const glrenderer2d_t *renderer, const glpolygon_t polygon);
-
 void                glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_t *batch);
 
 

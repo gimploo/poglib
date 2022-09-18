@@ -1,11 +1,23 @@
 #pragma once
 #include "common.h"
 
+typedef struct vao_t { GLuint  id; } vao_t ;
 
-typedef struct vao_t vao_t;
-typedef struct vbo_t vbo_t;
-typedef struct ebo_t ebo_t;
+typedef struct vbo_t {
 
+    GLuint  id; 
+    u64     vertex_count;
+    i64     __attribute_index; 
+
+} vbo_t ;
+
+typedef struct ebo_t {
+
+    vbo_t   *vbo;
+    GLuint  id;
+    u32     indices_count;
+
+} ebo_t ;
 
 
 #define         vbo_init(ARRAY)                                 vbo_static_init((ARRAY), sizeof(ARRAY), ARRAY_LEN(ARRAY))
@@ -38,13 +50,6 @@ void            vao_destroy(const vao_t *vao);
 #ifndef IGNORE_GL_OBJECTS_IMPLEMENTATION
 
 //vbo
-struct vbo_t {
-
-    GLuint      id; 
-    u64         vertex_count;
-    i64         __attribute_index; 
-
-};
 
 void vbo_destroy(const vbo_t *obj)
 {
@@ -75,14 +80,6 @@ vbo_t vbo_static_init(const void *vertices, const size_t vsize, const u64 vertex
 }
 
 //ebo
-struct ebo_t {
-
-    vbo_t * vbo;
-    GLuint id;
-    u32 indices_count;
-
-};
-
 
 ebo_t ebo_init(vbo_t *vbo, const u32 *indices, const u32 count)
 {
@@ -114,10 +111,6 @@ void ebo_destroy(const ebo_t *ebo)
 }
 
 //vao
-struct vao_t {
-
-    GLuint  id;
-};
 
 vao_t vao_init(void)
 {

@@ -2,16 +2,18 @@
 #include <poglib/basic.h>
 #define CGLTF_IMPLEMENTATION
 #include <poglib/external/cgltf/cgltf.h>
+#include <poglib/gfx/glrenderer3d.h>
 
 typedef struct glmodel_t {
-    const char *filepath;
-    cgltf_options options;
-    cgltf_data *data;
-    cgltf_result result;
+
+    const char      *filepath;
+    cgltf_data      *data;
+
 } glmodel_t ;
 
 
 glmodel_t   glmodel_init(const char *filepath);
+glmesh_t    glmodel_get_mesh(const glmodel_t *self);
 void        glmodel_destroy(glmodel_t *self);
 
 
@@ -19,6 +21,8 @@ void        glmodel_destroy(glmodel_t *self);
 
 glmodel_t glmodel_init(const char *filepath)
 {
+    assert(filepath);
+
 	cgltf_options options;
 	memset(&options, 0, sizeof(cgltf_options));
 	cgltf_data* data = NULL;
@@ -26,18 +30,26 @@ glmodel_t glmodel_init(const char *filepath)
 
 	if (result == cgltf_result_success)
 		result = cgltf_load_buffers(&options, data, filepath);
-    else eprint("result error");
+    else eprint("error cgltf load buffer");
 
 	if (result == cgltf_result_success)
 		result = cgltf_validate(data);
-    else eprint("result error");
+    else eprint("error cgltf validation");
 
     return (glmodel_t ) {
         .filepath   = filepath,
-        .options    = options,
         .data       = data,
-        .result     = result
     };
+}
+
+glmesh_t glmodel_get_mesh(const glmodel_t *self)
+{
+    assert(self);
+    cgltf_data *data = self->data;
+
+    list_t indices, vertices, textures;
+
+    eprint("TODO");
 }
 
 void glmodel_destroy(glmodel_t *self)
