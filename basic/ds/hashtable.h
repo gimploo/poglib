@@ -1,6 +1,5 @@
 #pragma once
-#include "../basic.h"
-#include "../str.h"
+#include "../common.h"
 #include "./list.h"
 
 //NOTE: better to have hashtable take str_t type key instead of a number to avoid confusion

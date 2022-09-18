@@ -1,8 +1,6 @@
 #pragma once
 #include <GL/glew.h>
 #include <poglib/basic.h>
-#include <poglib/ds.h>
-#include <poglib/file.h>
 #include <poglib/math.h>
 
 #ifdef GL_LOG_ENABLE

@@ -1,6 +1,5 @@
 #pragma once
-#include <poglib/application/gfx/gl/common.h>
-#include <poglib/ds/list.h>
+#include "common.h"
 
 /*==============================================================================
                     - OPENGL SHADER HANDLING LIBRARY -

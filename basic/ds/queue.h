@@ -1,7 +1,7 @@
 #pragma once
 #include <stdio.h>
 #include <stdlib.h>
-#include "../basic.h"
+#include "../common.h"
 
 /*=============================================================================
                             - QUEUE DATA STRUCTURE -

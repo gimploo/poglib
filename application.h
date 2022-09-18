@@ -1,7 +1,7 @@
 #pragma once
 #include "basic.h"
-#include "application/glrenderer3d.h"
-#include "application/glrenderer2d.h"
+#include "gfx/glrenderer3d.h"
+#include "gfx/glrenderer2d.h"
 #if defined(WINDOW_GLFW)
 #   pragma message("GLFW NOT FULLY IMPLEMENTED, REQUIRES ADDITIONAL WORK")
 #   include "application/window/glfw_window.h"
