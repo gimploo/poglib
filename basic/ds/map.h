@@ -66,7 +66,7 @@ map_t __impl_map_init(const u64 capacity, const char *type_name, const u32 elem_
 {
     map_t o = {
         .len = 0,
-        .__keys = list_init(capacity, char[HT_MAX_KEY_SIZE]),
+        .__keys = list_init(char[HT_MAX_KEY_SIZE]),
         .__values = __impl_hashtable_init(capacity, type_name, elem_size),
     };
 

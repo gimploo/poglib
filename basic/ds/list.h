@@ -1,4 +1,5 @@
 #pragma once
+#include "../dbg.h"
 #include "../common.h"
 
 /*==============================================================================
@@ -18,12 +19,14 @@ typedef struct list_t {
                                        
 } list_t ;
 
+#define DEFAULT_LIST_STARTING_CAPACITY 4
 
-#define         list_init(CAPACITY, TYPE)                       __impl_list_init(CAPACITY, #TYPE, sizeof(TYPE))
+#define         list_init(TYPE)                                 __impl_list_init(DEFAULT_LIST_STARTING_CAPACITY, #TYPE, sizeof(TYPE))
 
 #define         list_append(PLIST, VALUE)                       __impl_list_append((PLIST), &(VALUE), sizeof(VALUE)) 
 void            list_delete(list_t *list, const u64 index);
 #define         list_clear(PLIST)                               __impl_list_clear(PLIST)
+void            list_combine(list_t *dest, const list_t *src);
 
 void            list_dump(const list_t *list);
 void            list_print(const list_t *list, void (*print)(void*));
@@ -188,5 +191,15 @@ void list_destroy(list_t *list)
     list->__top = -1;
     list->len = 0;
     list->__elem_size = 0;
+}
+
+void list_combine(list_t *dest, const list_t *src)
+{
+    if (strcmp(dest->__elem_type, src->__elem_type) != 0)
+        eprint("destination (%s) and src (%s) types are different", 
+                dest->__elem_type, src->__elem_type);
+
+    list_iterator(src, iter)
+        __impl_list_append(dest, iter, dest->__elem_size);
 }
 #endif
