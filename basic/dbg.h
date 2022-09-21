@@ -11,6 +11,14 @@
 #define DEFAULT_DBG_MEM_LOG_PATH "bin/dbg_mem_log.txt"
 const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h" };
 
+// Eprint for for both linux and windows
+#define eprint(fmt, ...) do {\
+\
+    fprintf(stderr, "[❌] [(%s:%d): %s] " fmt "\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
+    stacktrace_print();\
+    exit(-1);\
+\
+} while (0)
 
 /*=============================================================================
                         - MEMORY LEAK CHECKER -

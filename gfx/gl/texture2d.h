@@ -13,7 +13,8 @@
 typedef struct gltexture2d_t {
     
     GLuint          id; 
-    const char      *file_path;
+    const char      filepath[64];
+    const char      type[32];
     unsigned char   *buf;
     int             width;
     int             height;
@@ -27,7 +28,7 @@ typedef struct gltexture2d_t {
 -----------------------------------------------------*/
 
 
-gltexture2d_t        gltexture2d_init(const char * file_path);
+gltexture2d_t        gltexture2d_init(const char * filepath);
 gltexture2d_t        gltexture2d_empty_init(u32 width, u32 height);
 void                 gltexture2d_destroy(const gltexture2d_t *texture);
 //NOTE:(macro)       gltexture2d_bind(gltexture2d_t *, u32 slot) --> void
@@ -77,7 +78,7 @@ gltexture2d_t gltexture2d_empty_init(u32 width, u32 height)
 
     return (gltexture2d_t) {
         .id        = id,
-        .file_path = NULL,
+        .filepath = NULL,
         .buf       = NULL,
         .width     = (int)width,
         .height    = (int)height,
@@ -86,47 +87,23 @@ gltexture2d_t gltexture2d_empty_init(u32 width, u32 height)
 
 }
 
-gltexture2d_t gltexture2d_init(const char *file_path)
+gltexture2d_t gltexture2d_init(const char *filepath)
 {
-    if (file_path == NULL) eprint("file argument is null");
+    if (filepath == NULL) eprint("file argument is null");
 
     GLuint id;
     int width = 0, height = 0, bpp = 0;
     u8 *buf = NULL;
-
-    /*
-     *
-     * STBI stuff here
-     *
-     */
-    // opengl (0,0) starts at the bottom left
     stbi_set_flip_vertically_on_load(1);                                
-    buf = stbi_load(file_path, &width, &height, &bpp, 0); //RGB
+    buf = stbi_load(filepath, &width, &height, &bpp, 0); //RGB
     if (buf == NULL) eprint("Failed to load texture");
-
-
-    /*
-     * My bitmap stuff here
-     *
-     */
-
-    //NOTE: my bitmap lib works with opengl, apparantly bitmap dont have an alpha channel
-    //so uncomment below lines for it to work with bitmaps and comment the stbi lines aswell
-    //
-    //BitMap bitmap = bitmap_init(file_path);   
-    //width   = bitmap_get_width(&bitmap);
-    //height  = bitmap_get_height(&bitmap);
-    //buf     = (u8 *)bitmap.pixels;
 
     GL_CHECK(glGenTextures(1, &id));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, id));
-
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));	
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
-
-
     GL_CHECK(glTexImage2D(
         GL_TEXTURE_2D, 
         0, 
@@ -138,22 +115,25 @@ gltexture2d_t gltexture2d_init(const char *file_path)
         GL_UNSIGNED_BYTE,
         buf
      ));
-    printf("alsdjf\n");
-
     GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
-
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
-    
     GL_LOG("Texture `%i` successfully created", id);
 
-    return (gltexture2d_t) {
-        .id        = id,
-        .file_path = file_path,
-        .buf       = buf,
-        .width     = width,
-        .height    = height,
-        .bpp       = bpp,
+    gltexture2d_t o = {
+        .id         = id,
+        .filepath   = {0},
+        .type       = {0},
+        .buf        = buf,
+        .width      = width,
+        .height     = height,
+        .bpp        = bpp,
     };
+
+    const u64 len = strlen(filepath);
+    if (len > sizeof(o.filepath)) eprint("filepath too long");
+    memcpy((char *)o.filepath, filepath, len);
+
+    return o;
 }
 
 void gltexture2d_destroy(const gltexture2d_t *texture)
@@ -172,7 +152,7 @@ void gltexture2d_dump(const gltexture2d_t *texture)
 
     const char *FMT = 
         "GLuint = %i\n"
-        "file_path = %s\n"
+        "filepath = %s\n"
         "buf = %s\n"
         "width = %i\n"
         "height = %i\n"
@@ -180,7 +160,7 @@ void gltexture2d_dump(const gltexture2d_t *texture)
 
     printf(FMT,
             texture->id, 
-            texture->file_path, 
+            texture->filepath, 
             texture->buf, 
             texture->width, 
             texture->height, 

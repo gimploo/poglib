@@ -48,14 +48,12 @@ typedef double          f64;
     #define FORCEINLINE __attribute__((always_inline))
 #endif
 
-// Eprint for for both linux and windows
-#define eprint(fmt, ...) do {\
-\
-    fprintf(stderr, "[❌] [(%s:%d): %s] " fmt "\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
-    stacktrace_print();\
-    exit(-1);\
-\
-} while (0)
+
+#if defined(DEBUG)
+    #define logging(fmt, ...) fprintf(stdout, "[LOG : %s] \t" fmt "\n", __func__, ##__VA_ARGS__)
+#else
+    #define logging(fmt, ...)
+#endif
 
 
 #define ARRAY_LEN(ARR)      sizeof((ARR)) / sizeof(*(ARR))

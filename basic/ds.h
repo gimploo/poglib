@@ -1,4 +1,5 @@
 #pragma once
+#include "dbg.h"
 #include "common.h"
 #include "file.h"
 #include "ds/stack.h"
