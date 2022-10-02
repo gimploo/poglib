@@ -12,12 +12,12 @@ typedef struct slot_t {
     u64                 len;
 
     //private
-    u8                  *__values;
-    char                __value_type[MAX_TYPE_CHARACTER_LENGTH];
-    u64                 __value_size;
+    u8                  *__data;
+    char                __elem_type[MAX_TYPE_CHARACTER_LENGTH];
+    u64                 __elem_size;
     u64                 __capacity;
     bool                *__index_table;
-    bool                __are_values_pointers;
+    bool                __are_elem_pointers;
 
 } slot_t ;
 
@@ -29,7 +29,7 @@ typedef struct slot_t {
 
 void *              slot_get_value(const slot_t *table, const u64 index);
 #define             slot_iterator(PSLOTARRAY, ITER)                        __impl_slot_for_loop_iterator((PSLOTARRAY), (ITER))
-
+#define             slot_get_capacity(PSLOT) (PSLOT)->__capacity
 void                slot_print(const slot_t *table, void (*print)(void*));
 void                slot_dump(const slot_t *table);
 
@@ -79,16 +79,16 @@ slot_t __impl_slot_init(const u64 array_capacity, const char *elem_type, const u
 
     slot_t o = {
         .len = 0,
-        .__values               = (u8 *)calloc(array_capacity, elem_size),
-        .__value_type           = {0},
-        .__value_size           = elem_size,
+        .__data               = (u8 *)calloc(array_capacity, elem_size),
+        .__elem_type           = {0},
+        .__elem_size           = elem_size,
         .__capacity             = array_capacity,
         .__index_table          = (bool *)calloc(array_capacity, sizeof(bool)),
-        .__are_values_pointers  = flag,
+        .__are_elem_pointers  = flag,
     };
 
-    if (!flag)  memcpy(o.__value_type, elem_type, MAX_TYPE_CHARACTER_LENGTH);
-    else        memcpy(o.__value_type, elem_type, len - 1);
+    if (!flag)  memcpy(o.__elem_type, elem_type, MAX_TYPE_CHARACTER_LENGTH);
+    else        memcpy(o.__elem_type, elem_type, len - 1);
 
     return o;
 }
@@ -100,10 +100,10 @@ bool __check_if_empty(const slot_t *table, const u64 index)
 
 void * __slot_get_reference_to_only_value_at_index(const slot_t *table, const u64 index)
 {
-    if (!table->__are_values_pointers)
-        return (void *)(table->__values + index * table->__value_size);
+    if (!table->__are_elem_pointers)
+        return (void *)(table->__data + index * table->__elem_size);
     else 
-        return *(void **)(table->__values + index * table->__value_size);
+        return *(void **)(table->__data + index * table->__elem_size);
 }
 
 
@@ -114,15 +114,15 @@ void * __impl_slot_insert(
         const u64   value_size)
 { 
     if (table == NULL) eprint("table argument is null");
-    if (value_size != table->__value_size) eprint("expected value size (%li) but got (%li)", table->__value_size, value_size);
+    if (value_size != table->__elem_size) eprint("expected value size (%li) but got (%li)", table->__elem_size, value_size);
     assert(index >= 0 && index < table->__capacity);
 
     if (!__check_if_empty(table, index)) {
 
         memcpy(
-            table->__values + (index * table->__value_size), 
+            table->__data + (index * table->__elem_size), 
             value_addr, 
-            table->__value_size);
+            table->__elem_size);
 
         table->__index_table[index] = true;
 
@@ -152,8 +152,8 @@ void __impl_slot_destroy(slot_t *table)
 {
     if (table == NULL) eprint("table arguemnt is null");
 
-    free(table->__values);
-    table->__values = NULL;
+    free(table->__data);
+    table->__data = NULL;
     free(table->__index_table);
     table->__index_table = NULL;
 }
@@ -190,12 +190,12 @@ void slot_dump(const slot_t *table)
 {
     assert(table);
 
-    printf("len = %li\ncapacity = %li\nelem_size = %li\nelem_type = %s\nare_values_are_pointers = %s\n",
+    printf("len = %li\ncapacity = %li\nelem_size = %li\nelem_type = %s\nare_elem_are_pointers = %s\n",
          table->len,
          table->__capacity,
-         table->__value_size,
-         table->__value_type,
-         table->__are_values_pointers ? "TRUE" : "FALSE");
+         table->__elem_size,
+         table->__elem_type,
+         table->__are_elem_pointers ? "TRUE" : "FALSE");
 
     const char *output = 
         "=====================\n"
