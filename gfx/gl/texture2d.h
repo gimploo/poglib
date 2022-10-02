@@ -6,9 +6,7 @@
 ==================================================== */
 
 #include "common.h"
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <poglib/external/stb_image.h>
+#include <poglib/image.h>
 
 typedef struct gltexture2d_t {
     
