@@ -23,8 +23,10 @@ str_t           str_cpy_delimiter(str_t *__buffer, char ch);
 bool            str_cmp(const str_t *a, const str_t *b);
 void            str_cpy(str_t *dest, str_t *source);
 str_t           str_get_directory_path(const char *string);
+
 void            cstr_combine_path(const char *path1, const char *path2, char output[32]);
 void            cstr_copy(char *dest, const char *source);
+void            cstr_get_file_extension(const char *filepath, char output[32]);
 
 #define         STR_FMT         "%.*s"
 #define         STR_ARG(pstr)   (u32)((pstr)->len+1),(pstr)->__buf
@@ -232,6 +234,29 @@ void cstr_copy(char *dest, const char *source)
 void str_get_data(const str_t *data, char *output)
 {
     memcpy(output, data->__buf, data->len);
+}
+
+//credit: gunslinger
+void cstr_get_file_extension(const char *filepath, char output[32])
+{
+    uint32_t str_len = strlen(filepath);
+    const char* at = (filepath + str_len - 1);
+    while (*at != '.' && at != filepath)
+    {
+        at--;
+    }
+
+    if (*at == '.')
+    {
+        at++;
+        uint32_t i = 0; 
+        while (*at)
+        {
+            char c = *at;
+            output[i++] = *at++;
+        }
+        output[i] = '\0';
+    }
 }
 
 #endif
