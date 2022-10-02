@@ -5,6 +5,9 @@
                     - OPENGL SHADER HANDLING LIBRARY -
 ===============================================================================*/
 
+//TODO: maybe have all the shader uniform locations localized to one place, 
+//so not to need to call 'get location' every time we send it.
+
 typedef struct glshader_t {
 
     GLuint      id;
