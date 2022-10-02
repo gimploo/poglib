@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include "dbg.h"
 
 /*===================================================
  // File handling library
@@ -19,7 +20,7 @@ typedef struct file_t {
  // Declarations
 -------------------------------------------------------------------------------*/
 
-file_t *        file_init(const char *file_path, const char *mode);
+file_t          file_init(const char *file_path, const char *mode);
 void            file_readall(const file_t * const file, char *buffer, const u64 buffer_size);
 void            file_readline(const file_t *file, char *buffer, u64 buffersize);
 void            file_writeline(file_t *file, const char *line);
@@ -28,9 +29,9 @@ void            file_writebytes(const file_t *file, void * const buffer, const u
 void            file_destroy(file_t * file);
 
 #define file(NAME, MODE, VAR)\
-    for (file_t *(VAR) = file_init(NAME, MODE);\
-            !(VAR)->is_closed;\
-            file_destroy((VAR))) 
+    for (file_t (VAR) = file_init(NAME, MODE);\
+            !(VAR).is_closed;\
+            file_destroy(&(VAR))) 
 
 /*------------------------------------------
  // Implementataion
@@ -93,7 +94,7 @@ bool file_check_exist(const char *filepath)
 }
 
 
-file_t * file_init(const char *file_path, const char *mode)
+file_t file_init(const char *file_path, const char *mode)
 {
     assert(file_path);
     assert(mode);
@@ -108,11 +109,7 @@ file_t * file_init(const char *file_path, const char *mode)
 
     __file_set_size(&file);
 
-    file_t *tmp = (file_t *)calloc(1, sizeof(file_t ));
-    assert(tmp);
-    *tmp = file;
-
-    return tmp;
+    return file;
 }
 
 void file_readall(const file_t * const file, char *buffer, const u64 buffer_size)
@@ -162,7 +159,6 @@ void file_destroy(file_t * file)
     file->size = 0;
     file->fp = NULL;
     file->is_closed = true;
-    free(file);
 }
 
 
