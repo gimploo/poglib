@@ -24,6 +24,8 @@ typedef struct glmesh_t {
 
     slot_t    __vertices;
     slot_t    __indices; 
+    slot_t    __normals;
+    slot_t    __tangents;
     slot_t    __gltextures;
                                 
     const vao_t   __vao;
