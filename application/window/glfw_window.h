@@ -5,7 +5,7 @@
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <GL/glew.h>
-#include "../gfx/gl/common.h"
+#include <poglib/gfx/gl/common.h>
 #include <GLFW/glfw3.h>
 
 #define DEFAULT_BACKGROUND_COLOR    (vec4f_t ){ 0.0f, 0.0f, 0.8f, 1.0f}
