@@ -71,7 +71,7 @@ void __impl_list_clear(list_t *list)
 
 }
 
-list_t __impl_list_init(const u64 capacity, const char *elem_type, u64 elem_size) 
+list_t __impl_list_init(const u64 capacity, const char *elem_type, const u64 elem_size) 
 {
     assert(elem_type);
     assert(elem_size > 0);

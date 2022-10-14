@@ -1,6 +1,6 @@
 #pragma once
 #include <SDL2/SDL.h>
-#include <poglib/application/window.h>
+#include <poglib/application/window/sdl_window.h>
 
 typedef struct action_t {
 

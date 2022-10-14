@@ -1,5 +1,5 @@
 #pragma once 
-#include <poglib/application/gfx/gl/types.h>
+#include <poglib/gfx/gl/types.h>
 
 
 typedef struct c_transform_t {
@@ -26,7 +26,7 @@ void __c_transform_update(c_transform_t *transform)
     transform->prev_position = transform->position;
 
     // Translation
-    transform->position = vec3f_add(transform->position, transform->velocity);
+    transform->position = glms_vec3_add(transform->position, transform->velocity);
     
     //Rotation
 }

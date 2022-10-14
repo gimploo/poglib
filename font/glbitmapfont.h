@@ -4,7 +4,7 @@
 ======================================================*/
 
 #include "../math/la.h"
-#include "../application/glrenderer2d.h"
+#include "../gfx/glrenderer2d.h"
 
 
 typedef struct glbitmapfont_t glbitmapfont_t;

@@ -1,6 +1,5 @@
 #pragma once
-#include <stdio.h>
-#include <stdlib.h>
+#include "../dbg.h"
 #include "../common.h"
 
 /*=============================================================================
@@ -10,7 +9,7 @@
 typedef struct queue_t {
 
     u64     len;
-    u8      *__array;
+    u8      *__data;
     u64     __start;
     u64     __end;
     u64     __capacity;
@@ -49,8 +48,8 @@ void queue_destroy(queue_t *queue)
 {
     assert(queue);
 
-    free(queue->__array);
-    queue->__array = NULL;
+    free(queue->__data);
+    queue->__data = NULL;
     queue->__start = queue->__end = queue->len = 0; 
 
 }
@@ -84,9 +83,9 @@ void queue_dump(queue_t *queue)
         queue->__are_values_pointers
     );
 
-    printf(" queue->__array       = [");
+    printf(" queue->__data       = [");
     for (u64 i = 0; i < queue->__capacity; i++)
-        fprintf(stdout, "%p ", queue->__array + i * queue->__elem_size);
+        fprintf(stdout, "%p ", queue->__data + i * queue->__elem_size);
     printf("]\n\n");
 }
 
@@ -105,7 +104,7 @@ queue_t __impl_queue_init(u64 capacity, u64 elem_size, const char *elem_type)
 
     queue_t o = {
         .len = 0 ,
-        .__array = (u8 *)calloc(capacity, elem_size),
+        .__data = (u8 *)calloc(capacity, elem_size),
         .__start = 0,
         .__end = 0,
         .__capacity = capacity,
@@ -125,7 +124,7 @@ void queue_clear(queue_t *queue)
     assert(queue);
 
     queue->__start = queue->len = queue->__end = 0;
-    memset(queue->__array, 0, queue->__capacity * queue->__elem_size);
+    memset(queue->__data, 0, queue->__capacity * queue->__elem_size);
 
 }
 
@@ -138,7 +137,7 @@ void __impl_queue_put(queue_t *queue, const void *elemaddr, u64 __elem_size)
     if (queue_is_full(queue)) eprint("overflow");
 
     // pass by value
-    memcpy(queue->__array + (queue->__end * queue->__elem_size), 
+    memcpy(queue->__data + (queue->__end * queue->__elem_size), 
             elemaddr, queue->__elem_size);
     queue->len++;
 
@@ -155,9 +154,9 @@ void * __queue_get_value_at_index(const queue_t *queue, const u64 index)
 
     void *elem_pos = NULL;
     if (queue->__are_values_pointers)
-        elem_pos  = *(void **)(queue->__array + index * queue->__elem_size);
+        elem_pos  = *(void **)(queue->__data + index * queue->__elem_size);
     else
-        elem_pos  = (queue->__array + index * queue->__elem_size);
+        elem_pos  = (queue->__data + index * queue->__elem_size);
 
     return elem_pos;
 }
@@ -170,9 +169,9 @@ void * __impl_queue_get(queue_t *queue)
 
     void *elem_pos = NULL;
     if (queue->__are_values_pointers)
-        elem_pos  = *(void **)(queue->__array + queue->__start * queue->__elem_size);
+        elem_pos  = *(void **)(queue->__data + queue->__start * queue->__elem_size);
     else
-        elem_pos  = (queue->__array + queue->__start * queue->__elem_size);
+        elem_pos  = (queue->__data + queue->__start * queue->__elem_size);
 
     queue->__start    = (queue->__start + 1) % queue->__capacity;
     queue->len--;
@@ -190,9 +189,9 @@ void __impl_queue_get_in_buffer(queue_t *queue, void *buffer, u64 buffer_size)
 
     void *elem_pos = NULL;
     if (queue->__are_values_pointers)
-        elem_pos  = *(void **)(queue->__array + queue->__start * queue->__elem_size);
+        elem_pos  = *(void **)(queue->__data + queue->__start * queue->__elem_size);
     else
-        elem_pos  = (queue->__array + queue->__start * queue->__elem_size);
+        elem_pos  = (queue->__data + queue->__start * queue->__elem_size);
 
     queue->__start    = (queue->__start + 1) % queue->__capacity;
     queue->len--;
@@ -214,9 +213,9 @@ void queue_print(queue_t *queue, void (*print_elem)(void *))
     for (u64 i = queue->__start, j = 0; j < queue->len; i = (i + 1) % queue->len, j++)
     {
         if (queue->__are_values_pointers)
-            elem_pos  = *(void **)(queue->__array + i * queue->__elem_size);
+            elem_pos  = *(void **)(queue->__data + i * queue->__elem_size);
         else
-            elem_pos  = (queue->__array + i * queue->__elem_size);
+            elem_pos  = (queue->__data + i * queue->__elem_size);
 
         print_elem(elem_pos);
     }

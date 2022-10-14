@@ -1,5 +1,4 @@
 #pragma once
-#include <cstdio>
 #include <poglib/basic.h>
 #include "shader.h"
 #include "texture2d.h"
@@ -57,7 +56,7 @@ glmodel_t glmodel_init(const char *path)
 {
     glmodel_t output = {0};
     // Use cgltf like a boss
-    cgltf_options cgltf_options = {};
+    cgltf_options cgltf_options = {0};
     char file_ext[32] = {0};
 
     // Get file extension from path

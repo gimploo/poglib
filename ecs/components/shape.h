@@ -1,5 +1,5 @@
 #pragma once
-#include "../../math/la.h"
+#include <poglib/math.h>
 #include "../components/transform.h"
 
 

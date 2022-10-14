@@ -1,5 +1,5 @@
 #pragma once
-#include <poglib/application/gfx/gl/texture2d.h>
+#include <poglib/gfx/gl/texture2d.h>
 #include "../components/shader.h"
 
 

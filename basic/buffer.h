@@ -5,10 +5,10 @@
 
 typedef struct bytebuffer_t
 {
-    uint8_t* data;      // Buffer that actually holds all relevant byte data
-    uint32_t size;      // Current size of the stored buffer data
-    uint32_t position;  // Current read/write position in the buffer
-    uint32_t capacity;  // Current max capacity for the buffer
+    uint8_t     *data;      // Buffer that actually holds all relevant byte data
+    uint32_t    size;      // Current size of the stored buffer data
+    uint32_t    position;  // Current read/write position in the buffer
+    uint32_t    capacity;  // Current max capacity for the buffer
                         
 } bytebuffer_t;
 
