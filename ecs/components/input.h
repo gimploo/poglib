@@ -1,5 +1,5 @@
 #pragma once
-#include "../../application/window.h"
+#include <poglib/application.h>
 
 
 typedef struct c_input_t c_input_t;

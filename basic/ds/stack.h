@@ -1,4 +1,5 @@
 #pragma once
+#include "../dbg.h"
 #include "../common.h"
 
 /*=============================================================================
@@ -8,7 +9,7 @@
 typedef struct stack_t {
 
     u64     len;
-    u8      *__array;
+    u8      *__data;
     i64     __top;
     u64     __capacity;
     u64     __elem_size;
@@ -43,7 +44,7 @@ stack_t __impl_stack_init(u64 capacity, const char *elem_type, u64 elem_size)
 
     stack_t o = {
         .len                    = 0,
-        .__array                = (u8 *)calloc(capacity, elem_size),
+        .__data                = (u8 *)calloc(capacity, elem_size),
         .__top                  = -1,
         .__capacity             = capacity,
         .__elem_size            = elem_size,
@@ -71,7 +72,7 @@ void __impl_stack_push(stack_t *stack, void *elem_ref, u64 elem_size)
 
     if (elem_size != stack->__elem_size) eprint("trying to push a value of size %lu to slot of size %lu", elem_size, stack->__elem_size);
 
-    u8 *arr = (u8 *)stack->__array + (++stack->__top * elem_size); 
+    u8 *arr = (u8 *)stack->__data + (++stack->__top * elem_size); 
     memcpy(arr, elem_ref, elem_size);
 
     stack->len = stack->__top + 1;
@@ -83,7 +84,7 @@ void * stack_pop(stack_t *stack)
     if (stack == NULL) eprint("stack argument is null");
     if (stack->__top == -1) eprint("underflow");
 
-    u8 *elem_pos = (u8 *)stack->__array + stack->__top * stack->__elem_size;
+    u8 *elem_pos = (u8 *)stack->__data + stack->__top * stack->__elem_size;
     stack->len = --stack->__top - 1;
 
     if (stack->__are_values_pointers) return *(void **)elem_pos;
@@ -101,7 +102,7 @@ void stack_print(stack_t *stack, void (*print_elem)(void *))
     printf("\nSTACK ----------------------\n");
     for (int i = stack->__top; i > -1; i--) {
         printf("\t");
-        print_elem(stack->__array + i * stack->__elem_size);
+        print_elem(stack->__data + i * stack->__elem_size);
         printf("\n");
     }
     printf("---------------------------\n");
@@ -111,10 +112,10 @@ void stack_destroy(stack_t *stack)
 {
     assert(stack);
 
-    free(stack->__array);
-    stack->__array = NULL;
+    free(stack->__data);
+    stack->__data = NULL;
 
-    stack->__array = NULL;
+    stack->__data = NULL;
     stack->__top = -1;
     stack->__capacity = 0;
     stack->__elem_size = 0;

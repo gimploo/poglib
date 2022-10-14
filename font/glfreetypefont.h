@@ -107,9 +107,10 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize)
     };
 
     gltexture2d_t tex = {
-        .file_path = filepath,
         .buf = NULL,
     };
+
+    memcpy((char *)tex.filepath, (char *)filepath, sizeof(tex.filepath));
 
     FT_Library  ft;
     FT_Face     face;
@@ -206,7 +207,7 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize)
 
     //Shader
     o.shader = glshader_from_cstr_init(freetype_vs, freetype_fs);
-    o.texture = tex;
+    memcpy(&o.texture, &tex, sizeof(tex));
 
     return o;
 }

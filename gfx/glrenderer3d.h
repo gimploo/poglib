@@ -118,7 +118,8 @@ void glrenderer3d_draw_mesh(const glrenderer3d_t *self, const glmesh_t *mesh)
     unsigned int normalNr   = 1;
     unsigned int heightNr   = 1;
     u32 i = 0;
-    list_iterator(&mesh->__textures, iter)
+
+    list_iterator(&mesh->__gltextures, iter)
     {
         gltexture2d_t *texture = (gltexture2d_t *)iter;
 

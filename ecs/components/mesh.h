@@ -15,13 +15,13 @@ c_mesh2d_t c_mesh2d(vec3f_t centerpos, c_shape_type type, f32 radius);
 
 struct c_mesh2d_t {
 
-    matrixf_t model;
+    matrix4f_t model;
 };
 
 c_mesh2d_t c_mesh2d(vec3f_t centerpos, c_shape_type type, f32 radius)
 {
     c_mesh2d_t o = {0};
-    vec3f_t topright = vec3f_add(
+    vec3f_t topright = glms_vec3_add(
             centerpos, 
             (vec3f_t ){ -radius/2, radius/2, 0.0f });
 
@@ -31,7 +31,7 @@ c_mesh2d_t c_mesh2d(vec3f_t centerpos, c_shape_type type, f32 radius)
         case TRIANGLE: {
 
             trif_t tri = trif(topright, radius);
-            o.model = matrixf(tri.vertex, 3, 3);
+            memcpy(&o.model, tri.vertex, sizeof(o.model));
 
         } break;
 
@@ -39,7 +39,7 @@ c_mesh2d_t c_mesh2d(vec3f_t centerpos, c_shape_type type, f32 radius)
         case SQUARE: {
 
             quadf_t tmp = quadf(topright, radius, radius);
-            o.model = matrixf(tmp.vertex, 4, 3);
+            memcpy(&o.model, tmp.vertex, sizeof(o.model));
 
         } break;
 
@@ -47,7 +47,7 @@ c_mesh2d_t c_mesh2d(vec3f_t centerpos, c_shape_type type, f32 radius)
         case CIRCLE: {
             
             circle_t tmp = circle(centerpos, radius);
-            o.model = matrixf(tmp.points, MAX_VERTICES_PER_CIRCLE, 3);
+            memcpy(&o.model, tmp.points, sizeof(o.model));
 
         } break;
 

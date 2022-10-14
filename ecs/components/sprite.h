@@ -1,6 +1,6 @@
 #pragma once
-#include <poglib/application/gfx/gl/texture2d.h>
-#include <poglib/application/gfx/gl/shader.h>
+#include <poglib/gfx/gl/texture2d.h>
+#include <poglib/gfx/gl/shader.h>
 #include "../components/shape.h"
 
 
@@ -32,8 +32,8 @@ c_sprite_t c_sprite(f32 side, c_shape_type type, quadf_t uv)
         case CIRCLE: {
             for (u64 i = 0; i < MAX_TRIANGLES_PER_CIRCLE; i++)
             {
-                uv.vertex[i].cmp[X] = (uv.vertex[i].cmp[X]/side + 1)*0.5;
-                uv.vertex[i].cmp[Y] = (uv.vertex[i].cmp[Y]/side + 1)*0.5;
+                uv.vertex[i].x = (uv.vertex[i].x/side + 1)*0.5;
+                uv.vertex[i].y = (uv.vertex[i].y/side + 1)*0.5;
             }
         } break;
 

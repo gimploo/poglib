@@ -66,7 +66,7 @@ map_t __impl_map_init(const u64 capacity, const char *type_name, const u32 elem_
 {
     map_t o = {
         .len = 0,
-        .__keys = list_init(char[HT_MAX_KEY_SIZE]),
+        .__keys = __impl_list_init(capacity, "char[64]", HT_MAX_KEY_SIZE),
         .__values = __impl_hashtable_init(capacity, type_name, elem_size),
     };
 
@@ -79,7 +79,8 @@ void * __impl_map_insert(map_t *self, const char *key, const void *value_addr, c
     char buf[HT_MAX_KEY_SIZE] = {0};
     memcpy(buf, key, HT_MAX_KEY_SIZE);
 
-    list_append(&self->__keys, buf);
+    list_append(&self->__keys, key);
+    list_dump(&self->__keys);
     self->len++;
     return __impl_hashtable_insert_key_value_pair_by_value(&self->__values, key, value_addr, value_size);
 }

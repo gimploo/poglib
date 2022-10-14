@@ -28,7 +28,7 @@ c_boxcollider2d_t c_boxcollider2d(vec2f_t side)
 {
     c_boxcollider2d_t o =  (c_boxcollider2d_t ) {
         .centerpos   = vec3f(0.0f),
-        .halfside    = (vec2f_t ){side.cmp[X]/2.0f, side.cmp[Y]/2.0f},
+        .halfside    = (vec2f_t ){side.x/2.0f, side.y/2.0f},
         .side        = side,
         .__prev_frame_overlap = vec2f(0.0f)
     };

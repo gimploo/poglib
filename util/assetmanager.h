@@ -1,5 +1,5 @@
 #pragma once
-#include "../ds/map.h"
+#include <poglib/basic.h>
 #include "./asset.h"
 
 
@@ -66,12 +66,18 @@ asset_t * __impl_assetmanager_add_asset(assetmanager_t *manager, const char *lab
         break;
 
         case AT_GLTEXTURE2D:
-            output.texture2d = gltexture2d_init(filepath01);
+        {
+            gltexture2d_t tex = gltexture2d_init(filepath01);
+            memcpy(&output.texture2d, &tex, sizeof(gltexture2d_t));
+        }
         break;
 
         case AT_FONT_FREETYPE:
+        {
             assert(fontsize != 0);
-            output.font = glfreetypefont_init(filepath01, fontsize);
+            glfreetypefont_t font = glfreetypefont_init(filepath01, fontsize);
+            memcpy(&output.font, &font, sizeof(font)); 
+        }
         break;
 
         case AT_SOUND_WAV:

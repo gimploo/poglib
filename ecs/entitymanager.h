@@ -1,6 +1,5 @@
 #pragma once
 #include "./entity.h"
-#include "../ds/queue.h"
 
 /*=============================================================================
                             - ENTITY MANAGER -
@@ -41,15 +40,15 @@ entitymanager_t entitymanager_init(const u64 total_entity_types)
 {
     assert(total_entity_types > 0);
 
-    list_t map = list_init(total_entity_types, list_t );
+    list_t map = list_init(list_t );
     for (u64 i = 0; i < total_entity_types; i++)
     {
-        list_t tmp = list_init(4, entity_t *);
+        list_t tmp = list_init(entity_t *);
         list_append(&map, tmp);
     }
 
     return (entitymanager_t ) {
-        .entities               = list_init(8, entity_t *),
+        .entities               = list_init(entity_t *),
         .entitymap              = map,
         .__newly_added_entities = queue_init(
                                     MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME, 

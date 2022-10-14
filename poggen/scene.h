@@ -1,6 +1,5 @@
 #pragma once
 #include "../ecs/entitymanager.h"
-#include "../ds/map.h"
 #include "../util/assetmanager.h"
 #include "./action.h"
 
@@ -63,7 +62,7 @@ void scene_register_action(scene_t *scene, const action_t action)
         .label          = #SCENE_NAME,\
         .assets         = NULL,\
         .manager        = entitymanager_init(10),\
-        .__actions      = list_init(MAX_ACTIONS_ALLOWED_PER_SCENE, action_t ),\
+        .__actions      = list_init(action_t ),\
         .__is_paused    = false,\
         .__is_over      = false,\
         .__init         = SCENE_NAME##_init,\

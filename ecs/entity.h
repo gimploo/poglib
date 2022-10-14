@@ -1,9 +1,7 @@
 #pragma once
-#include "../basic.h"
-#include "../math/la.h"
-#include "../ds/hashtable.h"
-#include "../ds/list.h"
-#include <poglib/application/gfx/gl/types.h>
+#include <poglib/basic.h>
+#include <poglib/math.h>
+#include <poglib/gfx/gl/types.h>
 #include "./components.h"
 
 /*============================================================================
@@ -77,7 +75,7 @@ entity_t * __entity_init(const char *label, const entity_enumtype tag)
         .id = (u64 *)e,
         .tag = tag,
         .is_alive = true,
-        .components = list_init(4, entitycomponent_t ),
+        .components = list_init(entitycomponent_t ),
     };
 
     memcpy(e, &tmp, sizeof(tmp));

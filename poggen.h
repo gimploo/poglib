@@ -41,17 +41,16 @@ poggen_t * poggen_init(void)
     if (!global_window)     eprint("A window is required to run poggen\n");
     if (global_poggen)      eprint("Trying to initialize a second `poggen` in the same instance");
 
-    poggen_t tmp =  {
+
+    poggen_t *output = (poggen_t *)calloc(1, sizeof(poggen_t ));
+    assert(output);
+    *output =  (poggen_t ){
         .assets         = assetmanager_init(),
         .scenes         = map_init(MAX_SCENES_ALLOWED, scene_t ),
         .current_scene  = NULL,
         .__window       = global_window
     };
 
-    poggen_t *output = (poggen_t *)calloc(1, sizeof(poggen_t ));
-    assert(output);
-
-    *output         = tmp;
     global_poggen   = output;
 
     return output;
@@ -61,7 +60,9 @@ void __impl_poggen_add_scene(poggen_t *self, const scene_t scene)
 {
     assert(self);
     map_t *map = &self->scenes;
-    scene_t *tmp = (scene_t *)map_insert(map, scene.label, scene);
+    char label[64] = {0};
+    memcpy(label, scene.label, sizeof(label));
+    scene_t *tmp = (scene_t *)map_insert(map, label, scene);
 
     if (!self->current_scene)
         self->current_scene = tmp;
