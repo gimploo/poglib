@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 /*#define GL_LOG_ENABLE*/
-#define WINDOW_GLFW
+#define WINDOW_SDL
 #include <poglib/application.h>
 
 #define vec3f(x) (vec3f_t ){x,x,x}
@@ -35,7 +35,8 @@ int main(void)
 
     glshader_t shader = glshader_from_file_init("./wood.vs", "./wood.fs");
     /*glshader_t shader = glshader_default_init();*/
-    gltexture2d_t texture = gltexture2d_init("./wall.jpg");
+    /*gltexture2d_t texture = gltexture2d_init("./wall.jpg");*/
+    gltexture2d_t texture = gltexture2d_init("./background.png");
     printf("oh\n");
     glrenderer2d_t renderer = {
         .shader = &shader,
