@@ -76,11 +76,10 @@ map_t __impl_map_init(const u64 capacity, const char *type_name, const u32 elem_
 void * __impl_map_insert(map_t *self, const char *key, const void *value_addr, const u64 value_size)
 {
     assert(self);
+
     char buf[HT_MAX_KEY_SIZE] = {0};
     memcpy(buf, key, HT_MAX_KEY_SIZE);
-
-    list_append(&self->__keys, key);
-    list_dump(&self->__keys);
+    list_append(&self->__keys, buf);
     self->len++;
     return __impl_hashtable_insert_key_value_pair_by_value(&self->__values, key, value_addr, value_size);
 }
