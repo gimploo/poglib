@@ -93,7 +93,7 @@ gltexture2d_t gltexture2d_init(const char *filepath)
     int width = 0, height = 0, bpp = 0;
     u8 *buf = NULL;
     stbi_set_flip_vertically_on_load(1);                                
-    buf = stbi_load(filepath, &width, &height, &bpp, 0); //RGB
+    buf = stbi_load(filepath, &width, &height, &bpp, 4); //forcing RGBA per pixel
     if (buf == NULL) eprint("Failed to load texture");
 
     GL_CHECK(glGenTextures(1, &id));
