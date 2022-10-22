@@ -250,7 +250,7 @@ void glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *b
           self->fontatlas[c].tx, self->fontatlas[c].ty + self->fontatlas[c].bh / self->height, 0.0f,
         };
 
-        glquad_t stuff = glquad(quad, color, uv, 0);
+        glquad_t stuff = glquad(quad, color, uv);
 
         glbatch_put(batch, stuff);
     }
