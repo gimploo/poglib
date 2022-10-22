@@ -11,6 +11,7 @@
 typedef struct gltexture2d_t {
     
     GLuint          id; 
+    const char      uniform[16];
     const char      filepath[64];
     const char      type[32];
     unsigned char   *buf;
@@ -38,10 +39,12 @@ void                 gltexture2d_dump(const gltexture2d_t *texture);
  // Implementation
 ------------------------------------------------------*/
 
-#define gltexture2d_bind(ptex, slot) {\
+#define gltexture2d_bind(ptex, slot) do {\
+\
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + (slot)));\
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, (ptex)->id));\
-}
+\
+} while(0)
 #define gltexture2d_unbind()    (GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
 
 

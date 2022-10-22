@@ -26,7 +26,7 @@ typedef struct scene_t {
     bool             __is_paused;
     bool             __is_over;
     void             (*__init)(struct scene_t *);
-    void             (*__update)(struct scene_t *);
+    void             (*__update)(struct scene_t *, const f32 );
     void             (*__input)(const action_t );
     void             (*__render)(struct scene_t *);
     void             (*__destroy)(struct scene_t *);
@@ -35,6 +35,7 @@ typedef struct scene_t {
 
 
 void                scene_register_action(scene_t *scene, const action_t action);
+void                scene_pass_content(scene_t *self, const void *content, const u64 content_size);
 
 #define             scene_get_type(PSCENE)                                     (PSCENE)->__enum_id
 #define             scene_get_engine(...)                                      global_poggen
@@ -45,6 +46,14 @@ void                scene_register_action(scene_t *scene, const action_t action)
 
 #ifndef IGNORE_POGGEN_SCENE_IMPLEMENTATION
 
+void scene_pass_content(scene_t *self, const void *content, const u64 content_size)
+{
+    assert(content);
+
+    self->content = calloc(1, content_size);
+    assert(self->content);
+    memcpy(self->content, content, content_size);
+}
 
 void scene_register_action(scene_t *scene, const action_t action)
 {
@@ -62,6 +71,7 @@ void scene_register_action(scene_t *scene, const action_t action)
         .label          = #SCENE_NAME,\
         .assets         = NULL,\
         .manager        = entitymanager_init(10),\
+        .content        = NULL,\
         .__actions      = list_init(action_t ),\
         .__is_paused    = false,\
         .__is_over      = false,\
@@ -88,6 +98,11 @@ void __scene_destroy(scene_t *scene)
     scene->__render = NULL;
     scene->__destroy = NULL;
     scene->__input = NULL;
+
+    if (scene->content) {
+        free(scene->content);
+        scene->content = NULL;
+    }
 
     list_destroy(&scene->__actions);
 }

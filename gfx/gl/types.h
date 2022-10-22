@@ -6,8 +6,7 @@ typedef struct glvertex2d_t {
 
     vec3f_t position;
     vec4f_t color;
-    vec2f_t texture_coord;
-    u8      texture_id;
+    vec2f_t uv;
 
 } glvertex2d_t ;
 
@@ -94,10 +93,10 @@ typedef struct {
 #define MAX_UVS_PER_CUBE        36
 
 
-gltri_t         gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid);
-glquad_t        glquad(const quadf_t pos, const vec4f_t rgba, const quadf_t uv, const u8 tex_id);
-glcircle_t      glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid);
-glpolygon_t     glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv, u8 texid);
+gltri_t         gltri(trif_t tri, vec4f_t color, quadf_t tex_coord);
+glquad_t        glquad(const quadf_t pos, const vec4f_t rgba, const quadf_t uv);
+glcircle_t      glcircle(circle_t circle, vec4f_t color, quadf_t uv);
+glpolygon_t     glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv);
 
 typedef enum {
 
@@ -232,7 +231,7 @@ const u32 DEFAULT_CUBE_INDICES[] = {
 };
 
 // Creates a quad suited for OpenGL
-glquad_t glquad(const quadf_t positions, const vec4f_t color, const quadf_t tex_coord, const u8 tex_id)
+glquad_t glquad(const quadf_t positions, const vec4f_t color, const quadf_t tex_coord)
 {
     return (glquad_t) { 
 
@@ -241,31 +240,27 @@ glquad_t glquad(const quadf_t positions, const vec4f_t color, const quadf_t tex_
                 positions.vertex[0].raw[X], positions.vertex[0].raw[Y], positions.vertex[0].raw[Z], 
                 color, 
                 tex_coord.vertex[0].raw[X], tex_coord.vertex[0].raw[Y],
-                tex_id
             },
             [TOP_RIGHT] = (glvertex2d_t ){ 
                 positions.vertex[1].raw[X], positions.vertex[1].raw[Y], positions.vertex[1].raw[Z], 
                 color, 
                 tex_coord.vertex[1].raw[X], tex_coord.vertex[1].raw[Y],
-                tex_id
             }, 
             [BOTTOM_RIGHT] = (glvertex2d_t ){ 
                 positions.vertex[2].raw[X], positions.vertex[2].raw[Y], positions.vertex[2].raw[Z], 
                 color, 
                 tex_coord.vertex[2].raw[X], tex_coord.vertex[2].raw[Y],
-                tex_id
             }, 
             [BOTTOM_LEFT] = (glvertex2d_t ){ 
                 positions.vertex[3].raw[X], positions.vertex[3].raw[Y], positions.vertex[3].raw[Z], 
                 color, 
                 tex_coord.vertex[3].raw[X], tex_coord.vertex[3].raw[Y],
-                tex_id
             } 
         }
     };
 }
 
-gltri_t gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid)
+gltri_t gltri(trif_t tri, vec4f_t color, quadf_t tex_coord)
 {
     return (gltri_t) {
 
@@ -273,24 +268,21 @@ gltri_t gltri(trif_t tri, vec4f_t color, quadf_t tex_coord, u8 texid)
             tri.vertex[0].raw[X], tri.vertex[0].raw[Y], tri.vertex[0].raw[Z], 
             color, 
             tex_coord.vertex[0].raw[X], tex_coord.vertex[0].raw[Y],
-            texid
         }, 
         .vertex[1] = (glvertex2d_t ){ 
             tri.vertex[1].raw[X], tri.vertex[1].raw[Y], tri.vertex[1].raw[Z], 
             color, 
             tex_coord.vertex[1].raw[X], tex_coord.vertex[1].raw[Y],
-            texid
         }, 
         .vertex[2] = (glvertex2d_t ) { 
             tri.vertex[2].raw[X], tri.vertex[2].raw[Y], tri.vertex[2].raw[Z], 
             color, 
             tex_coord.vertex[2].raw[X], tex_coord.vertex[2].raw[Y],
-            texid
         }, 
     };
 }
 
-glpolygon_t glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv, u8 texid)
+glpolygon_t glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv)
 {
     glpolygon_t output = {0} ;
 
@@ -312,13 +304,12 @@ glpolygon_t glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv, u8 texid)
     {
         vertices[i].position = polygon.vertices.points[i];
         vertices[i].color = color; 
-        vertices[i].texture_coord = glms_vec2(uv.vertex[i]);
-        vertices[i].texture_id = texid;
+        vertices[i].uv = glms_vec2(uv.vertex[i]);
     }
     return output;
 }
 
-glcircle_t glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
+glcircle_t glcircle(circle_t circle, vec4f_t color, quadf_t uv)
 {
     glcircle_t output = {0} ;
 
@@ -339,8 +330,7 @@ glcircle_t glcircle(circle_t circle, vec4f_t color, quadf_t uv, u8 texid)
     {
         vertices[i].position = circle.points[i];
         vertices[i].color = color; 
-        vertices[i].texture_coord = glms_vec2(uv.vertex[i]);
-        vertices[i].texture_id = texid;
+        vertices[i].uv = glms_vec2(uv.vertex[i]);
     }
     return output;
 }

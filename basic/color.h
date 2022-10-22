@@ -8,4 +8,4 @@
 #define COLOR_CYAN      (vec4f_t ){0.0f, 1.0f, 1.0f, 1.0f}
 #define COLOR_GRAY      (vec4f_t ){0.4f, 0.4f, 0.4f ,1.0f}
 #define COLOR_DARK_GRAY (vec4f_t ){0.1f, 0.1f, 0.1f, 1.0f}
-
+#define COLOR_NEUTRAL   COLOR_WHITE

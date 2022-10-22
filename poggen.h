@@ -22,7 +22,7 @@ poggen_t *          poggen_init(void);
 void                poggen_remove_scene(poggen_t *self, const char *label);
 void                poggen_change_scene(poggen_t *self, const char *scene_label);
 
-void                poggen_update(poggen_t *self);
+void                poggen_update(poggen_t *self, const f32 dt);
 #define             poggen_render(PGEN)                                         (PGEN)->current_scene->__render((PGEN)->current_scene)
 
 void                poggen_destroy(poggen_t *self);
@@ -84,7 +84,7 @@ void poggen_change_scene(poggen_t *self, const char *scene_label)
     assert(self);
     assert(scene_label);
 
-    map_t *table = &self->scenes;
+    const map_t *table = &self->scenes;
 
     scene_t *scene = (scene_t *)map_get_value(table, scene_label);
     assert(scene);
@@ -119,14 +119,13 @@ void __poggen_update_user_input(poggen_t *self)
     }
 }
 
-void poggen_update(poggen_t *self)
+void poggen_update(poggen_t *self, const f32 dt)
 {
     assert(self);
     scene_t *current_scene = self->current_scene;
     if (current_scene == NULL) eprint("Current scene is null");
-
     __poggen_update_user_input(self);
-    current_scene->__update(current_scene);
+    current_scene->__update(current_scene, dt);
 
 }
 

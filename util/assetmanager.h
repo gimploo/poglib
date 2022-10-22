@@ -68,6 +68,7 @@ asset_t * __impl_assetmanager_add_asset(assetmanager_t *manager, const char *lab
         case AT_GLTEXTURE2D:
         {
             gltexture2d_t tex = gltexture2d_init(filepath01);
+            memcpy((char *)tex.uniform, label, sizeof(tex.uniform));
             memcpy(&output.texture2d, &tex, sizeof(gltexture2d_t));
         }
         break;

@@ -151,7 +151,7 @@ void            window_subwindow_destroy(window_t *subwindow);
 
 #ifndef IGNORE_SDL_WINDOW_IMPLEMENTATION
 
-#define DEFAULT_BACKGROUND_COLOR (vec4f_t ){ 0.0f, 1.0f, 0.0f, 0.0f}
+#define DEFAULT_BACKGROUND_COLOR (vec4f_t ){ 1.0f, 0.0f, 0.0f, 1.0f}
 
 bool window_mouse_button_just_pressed(
         window_t *window, 
@@ -264,9 +264,9 @@ bool window_mouse_wheel_is_scroll_left(window_t *w)
             (PWINDOW)->background_color.raw[3]\
     ));\
     GL_CHECK(glEnable(GL_BLEND));\
+    GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
     GL_CHECK(glEnable(GL_DEPTH_TEST));\
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));\
-    GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
 \
 } while(0)
 
