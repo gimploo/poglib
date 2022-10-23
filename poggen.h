@@ -124,8 +124,10 @@ void poggen_update(poggen_t *self, const f32 dt)
     assert(self);
     scene_t *current_scene = self->current_scene;
     if (current_scene == NULL) eprint("Current scene is null");
+
+    current_scene->dt = dt;
     __poggen_update_user_input(self);
-    current_scene->__update(current_scene, dt);
+    current_scene->__update(current_scene);
 
 }
 
