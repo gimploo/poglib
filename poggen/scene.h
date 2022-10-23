@@ -16,20 +16,19 @@
 
 typedef struct scene_t {
 
-    const char       *label;
-    assetmanager_t   *assets;
-    entitymanager_t  manager;
-
-    void             *content;
-    
-    list_t           __actions;                     // Action map
-    bool             __is_paused;
-    bool             __is_over;
-    void             (*__init)(struct scene_t *);
-    void             (*__update)(struct scene_t *, const f32 );
-    void             (*__input)(const action_t );
-    void             (*__render)(struct scene_t *);
-    void             (*__destroy)(struct scene_t *);
+    const char           *label;
+    assetmanager_t       *assets;
+    entitymanager_t      manager;
+    f32                  dt;
+    void                 *content;
+    list_t               __actions;                     // Action map
+    bool                 __is_paused;
+    bool                 __is_over;
+    void                 (*__init)(struct scene_t *);
+    void                 (*__update)(struct scene_t *);
+    void                 (*__input)(const action_t );
+    void                 (*__render)(struct scene_t *);
+    void                 (*__destroy)(struct scene_t *);
 
 } scene_t ;
 
