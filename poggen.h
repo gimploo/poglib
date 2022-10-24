@@ -1,6 +1,7 @@
 #pragma once
 #include "./util/assetmanager.h"
 #include "./poggen/scene.h"
+#include "poggen/action.h"
 
 /*=============================================================================
                              - GAME ENGINE -
@@ -107,12 +108,26 @@ void __poggen_update_user_input(poggen_t *self)
         assert(i); 
         action_t action = *(action_t *)i; 
 
-        switch(win->lastframe.state)
+        switch(win->thisframe.kstate)
         {
             case SDL_KEYUP:
             case SDL_KEYDOWN:
-                if (action.key == win->lastframe.key) {
-                    current_scene->__input(action); 
+                if (action.key == win->thisframe.key) {
+                    switch(action.type)
+                    {
+                        case ACTION_TYPE_JUSTPRESSED:
+                            if (window_keyboard_is_key_just_pressed(win, action.key))
+                                current_scene->__input(current_scene, action); 
+                        break;
+                        case ACTION_TYPE_PRESSED:
+                            if (window_keyboard_is_key_pressed(win, action.key))
+                                current_scene->__input(current_scene, action); 
+                        break;
+                        case ACTION_TYPE_HELD:
+                            if (window_keyboard_is_key_held(win, action.key))
+                                current_scene->__input(current_scene, action); 
+                        break;
+                    }
                 } 
             break;
         }

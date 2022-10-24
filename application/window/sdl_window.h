@@ -34,11 +34,13 @@ typedef enum {
 } sdl_mousestate;
 
 typedef enum {
+
     SDL_MOUSEWHEEL_NONE,
     SDL_MOUSEWHEEL_UP,
     SDL_MOUSEWHEEL_DOWN,
     SDL_MOUSEWHEEL_LEFT,
     SDL_MOUSEWHEEL_RIGHT,
+
 } sdl_mousewheelstate;
 
 typedef enum {
@@ -86,9 +88,9 @@ typedef struct window_t {
     } subwindow;
 
     struct {
-        SDL_Keycode     key; 
-        SDL_EventType   state;
-    } lastframe;
+        SDL_Keycode         key; 
+        SDL_EventType       kstate;
+    } thisframe;
 
     u32                 __sdl_window_id;    // useful for managing multiple windows
     SDL_Window          *__sdl_window;      // initializes the window 
@@ -779,9 +781,8 @@ void window_update_user_input(window_t *window)
         window->mouse.state = SDL_MOUSESTATE_PRESSED;
     }
 
-    window->lastframe.key = SDLK_UNKNOWN;
-    window->lastframe.state = SDL_KEYSTATE_UNKNOWN;
-
+    window->thisframe.key = SDLK_UNKNOWN;
+    window->thisframe.kstate = SDL_KEYSTATE_UNKNOWN;
 
     while(SDL_PollEvent(event) > 0) 
     {
@@ -870,15 +871,15 @@ void window_update_user_input(window_t *window)
             break;
 
             case SDL_KEYDOWN:
-                window->lastframe.key      = event->key.keysym.sym;
-                window->lastframe.state    = SDL_KEYDOWN;
+                window->thisframe.key      = event->key.keysym.sym;
+                window->thisframe.kstate    = SDL_KEYDOWN;
 
                 __keyboard_update_buffers(window, SDL_KEYDOWN, event->key.keysym.scancode);
             break;
 
             case SDL_KEYUP:
-                window->lastframe.key      = event->key.keysym.sym;
-                window->lastframe.state    = SDL_KEYUP;
+                window->thisframe.key      = event->key.keysym.sym;
+                window->thisframe.kstate    = SDL_KEYUP;
 
                 __keyboard_update_buffers(window, SDL_KEYUP, event->key.keysym.scancode);
             break;
