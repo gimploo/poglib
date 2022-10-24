@@ -26,7 +26,7 @@ typedef struct scene_t {
     bool                 __is_over;
     void                 (*__init)(struct scene_t *);
     void                 (*__update)(struct scene_t *);
-    void                 (*__input)(const action_t );
+    void                 (*__input)(struct scene_t *, const action_t );
     void                 (*__render)(struct scene_t *);
     void                 (*__destroy)(struct scene_t *);
 
