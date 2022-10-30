@@ -65,3 +65,10 @@ int randint(int min, int max)
     srand(time(NULL));
     return (rand() % ((max-1) - min + 1)) + min;
 }
+
+f32 randf32(const f32 min, const f32 max)
+{
+    srand(time(NULL));
+    float scale = rand() / (float) RAND_MAX; /* [0, 1.0] */
+    return min + scale * ( max - min );      /* [min, max] */
+}
