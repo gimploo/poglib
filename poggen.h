@@ -54,7 +54,7 @@ poggen_t * poggen_init(void)
 
     global_poggen   = output;
 
-    return output;
+    return global_poggen;
 }
 
 void __impl_poggen_add_scene(poggen_t *self, const scene_t scene)
