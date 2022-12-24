@@ -1,5 +1,4 @@
-#include <poglib/ds.h>
-
+#include <poglib/basic.h>
 
 typedef struct foo {
     const char *label;
@@ -41,7 +40,7 @@ list_t dummy(void)
         .label = "c",
         .list = {11,12,13,14,15}
     };
-    list_t list = list_init(3, foo);
+    list_t list = list_init(foo);
 
     /*list_dump(&list);*/
 
@@ -77,7 +76,7 @@ int test05(void)
     };
 
     foo *values[3] = { &a, &b, &c };
-    list_t list = list_init(3, foo *);
+    list_t list = list_init(foo *);
 
     /*list_dump(&list);*/
 
@@ -152,7 +151,7 @@ void print_str(void *x)
 int test02(void)
 {
     dbg_init();
-    list_t list = list_init(10, str_t );
+    list_t list = list_init(str_t );
 
     str_t words[] = {
         str("yo"),
@@ -176,7 +175,7 @@ int test02(void)
 
 int test03(void)
 {
-    list_t list = list_init(2, u32);
+    list_t list = list_init(u32);
 
     list_print(&list, print_u32);
 
@@ -224,11 +223,11 @@ int test03(void)
 
 int test04(void)
 {
-    list_t list = list_init(4, list_t );
+    list_t list = list_init(list_t );
 
     for (int i = 0; i < 4; i++)
     {
-        list_t tmp = list_init(4, foo);
+        list_t tmp = list_init(foo);
         list_append(&list, tmp);
     }
 
@@ -308,7 +307,7 @@ int test04(void)
 
 void test06()
 {
-    list_t list = list_init(10, u32);
+    list_t list = list_init(u32);
 
     int values[] = { 1,2,3,4,5,6,7,8,9,10};
     int *ptrs[] = {&values[0], &values[1], &values[2], &values[3], &values[4], &values[5] };
