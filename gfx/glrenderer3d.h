@@ -5,7 +5,7 @@
 #include "gl/objects.h"
 #include "gl/framebuffer.h"
 #include "gl/types.h"
-#include "gl/model.h"
+#include "model/assimp.h"
 
 /*=============================================================================
                         - OPENGL 2D RENDERER -
@@ -110,50 +110,17 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
 
 void glrenderer3d_draw_mesh(const glrenderer3d_t *self, const glmesh_t *mesh)
 {
-    assert(!self->texture);
-
-    // bind appropriate textures
-    unsigned int diffuseNr  = 1;
-    unsigned int specularNr = 1;
-    unsigned int normalNr   = 1;
-    unsigned int heightNr   = 1;
-    u32 i = 0;
-
-    list_iterator(&mesh->__gltextures, iter)
-    {
-        gltexture2d_t *texture = (gltexture2d_t *)iter;
-
-        // retrieve texture number (the N in diffuse_textureN)
-        char number[16] = {0};
-        char name[32] = {0};
-        cstr_copy(name, texture->type);
-
-        if(strcmp(name, "texture_diffuse") == 0)
-            snprintf(number, sizeof(number), "%i", diffuseNr++);
-        else if(strcmp(name, "texture_specular") == 0)
-            snprintf(number, sizeof(number), "%i", specularNr++);
-        else if(strcmp(name, "texture_normal") == 0)
-            snprintf(number, sizeof(number), "%i", normalNr++);
-        else if(strcmp(name, "texture_height") == 0)
-            snprintf(number, sizeof(number), "%i", heightNr++);
-
-        // now set the sampler to the correct texture unit
-        char name_plus_num[32] = {0};
-        snprintf(name_plus_num, sizeof(name_plus_num), "%s%s", name, number);
-
-        glshader_send_uniform_ival(self->shader, name_plus_num, i);
-        gltexture2d_bind(self->texture, i);
-
-        i++;
-    }
-
     glshader_bind(self->shader);
+
+    if (self->texture)
+        gltexture2d_bind(self->texture, 0);
+
     vao_draw_with_ebo(&mesh->__vao, &mesh->__ebo);
 }
 
 void glrenderer3d_draw_model(const glrenderer3d_t *self, const glmodel_t *model)
 {
-    list_iterator(&model->meshes, mesh)
+    list_iterator(&model->meshes, mesh) 
         glrenderer3d_draw_mesh(self, (glmesh_t *)mesh);
 }
 #endif
