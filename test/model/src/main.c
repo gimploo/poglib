@@ -7,10 +7,10 @@
 
 typedef struct content_t {
 
-    glmodel_t model;
-    glshader_t shader;
-    gltexture2d_t texture;
-    glcamera_t camera;
+    glmodel_t       model;
+    glshader_t      shader;
+    gltexture2d_t   texture;
+    glcamera_t      camera;
 
 } content_t ;
 
@@ -20,7 +20,7 @@ void model_init(application_t *app)
         .model = glmodel_init("res/backpack.obj"),
         .shader = glshader_from_file_init("res/shader.vs", "res/shader.fs"),
         .texture = gltexture2d_init("res/diffuse.jpg"),
-        .camera = glcamera_perspective((vec3f_t ) { 0.0f, 0.0f, 6.0f }),
+        .camera = glcamera_perspective((vec3f_t ) { 0.0f, 0.0f, 8.0f }),
     };
 
     application_pass_content(app, &cont);
@@ -79,7 +79,8 @@ int main(void)
             .width = WINDOW_WIDTH,
             .height = WINDOW_HEIGHT,
             .aspect_ratio = (f32)WINDOW_WIDTH / (f32)WINDOW_HEIGHT,
-            .fps_limit = 60
+            .fps_limit = 60,
+            .background_color = COLOR_WHITE
         },   
         .content = {
             .size = sizeof(content_t )
