@@ -30,6 +30,7 @@ typedef struct application_t {
         u32                 height;
         f32                 aspect_ratio;
         u32                 fps_limit;
+        vec4f_t             background_color;
     } window;
 
     struct {
@@ -58,7 +59,6 @@ void            application_pass_content(application_t *app, const void *content
 void            application_run(application_t *app);
 
 #define         application_set_font(PAPP, FONT)            (PAPP)->__handler->fontrenderer = FONT
-#define         application_set_background(PAPP, COLOR)     (PAPP)->__handler->window->background_color = COLOR
 
 #define         application_get_game(PAPP)                  (PAPP)->__handler.content
 #define         application_get_content(PAPP)               (PAPP)->__handler.content
@@ -115,6 +115,8 @@ void application_run(application_t *app)
             app->window.height, 
             flags);
     assert(win);
+
+    win->background_color = app->window.background_color;
 
     stopwatch_t timer = stopwatch();
 
