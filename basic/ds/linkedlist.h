@@ -40,7 +40,7 @@ node_t *    node_init(void *value, uint32_t value_size);
 bool        llist_append_node(llist_t *list, node_t *node);
 bool        llist_delete_node(llist_t *list, node_t *node);
 bool        llist_delete_node_by_value(llist_t *list, void *value,  bool (*compare)(node_t *arg01, void *arg02));
-node_t *    list_get_node_by_value(llist_t *list, void *value);
+node_t *    llist_get_node_by_value(llist_t *list, void *value, bool (*compare)(node_t *arg01, void *arg02));
 void        llist_print(llist_t *list, void (*print)(void *));
 void        llist_destory(llist_t *list);
 
@@ -104,15 +104,14 @@ void node_destroy(node_t *del)
     del = NULL;
 }
 
-node_t * list_get_node_by_value(llist_t *list, void *value)
+node_t * llist_get_node_by_value(llist_t *list, void *value, bool (*compare)(node_t *, void *val))
 {
     node_t *tmp = list->head;
     node_t *del = NULL;
     while (tmp != NULL) {
-        if (tmp->value == value) return tmp;
+        if (compare(tmp, value)) return tmp;
         tmp = tmp->next;
     }
-
     return NULL;
 }
 
