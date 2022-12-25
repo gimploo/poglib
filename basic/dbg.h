@@ -294,7 +294,7 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
         char **sts = ((dbg_node_info_t *)tmp->value)->stacktraces;
         for (int i = 0; i < MAX_STACKTRACES_IN_NODE; i++) 
         {
-            printf("%s\n", sts[i]); 
+            printf("\t %s\n", sts[i]); 
             free(sts[i]);
         }
         free(sts);
@@ -367,7 +367,7 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
             char **sts = ((dbg_node_info_t *)node->value)->stacktraces;
             for (int i = 0; i < MAX_STACKTRACES_IN_NODE; i++) 
             {
-                printf("%s\n", sts[i]); 
+                printf("\t %s\n", sts[i]); 
                 free(sts[i]);
             }
             free(sts);
