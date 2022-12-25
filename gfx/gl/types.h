@@ -69,7 +69,7 @@ void glmesh_destroy(glmesh_t *self)
     vbo_destroy(&self->__vbo);
     ebo_destroy(&self->__ebo);
 
-    list_destroy((list_t *)&self->__vtx);
+    slot_destroy((slot_t *)&self->__vtx);
     list_destroy((list_t *)&self->__idx);
 }
 

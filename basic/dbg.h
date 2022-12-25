@@ -81,7 +81,10 @@ typedef struct dbg_node_info_t {
     char        filename[WORD];
     char        funcname[WORD];
     uint32_t    linenum;
+
+
     char        *stacktraces[MAX_STACKTRACES_IN_NODE];
+    int         nstacktraces;
 
 } dbg_node_info_t ;
 
@@ -108,12 +111,13 @@ void __dbg_set_stacktraces(dbg_node_info_t *dn)
     symbol->MaxNameLen   = 255;
     symbol->SizeOfStruct = sizeof( SYMBOL_INFO );
 
-    for(int i = 2, j = -1; i <= MAX_STACKTRACES_IN_NODE; i++ )
+    for(int i = 2, j = -1; i < frames; i++ )
     {
         dn->stacktraces[++j] = calloc(1024, sizeof(char));
         SymFromAddr( process, ( DWORD64 )( stack[ i ] ), 0, symbol );
         sprintf(dn->stacktraces[j], " %02i |  %s [0x%0X]", frames - i, symbol->Name, symbol->Address );
     }
+    dn->nstacktraces = frames;
     free(symbol);
 
 #elif defined(__linux__)
@@ -124,12 +128,13 @@ void __dbg_set_stacktraces(dbg_node_info_t *dn)
     char **strings = backtrace_symbols(array, size);
     if (strings != NULL)
     {
-        for (int i = 2, j = -1; i <= MAX_STACKTRACES_IN_NODE; i++) 
+        for (int i = 2, j = -1; i < size; i++) 
         {
             dn->stacktraces[++j] = (char *)calloc(1024, sizeof(char));
             sprintf(dn->stacktraces[j], " %02i |  %s", (size - i), strings[i]);
         }
     }
+    dn->nstacktraces = size;
     free (strings);
 
 #endif
@@ -247,7 +252,8 @@ static void * _debug_malloc(const size_t size, const char *file_path, const size
 
 bool compare_dbg(node_t *arg01, void *arg02)
 {
-    return (((dbg_node_info_t *)arg01->value)->value == arg02);
+    dbg_node_info_t *info = (dbg_node_info_t *)arg01->value;
+    return (info->value == arg02);
 }
 
 void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size, const char *file_path, const size_t line_num, const char *func_name)
@@ -284,22 +290,22 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
 
     if (!tmp) {
 
-        debug_mem_dump();
-        printf("%s:%li: (%s) pointer not found %p\n", file_path,line_num, pointer_name, pointer);
-        exit(1);
-
-    } else {
-
         printf("%s:%li: TRYED TO REALLOC\n", file_path,line_num);
         char **sts = ((dbg_node_info_t *)tmp->value)->stacktraces;
-        for (int i = 0; i < MAX_STACKTRACES_IN_NODE; i++) 
+        dbg_node_info_t *j = tmp->value;
+        for (int i = 0; i < j->nstacktraces; i++) 
         {
             printf("\t %s\n", sts[i]); 
             free(sts[i]);
         }
-        free(sts);
-        node_destroy(tmp);
+
+        debug_mem_dump();
+        printf("%s:%li: (%s) pointer not found %p\n", file_path,line_num, pointer_name, pointer);
+        exit(1);
+
     }
+
+    llist_delete_node(list, tmp);
 
     dbg_node_info_t info;
     info.value = realloc_mem;
@@ -323,9 +329,14 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
 void _debug_free(void *pointer, const char *pointer_name , const char *file_path, const size_t line_num, const char *func_name)
 {
 #undef free
-
     FILE *fp = global_debug.fp;
+    if(!fp) {
+        fprintf(stderr, "You forgot to add dbg_init() in your code"); 
+        exit(0);
+    }
+
     llist_t *list = &global_debug.list;
+    assert(list);
 
     if (__is_file_in_ignore_files(file_path)) {
             fprintf(fp,"%s file ignored\n", file_path);
@@ -334,44 +345,40 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
             return;
     }
 
-    if(!fp) {
-        fprintf(stderr, "You forgot to add dbg_init() in your code"); 
-        exit(0);
-    }
-    assert(list);
-
-    fprintf(fp, "%s: \tIn function '%s':\n", file_path, func_name);
-    fprintf(fp, "%s:%li: \t\033[01;32m(%p) DEALLOCATED  \033[0m\n" 
-            ,file_path, line_num, pointer);
-    fprintf(fp, "\n");
+    fprintf(fp, "%s: \tIn function '%s':\n%s:%li: \t\033[01;32m(%p) DEALLOCATED  \033[0m\n\n" 
+            , file_path, func_name, file_path, line_num, pointer);
     
-    free(pointer);
+    node_t *node = llist_get_node_by_value(list, pointer, compare_dbg);
 
-    if (list->count != 0) {
-
-        node_t *node = llist_get_node_by_value(list, pointer, compare_dbg);
-
+    if (list->count > 0) {
+    
         if (!node) {
+
+            printf("%s:%li: TRYED TO FREE\n", file_path,line_num);
+            dbg_node_info_t * tmp = (dbg_node_info_t *)node->value;
+            char **sts = tmp->stacktraces;
+            for (int i = 0; i < tmp->nstacktraces; i++) 
+            {
+                printf("\t %s\n", sts[i]); 
+                free(sts[i]);
+            }
 
             debug_mem_dump();
 
-            if (!pointer) fprintf(stderr, "[DBG] `%s` is a null pointer\n", pointer_name);
-            else fprintf(stderr, "[DBG] `%s` is a pointer to address %x\n", pointer);
+            if (!pointer) 
+                fprintf(stderr, "[DBG] `%s` is a null pointer\n", pointer_name);
+            else 
+                fprintf(stderr, "[DBG] `%s` is a pointer to address %x\n", pointer);
 
             stacktrace_print();
             exit(1);
 
         } else {
 
-            printf("%s:%li: TRYED TO FREE\n", file_path,line_num);
-            char **sts = ((dbg_node_info_t *)node->value)->stacktraces;
-            for (int i = 0; i < MAX_STACKTRACES_IN_NODE; i++) 
-            {
-                printf("\t %s\n", sts[i]); 
-                free(sts[i]);
-            }
-            free(sts);
-            node_destroy(node);
+//NOTE: dont know why but the undef statment needs to be there for this to work properly 
+//and not smash the stack from recursive calls
+#undef free
+            llist_delete_node(list, node);
         }
 
     } else {
@@ -379,9 +386,11 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
         printf("[!] Warning DBG tried to delete pointer %p from the list but the list is empty\n");
     }
 
+    free(pointer);
     pointer = NULL;
 
 #define free(P) _debug_free((P), (#P), __FILE__, __LINE__, __func__) 
+
 }
 
 

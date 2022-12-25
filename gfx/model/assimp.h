@@ -106,13 +106,12 @@ glmodel_t glmodel_init(const char *filepath)
 
 void glmodel_destroy(glmodel_t *self)
 {
-    memset(self->filepath, 0, sizeof(self->filepath));
-
     list_iterator(&self->meshes, iter) {
-        glmesh_t *mesh = (glmesh_t *)iter;
-        glmesh_destroy(mesh);
+        glmesh_destroy((glmesh_t *)iter);
     }
     list_destroy(&self->meshes);
+
+    memset(self->filepath, 0, sizeof(self->filepath));
 }
 
 

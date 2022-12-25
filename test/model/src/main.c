@@ -46,6 +46,7 @@ void model_update(application_t *app)
     glshader_send_uniform_matrix4f(
             &c->shader, "view", 
             glcamera_getview(&c->camera));
+
 }
 
 void model_render(application_t *app) 
@@ -66,9 +67,9 @@ void model_destroy(application_t *app)
     window_t *win = application_get_window(app);
     content_t *c = application_get_content(app);
 
-    glmodel_destroy(&c->model);
     glshader_destroy(&c->shader);
     gltexture2d_destroy(&c->texture);
+    glmodel_destroy(&c->model);
 }
 
 int main(void)
