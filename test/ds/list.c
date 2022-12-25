@@ -1,3 +1,4 @@
+#define DEBUG
 #include <poglib/basic.h>
 
 typedef struct foo {
@@ -333,11 +334,13 @@ void test06()
 
 int main(void)
 {
+    dbg_init();
     test01();
     test02();
     test03();
     test04();
     test06();
 
+    dbg_destroy();
     return 0;
 };

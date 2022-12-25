@@ -109,7 +109,9 @@ node_t * llist_get_node_by_value(llist_t *list, void *value, bool (*compare)(nod
     node_t *tmp = list->head;
     node_t *del = NULL;
     while (tmp != NULL) {
-        if (compare(tmp, value)) return tmp;
+        if (compare(tmp, value)) {
+            return tmp;
+        }
         tmp = tmp->next;
     }
     return NULL;

@@ -105,7 +105,6 @@ void __impl_list_append(list_t *list, const void *value_addr, u64 value_size)
     assert(value_addr);
     if (value_size != list->__elem_size) eprint("trying to push a value of size %lu to slot of size %lu", value_size, list->__elem_size);
 
-
     if (list->__top == (i64)(list->__capacity - 1)) {
 
         list->__capacity = list->__capacity * 2;
