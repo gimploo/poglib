@@ -1,5 +1,5 @@
 #define DEBUG
-#include "../../dbg.h"
+#include <poglib/basic.h>
 #include "./folder/foo.h"
 
 int main(void)
