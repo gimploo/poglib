@@ -88,6 +88,22 @@ typedef struct dbg_node_info_t {
 
 } dbg_node_info_t ;
 
+void __dbg_stacktraces_free(void)
+{
+#undef free
+    llist_t *list = &global_debug.list;
+
+    node_t *cur = list->head;
+    while (cur) {
+        dbg_node_info_t *info = cur->value;
+        for (int i = 0; i < info->nstacktraces; i++) {
+            memset(info->stacktraces[i], 0, 1024);
+            free(info->stacktraces[i]);
+        }
+        cur = cur->next;
+    }
+#define free(P)         _debug_free((P), (#P), __FILE__, __LINE__, __func__) 
+}
 
 void __dbg_set_stacktraces(dbg_node_info_t *dn)
 {
@@ -111,13 +127,15 @@ void __dbg_set_stacktraces(dbg_node_info_t *dn)
     symbol->MaxNameLen   = 255;
     symbol->SizeOfStruct = sizeof( SYMBOL_INFO );
 
+    int count = 0;
     for(int i = 2, j = -1; i < frames; i++ )
     {
         dn->stacktraces[++j] = calloc(1024, sizeof(char));
         SymFromAddr( process, ( DWORD64 )( stack[ i ] ), 0, symbol );
         sprintf(dn->stacktraces[j], " %02i |  %s [0x%0X]", frames - i, symbol->Name, symbol->Address );
+        count++;
     }
-    dn->nstacktraces = frames;
+    dn->nstacktraces = count;
     free(symbol);
 
 #elif defined(__linux__)
@@ -126,15 +144,17 @@ void __dbg_set_stacktraces(dbg_node_info_t *dn)
 
     int size = backtrace (array, 10);
     char **strings = backtrace_symbols(array, size);
+    int count = 0;
     if (strings != NULL)
     {
         for (int i = 2, j = -1; i < size; i++) 
         {
             dn->stacktraces[++j] = (char *)calloc(1024, sizeof(char));
             sprintf(dn->stacktraces[j], " %02i |  %s", (size - i), strings[i]);
+            count++;
         }
     }
-    dn->nstacktraces = size;
+    dn->nstacktraces = count;
     free (strings);
 
 #endif
@@ -185,14 +205,14 @@ bool dbg_init(void)
 void debugprint(void *arg)
 {
     assert(arg);
-
     dbg_node_info_t info = *(dbg_node_info_t *)arg;
 
     const char* fmt = 
         "\033[01;33m%s:%02i\033[0m In function '%s': \033[01;32m %p (%0i bytes)\033[0m\n";
 
     fprintf(stdout, fmt, info.filename, info.linenum, info.funcname, info.value, info.bytes);
-
+    for (int i = 0; i < info.nstacktraces; i++)
+        fprintf(stdout, "\t %s\n", info.stacktraces[i]);
 
 }
 
@@ -304,8 +324,12 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
         exit(1);
 
     }
+    dbg_node_info_t *j = tmp->value;
+    for (int i = 0; i < j->nstacktraces; i++) 
+        free(j->stacktraces[i]);
 
     llist_delete_node(list, tmp);
+
 
     dbg_node_info_t info;
     info.value = realloc_mem;
@@ -357,8 +381,7 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
             printf("%s:%li: TRYED TO FREE\n", file_path,line_num);
             dbg_node_info_t * tmp = (dbg_node_info_t *)node->value;
             char **sts = tmp->stacktraces;
-            for (int i = 0; i < tmp->nstacktraces; i++) 
-            {
+            for (int i = 0; i < tmp->nstacktraces; i++) {
                 printf("\t %s\n", sts[i]); 
                 free(sts[i]);
             }
@@ -378,6 +401,10 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
 //NOTE: dont know why but the undef statment needs to be there for this to work properly 
 //and not smash the stack from recursive calls
 #undef free
+            dbg_node_info_t *tmp = node->value;
+            for (int i = 0; i < tmp->nstacktraces; i++) {
+                free(tmp->stacktraces[i]);
+            }
             llist_delete_node(list, node);
         }
 
@@ -411,9 +438,10 @@ void dbg_destroy(void)
                 "MEMORY LEAK FOUND: (%0li) COUNT\n", global_debug.list.count);
         fprintf(stdout, 
                 "\n\t\033[01;31m MEMORY LEAK FOUND\033[0m: (%02li)\n\n", global_debug.list.count);
-        debug_mem_dump();
-    }
 
+        debug_mem_dump();
+
+    }
     llist_destroy(&global_debug.list);
 
     fclose(global_debug.fp);
