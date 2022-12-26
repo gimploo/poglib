@@ -2,7 +2,7 @@
 #include <poglib/basic.h>
 #include "./folder/foo.h"
 
-int main(void)
+int test01(void)
 {
     dbg_init();
 
@@ -19,7 +19,7 @@ int main(void)
     return 0;
 }
 
-int oldmain(void)
+int test02(void)
 {
     dbg_init();
 
@@ -56,5 +56,14 @@ int oldmain(void)
     }
 
     dbg_destroy();
+    return 0;
+}
+
+int main(void)
+{
+    printf("Test 01\n");
+    /*test01();*/
+    printf("Test 02\n");
+    test02();
     return 0;
 }
