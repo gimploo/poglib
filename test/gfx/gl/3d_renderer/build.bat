@@ -6,7 +6,7 @@ REM                 -- WINDOWS BUILD SCRIPT FOR C PROJECTS --
 REM ===========================================================================
 
 REM Include required dependencies
-set LIBRARY_LIST=GLFW GLEW FREETYPE POGLIB
+set LIBRARY_LIST=GLFW SDL2 GLEW FREETYPE POGLIB
 set GLFW_URL=https://github.com/glfw/glfw/releases/download/3.3.8/glfw-3.3.8.bin.WIN64.zip
 set SDL2_URL=https://www.libsdl.org/release/SDL2-devel-2.0.20-VC.zip
 set GLEW_URL=https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0-win32.zip
@@ -113,6 +113,7 @@ REM                            v
 
     set INCLUDES=/I %LIBRARY_DEFAULT_PATH%\GLEW\include ^
                     /I %LIBRARY_DEFAULT_PATH%\FREETYPE\include ^
+                    /I %LIBRARY_DEFAULT_PATH%\poglib\external\assimp\include ^
                     /I %LIBRARY_DEFAULT_PATH%\SDL2\include ^
                     /I %LIBRARY_DEFAULT_PATH%\GLFW\include ^
                     /I %LIBRARY_DEFAULT_PATH%\
@@ -125,6 +126,7 @@ REM                            v
 
     set LIBS=%LIBRARY_DEFAULT_PATH%\GLEW\lib\Release\x64\glew32s.lib ^
                 %LIBRARY_DEFAULT_PATH%\FREETYPE\lib\win64\freetype.lib ^
+                %LIBRARY_DEFAULT_PATH%\poglib\external\assimp\lib\Debug\assimp-vc143-mtd.lib ^
                 %LIBRARY_DEFAULT_PATH%\GLFW\lib\glfw3dll.lib ^
                 %LIBRARY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.lib ^
                 %LIBRARY_DEFAULT_PATH%\SDL2\lib\x64\SDL2main.lib ^
@@ -192,6 +194,9 @@ REM ============================================================================
         )
         if exist GLFW (
             copy GLFW\lib\glfw3.dll ..\%EXE_FOLDER_DEFAULT_PATH% >nul
+        )
+        if exist poglib (
+            copy poglib\external\assimp\lib\Debug\assimp-vc143-mtd.dll ..\%EXE_FOLDER_DEFAULT_PATH% >nul
         )
     popd
 
