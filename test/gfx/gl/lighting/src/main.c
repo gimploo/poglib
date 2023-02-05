@@ -45,6 +45,15 @@ void application_update(application_t *app)
     window_update_user_input(application_get_window(app));
     glcamera_process_input(&test->camera, application_get_dt(app));
 
+    if (window_keyboard_is_key_just_pressed(win, SDLK_UP))
+        test->lighting.pos.y += 0.2f;
+    if (window_keyboard_is_key_just_pressed(win, SDLK_DOWN))
+        test->lighting.pos.y += -0.2f;
+    if (window_keyboard_is_key_just_pressed(win, SDLK_RIGHT))
+        test->lighting.pos.x += 0.2f;
+    if (window_keyboard_is_key_just_pressed(win, SDLK_LEFT))
+        test->lighting.pos.x += -0.2f;
+
     matrix4f_t projection = MATRIX4F_IDENTITY;
     projection = glms_perspective(
                     radians(test->camera.zoom), app->window.aspect_ratio, 0.1f, 100.0f);
@@ -69,12 +78,13 @@ void application_render(application_t *app)
 
     matrix4f_t model = MATRIX4F_IDENTITY;
     model = glms_translate(model, vec3f(0.0f));
-    model = glms_rotate(
-                model, 
-                radians(stopwatch_get_tick() / 150.0f), 
-                (vec3f_t ){1.0f, 0.3f, 0.5f});
+    /*model = glms_rotate(*/
+                /*model, */
+                /*radians(stopwatch_get_tick() / 150.0f), */
+                /*(vec3f_t ){1.0f, 0.3f, 0.5f});*/
     glshader_send_uniform_matrix4f(&test->shader, "model", model);
     glshader_send_uniform_vec3f(&test->shader, "lightPos", test->lighting.pos);
+    glshader_send_uniform_vec3f(&test->shader, "viewPos", test->camera.position);
     glrenderer3d_draw_cube(&rd3d);
 
     matrix4f_t lmodel = MATRIX4F_IDENTITY;
