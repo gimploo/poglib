@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include "material.h"
 
 /*==============================================================================
                     - OPENGL SHADER HANDLING LIBRARY -
@@ -61,6 +62,8 @@ void            glshader_send_uniform_vec2f(const glshader_t *shader, const char
 void            glshader_send_uniform_vec3f(const glshader_t *shader, const char *uniform, vec3f_t val);
 void            glshader_send_uniform_vec4f(const glshader_t *shader, const char *uniform, vec4f_t val);
 void            glshader_send_uniform_matrix4f(const glshader_t *shader, const char *uniform, matrix4f_t val);
+
+void            glshader_send_uniform_material(const glshader_t *shader, const glmaterial_t material);
 
 void            glshader_bind(const glshader_t *shader);
 
@@ -134,18 +137,20 @@ static inline void __shader_load_from_file(glshader_t *shader, const char *verte
 {
     if (shader == NULL) eprint("shader argument is null");
 
-    char vs_code[KB] = {0}; 
-    char fs_code[KB] = {0}; 
 
     file_t vs_file = file_init(vertex_source_path, "r");
-        file_readall(&vs_file, vs_code, sizeof(vs_code));
+        char *vs_code = (char *)calloc(1, vs_file.size + 1);
+        file_readall(&vs_file, vs_code, vs_file.size);
     file_destroy(&vs_file);
 
     file_t fg_file = file_init(fragment_source_path, "r");
-        file_readall(&fg_file, fs_code, sizeof(fs_code));
+        char *fs_code = (char *)calloc(1, fg_file.size + 1);
+        file_readall(&fg_file, fs_code, fg_file.size);
     file_destroy(&fg_file);
 
     __shader_load_code(shader, vs_code, fs_code);
+    free(vs_code);
+    free(fs_code);
 }
 
 glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
@@ -242,6 +247,32 @@ void glshader_send_uniform_matrix4f(const glshader_t *shader, const char *unifor
     GL_CHECK(glUniformMatrix4fv(location, 1, GL_FALSE, &val.raw[0][0]));
 }
 
+void glshader_send_uniform_material(const glshader_t *shader, const glmaterial_t material)
+{    
+    GL_SHADER_BIND(shader);
+    int location;
+
+    char buffer[64] = {0};
+    snprintf(buffer, sizeof(buffer), "%s.ambient", material.label);
+    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
+    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
+    glshader_send_uniform_vec3f(shader, buffer, material.ambient);
+
+    snprintf(buffer, sizeof(buffer), "%s.diffuse", material.label);
+    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
+    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
+    glshader_send_uniform_vec3f(shader, buffer, material.diffuse);
+
+    snprintf(buffer, sizeof(buffer), "%s.specular", material.label);
+    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
+    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
+    glshader_send_uniform_vec3f(shader, buffer, material.specular);
+
+    snprintf(buffer, sizeof(buffer), "%s.shininess", material.label);
+    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
+    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
+    glshader_send_uniform_fval(shader, buffer, material.shininess);
+}
 
 
 void glshader_destroy(glshader_t *shader)
