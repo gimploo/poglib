@@ -31,6 +31,9 @@ void application_init(application_t *app)
         },
     };
 
+    glshader_send_uniform_vec4f(&test.lighting.shader, "color", test.lighting.color);
+    glshader_send_uniform_vec4f(&test.shader, "lightColor", test.lighting.color);
+
     application_pass_content(app, &test);
 
 
@@ -54,27 +57,33 @@ void application_update(application_t *app)
     if (window_keyboard_is_key_just_pressed(win, SDLK_LEFT))
         test->lighting.pos.x += -0.2f;
 
-    matrix4f_t projection = MATRIX4F_IDENTITY;
-    projection = glms_perspective(
-                    radians(test->camera.zoom), app->window.aspect_ratio, 0.1f, 100.0f);
-    glshader_send_uniform_matrix4f(&test->shader, "projection", projection);
-    glshader_send_uniform_matrix4f(&test->lighting.shader, "projection", projection);
+    matrix4f_t view         = MATRIX4F_IDENTITY;
+    matrix4f_t projection   = glms_perspective(
+                                    radians(test->camera.zoom), 
+                                    app->window.aspect_ratio, 
+                                    0.1f, 
+                                    100.0f
+                              );
 
-    matrix4f_t view = MATRIX4F_IDENTITY;
     glshader_send_uniform_matrix4f(
-            &test->shader, "view", 
-            glcamera_getview(&test->camera));
+            &test->shader, 
+            "view", 
+            glcamera_getview(&test->camera)
+    );
+    glshader_send_uniform_matrix4f(&test->shader, "projection", projection);
+
     glshader_send_uniform_matrix4f(
-            &test->lighting.shader, "view", 
-            glcamera_getview(&test->camera));
+            &test->lighting.shader, 
+            "view", 
+            glcamera_getview(&test->camera)
+    );
+    glshader_send_uniform_matrix4f(&test->lighting.shader, "projection", projection);
 
 }
 
 void application_render(application_t *app)
 {
     TEST *test = application_get_content(app);
-
-    glrenderer3d_t rd3d = glrenderer3d(&test->shader, NULL);
 
     matrix4f_t model = MATRIX4F_IDENTITY;
     model = glms_translate(model, vec3f(0.0f));
@@ -84,14 +93,15 @@ void application_render(application_t *app)
                 /*(vec3f_t ){1.0f, 0.3f, 0.5f});*/
     glshader_send_uniform_matrix4f(&test->shader, "model", model);
     glshader_send_uniform_vec3f(&test->shader, "lightPos", test->lighting.pos);
-    glshader_send_uniform_vec3f(&test->shader, "viewPos", test->camera.position);
-    glrenderer3d_draw_cube(&rd3d);
+    glrenderer3d_draw_cube(&(glrenderer3d_t ) {
+            .shader = &test->shader,
+            .texture = NULL
+    });
 
     matrix4f_t lmodel = MATRIX4F_IDENTITY;
     lmodel = glms_translate(lmodel, test->lighting.pos);
     lmodel = glms_scale(lmodel, test->lighting.scale);
     glshader_send_uniform_matrix4f(&test->lighting.shader, "model", lmodel);
-    glshader_send_uniform_vec4f(&test->lighting.shader, "color", test->lighting.color);
     glrenderer3d_draw_cube(&(glrenderer3d_t ) {
             .shader = &test->lighting.shader,
             .texture = NULL
