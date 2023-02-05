@@ -2,6 +2,7 @@
 #include <poglib/application.h>
 #include <poglib/math.h>
 #include <poglib/util/glcamera.h>
+#include <poglib/gfx/gl/material.h>
 
 typedef struct TEST {
 
@@ -32,7 +33,18 @@ void application_init(application_t *app)
     };
 
     glshader_send_uniform_vec4f(&test.lighting.shader, "color", test.lighting.color);
-    glshader_send_uniform_vec4f(&test.shader, "lightColor", test.lighting.color);
+    
+    glshader_send_uniform_material(&test.shader, (glmaterial_t ) {
+        .label = "material",
+        .ambient = (vec3f_t ){1.0f, 0.5f, 0.31f},
+        .diffuse = (vec3f_t ){1.0f, 0.5f, 0.31f},
+        .specular = (vec3f_t ){0.5f, 0.5f, 0.5f},
+        .shininess = 32.0f
+    });
+
+    glshader_send_uniform_vec3f(&test.shader, "light.ambient", (vec3f_t ){0.2f, 0.2f, 0.2f});
+    glshader_send_uniform_vec3f(&test.shader, "light.diffuse", (vec3f_t ){0.5f, 0.5f, 0.5f});
+    glshader_send_uniform_vec3f(&test.shader, "light.specular", (vec3f_t ){1.0f, 1.0f, 1.0f});
 
     application_pass_content(app, &test);
 
@@ -79,6 +91,7 @@ void application_update(application_t *app)
     );
     glshader_send_uniform_matrix4f(&test->lighting.shader, "projection", projection);
 
+    glshader_send_uniform_vec3f(&test->shader, "light.position", test->lighting.pos);
 }
 
 void application_render(application_t *app)
@@ -92,7 +105,6 @@ void application_render(application_t *app)
                 /*radians(stopwatch_get_tick() / 150.0f), */
                 /*(vec3f_t ){1.0f, 0.3f, 0.5f});*/
     glshader_send_uniform_matrix4f(&test->shader, "model", model);
-    glshader_send_uniform_vec3f(&test->shader, "lightPos", test->lighting.pos);
     glrenderer3d_draw_cube(&(glrenderer3d_t ) {
             .shader = &test->shader,
             .texture = NULL
