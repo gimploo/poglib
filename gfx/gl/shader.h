@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
 #include "material.h"
+#include "maps.h"
 
 /*==============================================================================
                     - OPENGL SHADER HANDLING LIBRARY -
@@ -64,6 +65,7 @@ void            glshader_send_uniform_vec4f(const glshader_t *shader, const char
 void            glshader_send_uniform_matrix4f(const glshader_t *shader, const char *uniform, matrix4f_t val);
 
 void            glshader_send_uniform_material(const glshader_t *shader, const glmaterial_t material);
+void            glshader_send_uniform_lightmap(const glshader_t *shader, const gllightmap_t map);
 
 void            glshader_bind(const glshader_t *shader);
 
@@ -274,6 +276,15 @@ void glshader_send_uniform_material(const glshader_t *shader, const glmaterial_t
     glshader_send_uniform_fval(shader, buffer, material.shininess);
 }
 
+void glshader_send_uniform_lightmap(const glshader_t *shader, const gllightmap_t map)
+{
+    char buffer[64] = {0};
+    int location;
+    snprintf(buffer, sizeof(buffer), "%s.shininess", map.label);
+    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
+    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
+    glshader_send_uniform_fval(shader, buffer, map.shininess);
+}
 
 void glshader_destroy(glshader_t *shader)
 {
