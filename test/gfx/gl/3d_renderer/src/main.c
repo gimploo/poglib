@@ -52,7 +52,6 @@ void application_render(application_t *app)
 {
     TEST *test = application_get_content(app);
 
-    glrenderer3d_t rd3d = glrenderer3d(&test->shader, &test->texture);
 
     vec3f_t cubePositions[] = {
         (vec3f_t ){ 0.0f,  0.0f,  0.0f},
@@ -76,7 +75,13 @@ void application_render(application_t *app)
                     radians(stopwatch_get_tick() / 150.0f * (i + 1)), 
                     (vec3f_t ){1.0f, 0.3f, 0.5f});
         glshader_send_uniform_matrix4f(&test->shader, "model", model);
-        glrenderer3d_draw_cube(&rd3d);
+        glrenderer3d_draw_cube(&(glrenderer3d_t ) {
+                .shader = &test->shader,
+                .textures = {
+                    .data = &test->texture,
+                    .count = 1,
+                },
+        });
     }
 }
 
