@@ -91,7 +91,7 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
     GL_CHECK(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float))));
     GL_CHECK(glEnableVertexAttribArray(1));
     GL_CHECK(glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float))));
-    GL_CHECK(glEnableVertexAttribArray(1));
+    GL_CHECK(glEnableVertexAttribArray(2));
 
     glshader_bind(self->shader);
     if (self->textures.data && self->textures.count > 0)
