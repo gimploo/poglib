@@ -14,12 +14,14 @@
 typedef struct glrenderer3d_t {
 
     const glshader_t    *shader;
-    const gltexture2d_t *texture;
+    struct {
+        gltexture2d_t   *data;
+        int             count;
+    } textures;
 
 } glrenderer3d_t ;
 
 
-glrenderer3d_t      glrenderer3d(const glshader_t *, const gltexture2d_t *);
 void                glrenderer3d_draw_cube(const glrenderer3d_t *renderer);
 void                glrenderer3d_draw_mesh(const glrenderer3d_t *, const glmesh_t *);
 void                glrenderer3d_draw_model(const glrenderer3d_t *, const glmodel_t *);
@@ -30,16 +32,6 @@ void                glrenderer3d_draw_model(const glrenderer3d_t *, const glmode
 -----------------------------------------------------------------------------*/
 
 #ifndef IGNORE_GLRENDERER2D_IMPLEMENTATION
-
-//NOTE: make sure to not have texture uniform if your passing NULL as texture argument
-glrenderer3d_t glrenderer3d(const glshader_t *shader, const gltexture2d_t *texture)
-{
-    return (glrenderer3d_t ) {
-        .shader = shader,
-        .texture = texture,
-    };
-
-}
 
 void glrenderer3d_draw_cube(const glrenderer3d_t *self)
 {
@@ -102,8 +94,9 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
     GL_CHECK(glEnableVertexAttribArray(1));
 
     glshader_bind(self->shader);
-    if (self->texture)
-        gltexture2d_bind(self->texture, 0);
+    if (self->textures.data && self->textures.count > 0)
+        for (int i = 0; i < self->textures.count; i++)
+            gltexture2d_bind(&self->textures.data[i], i);
 
     GL_CHECK(glBindVertexArray(VAO));
     GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 36));
@@ -116,8 +109,9 @@ void glrenderer3d_draw_mesh(const glrenderer3d_t *self, const glmesh_t *mesh)
 {
     glshader_bind(self->shader);
 
-    if (self->texture)
-        gltexture2d_bind(self->texture, 0);
+    if (self->textures.data && self->textures.count > 0)
+        for (int i = 0; i < self->textures.count; i++)
+            gltexture2d_bind(&self->textures.data[i], i);
 
     vao_draw_with_ebo(&mesh->__vao, &mesh->__ebo);
 }
