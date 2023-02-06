@@ -99,20 +99,25 @@ gltexture2d_t gltexture2d_init(const char *filepath)
     buf = stbi_load(filepath, &width, &height, &bpp, 4); //forcing RGBA per pixel
     if (buf == NULL) eprint("Failed to load texture");
 
+    GLenum format;
+    if (bpp == 1)       format = GL_RED;
+    else if (bpp == 3)  format = GL_RGB;
+    else if (bpp == 4)  format = GL_RGBA;
+
     GL_CHECK(glGenTextures(1, &id));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, id));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR));
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));	
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
     GL_CHECK(glTexImage2D(
         GL_TEXTURE_2D, 
         0, 
-        GL_RGBA, 
+        format, 
         width,
         height,
         0,
-        GL_RGBA, // The format the buf variable is in
+        format, // The format the buf variable is in
         GL_UNSIGNED_BYTE,
         buf
      ));
