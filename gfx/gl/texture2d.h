@@ -45,6 +45,7 @@ void                 gltexture2d_dump(const gltexture2d_t *texture);
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, (ptex)->id));\
 \
 } while(0)
+
 #define gltexture2d_unbind()    (GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
 
 
