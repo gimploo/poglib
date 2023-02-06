@@ -278,12 +278,24 @@ void glshader_send_uniform_material(const glshader_t *shader, const glmaterial_t
 
 void glshader_send_uniform_lightmap(const glshader_t *shader, const gllightmap_t map)
 {
+    GL_SHADER_BIND(shader);
     char buffer[64] = {0};
     int location;
+
     snprintf(buffer, sizeof(buffer), "%s.shininess", map.label);
     GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
     if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
     glshader_send_uniform_fval(shader, buffer, map.shininess);
+
+    snprintf(buffer, sizeof(buffer), "%s.diffuse", map.label);
+    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
+    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
+    glshader_send_uniform_ival(shader, buffer, map.diffuse);
+
+    snprintf(buffer, sizeof(buffer), "%s.specular", map.label);
+    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
+    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
+    glshader_send_uniform_ival(shader, buffer, map.specular);
 }
 
 void glshader_destroy(glshader_t *shader)
