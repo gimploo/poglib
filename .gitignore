@@ -2,7 +2,6 @@
 *.pdb
 *.ilk
 *.exe
-*.dll
 *.html
 *.txt
 *.out
