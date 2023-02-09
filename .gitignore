@@ -1,5 +1,6 @@
 
 *.lib
+!assimp-vc143-mtd.lib
 *.obj
 *.pdb
 *.ilk
