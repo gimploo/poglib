@@ -1,6 +1,3 @@
-
-*.lib
-!external/*
 *.obj
 *.pdb
 *.ilk
@@ -13,10 +10,5 @@ test/application/test
 **/.vs/
 **/bin
 *.db
-**/lib/*
 **/bin/*
-font/test/lib/
-gui/tests/lib/
-simple/test/gl/2d_renderer/lib/
-test/file/lib
-test/ds/lib
+**/test/**/lib/
