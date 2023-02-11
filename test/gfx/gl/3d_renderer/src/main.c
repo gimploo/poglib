@@ -6,7 +6,7 @@
 typedef struct TEST {
 
     glshader_t    shader;
-    gltexture2d_t texture;
+    gltexture2d_t texture[2];
     glcamera_t  camera;
 
 } TEST ;
@@ -18,10 +18,15 @@ void application_init(application_t *app)
         .shader     = glshader_from_file_init(
                         "lib/poglib/res/shaders/simple3d.vs", 
                         "lib/poglib/res/shaders/simple3d.fs"),
-        .texture    = gltexture2d_init("res/pepe_ez.png"),
+        .texture    = {
+            gltexture2d_init("res/container2.png"),
+            gltexture2d_init("res/pepe_ez.png"),
+        },
         .camera     = glcamera_perspective((vec3f_t ){ 0.0f, 0.0f, 3.0f})
     };
 
+    glshader_send_uniform_ival(&test.shader, "t1", 0);
+    glshader_send_uniform_ival(&test.shader, "t2", 1);
     application_pass_content(app, &test);
 
 
@@ -66,6 +71,7 @@ void application_render(application_t *app)
         (vec3f_t ){ 2.0f,  5.0f, -15.0f},
     };
 
+    bool flag = true;
     for (unsigned int i = 0; i < ARRAY_LEN(cubePositions); i++)
     {
         matrix4f_t model = MATRIX4F_IDENTITY;
@@ -75,13 +81,16 @@ void application_render(application_t *app)
                     radians(stopwatch_get_tick() / 150.0f * (i + 1)), 
                     (vec3f_t ){1.0f, 0.3f, 0.5f});
         glshader_send_uniform_matrix4f(&test->shader, "model", model);
+
+        glshader_send_uniform_ival(&test->shader, "tc", flag);
         glrenderer3d_draw_cube(&(glrenderer3d_t ) {
                 .shader = &test->shader,
                 .textures = {
-                    .data = &test->texture,
-                    .count = 1,
+                    .data = test->texture,
+                    .count = 2,
                 },
         });
+        flag = !flag;
     }
 }
 
@@ -89,7 +98,9 @@ void application_destroy(application_t *app)
 {
     TEST *test = application_get_content(app);
     glshader_destroy(&test->shader);
-    gltexture2d_destroy(&test->texture);
+    
+    gltexture2d_destroy(&test->texture[0]);
+    gltexture2d_destroy(&test->texture[1]);
 }
 
 
