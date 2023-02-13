@@ -50,9 +50,11 @@ typedef double          f64;
 
 
 #if defined(DEBUG)
-    #define logging(fmt, ...) fprintf(stdout, "[LOG : %s] \t" fmt "\n", __func__, ##__VA_ARGS__)
+    #define logging(FMT, ...) do {\
+        fprintf(stdout, "[LOG : %s] \t"FMT"\n", __func__, ##__VA_ARGS__);\
+    } while(0)
 #else
-    #define logging(fmt, ...)
+    #define logging(FMT, ...)
 #endif
 
 
