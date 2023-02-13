@@ -61,6 +61,7 @@ typedef struct window_t {
     u64                 width; 
     u64                 height;
     vec4f_t             background_color;
+
     struct {
 
         sdl_mousebuttontype button;
@@ -73,6 +74,7 @@ typedef struct window_t {
         } wheel;
 
     } mouse;
+
     struct {
 
         bool     keystate[SDL_NUM_SCANCODES]; 
@@ -80,6 +82,7 @@ typedef struct window_t {
         bool     is_held[SDL_NUM_SCANCODES];
 
     } keyboard;
+
     struct {
 
         bool                is_active;
@@ -361,7 +364,7 @@ static inline window_t __subwindow_init(const char *title, u64 width, u64 height
     printf("[OUTPUT] Using standard sdl2 render\n");
 #endif
 
-    output.__sdl_window_id = SDL_GetWindowID(output.__sdl_window);
+    output.__sdl_window_id  = SDL_GetWindowID(output.__sdl_window);
 
     __mouse_update_position(&output);
 
