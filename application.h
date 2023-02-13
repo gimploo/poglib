@@ -13,6 +13,7 @@
 #endif
 
 #include "application/stopwatch.h"
+#include "application/sound.h"
 #include "font/glfreetypefont.h"
 
 
@@ -117,6 +118,8 @@ void application_run(application_t *app)
     assert(win);
 
     win->background_color = app->window.background_color;
+
+    logging("Accessing audio device `%s`...", SDL_GetAudioDeviceName(0,0));
 
     stopwatch_t timer = stopwatch();
 
