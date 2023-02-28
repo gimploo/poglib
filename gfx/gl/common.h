@@ -14,6 +14,6 @@
     CMD;\
     GLenum err = glGetError();\
     if (err != GL_NO_ERROR)\
-        eprint("[OpenGL][ERROR] (%s): %s -> %s\n", __func__, #CMD, gluErrorString(err));\
+        eprint("[OpenGL][ERROR](%s): %s -> %s\n", __func__, #CMD , gluErrorString(err));\
 \
 } while(0)
