@@ -6,7 +6,8 @@ REM                 -- WINDOWS BUILD SCRIPT FOR C PROJECTS --
 REM ===========================================================================
 
 REM Include required dependencies
-set LIBRARY_LIST=SDL2 GLEW FREETYPE POGLIB
+set LIBRARY_LIST=GLFW SDL2 GLEW FREETYPE POGLIB
+set GLFW_URL=https://github.com/glfw/glfw/releases/download/3.3.8/glfw-3.3.8.bin.WIN64.zip
 set SDL2_URL=https://www.libsdl.org/release/SDL2-devel-2.0.20-VC.zip
 set GLEW_URL=https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0-win32.zip
 set FREETYPE_URL=https://github.com/ubawurinna/freetype-windows-binaries/archive/refs/heads/master.zip
@@ -15,7 +16,7 @@ set POGLIB_URL=https://github.com/gimploo/poglib/archive/refs/heads/main.zip
 
 REM Include compiler of choice (here its msvc)
 set CC=cl
-set CC_PATH="C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+set CC_PATH="C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
 set CC_DEFAULT_FLAGS=/std:c11 /W4 /wd4244 /wd4996 /wd4477 /wd4267 /FC /TC /Zi 
 set CC_DEFAULT_LIBS=User32.lib Gdi32.lib Shell32.lib winmm.lib dbghelp.lib shlwapi.lib
 
@@ -25,9 +26,8 @@ set SRC_FOLDER_DEFAULT_PATH=.\src
 set LIBRARY_DEFAULT_PATH=.\lib
 
 REM Source files and exe name
-set SRC_FILE_NAME=test.c
+set SRC_FILE_NAME=main.c
 set EXE_FILE_NAME=test.exe
-
 
 
 :main
@@ -42,7 +42,6 @@ set EXE_FILE_NAME=test.exe
         goto :end
     )
 
-
     cls
     echo [*] Running build script for windows...
     
@@ -56,10 +55,7 @@ set EXE_FILE_NAME=test.exe
     ) else (
         echo [!] `lib` directory not found!
         echo [*] Checking dependenices ...
-        if "%USERNAME%" == "gokul" (
-            mklink /j "%LIBRARY_DEFAULT_PATH%" C:\Users\User\OneDrive\Documents\projects\dev-libs
-        ) else (
-            call :check_dependencies_are_installed
+        call :check_dependencies_are_installed
         )
         echo [!] Dependencies all found!
     )
@@ -112,11 +108,12 @@ REM                            |
 REM                            v
 :build_project_with_msvc
 
-    set INCLUDES=/I %LIBRARY_DEFAULT_PATH%\SDL2\include ^
-                    /I %LIBRARY_DEFAULT_PATH%\GLEW\include ^
+    set INCLUDES=/I %LIBRARY_DEFAULT_PATH%\GLEW\include ^
                     /I %LIBRARY_DEFAULT_PATH%\FREETYPE\include ^
+                    /I %LIBRARY_DEFAULT_PATH%\poglib\external\assimp\include ^
+                    /I %LIBRARY_DEFAULT_PATH%\SDL2\include ^
+                    /I %LIBRARY_DEFAULT_PATH%\GLFW\include ^
                     /I %LIBRARY_DEFAULT_PATH%\
-
 
     if "%~1" == "debug" (
         set FLAGS=/DGLEW_STATIC /DDEBUG
@@ -124,13 +121,15 @@ REM                            v
         set FLAGS=/DGLEW_STATIC 
     )
 
-    set LIBS=%LIBRARY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.lib ^
-                %LIBRARY_DEFAULT_PATH%\SDL2\lib\x64\SDL2main.lib ^
-                %LIBRARY_DEFAULT_PATH%\GLEW\lib\Release\x64\glew32s.lib ^
+    set LIBS=%LIBRARY_DEFAULT_PATH%\GLEW\lib\Release\x64\glew32s.lib ^
                 %LIBRARY_DEFAULT_PATH%\FREETYPE\lib\win64\freetype.lib ^
+                %LIBRARY_DEFAULT_PATH%\poglib\external\assimp\lib\Debug\assimp-vc143-mtd.lib ^
+                %LIBRARY_DEFAULT_PATH%\GLFW\lib\glfw3dll.lib ^
+                %LIBRARY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.lib ^
+                %LIBRARY_DEFAULT_PATH%\SDL2\lib\x64\SDL2main.lib ^
                 Opengl32.lib glu32.lib
 
-    cl %CC_DEFAULT_FLAGS% %FLAGS%^
+    %CC% %CC_DEFAULT_FLAGS% %FLAGS%^
         %INCLUDES% ^
         /Fe%EXE_FOLDER_DEFAULT_PATH%\%EXE_FILE_NAME% ^
         %SRC_FOLDER_DEFAULT_PATH%\%SRC_FILE_NAME% ^
@@ -164,7 +163,7 @@ REM ============================================================================
 
     mkdir "%LIBRARY_DEFAULT_PATH%"
 
-    pushd %LIBRARY_DEFAULT_PATH%
+    pushd %LIBRARY_DEFAULT_PATH% 
         for %%x in (%LIBRARY_LIST%) do (
             if not exist %%x (
                 echo [!] `%%x` directory not found!
@@ -186,7 +185,17 @@ REM ============================================================================
 
     REM ADD New dlls here! 
 
-    copy %LIBRARY_DEFAULT_PATH%\SDL2\lib\x64\SDL2.dll %EXE_FOLDER_DEFAULT_PATH% >nul
+    pushd %LIBRARY_DEFAULT_PATH%
+        if exist SDL2 (
+            copy SDL2\lib\x64\SDL2.dll ..\%EXE_FOLDER_DEFAULT_PATH% >nul
+        )
+        if exist GLFW (
+            copy GLFW\lib\glfw3.dll ..\%EXE_FOLDER_DEFAULT_PATH% >nul
+        )
+        if exist poglib (
+            copy poglib\external\assimp\lib\Debug\assimp-vc143-mtd.dll ..\%EXE_FOLDER_DEFAULT_PATH% >nul
+        )
+    popd
 
     exit /b 0
 
@@ -219,6 +228,12 @@ REM ============================================================================
         rename "POGLIB" poglib
     )
 
+    if "%~1" == "GLFW" (
+        pushd GLFW\
+            rename "lib-static-ucrt" lib
+        popd
+    )
+
     echo [!] Successfully installed %~1!
     exit /b 0
 
@@ -232,11 +247,7 @@ REM ============================================================================
 :deepcleanup
     echo [*] Cleanup in progress ...
     if exist "%LIBRARY_DEFAULT_PATH%" (
-        if "%USERNAME%" == "gokul" (
-            rmdir "%LIBRARY_DEFAULT_PATH%"
-        ) else (
-            rd /s /q "%LIBRARY_DEFAULT_PATH%"
-        )
+        rd /s /q "%LIBRARY_DEFAULT_PATH%"
         echo [!] `%LIBRARY_DEFAULT_PATH%` directory deleted!
     )
 

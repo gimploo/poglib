@@ -1,6 +1,5 @@
 #pragma once
 #include "../decl.h"
-
 void __ui_destroy(ui_t *elem)
 {
     gltext_destroy(&elem->__cache.texts);

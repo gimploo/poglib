@@ -1,6 +1,6 @@
 #pragma once
 #include <poglib/application.h>
-#include <poglib/ds.h>
+#include <poglib/basic.h>
 
 /*=============================================================================
 // CRAPGUI ( IMMEDIATE UI INSPIRED GUI LIB )
