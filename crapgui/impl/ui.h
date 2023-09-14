@@ -8,15 +8,15 @@ void __ui_destroy(ui_t *elem)
 void __ui_cache_vertices(ui_t *ui, const crapgui_t *gui)
 {
     ui->__cache.quad = 
-        quadf(vec3f(ui->pos), 
+        quadf((vec3f_t ){ui->pos.x, ui->pos.y, 0.f}, 
                 ui->styles.width, 
                 ui->styles.height);
 
     glbatch_t *txtbatch = &ui->__cache.texts.text;
 
     vec2f_t centerpos = {
-        .cmp[X] = ui->__cache.quad.vertex[BOTTOM_LEFT].cmp[X],
-        .cmp[Y] = ui->__cache.quad.vertex[BOTTOM_LEFT].cmp[Y] //- ui->styles.height/2
+        .x = ui->__cache.quad.vertex[BOTTOM_LEFT].x,
+        .y = ui->__cache.quad.vertex[BOTTOM_LEFT].y //- ui->styles.height/2
     };
 
     const glfreetypefont_t *font = &gui->ui_assets.fonts[ui->type];
@@ -74,18 +74,18 @@ void __ui_update(ui_t *ui, frame_t *frame, crapgui_t *gui)
             if (ui->is_hot)
                 ui->__cache.glquad = glquad(ui->__cache.quad,
                                     ui->styles.hovercolor,
-                                    quadf(vec3f(0.0f), 0.0f, 0.0f), 0);
+                                    quadf(vec3f(0.0f), 0.0f, 0.0f));
             else
                 ui->__cache.glquad = glquad(ui->__cache.quad,
                                     ui->styles.color,
-                                    quadf(vec3f(0.0f), 0.0f, 0.0f), 0);
+                                    quadf(vec3f(0.0f), 0.0f, 0.0f));
         break;
 
         case UI_LABEL:
             ui->__cache.glquad = 
                 glquad(ui->__cache.quad, 
                         ui->styles.color,
-                        quadf(vec3f(0.0f), 0.0f, 0.0f), 0);
+                        quadf(vec3f(0.0f), 0.0f, 0.0f));
         break;
 
         case UI_DROPDOWN:

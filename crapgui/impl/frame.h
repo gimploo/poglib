@@ -10,7 +10,7 @@ void __frame_update(frame_t *frame, crapgui_t *gui)
         /*printf("Caching only frame %s\n", frame->label);*/
         // The entire frame vertices
         frame->__cache.self.quad = quadf(
-                                vec3f(frame->pos), 
+                                (vec3f_t ){ frame->pos.x, frame->pos.y, 0.0f} , 
                                 frame->styles.width, 
                                 frame->styles.height);
 
@@ -20,7 +20,7 @@ void __frame_update(frame_t *frame, crapgui_t *gui)
 
         glquad_t header = glquad(
                 quadf((vec3f_t ){-1.0f, 1.0f, 1.0f}, 2.0f, 0.2f), 
-                COLOR_BLACK, quadf(vec3f(0.0f),0.0f,0.0f), 0);
+                COLOR_BLACK, quadf(vec3f(0.0f),0.0f,0.0f));
 
         glbatch_put(&frame->__cache.self.glquads, header);
 
@@ -64,10 +64,10 @@ void __frame_update(frame_t *frame, crapgui_t *gui)
     }
 
     GL_CHECK(glClearColor(
-            frame->styles.color.cmp[0],
-            frame->styles.color.cmp[1],
-            frame->styles.color.cmp[2],
-            frame->styles.color.cmp[3]
+            frame->styles.color.r,
+            frame->styles.color.g,
+            frame->styles.color.b,
+            frame->styles.color.a
     ));
     GL_CHECK(glEnable(GL_BLEND));
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
@@ -120,8 +120,7 @@ void __frame_render(const frame_t *frame, const crapgui_t *gui)
     glquad_t quad = glquad(
                 frame->__cache.self.quad,
                 frame->styles.color,
-                quadf(vec3f(0.0f), 1.0f, 1.0f), 
-                0);
+                quadf(vec3f(0.0f), 1.0f, 1.0f));
     glrenderer2d_draw_quad(&r2d, quad);
 }
 
@@ -144,30 +143,30 @@ vec2f_t __frame_get_pos_for_new_ui(const frame_t *frame, ui_t *ui)
     //NOTE: since we add the ui to slot before calling this function, the previous logic 
     //we had wont work, ik i hate this, i guess i need to live with this for now
     if (uis->len == 1) 
-        return (vec2f_t ) { -1.0f + frame->styles.margin.cmp[X] + ui->styles.margin.cmp[X], 1.0f - FRAME_HEADER_HEIGHT - frame->styles.margin.cmp[Y] - ui->styles.margin.cmp[Y] };
+        return (vec2f_t ) { -1.0f + frame->styles.margin.x + ui->styles.margin.x, 1.0f - FRAME_HEADER_HEIGHT - frame->styles.margin.y - ui->styles.margin.y };
 
     ui_t *prev_elem = (ui_t *)slot_get_value(uis, uis->len - 2);
     assert(prev_elem);
     const vec2f_t prev_margin   = prev_elem->styles.margin;
     const quadf_t prev_rect     = prev_elem->__cache.quad;
 
-    if ((prev_rect.vertex[TOP_RIGHT].cmp[X] + prev_margin.cmp[X] + ( 2.0f * ui->styles.margin.cmp[X]) + ui->styles.width) >= 1.0f) {
+    if ((prev_rect.vertex[TOP_RIGHT].x + prev_margin.x + ( 2.0f * ui->styles.margin.x) + ui->styles.width) >= 1.0f) {
 
         output = (vec2f_t ){
-            .cmp[X] = -1.0f + ui->styles.margin.cmp[X] + frame->styles.margin.cmp[X],
-            .cmp[Y] = prev_rect.vertex[BOTTOM_LEFT].cmp[Y] - prev_margin.cmp[Y] - ui->styles.margin.cmp[Y],
+            .x = -1.0f + ui->styles.margin.x + frame->styles.margin.x,
+            .y = prev_rect.vertex[BOTTOM_LEFT].y - prev_margin.y - ui->styles.margin.y,
         };
 
     } else {
 
         output = (vec2f_t ){
-            .cmp[X] = prev_rect.vertex[TOP_RIGHT].cmp[X] + prev_margin.cmp[X] + ui->styles.margin.cmp[X],
-            .cmp[Y] = prev_elem->pos.cmp[Y],
+            .x = prev_rect.vertex[TOP_RIGHT].x + prev_margin.x + ui->styles.margin.x,
+            .y = prev_elem->pos.y,
         };
 
     }
 
-    if ((prev_rect.vertex[BOTTOM_LEFT].cmp[Y] - prev_margin.cmp[Y] - (2.0f * ui->styles.margin.cmp[Y]) + ui->styles.height) <= -1.0f)
+    if ((prev_rect.vertex[BOTTOM_LEFT].y - prev_margin.y - (2.0f * ui->styles.margin.y) + ui->styles.height) <= -1.0f)
         eprint("This ui cannot fit in the window");
 
     return output;
@@ -251,18 +250,18 @@ vec2f_t frame_get_mouse_position(const frame_t *frame)
     };
 
     const vec2f_t origin = {
-        .cmp[X] = rect.vertex[TOP_LEFT].cmp[X] + (dim_half.cmp[X]),
-        .cmp[Y] = rect.vertex[TOP_LEFT].cmp[Y] - (dim_half.cmp[Y])
+        .x = rect.vertex[TOP_LEFT].x + (dim_half.x),
+        .y = rect.vertex[TOP_LEFT].y - (dim_half.y)
     };
 
     const vec2f_t nmpos = {
-        mpos.cmp[X] - origin.cmp[X],
-        mpos.cmp[Y] - origin.cmp[Y],
+        mpos.x - origin.x,
+        mpos.y - origin.y,
     };
 
     return (vec2f_t ) {
-        .cmp[X] = normalize(nmpos.cmp[X], 0.0f, dim_half.cmp[X]) ,
-        .cmp[Y] = normalize(nmpos.cmp[Y], 0.0f, dim_half.cmp[Y]) 
+        .x = normalize(nmpos.x, 0.0f, dim_half.x) ,
+        .y = normalize(nmpos.y, 0.0f, dim_half.y) 
     };
 }
 
@@ -282,9 +281,13 @@ void __frame_add_ui(
 
     slot_t *slot = &frame->uis;
     ui_t *ui            = (ui_t *)slot_append(slot, tmp);
-    *ui                 = __ui_init(label, type, styles);
+
+    {
+        tmp = __ui_init(label, type, styles);
+        *ui = tmp;
+    }
     ui->pos             = __frame_get_pos_for_new_ui(frame, ui);
-    ui->styles.margin   = vec2f_add(styles.margin, frame->styles.padding);
+    ui->styles.margin   = glms_vec2_add(styles.margin, frame->styles.padding);
 
     // NOTE: dont move this anywhere else
     __ui_update(ui, frame, gui);

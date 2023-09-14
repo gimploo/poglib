@@ -184,26 +184,26 @@ vec2f_t __crapgui_get_pos_for_new_frame(const crapgui_t *gui)
 
     const vec2f_t df_margin = DEFAULT_FRAME_MARGIN;
     if (frames->len == 0) 
-        return (vec2f_t ) { -1.0f + df_margin.cmp[X], 1.0f - df_margin.cmp[Y] };
+        return (vec2f_t ) { -1.0f + df_margin.x, 1.0f - df_margin.y };
 
     const u64 last_index = frames->len - 1;
     frame_t *prev_frame = (frame_t *)map_get_value_at_index(
                             frames, 
                             last_index);
 
-    if ((prev_frame->pos.cmp[X] + (2.0f * prev_frame->styles.width) + prev_frame->styles.margin.cmp[X]) 
+    if ((prev_frame->pos.x + (2.0f * prev_frame->styles.width) + prev_frame->styles.margin.x) 
             >= 1.0f) {
-        output.cmp[X] = -1.0f + prev_frame->styles.margin.cmp[X];
-        output.cmp[Y] = 
-            prev_frame->pos.cmp[Y] - prev_frame->styles.height - prev_frame->styles.margin.cmp[Y];
+        output.x = -1.0f + prev_frame->styles.margin.x;
+        output.y = 
+            prev_frame->pos.y - prev_frame->styles.height - prev_frame->styles.margin.y;
     } else {
-        output.cmp[X] = 
-            prev_frame->pos.cmp[X] + prev_frame->styles.width + prev_frame->styles.margin.cmp[X];
-        output.cmp[Y] = 
-            prev_frame->pos.cmp[Y];
+        output.x = 
+            prev_frame->pos.x + prev_frame->styles.width + prev_frame->styles.margin.x;
+        output.y = 
+            prev_frame->pos.y;
     }
 
-    if (output.cmp[Y] - prev_frame->styles.height - prev_frame->styles.margin.cmp[Y] <= -1.0f)
+    if (output.y - prev_frame->styles.height - prev_frame->styles.margin.y <= -1.0f)
         eprint("This frame cannot fit in the window");
 
     return output;
