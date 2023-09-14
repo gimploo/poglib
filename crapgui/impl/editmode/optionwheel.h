@@ -1,6 +1,6 @@
 #pragma once
 #include <poglib/application.h>
-#include <poglib/ds.h>
+#include <poglib/math.h>
 #include "../../decl.h"
 
 #define EDIT_WHEEL_RADIUS 0.2f
@@ -32,16 +32,16 @@ void __crapgui_editmode_editwheel_render(const crapgui_t *gui)
     if (!gui->editmode.optionwheel.is_active) return;
 
     vec2f_t mpos    = gui->editmode.optionwheel.pos;
-    polygon_t wheel = polygon(vec3f(mpos), EDIT_WHEEL_RADIUS, OT_COUNT);
+    polygon_t wheel = polygon((vec3f_t ){ mpos.x, mpos.y, 0.f }, EDIT_WHEEL_RADIUS, OT_COUNT);
 
-    glrenderer2d_t r2d = {
-        .shader = &gui->__common_shader,
-        .texture = NULL
-    };
 
     glrenderer2d_draw_polygon(
-            &r2d, 
-            glpolygon(wheel, COLOR_BLUE, quadf(vec3f(0.0f), 0.0f, 0.0f), 0));
+                & (glrenderer2d_t ) {
+                    .shader = &gui->__common_shader,
+                    .texture = NULL 
+                }, 
+                glpolygon(wheel, COLOR_BLUE, quadf(vec3f(0.0f), 0.0f, 0.0f))
+            );
 }
 
 
