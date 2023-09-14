@@ -2,10 +2,10 @@
 
 void appinit(application_t *app) 
 {
-    crapgui_t *gui = app->content;
-    *gui = crapgui_init();
 
-    crapgui_layout(gui) {
+    crapgui_t gui = crapgui_init();
+
+    crapgui_layout(&gui) {
 
         frame("FRAME01", DEFAULT_FRAME_STYLE ) {
             /*label("Test");*/
@@ -34,11 +34,13 @@ void appinit(application_t *app)
         }
 
     };
+
+    application_pass_content(app, &gui);
 }
 
 void appupdate(application_t *app) 
 {
-    crapgui_t *gui = app->content;
+    crapgui_t *gui = application_get_content(app);
     window_update_user_input(global_window);
 
     crapgui_update(gui);
@@ -55,14 +57,14 @@ void appupdate(application_t *app)
 
 void apprender(application_t *app) 
 {
-    crapgui_t *gui = app->content;
+    crapgui_t *gui = application_get_content(app);
 
     crapgui_render(gui);
 }
 
 void appdestroy(application_t *app) 
 {
-    crapgui_t *gui = app->content;
+    crapgui_t *gui = application_get_content(app);
 
     crapgui_destroy(gui);
 }
@@ -70,15 +72,19 @@ void appdestroy(application_t *app)
 
 int main(void)
 {
-    crapgui_t gui;
-
     application_t app = {
-        .window_width = 800,
-        .window_height = 600,
-        .window_title = "GUI TEST",
+        .window = {
+            .title = "GUI TEST",
+            .width = 800,
+            .height = 900,
+            .aspect_ratio = (f32)800 / (f32)900,
+            .fps_limit = 60,
+            .background_color = COLOR_RED
+        },   
+        .content = {
+            .size = sizeof(crapgui_t )
+        },
         
-        .content = &gui,
-
         .init = appinit,
         .update = appupdate,
         .render = apprender,

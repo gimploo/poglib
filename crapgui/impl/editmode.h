@@ -23,8 +23,7 @@ void __crapgui_editmode_render(crapgui_t *gui)
         glquad_t quad = glquad(
                     quadf(pos, 2.0f, 2.0f),
                     frame->styles.color,
-                    quadf(vec3f(0.0f), 1.0f, 1.0f), 
-                    0);
+                    quadf(vec3f(0.0f), 1.0f, 1.0f));
         glrenderer2d_t r2d = {
             .shader = &gui->frame_assets.shader,
             .texture = &frame->__cache.uis.texture.texture2d,
@@ -50,7 +49,7 @@ bool __crapgui_editmode_ui_is_mouse_over(ui_t *ui, crapgui_t *gui)
 {
     const vec2f_t mousepos  = window_mouse_get_norm_position(gui->win);
     const quadf_t rect      = quadf(
-                                vec3f(ui->pos), 
+                                (vec3f_t ){ui->pos.x, ui->pos.y, 0.f}, 
                                 ui->styles.width, 
                                 ui->styles.height); 
 
@@ -77,8 +76,8 @@ void __crapgui_editmode_frame_is_mouse_held(const crapgui_t *gui)
         };
 
         frame->pos = (vec2f_t ){
-            mousepos.cmp[X] - dim.cmp[X],
-            mousepos.cmp[Y] + dim.cmp[Y],
+            mousepos.x - dim.x,
+            mousepos.y + dim.y,
         };
         __crapgui_recache_only_frame(frame);
     } 
@@ -99,8 +98,8 @@ void __crapgui_editmode_ui_is_mouse_held(const crapgui_t *gui)
         };
 
         ui->pos = (vec2f_t ){
-            mousepos.cmp[X] - dim.cmp[X],
-            mousepos.cmp[Y] + dim.cmp[Y],
+            mousepos.x - dim.x,
+            mousepos.y + dim.y,
         };
         __crapgui_recache_ui(ui);
         __crapgui_recache_only_uis(frame);
