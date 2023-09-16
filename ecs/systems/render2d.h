@@ -1,5 +1,5 @@
 #pragma once
-#include "../../application/glrenderer2d.h"
+#include <poglib/gfx/glrenderer2d.h>
 #include "../components/sprite.h"
 #include "../components/shape.h"
 #include "../components/shader.h"
@@ -82,9 +82,9 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
                 case SQUARE: {
 
                     glquad_t quad = glquad(
-                            *(quadf_t *)mesh->model.buffer, 
+                            *(quadf_t *)mesh->model.raw, 
                             shape->fill,
-                            uv, 0);
+                            uv);
 
                     glbatch_put(&batches[GLBT_glquad_t], quad);
 
@@ -93,9 +93,9 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
                 case CIRCLE: {
 
                     glcircle_t circle = glcircle(
-                            *(circle_t *)mesh->model.buffer,
+                            *(circle_t *)mesh->model.raw,
                             shape->fill,
-                            uv, 0);
+                            uv);
                     glbatch_put(&batches[GLBT_glcircle_t], circle);
 
                 } break;
@@ -103,9 +103,9 @@ void __impl_s_renderer2d_draw(s_renderer2d_t *sys, entitymanager_t *manager )
                 case TRIANGLE: {
 
                     gltri_t tri = gltri(
-                            *(trif_t *)mesh->model.buffer, 
+                            *(trif_t *)mesh->model.raw, 
                             shape->fill,
-                            uv, 0);
+                            uv);
                     glbatch_put(&batches[GLBT_gltri_t], tri);
 
                 } break;
