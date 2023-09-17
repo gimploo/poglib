@@ -33,13 +33,12 @@ typedef struct dbg_t {
 } dbg_t ;
 
 static dbg_t global_debug;
-
 #if defined(DEBUG)
-    bool        dbg_init(void);
+    void        dbg_init();
     void        dbg_destroy(void);
 #else 
-    #define dbg_init()      fprintf(stderr,"[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n")
-    #define dbg_destroy()   fprintf(stderr,"[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n")
+    #define     dbg_init()      fprintf(stderr,"[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n")
+    #define     dbg_destroy()   fprintf(stderr,"[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n")
 #endif
 
 
@@ -52,11 +51,6 @@ static dbg_t global_debug;
 #else
     #define stacktrace_print() fprintf(stderr, "[❗] Missing DEBUG macro, define DEBUG before including library\n")
 #endif
-
-
-
-
-
 
 
 
@@ -185,7 +179,20 @@ bool __is_file_in_ignore_files(const char *filepath)
 }
 
 // Init function required to start the debugger
-bool dbg_init(void)
+
+#ifdef _WIN64
+LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo)
+{
+    /* std::stringstream s;
+       s << "Fatal: Unhandled exception 0x" << std::hex << pExceptionInfo->ExceptionRecord->ExceptionCode 
+       << std::endl; */
+
+    eprint("APPLICATION SEGFAULTED\n");
+
+}
+#endif
+
+void dbg_init(void)
 {
     FILE *fp = fopen(DEFAULT_DBG_MEM_LOG_PATH, "w");
     if (!fp) {
@@ -198,8 +205,6 @@ bool dbg_init(void)
     global_debug.list = llist_init();
 
     fprintf(stdout, "[*] DBG: INITALIZED\n");
-
-    return true;
 }
 
 void debugprint(void *arg)
@@ -509,7 +514,6 @@ void linux_print_trace(void)
 
 void stacktrace_print(void)
 {
-
 #if defined(__linux__)
     linux_print_trace();
 #elif defined(_WIN64)
@@ -519,3 +523,4 @@ void stacktrace_print(void)
     if (global_debug.fp != NULL) dbg_destroy();
 }
 #endif //IGNORE_STACKTRACE_IMPLEMENTATION
+       

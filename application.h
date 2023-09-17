@@ -93,6 +93,9 @@ void application_pass_content(application_t *app, const void *content)
 void application_run(application_t *app)
 {
 #ifdef DEBUG
+#if defined(_WIN64)
+    SetUnhandledExceptionFilter(TopLevelExceptionHandler);
+#endif
     dbg_init();
 #endif
 
