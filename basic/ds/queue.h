@@ -134,7 +134,7 @@ void __impl_queue_put(queue_t *queue, const void *elemaddr, u64 __elem_size)
     if (elemaddr == NULL)               eprint("queue_put: elem argument is null");
     if (__elem_size != queue->__elem_size)  eprint("expected __elem_size %li but got %li", queue->__elem_size, __elem_size);
 
-    if (queue_is_full(queue)) eprint("overflow");
+    if (queue_is_full(queue)) eprint("overflow (queue size `%li`)", queue->__capacity);
 
     // pass by value
     memcpy(queue->__data + (queue->__end * queue->__elem_size), 

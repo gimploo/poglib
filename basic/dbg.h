@@ -122,11 +122,11 @@ void __dbg_set_stacktraces(dbg_node_info_t *dn)
     symbol->SizeOfStruct = sizeof( SYMBOL_INFO );
 
     int count = 0;
-    for(int i = 2, j = -1; i < frames; i++ )
+    for(int index = 2, j = 0; index < frames && j != MAX_STACKTRACES_IN_NODE; index++, j++ )
     {
-        dn->stacktraces[++j] = calloc(1024, sizeof(char));
-        SymFromAddr( process, ( DWORD64 )( stack[ i ] ), 0, symbol );
-        sprintf(dn->stacktraces[j], " %02i |  %s [0x%0X]", frames - i, symbol->Name, symbol->Address );
+        dn->stacktraces[j] = calloc(1024, sizeof(char));
+        SymFromAddr( process, ( DWORD64 )( stack[ index ] ), 0, symbol );
+        sprintf(dn->stacktraces[j], " %02i |  %s [0x%0X]", frames - index, symbol->Name, symbol->Address );
         count++;
     }
     dn->nstacktraces = count;
@@ -406,11 +406,13 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
 //NOTE: dont know why but the undef statment needs to be there for this to work properly 
 //and not smash the stack from recursive calls
 #undef free
-            dbg_node_info_t *tmp = node->value;
-            for (int i = 0; i < tmp->nstacktraces; i++) {
-                free(tmp->stacktraces[i]);
+            {
+                dbg_node_info_t *node_value = node->value;
+                for (int i = 0; i < node_value->nstacktraces; i++) {
+                    free(node_value->stacktraces[i]);
+                }
+                llist_delete_node(list, node);
             }
-            llist_delete_node(list, node);
         }
 
     } else {

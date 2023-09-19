@@ -129,16 +129,16 @@ void            glbatch_destroy(glbatch_t *batch);
 
 typedef struct {
 
-    glbatch_t text;
+    glbatch_t data;
 
 } gltext_t;
 
 gltext_t        gltext_init(const u64 capacity);
-#define         gltext_put(PTEXT, ELEM)         queue_put(&(PTEXT)->text.globjs, (ELEM))
-#define         gltext_get(PTEXT, ELEM)         queue_get_in_buffer(&(PTEXT)->text.globjs, (ELEM))
-#define         gltext_is_empty(PTEXT)          queue_is_empty(&(PTEXT)->text.globjs)
-#define         gltext_clear(PTEXT)             queue_clear(&(PTEXT)->text.globjs)
-#define         gltext_destroy(PTEXT)           glbatch_destroy(&(PTEXT)->text)
+#define         gltext_put(PTEXT, ELEM)         queue_put(&(PTEXT)->data.globjs, (ELEM))
+#define         gltext_get(PTEXT, ELEM)         queue_get_in_buffer(&(PTEXT)->data.globjs, (ELEM))
+#define         gltext_is_empty(PTEXT)          queue_is_empty(&(PTEXT)->data.globjs)
+#define         gltext_clear(PTEXT)             queue_clear(&(PTEXT)->data.globjs)
+#define         gltext_destroy(PTEXT)           glbatch_destroy(&(PTEXT)->data)
 
 
 #ifndef IGNORE_GL_TYPE_IMPLEMENTATION
@@ -364,7 +364,7 @@ void __gen_quad_indices(u32 indices[], const u32 shape_count)
 gltext_t gltext_init(const u64 capacity)
 {
     return (gltext_t ) {
-        .text =  {
+        .data =  {
             .globjs = __impl_queue_init(capacity, sizeof(glquad_t ), "glquad_t"),
             .__meta = {
                 .type       = GLBT_type(glquad_t ),
