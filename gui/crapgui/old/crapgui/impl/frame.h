@@ -20,7 +20,7 @@ void __frame_update(frame_t *frame, crapgui_t *gui)
 
         glquad_t header = glquad(
                 quadf((vec3f_t ){-1.0f, 1.0f, 1.0f}, 2.0f, 0.2f), 
-                COLOR_BLACK, quadf(vec3f(0.0f),0.0f,0.0f));
+                COLOR_BLACK, quadf(vec3f(0.0f),1.0f,1.0f));
 
         glbatch_put(&frame->__cache.self.glquads, header);
 

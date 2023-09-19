@@ -74,18 +74,18 @@ void __ui_update(ui_t *ui, frame_t *frame, crapgui_t *gui)
             if (ui->is_hot)
                 ui->__cache.glquad = glquad(ui->__cache.quad,
                                     ui->styles.hovercolor,
-                                    quadf(vec3f(0.0f), 0.0f, 0.0f));
+                                    quadf(vec3f(0.0f), 1.0f, 1.0f));
             else
                 ui->__cache.glquad = glquad(ui->__cache.quad,
                                     ui->styles.color,
-                                    quadf(vec3f(0.0f), 0.0f, 0.0f));
+                                    quadf(vec3f(0.0f), 1.0f, 1.0f));
         break;
 
         case UI_LABEL:
             ui->__cache.glquad = 
                 glquad(ui->__cache.quad, 
                         ui->styles.color,
-                        quadf(vec3f(0.0f), 0.0f, 0.0f));
+                        quadf(vec3f(0.0f), 1.0f, 1.0f));
         break;
 
         case UI_DROPDOWN:

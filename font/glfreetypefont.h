@@ -48,7 +48,12 @@ typedef struct glfreetypefont_t {
 
 
 glfreetypefont_t    glfreetypefont_init(const char *filepath, const u32 fontsize);
-void                glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *batch, const char *text, vec2f_t pos, vec4f_t color);
+void                glfreetypefont_add_text_to_batch(
+                        const glfreetypefont_t *self, 
+                        glbatch_t *batch, 
+                        const char *text, 
+                        vec2f_t pos, 
+                        vec4f_t color);
 void                glfreetypefont_draw(const glfreetypefont_t *self, const glbatch_t *batch);
 void                glfreetypefont_destroy(glfreetypefont_t *self);
 
@@ -241,16 +246,16 @@ void glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *b
         /* Skip glyphs that have no pixels */
         if(!w || !h) continue;
 
-        quadf_t quad = quadf((vec3f_t ){x2, -y2, 0.0f}, w, h);
+        const quadf_t quad = quadf((vec3f_t ){x2, -y2, -1.0f}, w, h);
 
-        quadf_t uv = {
+        const quadf_t uv = {
           self->fontatlas[c].tx, self->fontatlas[c].ty, 0.0f,
           self->fontatlas[c].tx + self->fontatlas[c].bw / self->width, self->fontatlas[c].ty, 0.0f,
           self->fontatlas[c].tx + self->fontatlas[c].bw / self->width, self->fontatlas[c].ty + self->fontatlas[c].bh / self->height, 0.0f,
           self->fontatlas[c].tx, self->fontatlas[c].ty + self->fontatlas[c].bh / self->height, 0.0f,
         };
 
-        glquad_t stuff = glquad(quad, color, uv);
+        const glquad_t stuff = glquad(quad, color, uv);
 
         glbatch_put(batch, stuff);
     }
