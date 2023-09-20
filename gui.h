@@ -3,7 +3,64 @@
 #include <poglib/gfx/glrenderer2d.h>
 #include <poglib/font/glfreetypefont.h>
 
-#define QUAD_UV_DEFAULT quadf(vec3f(0.0f), 1.0f, 1.0f)
+#include "gui/uielem.h"
+
+typedef struct {
+    vec2f_t         pos, text_pos;
+    f32             width, height, text_width, text_height;
+    f32             padding, margin;
+    vec4f_t         color, text_color;
+    const char *    text_value;
+} uistyle_t ;
+
+typedef struct gui_t {
+
+    list_t ui_elements;
+
+    struct {
+        glfreetypefont_t font;
+        glshader_t  shader;
+        glbatch_t   texts;
+        glbatch_t   quads;
+    } gfx;
+
+} gui_t;
+
+
+gui_t           gui_init(void);
+#define         gui_button(PGUI, NAME, STYLE)   __ui_elem_init(PGUI, NAME, UI_BUTTON, (STYLE))
+#define         gui_label(PGUI, NAME, STYLE)    __ui_elem_init(PGUI, NAME, UI_LABEL, (STYLE))
+
+void            gui_update(gui_t *);
+uibutton_t  *   gui_get_button(const gui_t *gui, const char *name);
+
+void            gui_render(gui_t *);
+
+void            gui_destroy(gui_t *);
+
+
+
+
+/*========================================================================================
+                            ---- IMPLEMENTATION ----
+========================================================================================*/
+
+#ifndef IGNORE_POGLIB_GUI_IMPLEMENTATION
+
+#define DEFAULT_FRAME_FONT_PATH             "lib/poglib/res/ttf_fonts/Roboto-Medium.ttf"
+#define DEFAULT_FRAME_FONT_SIZE             30 
+#define DEFAULT_BUTTON_COLOR            COLOR_BLUE
+#define DEFAULT_BUTTON_WIDTH            0.4f
+#define DEFAULT_BUTTON_HEIGHT           0.2f
+#define DEFAULT_BUTTON_TEXT_HEIGHT 0.2f
+#define DEFAULT_BUTTON_TEXT_WIDTH  0.2f
+#define DEFAULT_BUTTON_TEXT_COLOR  COLOR_RED
+
+#define DEFAULT_LABEL_WIDTH 0.2f
+#define DEFAULT_LABEL_HEIGHT 0.2f
+#define DEFAULT_LABEL_TEXT_HEIGHT 0.2f
+#define DEFAULT_LABEL_TEXT_WIDTH 0.2f
+#define DEFAULT_LABEL_TEXT_COLOR COLOR_GRAY
 
 typedef enum ui_elem_type_t {
     UI_BUTTON,
@@ -19,29 +76,19 @@ typedef struct ui_elem_t {
 
 } ui_elem_t;
 
-
-typedef struct gui_t {
-
-    list_t ui_elements;
-
-    struct {
-        glfreetypefont_t font;
-        glshader_t  shader;
-        glbatch_t   texts;
-        glbatch_t   quads;
-    } gfx;
-
-} gui_t;
-
-gui_t gui_init(void);
-void gui_update(gui_t *);
-void gui_render(gui_t *);
-void gui_destroy(gui_t *);
-
-#define DEFAULT_FRAME_FONT_PATH             "lib/poglib/res/ttf_fonts/Roboto-Medium.ttf"
-#define DEFAULT_FRAME_FONT_SIZE             30 
-
-#ifndef IGNORE_POGLIB_GUI_IMPLEMENTATION
+uibutton_t * gui_get_button(const gui_t *gui, const char *name)
+{
+    list_iterator(&gui->ui_elements, iter)
+    {
+        const ui_elem_t *ui = iter;
+        if (ui->type != UI_BUTTON) continue;
+        
+        uibutton_t *button = ui->data;
+        if (strcmp(button->style.text.value, name) == 0) 
+            return button;
+    }
+    return NULL;
+}
 
 const char * const GUI_VSHADER = 
     "#version 330 core\n"
@@ -84,59 +131,11 @@ gui_t gui_init(void)
     };
 }
 
-typedef struct uibutton_t {
-    struct {
-        struct {
-            vec2f_t     position;
-            f32         height, width;
-            vec4f_t     color;
-            f32         padding, margin;
-        } button;
-        struct {
-            vec2f_t     position;
-            f32         height, width;
-            vec4f_t     color;
-            char        value[32];
-        } text;
-    } style;
-    struct {
-        bool is_hover;
-        bool is_clicked;
-    } status;
-} uibutton_t ;
 
-typedef struct uilabel_t{
-    struct {
-        struct {
-            vec2f_t     position;
-            f32         height, width;
-            vec4f_t     color;
-            f32         padding, margin;
-        } label;
-        struct {
-            vec2f_t     position;
-            f32         height, width;
-            vec4f_t     color;
-            char        value[32];
-        } text;
-    } style;
-} uilabel_t;
-
-typedef struct uistyle_t {
-    vec2f_t pos, text_pos;
-    f32 width, height, text_width, text_height;
-    f32 padding, margin;
-    vec4f_t color, text_color;
-    const char *text_value;
-} uistyle_t ;
-
-#define DEFAULT_BUTTON_COLOR            COLOR_BLUE
-#define DEFAULT_BUTTON_WIDTH            0.4f
-#define DEFAULT_BUTTON_HEIGHT           0.2f
 
 vec2f_t __ui_get_default_position(const gui_t *gui)
 {
-    if (gui->ui_elements.len == 0) return vec2f(0.0f);
+    if (gui->ui_elements.len == 0) return (vec2f_t ){-0.9f, 0.9f};
 
     const ui_elem_t *lastelem = list_get_value(&gui->ui_elements, gui->ui_elements.len - 1);
 
@@ -182,15 +181,6 @@ vec2f_t __ui_get_default_position(const gui_t *gui)
     };
 }
 
-#define DEFAULT_BUTTON_TEXT_HEIGHT 0.2f
-#define DEFAULT_BUTTON_TEXT_WIDTH  0.2f
-#define DEFAULT_BUTTON_TEXT_COLOR  COLOR_RED
-
-#define DEFAULT_LABEL_WIDTH 0.2f
-#define DEFAULT_LABEL_HEIGHT 0.2f
-#define DEFAULT_LABEL_TEXT_HEIGHT 0.2f
-#define DEFAULT_LABEL_TEXT_WIDTH 0.2f
-#define DEFAULT_LABEL_TEXT_COLOR COLOR_GRAY
 
 uilabel_t __uilabel_init(const gui_t *gui, const char *label, const uistyle_t *style)
 {
@@ -270,11 +260,6 @@ uibutton_t __uibutton_init(const gui_t *gui, const char *label, const uistyle_t 
     return output;
 }
 
-#define gui_button(PGUI, NAME, STYLE)\
-    __ui_elem_init(PGUI, NAME, UI_BUTTON, STYLE)
-
-#define gui_label(PGUI, NAME, STYLE)\
-    __ui_elem_init(PGUI, NAME, UI_LABEL, STYLE)
 
 void __ui_elem_init(gui_t *gui, const char *name, ui_elem_type_t type, const uistyle_t *styles)
 {
@@ -347,7 +332,8 @@ void __ui_elem_button_update(gui_t *gui, uibutton_t *button)
     if (button->status.is_hover) {
         if (window_mouse_button_is_pressed(global_window, SDL_MOUSEBUTTON_LEFT))
             button->status.is_clicked = true;
-        button->status.is_clicked = false;
+        else
+            button->status.is_clicked = false;
     }
 
     //quad
