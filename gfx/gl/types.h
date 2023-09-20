@@ -2,6 +2,8 @@
 #include "./objects.h"
 #include "./common.h"
 
+#define QUAD_UV_DEFAULT quadf(vec3f(0.0f), 1.0f, 1.0f)
+
 typedef struct glvertex2d_t {
 
     vec3f_t position;
