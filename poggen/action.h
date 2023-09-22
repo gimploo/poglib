@@ -2,6 +2,7 @@
 #include <SDL2/SDL.h>
 #include <poglib/application/window/sdl_window.h>
 
+//THIS IS A MISTAKE 
 
 typedef enum actiontype {
 
