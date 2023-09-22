@@ -94,56 +94,19 @@ void poggen_change_scene(poggen_t *self, const char *scene_label)
     self->current_scene = scene;
 }
 
-void __poggen_update_user_input(poggen_t *self)
-{    
-    scene_t *current_scene = self->current_scene;
-    assert(current_scene);
-
-    window_t *win = self->__window;
-    window_update_user_input(win);
-
-    const list_t *actions = &current_scene->__actions;
-    list_iterator(actions, i) {
-
-        assert(i); 
-        action_t action = *(action_t *)i; 
-
-        switch(win->thisframe.kstate)
-        {
-            case SDL_KEYUP:
-            case SDL_KEYDOWN:
-                if (action.key == win->thisframe.key) {
-                    switch(action.type)
-                    {
-                        case ACTION_TYPE_JUSTPRESSED:
-                            if (window_keyboard_is_key_just_pressed(win, action.key))
-                                current_scene->__input(current_scene, action); 
-                        break;
-                        case ACTION_TYPE_PRESSED:
-                            if (window_keyboard_is_key_pressed(win, action.key))
-                                current_scene->__input(current_scene, action); 
-                        break;
-                        case ACTION_TYPE_HELD:
-                            if (window_keyboard_is_key_held(win, action.key))
-                                current_scene->__input(current_scene, action); 
-                        break;
-                    }
-                } 
-            break;
-        }
-    }
-}
-
 void poggen_update(poggen_t *self, const f32 dt)
 {
     assert(self);
+
     scene_t *current_scene = self->current_scene;
     if (current_scene == NULL) eprint("Current scene is null");
 
-    current_scene->dt = dt;
-    __poggen_update_user_input(self);
-    current_scene->__update(current_scene);
+    window_t *win = self->__window;
 
+    window_update_user_input(win);
+
+    current_scene->__input(current_scene);
+    current_scene->__update(current_scene);
 }
 
 void poggen_destroy(poggen_t *self)
