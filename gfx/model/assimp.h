@@ -4,12 +4,12 @@
 #include "../gl/texture2d.h"
 #include "../gl/types.h"
 
-#include <assimp/defs.h>
-#include <assimp/importerdesc.h>
-#include <assimp/cimport.h>
-#include <assimp/mesh.h>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
+#include <poglib/external/assimp/include/assimp/defs.h>
+#include <poglib/external/assimp/include/assimp/importerdesc.h>
+#include <poglib/external/assimp/include/assimp/cimport.h>
+#include <poglib/external/assimp/include/assimp/mesh.h>
+#include <poglib/external/assimp/include/assimp/scene.h>
+#include <poglib/external/assimp/include/assimp/postprocess.h>
 
 typedef struct glmodel_t {
 
@@ -27,8 +27,13 @@ void        glmodel_destroy(glmodel_t *self);
 
 glmesh_t __glmesh_processMesh(glmodel_t *self, struct aiMesh *mesh, const struct aiScene *scene)
 {
+    // get the total total indicies in the mesh
+    u64 total_indicies = 0;
+    for(int i = 0; i < mesh->mNumFaces; i++) 
+        total_indicies += mesh->mFaces[i].mNumIndices;
+
     slot_t vtx = slot_init(mesh->mNumVertices, glvertex3d_t );
-    list_t ind = list_init(u32 );
+    slot_t ind = slot_init(total_indicies, u32);
 
     // copy indices from stupid array format
     for(int i = 0; i < mesh->mNumFaces; i++) 
@@ -36,7 +41,7 @@ glmesh_t __glmesh_processMesh(glmodel_t *self, struct aiMesh *mesh, const struct
         struct aiFace face = mesh->mFaces[i];
         // retrieve all indices of the face and store them in the indices vector
         for(unsigned int j = 0; j < face.mNumIndices; j++)
-            list_append(&ind, face.mIndices[j]);
+            slot_append(&ind, face.mIndices[j]);
     }
 
     for (int i = 0; i < mesh->mNumVertices; i++)
