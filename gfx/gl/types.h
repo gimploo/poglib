@@ -24,7 +24,7 @@ typedef struct glvertex3d_t {
 typedef struct glmesh_t {
 
     const slot_t  __vtx;
-    const list_t  __idx; 
+    const slot_t  __idx; 
 
     const vao_t   __vao;
     const ebo_t   __ebo;
@@ -32,10 +32,11 @@ typedef struct glmesh_t {
 
 } glmesh_t;
 
-#define glmesh_get_vertex_count(PGLMESH) ((PGLMESH)->__vertices.len
-#define glmesh_get_triangle_count(PGLMESH) ((PGLMESH)->__indices.len / 3)
+#define glmesh_getvertices(PGLMESH)         (&(PGLMESH)->__vtx)
+#define glmesh_get_vertex_count(PGLMESH)    ((PGLMESH)->__vertices.len
+#define glmesh_get_triangle_count(PGLMESH)  ((PGLMESH)->__indices.len / 3)
 
-glmesh_t glmesh_init(const slot_t vertices, const list_t indices)
+glmesh_t glmesh_init(const slot_t vertices, const slot_t indices)
 {
     vao_t vao;
     vbo_t vbo;
@@ -47,9 +48,12 @@ glmesh_t glmesh_init(const slot_t vertices, const list_t indices)
                 vertices.__data, 
                 vertices.len * vertices.__elem_size, vertices.len);
         ebo = ebo_init(&vbo, (u32 *)indices.__data, indices.len);
-        vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex3d_t ), 0);
-        vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, norm));   
-        vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, uv));
+
+        //TODO: this implementation is very rescriting on how to load a mesh, 
+        //needs to be refactored
+        vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(vec3f_t ), 0);
+        //vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, norm));   
+        //vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, uv));
         /*vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, tangent));  */
         /*vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, bitangent));*/
         /*vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex3d_t ), offsetof(glvertex3d_t, BoneIDs));*/
@@ -72,7 +76,7 @@ void glmesh_destroy(glmesh_t *self)
     ebo_destroy(&self->__ebo);
 
     slot_destroy((slot_t *)&self->__vtx);
-    list_destroy((list_t *)&self->__idx);
+    slot_destroy((slot_t *)&self->__idx);
 }
 
 typedef struct { glvertex2d_t vertex[3]; } gltri_t;
