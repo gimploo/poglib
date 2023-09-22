@@ -44,7 +44,6 @@ void            matrix4f_print(const char *message, const matrix4f_t m);
 
 
 
-
 #ifndef IGNORE_LA_IMPLEMENTATION
 
 
@@ -53,7 +52,7 @@ matrix4f_t matrix4f_multiply(const matrix4f_t a, const matrix4f_t b)
     return glms_mat4_mul(a, b);
 }
 
-matrix4f_t matrix4f_rotation(const f32 angle_in_radians, const vec3f_t axis)
+matrix4f_t matrix4f_rot(const f32 angle_in_radians, const vec3f_t axis)
 {
     return glms_rotate(glms_mat4_identity(), angle_in_radians, axis);
 }
