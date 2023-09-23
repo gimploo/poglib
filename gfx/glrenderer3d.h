@@ -107,13 +107,37 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
 
 void glrenderer3d_draw_mesh(const glrenderer3d_t *self, const glmesh_t *mesh)
 {
-    glshader_bind(self->shader);
+    const slot_t *vtx = &mesh->vtx;
+    const slot_t *idx = &mesh->idx;
 
+    vao_t vao = vao_init();
+    vao_bind(&vao);
+
+    vbo_t vbo = vbo_static_init(
+            vtx->__data, 
+            vtx->__elem_size * vtx->len * vtx->__capacity, 
+            vtx->len);
+    vbo_bind(&vbo);
+
+    ebo_t ebo = ebo_init(&vbo, (const u32 *)idx->__data, idx->len);
+    ebo_bind(&ebo);
+
+    vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(vec3f_t ), 0);
+
+    glshader_bind(self->shader);
     if (self->textures.data && self->textures.count > 0)
         for (int i = 0; i < self->textures.count; i++)
             gltexture2d_bind(&self->textures.data[i], i);
 
-    vao_draw_with_ebo(&mesh->__vao, &mesh->__ebo);
+    //positions
+    vao_draw_with_ebo(&vao, &ebo);
+
+    vbo_unbind();
+    vao_unbind();
+
+    ebo_destroy(&ebo);
+    vbo_destroy(&vbo);
+    vao_destroy(&vao);
 }
 
 void glrenderer3d_draw_model(const glrenderer3d_t *self, const glmodel_t *model)
