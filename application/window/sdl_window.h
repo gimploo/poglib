@@ -12,8 +12,8 @@
 //hold one sub window at a time. In the future lets implement a list of 
 //sub windows Sub window logic
 
-//TODO: A better way to show sdl logs without it cluttering stdout
 
+//TODO: A better way to show sdl logs without it cluttering stdout
 
 #ifndef SDL2_ENABLE_LOG
     #define SDL_Log(fmt, ...)
