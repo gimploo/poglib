@@ -122,14 +122,15 @@ void glrenderer3d_draw_mesh(const glrenderer3d_t *self, const glmesh_t *mesh)
     ebo_t ebo = ebo_init(&vbo, (const u32 *)idx->__data, idx->len);
     ebo_bind(&ebo);
 
+    //positions
     vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(vec3f_t ), 0);
+    //...
 
     glshader_bind(self->shader);
     if (self->textures.data && self->textures.count > 0)
         for (int i = 0; i < self->textures.count; i++)
             gltexture2d_bind(&self->textures.data[i], i);
 
-    //positions
     vao_draw_with_ebo(&vao, &ebo);
 
     vbo_unbind();
