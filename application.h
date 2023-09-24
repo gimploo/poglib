@@ -46,7 +46,7 @@ typedef struct application_t {
         stopwatch_t         *timer;
         glfreetypefont_t    *fontrenderer;
         void                *content;
-    } __handler;
+    } handle;
 
     void (*init)(struct application_t *);
     void (*update)(struct application_t *);
@@ -59,13 +59,13 @@ typedef struct application_t {
 void            application_pass_content(application_t *app, const void *content);
 void            application_run(application_t *app);
 
-#define         application_set_font(PAPP, FONT)            (PAPP)->__handler->fontrenderer = FONT
+#define         application_set_font(PAPP, FONT)            (PAPP)->handle->fontrenderer = FONT
 
-#define         application_get_game(PAPP)                  (PAPP)->__handler.content
-#define         application_get_content(PAPP)               (PAPP)->__handler.content
-#define         application_get_window(PAPP)                (PAPP)->__handler.window
-#define         application_get_dt(PAPP)                    (PAPP)->__handler.timer->dt
-#define         application_get_fps(PAPP)                   (PAPP)->__handler.timer->fps
+#define         application_get_game(PAPP)                  (PAPP)->handle.content
+#define         application_get_content(PAPP)               (PAPP)->handle.content
+#define         application_get_window(PAPP)                (PAPP)->handle.window
+#define         application_get_dt(PAPP)                    (PAPP)->handle.timer->dt
+#define         application_get_fps(PAPP)                   (PAPP)->handle.timer->fps
 f32             application_get_tick(const application_t *);
 
 #define         application_update_state(PAPP, STATE)       (PAPP)->state = STATE
@@ -78,16 +78,16 @@ f32             application_get_tick(const application_t *);
 
 f32 application_get_tick(const application_t *app)
 {
-    return app->__handler.timer->__now;
+    return app->handle.timer->__now;
 }
 
 void application_pass_content(application_t *app, const void *content)
 {
     assert(content);
 
-    app->__handler.content = calloc(1, app->content.size);
-    assert(app->__handler.content);
-    memcpy(app->__handler.content, content, app->content.size);
+    app->handle.content = calloc(1, app->content.size);
+    assert(app->handle.content);
+    memcpy(app->handle.content, content, app->content.size);
 }
 
 void application_run(application_t *app)
@@ -113,6 +113,8 @@ void application_run(application_t *app)
     flags = SDL_INIT_EVERYTHING;
 #endif
 
+    app->window.aspect_ratio = (f32)app->window.width / (f32)app->window.height;
+
     window_t * win = window_init(
             app->window.title, 
             app->window.width, 
@@ -126,9 +128,9 @@ void application_run(application_t *app)
 
     stopwatch_t timer = stopwatch();
 
-    app->__handler.window= win;
-    app->__handler.timer = &timer;
-    app->__handler.fontrenderer = NULL;
+    app->handle.window= win;
+    app->handle.timer = &timer;
+    app->handle.fontrenderer = NULL;
 
     // Initialize the content in the application
     printf("[!] APPLICATION INIT!\n");
@@ -177,8 +179,8 @@ void application_run(application_t *app)
 
     window_destroy();
 
-    free(app->__handler.content);
-    app->__handler.content = NULL;
+    free(app->handle.content);
+    app->handle.content = NULL;
 
 #ifdef DEBUG
     dbg_destroy();
