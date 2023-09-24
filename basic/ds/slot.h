@@ -26,6 +26,7 @@ typedef struct slot_t {
 #define             slot_insert(PSLOTARRAY, INDEX, VALUE)                  __impl_slot_insert((PSLOTARRAY), (INDEX), &(VALUE), sizeof(VALUE))
 #define             slot_append(PSLOTARRAY, VALUE)                         slot_insert((PSLOTARRAY), (PSLOTARRAY)->len, (VALUE))
 #define             slot_delete(PSLOTARRAY, INDEX)                         __impl_slot_delete((PSLOTARRAY), (INDEX))
+slot_t              slot_clone(const slot_t *slot);
 
 void *              slot_get_value(const slot_t *table, const u64 index);
 #define             slot_iterator(PSLOTARRAY, ITER)                        __impl_slot_for_loop_iterator((PSLOTARRAY), (ITER))
@@ -216,5 +217,22 @@ void slot_clear(slot_t *slot)
     assert(slot);
     slot->len = 0;
     memset(slot->__index_table, 0, sizeof(bool) * slot->__capacity);
+}
+
+slot_t slot_clone(const slot_t *slot)
+{
+    slot_t output = __impl_slot_init(
+            slot->__capacity, 
+            slot->__elem_type, 
+            slot->__elem_size);
+
+    slot_iterator(slot, iter) {
+        __impl_slot_insert(&output,
+            output.len, 
+            iter, 
+            slot->__elem_size);
+    }
+
+    return output;
 }
 #endif
