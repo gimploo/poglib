@@ -20,7 +20,7 @@ const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h" };
 \
 } while (0)
 
-#define ASSERT(FMT, ...) if (!(FMT)) eprint("ASSERTION: "##__VA_ARGS__)
+#define ASSERT(FMT, ...) if (!(FMT)) eprint("ASSERTION: " #FMT " " ##__VA_ARGS__)
 #define assert ASSERT
 
 /*=============================================================================
