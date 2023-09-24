@@ -38,17 +38,17 @@ glmesh_t glmesh_init(const slot_t vertices, const slot_t indices)
 
 glmesh_t glmesh_cube_init(void)
 {
-    const vec3f_t vertices[] = {
+    const vec4f_t vertices[] = {
         // front
-        (vec3f_t ) {-0.5f, -0.5f,  0.5f},
-        (vec3f_t ) { 0.5f, -0.5f,  0.5f},
-        (vec3f_t ) { 0.5f,  0.5f,  0.5f},
-        (vec3f_t ) {-0.5f,  0.5f,  0.5f},
+        (vec4f_t ) {-0.5f, -0.5f,  0.5f, 1.0f},
+        (vec4f_t ) { 0.5f, -0.5f,  0.5f, 1.0f},
+        (vec4f_t ) { 0.5f,  0.5f,  0.5f, 1.0f},
+        (vec4f_t ) {-0.5f,  0.5f,  0.5f, 1.0f},
         // back
-        (vec3f_t ) {-0.5f, -0.5f, -0.5f},
-        (vec3f_t ) { 0.5f, -0.5f, -0.5f},
-        (vec3f_t ) { 0.5f,  0.5f, -0.5f},
-        (vec3f_t ) {-0.5f,  0.5f, -0.5f},
+        (vec4f_t ) {-0.5f, -0.5f, -0.5f, 1.0f},
+        (vec4f_t ) { 0.5f, -0.5f, -0.5f, 1.0f},
+        (vec4f_t ) { 0.5f,  0.5f, -0.5f, 1.0f},
+        (vec4f_t ) {-0.5f,  0.5f, -0.5f, 1.0f},
     };
 
       const u32 ibo[] = {
@@ -72,7 +72,7 @@ glmesh_t glmesh_cube_init(void)
         6, 7, 3
     };
 
-    slot_t vs = slot_init(ARRAY_LEN(vertices), vec3f_t);
+    slot_t vs = slot_init(ARRAY_LEN(vertices), vec4f_t);
     slot_t is = slot_init(ARRAY_LEN(ibo), u32);
 
     for (int i = 0; i < ARRAY_LEN(vertices); i++)

@@ -123,7 +123,7 @@ void glrenderer3d_draw_mesh(const glrenderer3d_t *self, const glmesh_t *mesh)
     ebo_bind(&ebo);
 
     //positions
-    vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(vec3f_t ), 0);
+    vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(vec4f_t ), 0);
     //...
 
     glshader_bind(self->shader);
