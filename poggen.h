@@ -12,13 +12,16 @@ typedef struct poggen_t {
     assetmanager_t      assets;
     map_t               scenes;
     scene_t             *current_scene;
-    window_t            *__window;
+
+    struct {
+        const application_t *const app;
+    } handle;
 
 } poggen_t ;
 
 global poggen_t     *global_poggen = NULL;
 
-poggen_t *          poggen_init(void);
+poggen_t *          poggen_init(const application_t * const app);
 #define             poggen_add_scene(PGEN, SCENE_NAME)                          __impl_poggen_add_scene((PGEN), __impl_scene_init(SCENE_NAME))
 void                poggen_remove_scene(poggen_t *self, const char *label);
 void                poggen_change_scene(poggen_t *self, const char *scene_label);
@@ -37,22 +40,25 @@ void                poggen_destroy(poggen_t *self);
 
 
 
-poggen_t * poggen_init(void)
+poggen_t * poggen_init(const application_t * const app)
 {
     if (!global_window)     eprint("A window is required to run poggen\n");
     if (global_poggen)      eprint("Trying to initialize a second `poggen` in the same instance");
 
-
-    poggen_t *output = (poggen_t *)calloc(1, sizeof(poggen_t ));
-    assert(output);
-    *output =  (poggen_t ){
+    poggen_t tmp =  (poggen_t ){
         .assets         = assetmanager_init(),
         .scenes         = map_init(MAX_SCENES_ALLOWED, scene_t ),
         .current_scene  = NULL,
-        .__window       = global_window
+        .handle = {
+            .app          = app
+        }
     };
+    poggen_t *output = (poggen_t *)calloc(1, sizeof(poggen_t ));
+    memcpy(output, &tmp, sizeof(tmp));
 
-    global_poggen   = output;
+    ASSERT(output);
+
+    global_poggen  = output;
 
     return global_poggen;
 }
@@ -101,9 +107,7 @@ void poggen_update(poggen_t *self, const f32 dt)
     scene_t *current_scene = self->current_scene;
     if (current_scene == NULL) eprint("Current scene is null");
 
-    window_t *win = self->__window;
-
-    window_update_user_input(win);
+    window_update_user_input(self->handle.app->handle.window);
 
     current_scene->__input(current_scene, dt);
     current_scene->__update(current_scene);
