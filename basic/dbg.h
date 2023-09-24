@@ -20,6 +20,9 @@ const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h" };
 \
 } while (0)
 
+#define ASSERT(FMT, ...) if (!(FMT)) eprint("ASSERTION: "##__VA_ARGS__)
+#define assert ASSERT
+
 /*=============================================================================
                         - MEMORY LEAK CHECKER -
 ===============================================================================*/
@@ -221,11 +224,29 @@ void debugprint(void *arg)
 
 }
 
+#define MAX_MEM_DUMP_STDOUT_COUNT 10
+
 void debug_mem_dump(void)
 {
     llist_t *list = &global_debug.list;
     assert(list);
-    llist_print(list, debugprint);
+
+    if (list == NULL) {
+        fprintf(stderr, "%s: list argument is null\n", __func__);
+        exit(1);
+    } else if (list->head == NULL) {
+        fprintf(stderr, "%s: list is empty\n", __func__);
+        exit(1);
+    }
+
+    int count  = 0;
+    node_t *track = list->tail;
+    while (track != NULL && count != MAX_MEM_DUMP_STDOUT_COUNT) {
+
+        debugprint(track->value);
+        track = track->prev;
+        count++;
+    }
 }
 
 
