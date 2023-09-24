@@ -195,14 +195,14 @@ bool window_mouse_button_is_released(
 bool window_keyboard_is_key_just_pressed(window_t *window, SDL_Keycode key)
 {
     bool output = window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)];
-    window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)] = false;
+    // window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)] = false;
     return output;
 }
 
 bool window_keyboard_is_key_held(window_t *window, SDL_Keycode key)
 {
     bool output = window->keyboard.is_held[SDL_GetScancodeFromKey(key)];
-    window->keyboard.is_held[SDL_GetScancodeFromKey(key)] = false;
+    // window->keyboard.is_held[SDL_GetScancodeFromKey(key)] = false;
     return output;
 }
 
@@ -211,8 +211,8 @@ bool window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key)
     bool output = window->keyboard.is_held[SDL_GetScancodeFromKey(key)] 
                     || window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)];
 
-    window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)] = false;
-    window->keyboard.is_held[SDL_GetScancodeFromKey(key)] = false;
+    // window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)] = false;
+    // window->keyboard.is_held[SDL_GetScancodeFromKey(key)] = false;
 
     return output;
 }
@@ -272,6 +272,9 @@ bool window_mouse_wheel_is_scroll_left(window_t *w)
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
     GL_CHECK(glEnable(GL_DEPTH_TEST));\
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));\
+    GL_CHECK(glEnable(GL_CULL_FACE));\
+    GL_CHECK(glFrontFace(GL_CW));\
+    GL_CHECK(glCullFace(GL_BACK));\
 \
 } while(0)
 
