@@ -32,6 +32,7 @@ void *              slot_get_value(const slot_t *table, const u64 index);
 #define             slot_get_capacity(PSLOT) (PSLOT)->__capacity
 void                slot_print(const slot_t *table, void (*print)(void*));
 void                slot_dump(const slot_t *table);
+#define             slot_clear(PSLOT)                                       (PSLOT)->len = 0
 
 #define             slot_destroy(PSLOTARRAY)                               __impl_slot_destroy(PSLOTARRAY)
 
