@@ -103,9 +103,9 @@ matrix4f_t matrix4f_lookat(const vec3f_t eye, const vec3f_t center, const vec3f_
 matrix4f_t matrix4f_translation(const vec3f_t vec)
 {
     return (matrix4f_t ){
-         1.0f, 0.0f, 0.0f, vec.raw[X],
-         0.0f, 1.0f, 0.0f, vec.raw[Y],
-         0.0f, 0.0f, 1.0f, vec.raw[Z],
+         1.0f, 0.0f, 0.0f, vec.x,
+         0.0f, 1.0f, 0.0f, vec.y,
+         0.0f, 0.0f, 1.0f, vec.z,
          0.0f, 0.0f, 0.0f, 1.0f 
     };
 }

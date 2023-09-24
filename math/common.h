@@ -14,7 +14,8 @@ f32         Q_rsqrt(const f32 number );
 
 f32 radians(const f32 deg) 
 {
-    return deg * PI / 180.0f;
+    const f32 val = PI / 180.0f;
+    return deg * val;
 }
 
 f32 Q_rsqrt(const f32 number)
