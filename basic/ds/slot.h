@@ -32,7 +32,7 @@ void *              slot_get_value(const slot_t *table, const u64 index);
 #define             slot_get_capacity(PSLOT) (PSLOT)->__capacity
 void                slot_print(const slot_t *table, void (*print)(void*));
 void                slot_dump(const slot_t *table);
-#define             slot_clear(PSLOT)                                       (PSLOT)->len = 0
+void                slot_clear(slot_t *);
 
 #define             slot_destroy(PSLOTARRAY)                               __impl_slot_destroy(PSLOTARRAY)
 
@@ -209,5 +209,12 @@ void slot_dump(const slot_t *table)
         printf("%02li | %s \n", i, table->__index_table[i] ? "TRUE" : "FALSE");
     }
     printf("=====================\n");
+}
+
+void slot_clear(slot_t *slot)
+{
+    assert(slot);
+    slot->len = 0;
+    memset(slot->__index_table, 0, sizeof(bool) * slot->__capacity);
 }
 #endif
