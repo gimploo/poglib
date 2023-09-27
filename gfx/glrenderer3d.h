@@ -21,10 +21,41 @@ typedef struct glrenderer3d_t {
 
 } glrenderer3d_t ;
 
+typedef struct {
+
+    //NOTE: we are in the assumption that only float values are allowed via attributes
+    //other types are not supported 
+    const struct {
+        u8 ncmp;
+    } attr[10];
+    const u8 nattr;
+
+    const struct {
+        u32 size;
+        u8 *data;
+    } subbuffer[10];
+    const u8 nsubbuffer;
+
+    const struct {
+        u32 nmemb;
+        u8 *data;
+    } index;
+
+    const glshader_t *shader;
+
+    const struct {
+        gltexture2d_t *data;
+    } texture[10];
+    const u8 ntexture;
+
+} glrendererconfig_t;
+
+
 
 void                glrenderer3d_draw_cube(const glrenderer3d_t *renderer);
 void                glrenderer3d_draw_mesh(const glrenderer3d_t *, const glmesh_t *);
 void                glrenderer3d_draw_model(const glrenderer3d_t *, const glmodel_t *);
+void                glrenderer3d_draw_mesh_custom(const glrendererconfig_t config);
 
 
 /*-----------------------------------------------------------------------------
@@ -115,7 +146,7 @@ void glrenderer3d_draw_mesh(const glrenderer3d_t *self, const glmesh_t *mesh)
 
     vbo_t vbo = vbo_static_init(
             vtx->__data, 
-            vtx->__elem_size * vtx->len * vtx->__capacity, 
+            vtx->__elem_size * vtx->len, 
             vtx->len);
     vbo_bind(&vbo);
 
@@ -145,6 +176,63 @@ void glrenderer3d_draw_model(const glrenderer3d_t *self, const glmodel_t *model)
 {
     list_iterator(&model->meshes, mesh) 
         glrenderer3d_draw_mesh(self, (glmesh_t *)mesh);
+}
+
+
+void glrenderer3d_draw_mesh_custom(const glrendererconfig_t config)
+{
+    ASSERT(config.nsubbuffer <= 10);
+    ASSERT(config.nattr <= 10 && config.nattr > 0);
+    ASSERT(config.shader);
+
+    vao_t vao = vao_init();
+    vao_bind(&vao);
+
+    u32 total_vbo_size = 0;
+    for (int i = 0; i < config.nsubbuffer; i++)
+        total_vbo_size += config.subbuffer[i].size;
+
+    vbo_t vbo = vbo_static_init(NULL, total_vbo_size, 0);
+    vbo_bind(&vbo);
+
+    for (int i = 0, offset = 0; i < config.nsubbuffer; i++) 
+    {
+        GL_CHECK(glBufferSubData(
+                GL_ARRAY_BUFFER, 
+                offset, 
+                config.subbuffer[i].size, 
+                config.subbuffer[i].data));
+        offset += config.subbuffer[i].size;
+    }
+
+    ebo_t ebo = ebo_init(&vbo, config.index.data, config.index.nmemb);
+    ebo_bind(&ebo);
+
+    for (int i = 0, offset = 0; i < config.nattr; i++)
+    {
+        vao_set_attributes(
+                &vao, 
+                &vbo, 
+                config.attr[i].ncmp, 
+                GL_FLOAT, 
+                false, 
+                0, 
+                offset);
+        offset += config.subbuffer[i].size;
+    }
+
+    glshader_bind(config.shader);
+    for (int i = 0; i < config.ntexture; i++)
+        gltexture2d_bind(config.texture[i].data, i);
+
+    vao_draw_with_ebo(&vao, &ebo);
+
+    vbo_unbind();
+    vao_unbind();
+
+    ebo_destroy(&ebo);
+    vbo_destroy(&vbo);
+    vao_destroy(&vao);
 }
 #endif
 

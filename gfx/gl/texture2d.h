@@ -11,7 +11,6 @@
 typedef struct gltexture2d_t {
     
     GLuint          id; 
-    const char      uniform[16];
     const char      filepath[64];
     const char      type[32];
     unsigned char   *buf;
@@ -80,7 +79,7 @@ gltexture2d_t gltexture2d_empty_init(u32 width, u32 height)
 
     return (gltexture2d_t) {
         .id        = id,
-        .filepath = NULL,
+        .filepath  = {0},
         .buf       = NULL,
         .width     = (int)width,
         .height    = (int)height,
@@ -107,7 +106,7 @@ gltexture2d_t gltexture2d_init(const char *filepath)
 
     GL_CHECK(glGenTextures(1, &id));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, id));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));	
     GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
