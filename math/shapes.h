@@ -77,6 +77,10 @@ trif_t trif(vec3f_t pos, f32 side)
         .vertex[2] = { pos.x + side_half, pos.y - height, pos.z }
     };
 }
+
+#define VEC2F_FMT "%f %f"
+#define VEC2F_ARG(PVEC) PVEC.raw[0], PVEC.raw[1]
+
 #define VEC3F_FMT "%f %f %f"
 #define VEC3F_ARG(PVEC) PVEC.raw[0], PVEC.raw[1], PVEC.raw[2]
 
