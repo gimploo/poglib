@@ -7,7 +7,7 @@
 #define GL_CAMERA_DIRECTION_FRONT    (vec3f_t ){0.0f, 0.0f, -1.0f}
 #define GL_CAMERA_DIRECTION_UP       (vec3f_t ){0.0f, 1.0f, 0.0f }
 
-const f32 GL_CAMERA_SPEED           =  8.0f;
+const f32 GL_CAMERA_SPEED           =  20.0f;
 const f32 GL_CAMERA_SENSITIVITY     =  100.0f;
 
 typedef struct glcamera_t {
@@ -24,7 +24,7 @@ typedef struct glcamera_t {
 
 } glcamera_t ;
 
-glcamera_t      glcamera_perspective(const vec3f_t pos);
+glcamera_t      glcamera_perspective(const vec3f_t pos, const vec2f_t theta);
 void            glcamera_process_input(glcamera_t *self, const f32 dt);
 matrix4f_t      glcamera_getview(glcamera_t *self);
 
@@ -137,7 +137,7 @@ matrix4f_t glcamera_getview(glcamera_t *self)
     return self->__view;
 }
 
-glcamera_t glcamera_perspective(const vec3f_t pos)
+glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t theta)
 {
     glcamera_t o = {
         .position   = pos,
@@ -147,7 +147,7 @@ glcamera_t glcamera_perspective(const vec3f_t pos)
             .right      = glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)),
             .worldup    = GL_CAMERA_DIRECTION_UP,
         },
-        .theta          = {0},
+        .theta          = theta,
         .__view       = MATRIX4F_IDENTITY,
     };
 
