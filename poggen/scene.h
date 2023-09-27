@@ -23,7 +23,7 @@ typedef struct scene_t {
     bool                 __is_paused;
     bool                 __is_over;
     void                 (*__init)(struct scene_t *);
-    void                 (*__update)(struct scene_t *);
+    void                 (*__update)(struct scene_t *, const f32 dt);
     void                 (*__input)(struct scene_t *, const f32 dt);
     void                 (*__render)(struct scene_t *);
     void                 (*__destroy)(struct scene_t *);
