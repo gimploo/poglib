@@ -55,21 +55,21 @@ glmesh_t glmesh_cube_init(void)
         // front
         0, 1, 2,
         2, 3, 0,
-        // right
-        1, 5, 6,
-        6, 2, 1,
         // back
         7, 6, 5,
         5, 4, 7,
+        // top
+        6, 7, 3,
+        3, 2, 6,
+        // bottom
+        1, 0, 4,
+        4, 5, 1,
         // left
         4, 0, 3,
         3, 7, 4,
-        // bottom
-        4, 5, 1,
-        1, 0, 4,
-        // top
-        3, 2, 6,
-        6, 7, 3
+        // right
+        1, 5, 6,
+        6, 2, 1,
     };
 
     slot_t vs = slot_init(ARRAY_LEN(vertices), vec4f_t);

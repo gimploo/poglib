@@ -63,18 +63,22 @@ void vbo_destroy(const vbo_t *obj)
 vbo_t vbo_static_init(const void *vertices, const size_t vsize, const u64 vertex_count)
 {
     assert(vsize != 8);
-    assert(vertex_count > 1);
 
-    vbo_t VBO;
+    vbo_t VBO = {
+        .vertex_count        = vertex_count,
+        .__attribute_index   = -1,
+    };
 
     GL_CHECK(glGenBuffers(1, &VBO.id)); 
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, VBO.id));
     GL_CHECK(glBufferData(GL_ARRAY_BUFFER, vsize, vertices, GL_STATIC_DRAW));
+    if (vertices != NULL) {
+        assert(vertex_count > 1);
+        GL_LOG("VBO (STATIC)\t `%i` created", VBO.id);
+    } else {
+        GL_LOG("EMPTY VBO (STATIC)\t `%i` created", VBO.id);
+    }
 
-    VBO.vertex_count        = vertex_count;
-    VBO.__attribute_index   = -1;
-
-    GL_LOG("VBO (STATIC)\t `%i` created", VBO.id);
     vbo_unbind();
     return VBO;
 }
