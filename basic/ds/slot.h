@@ -30,7 +30,8 @@ slot_t              slot_clone(const slot_t *slot);
 
 void *              slot_get_value(const slot_t *table, const u64 index);
 #define             slot_iterator(PSLOTARRAY, ITER)                        __impl_slot_for_loop_iterator((PSLOTARRAY), (ITER))
-#define             slot_get_capacity(PSLOT) (PSLOT)->__capacity
+#define             slot_get_capacity(PSLOT)                                (PSLOT)->__capacity
+#define             slot_get_buffer(PSLOT)                                  (PSLOT)->__data
 void                slot_print(const slot_t *table, void (*print)(void*));
 void                slot_dump(const slot_t *table);
 void                slot_clear(slot_t *);
