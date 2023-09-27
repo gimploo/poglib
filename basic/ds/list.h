@@ -27,11 +27,12 @@ typedef struct list_t {
 void            list_delete(list_t *list, const u64 index);
 #define         list_clear(PLIST)                               __impl_list_clear(PLIST)
 void            list_combine(list_t *dest, const list_t *src);
+#define         list_get_size(PLIST)                             ((PLIST)->__elem_size * (PLIST)->len)
 
 void            list_dump(const list_t *list);
 void            list_print(const list_t *list, void (*print)(void*));
 
-#define         list_get_everything(PLIST) (PLIST)->__data
+#define         list_get_buffer(PLIST) (PLIST)->__data
 void *          list_get_value(const list_t *list, const u64 index);
 #define         list_iterator(PLIST, ITER)                      __impl_list_iterator((PLIST), (ITER))
 
