@@ -110,7 +110,7 @@ void poggen_update(poggen_t *self, const f32 dt)
     window_update_user_input(self->handle.app->handle.window);
 
     current_scene->__input(current_scene, dt);
-    current_scene->__update(current_scene);
+    current_scene->__update(current_scene, dt);
 }
 
 void poggen_destroy(poggen_t *self)
