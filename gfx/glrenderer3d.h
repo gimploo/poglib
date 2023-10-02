@@ -27,6 +27,8 @@ typedef struct {
     //other types are not supported 
     const struct {
         u8 ncmp;
+        u32 stride;
+        u32 offset;
     } attr[10];
     const u8 nattr;
 
@@ -205,10 +207,13 @@ void glrenderer3d_draw_mesh_custom(const glrendererconfig_t config)
         offset += config.subbuffer[i].size;
     }
 
-    ebo_t ebo = ebo_init(&vbo, config.index.data, config.index.nmemb);
-    ebo_bind(&ebo);
+    ebo_t ebo = {0};
+    if (config.index.data) {
+        ebo = ebo_init(&vbo, config.index.data, config.index.nmemb);
+        ebo_bind(&ebo);
+    }
 
-    for (int i = 0, offset = 0; i < config.nattr; i++)
+    for (int i = 0; i < config.nattr; i++)
     {
         vao_set_attributes(
                 &vao, 
@@ -216,16 +221,18 @@ void glrenderer3d_draw_mesh_custom(const glrendererconfig_t config)
                 config.attr[i].ncmp, 
                 GL_FLOAT, 
                 false, 
-                0, 
-                offset);
-        offset += config.subbuffer[i].size;
+                config.attr[i].stride, 
+                config.attr[i].offset);
     }
 
     glshader_bind(config.shader);
     for (int i = 0; i < config.ntexture; i++)
         gltexture2d_bind(config.texture[i].data, i);
 
-    vao_draw_with_ebo(&vao, &ebo);
+    if (config.index.data)
+        vao_draw_with_ebo(&vao, &ebo);
+    else
+        vao_draw_with_vbo(&vao, &vbo);
 
     vbo_unbind();
     vao_unbind();
