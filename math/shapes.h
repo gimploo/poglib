@@ -79,10 +79,10 @@ trif_t trif(vec3f_t pos, f32 side)
 }
 
 #define VEC2F_FMT "%f %f"
-#define VEC2F_ARG(PVEC) PVEC.raw[0], PVEC.raw[1]
+#define VEC2F_ARG(VEC) (VEC).raw[0], (VEC).raw[1]
 
 #define VEC3F_FMT "%f %f %f"
-#define VEC3F_ARG(PVEC) PVEC.raw[0], PVEC.raw[1], PVEC.raw[2]
+#define VEC3F_ARG(VEC) (VEC).raw[0], (VEC).raw[1], (VEC).raw[2]
 
 void quadf_print(quadf_t quad)
 {
