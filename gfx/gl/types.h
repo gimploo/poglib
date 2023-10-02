@@ -2,6 +2,52 @@
 #include "./objects.h"
 #include "./common.h"
 
+typedef union {
+    f32 data[8];
+    struct {
+        vec2f_t t00;
+        vec2f_t t10;
+        vec2f_t t11;
+        vec2f_t t01;
+    } ;
+} sprite_uv_t;
+
+//TODO: this function only accounts for sprites all in one single row and not mulitple rows
+//in the image file
+sprite_uv_t sprite_uv(const vec2i_t sprite_count, const u32 index)
+{
+    //NOTE: index starts from the topleft corner
+
+    const vec2f_t norm_dim = { 1.0f / sprite_count.x, 1.0f / sprite_count.y };
+        
+    const vec2f_t t00 = {
+        index * norm_dim.x, 1.0f - ((index + 1.0f) * norm_dim.y)
+    };
+
+    const vec2f_t t10 = {
+        (index + 1.0f) * (norm_dim.x) , t00.y
+    };
+
+    const vec2f_t t11 = {
+        t10.x, 1.0f - (index * norm_dim.y)
+    };
+
+    const vec2f_t t01 = {
+        t00.x, t11.y
+    };
+
+    printf("INDEX = %i\n", index);
+    glm_vec2_print(t00.raw, stdout);
+
+    return (sprite_uv_t) {
+
+        t00.x, t00.y,
+        t10.x, t10.y,
+        t11.x, t11.y,
+        t01.x, t01.y,
+    };
+}
+
 #define QUAD_UV_DEFAULT quadf(vec3f(0.0f), 1.0f, 1.0f)
 
 typedef struct glvertex2d_t {
@@ -20,75 +66,147 @@ typedef struct glvertex3d_t {
 
 } glvertex3d_t ;
 
-
+//NOTE: i dont like how mesh is setup, need to think of a better way to do this.
+//i am thinking of changing how assimp.h is setup, this may allow me to remove the 
+//__heap member in the struct.
 typedef struct glmesh_t {
 
-    const slot_t  vtx;
-    const slot_t  idx; 
+    slot_t  * const vtx;
+    const slot_t  * const idx; 
+
+    struct {
+        slot_t vtx;
+        slot_t idx;
+    } __heap;
+
+    bool __inheap;
 
 } glmesh_t;
 
-glmesh_t glmesh_init(const slot_t vertices, const slot_t indices)
+glmesh_t glmesh(slot_t *vertices, const slot_t *indices)
 {
     return (glmesh_t ) {
         .vtx      = vertices,
         .idx      = indices,
+        .__heap = {0},
+        .__inheap = false
     };
 }
 
-glmesh_t glmesh_cube_init(void)
+glmesh_t glmesh_init(const slot_t vertices, const slot_t indices)
 {
-    const vec4f_t vertices[] = {
-        // front
-        (vec4f_t ) {-0.5f, -0.5f,  0.5f, 1.0f},
-        (vec4f_t ) { 0.5f, -0.5f,  0.5f, 1.0f},
-        (vec4f_t ) { 0.5f,  0.5f,  0.5f, 1.0f},
-        (vec4f_t ) {-0.5f,  0.5f,  0.5f, 1.0f},
-        // back
-        (vec4f_t ) {-0.5f, -0.5f, -0.5f, 1.0f},
-        (vec4f_t ) { 0.5f, -0.5f, -0.5f, 1.0f},
-        (vec4f_t ) { 0.5f,  0.5f, -0.5f, 1.0f},
-        (vec4f_t ) {-0.5f,  0.5f, -0.5f, 1.0f},
+    return (glmesh_t ) {
+        .vtx      = NULL,
+        .idx      = NULL,
+        .__heap = {
+            .vtx = vertices,
+            .idx = indices,
+        },
+        .__inheap = true
     };
-
-      const u32 ibo[] = {
-        // front
-        0, 1, 2,
-        2, 3, 0,
-        // back
-        7, 6, 5,
-        5, 4, 7,
-        // top
-        6, 7, 3,
-        3, 2, 6,
-        // bottom
-        1, 0, 4,
-        4, 5, 1,
-        // left
-        4, 0, 3,
-        3, 7, 4,
-        // right
-        1, 5, 6,
-        6, 2, 1,
-    };
-
-    slot_t vs = slot_init(ARRAY_LEN(vertices), vec4f_t);
-    slot_t is = slot_init(ARRAY_LEN(ibo), u32);
-
-    for (int i = 0; i < ARRAY_LEN(vertices); i++)
-        slot_append(&vs, vertices[i]);
-
-    for (int i = 0; i < ARRAY_LEN(ibo); i++)
-        slot_append(&is, ibo[i]);
-
-    return glmesh_init(vs, is);
 }
 
 void glmesh_destroy(glmesh_t *self)
 {
-    slot_destroy((slot_t *)&self->vtx);
-    slot_destroy((slot_t *)&self->idx);
+    if (!self->__inheap) eprint("This mesh is not heap initialized");
+
+    slot_destroy(&self->__heap.vtx);
+    slot_destroy(&self->__heap.idx);
 }
+
+const f32 DEFAULT_CUBE_VERTICES_8[] = {
+     // front
+    -0.5f, -0.5f,  0.5f,
+     0.5f, -0.5f,  0.5f,
+     0.5f,  0.5f,  0.5f,
+    -0.5f,  0.5f,  0.5f,
+    // back
+    -0.5f, -0.5f, -0.5f,
+     0.5f, -0.5f, -0.5f,
+     0.5f,  0.5f, -0.5f,
+    -0.5f,  0.5f, -0.5f,
+};
+
+// NOTE: for 3d textured cubes
+const f32 DEFAULT_CUBE_VERTICES_24[] = {
+     // front
+    -0.5f, -0.5f,  0.5f,
+     0.5f, -0.5f,  0.5f,
+     0.5f,  0.5f,  0.5f,
+    -0.5f,  0.5f,  0.5f,
+
+    // back
+    -0.5f, -0.5f, -0.5f,
+     0.5f, -0.5f, -0.5f,
+     0.5f,  0.5f, -0.5f,
+    -0.5f,  0.5f, -0.5f,
+
+    //left
+    -0.5f, -0.5f, 0.5f,
+    -0.5f, -0.5f, -0.5f, 
+    -0.5f, 0.5f, -0.5f,
+    -0.5f, 0.5f, 0.5f,
+
+    //right
+    0.5f, -0.5f, 0.5f,
+    +0.5f, -0.5f, -0.5f, 
+    +0.5f, 0.5f, -0.5f,
+    +0.5f, 0.5f, 0.5f,
+
+    //top
+    0.5f, 0.5f, 0.5f, 
+    0.5f, 0.5f, -0.5f,
+    -0.5f, 0.5f, -0.5f, 
+    -0.5f, 0.5f, 0.5f,
+
+    //bottom
+    0.5f, -0.5f, 0.5f, 
+    0.5f, -0.5f, -0.5f,
+    -0.5f, -0.5f, -0.5f, 
+    -0.5f, -0.5f, 0.5f,
+};
+
+const u32 DEFAULT_CUBE_INDICES_24[] = {
+    // front
+    0, 1, 2,
+    2, 3, 0,
+    // back
+    4, 5, 6,
+    6, 7, 4,
+    // left
+    8, 9, 10,
+    10, 11, 8,
+    // right
+    12, 13, 14,
+    14, 15, 12,
+    // top
+    16, 17, 18,
+    18, 19, 16,
+    // bottom
+    20, 21, 22,
+    22, 23, 20 
+};
+
+const u32 DEFAULT_CUBE_INDICES_8[] = {
+    // front
+    0, 1, 2,
+    2, 3, 0,
+    // back
+    4, 5, 6,
+    6, 7, 4,
+    // right
+    1, 5, 6,
+    6, 2, 1,
+    // left
+    0, 4, 7,
+    7, 3, 0,
+    // bottom
+    4, 5, 1,
+    1, 0, 4,
+    // top
+    7, 6, 2,
+    2, 3, 7
+};
 
 typedef struct { glvertex2d_t vertex[3]; } gltri_t;
 typedef struct { glvertex2d_t vertex[4]; } glquad_t;
@@ -219,27 +337,6 @@ const u32 DEFAULT_TRI_INDICES[] = {
 const u32 DEFAULT_QUAD_INDICES[] = {
     0, 1, 2,
     2, 3, 0
-};
-
-const u32 DEFAULT_CUBE_INDICES[] = {
-    // front
-    0, 1, 2,
-    2, 3, 0,
-    // right
-    1, 5, 6,
-    6, 2, 1,
-    // back
-    7, 6, 5,
-    5, 4, 7,
-    // left
-    4, 0, 3,
-    3, 7, 4,
-    // bottom
-    4, 5, 1,
-    1, 0, 4,
-    // top
-    3, 2, 6,
-    6, 7, 3
 };
 
 // Creates a quad suited for OpenGL
