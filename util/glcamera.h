@@ -22,6 +22,11 @@ typedef struct glcamera_t {
     vec2f_t         theta;
     matrix4f_t      __view;
 
+    struct {
+        vec3f_t  position;
+        vec2f_t  theta;
+    } __reset;
+
 } glcamera_t ;
 
 glcamera_t      glcamera_perspective(const vec3f_t pos, const vec2f_t theta);
@@ -103,6 +108,10 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                                 GL_CAMERA_SPEED * dt
                             ) 
                         );
+    if (window_keyboard_is_key_pressed(win, SDLK_r)) {
+        self->position = self->__reset.position;
+        self->theta = self->__reset.theta;
+    }
 
     // Looking with the mouse by holding the left mouse button
     {
@@ -119,8 +128,9 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
 
     __glcamera_update_directions(self);
 
+    logging("Camera Pos: "VEC3F_FMT " | " "Angle: " VEC2F_FMT, 
+            VEC3F_ARG(self->position), VEC2F_ARG(self->theta));
 
-    /*printf(VEC3F_FMT"\n", VEC3F_ARG(self->position));*/
     oldmp = newmp;
 }
 
@@ -149,6 +159,10 @@ glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t theta)
         },
         .theta          = theta,
         .__view       = MATRIX4F_IDENTITY,
+        .__reset = {
+            .position = pos,
+            .theta = theta
+        }
     };
 
     logging("[CAMERA] left click look around and wasd to move the camera\n");
