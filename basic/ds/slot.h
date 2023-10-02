@@ -1,6 +1,6 @@
 #pragma once
 #include "../common.h"
-#include "./list.h"
+#include "list.h"
 
 /*============================================================================
                 - STATIC ARRAY (SLOT ARRAY ) DATA STRUCTURE -
@@ -24,14 +24,15 @@ typedef struct slot_t {
 
 #define             slot_init(CAPACITY, TYPE)                              __impl_slot_init((CAPACITY), (#TYPE), sizeof(TYPE))
 #define             slot_insert(PSLOTARRAY, INDEX, VALUE)                  __impl_slot_insert((PSLOTARRAY), (INDEX), &(VALUE), sizeof(VALUE))
+#define             slot_insert_multiple(PSLOT, ARRAY)                      __impl_slot_insert_multiple((PSLOT), (u8 *)(ARRAY), sizeof((ARRAY)), sizeof((ARRAY[0])))
 #define             slot_append(PSLOTARRAY, VALUE)                         slot_insert((PSLOTARRAY), (PSLOTARRAY)->len, (VALUE))
 #define             slot_delete(PSLOTARRAY, INDEX)                         __impl_slot_delete((PSLOTARRAY), (INDEX))
 slot_t              slot_clone(const slot_t *slot);
-
 void *              slot_get_value(const slot_t *table, const u64 index);
 #define             slot_iterator(PSLOTARRAY, ITER)                        __impl_slot_for_loop_iterator((PSLOTARRAY), (ITER))
 #define             slot_get_capacity(PSLOT)                                (PSLOT)->__capacity
 #define             slot_get_buffer(PSLOT)                                  (PSLOT)->__data
+#define             slot_get_size(PSLOT)                                    ((PSLOT)->__elem_size * (PSLOT)->len)
 void                slot_print(const slot_t *table, void (*print)(void*));
 void                slot_dump(const slot_t *table);
 void                slot_clear(slot_t *);
@@ -235,5 +236,27 @@ slot_t slot_clone(const slot_t *slot)
     }
 
     return output;
+}
+
+void __impl_slot_insert_multiple(
+        slot_t *slot, 
+        const u8 *arr, 
+        const u64 arr_size, 
+        const u32 elem_size)
+{
+    ASSERT(slot);
+    ASSERT(arr);
+    ASSERT(arr_size > 0);
+    ASSERT(elem_size > 0);
+
+    const u32 arr_len = (arr_size / elem_size);
+    for (u32 i = 0; i < arr_len; i++)
+    {
+        __impl_slot_insert(
+                slot, 
+                slot->len, 
+                arr + (elem_size * i), 
+                elem_size);
+    }
 }
 #endif
