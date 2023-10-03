@@ -12,32 +12,54 @@ typedef union {
     } ;
 } sprite_uv_t;
 
-//TODO: this function only accounts for sprites all in one single row and not mulitple rows
-//in the image file
+typedef union {
+    struct {
+        sprite_uv_t front, back;
+        sprite_uv_t left, right;
+        sprite_uv_t top, bottom;
+    };
+} cube_uv_t;
+
 sprite_uv_t sprite_uv(const vec2i_t sprite_count, const u32 index)
 {
-    //NOTE: index starts from the topleft corner
+    /* NOTE:
+     * ====
+     * 16 X 16 Atlas texture
+     * -------------------------
+     * 0 | 1 | 2 | 3 | ...   |15
+     * -------------------------
+     * 16 | 17 | 18 | 19 | ...|30
+     * -------------------------
+     * . 
+     * .
+     * .
+     */
 
     const vec2f_t norm_dim = { 1.0f / sprite_count.x, 1.0f / sprite_count.y };
-        
+
+    vec3i_t row = {0};
+    u32 row_max = sprite_count.x;
+    while (index >= row_max) {
+        row_max *= 2;
+        row.y++;
+    }
+    row.x = index - (sprite_count.x * row.y) ;
+
     const vec2f_t t00 = {
-        index * norm_dim.x, 1.0f - ((index + 1.0f) * norm_dim.y)
+        row.x * norm_dim.x, 1.0f - ((row.y + 1.0f) * norm_dim.y)
     };
 
     const vec2f_t t10 = {
-        (index + 1.0f) * (norm_dim.x) , t00.y
+        (row.x + 1.0f) * (norm_dim.x) , t00.y
     };
 
     const vec2f_t t11 = {
-        t10.x, 1.0f - (index * norm_dim.y)
+        t10.x, 1.0f - (row.y * norm_dim.y)
     };
 
     const vec2f_t t01 = {
         t00.x, t11.y
     };
-
-    printf("INDEX = %i\n", index);
-    glm_vec2_print(t00.raw, stdout);
 
     return (sprite_uv_t) {
 
