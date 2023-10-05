@@ -35,7 +35,7 @@ sprite_uv_t sprite_uv(const vec2i_t sprite_count, const u32 index)
      * .
      */
 
-    const vec2f_t norm_dim = { 1.0f / sprite_count.x, 1.0f / sprite_count.y };
+    const vec2f_t sprite_dim = { 1.0f / sprite_count.x, 1.0f / sprite_count.y };
 
     vec3i_t row = {0};
     u32 row_max = sprite_count.x;
@@ -46,15 +46,15 @@ sprite_uv_t sprite_uv(const vec2i_t sprite_count, const u32 index)
     row.x = index - (sprite_count.x * row.y) ;
 
     const vec2f_t t00 = {
-        row.x * norm_dim.x, 1.0f - ((row.y + 1.0f) * norm_dim.y)
+        row.x * sprite_dim.x, 1.0f - ((row.y + 1.0f) * sprite_dim.y)
     };
 
     const vec2f_t t10 = {
-        (row.x + 1.0f) * (norm_dim.x) , t00.y
+        (row.x + 1.0f) * (sprite_dim.x) , t00.y
     };
 
     const vec2f_t t11 = {
-        t10.x, 1.0f - (row.y * norm_dim.y)
+        t10.x, 1.0f - (row.y * sprite_dim.y)
     };
 
     const vec2f_t t01 = {

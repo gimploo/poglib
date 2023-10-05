@@ -25,28 +25,42 @@ typedef struct {
 
     //NOTE: we are in the assumption that only float values are allowed via attributes
     //other types are not supported 
-    const struct {
-        u8 ncmp;
-        u32 stride;
-        u32 offset;
-    } attr[10];
-    const u8 nattr;
 
+    const u32 instance_count;
+
+    const u8 nattr;
     const struct {
+
+        u8 ncmp;
+        struct {
+            u32 offset;
+            u32 stride;
+        } interleaved;
+        bool is_instanced;  // ex: set this to true for transforms because they 
+                            // are different per instance 
+    } attr[10];
+
+    const u8 nsubbuffer;
+    const struct {
+
         u32 size;
         u8 *data;
+
     } subbuffer[10];
-    const u8 nsubbuffer;
 
     const struct {
+
         u32 nmemb;
         u8 *data;
+
     } index;
 
     const glshader_t *shader;
 
     const struct {
+
         gltexture2d_t *data;
+
     } texture[10];
     const u8 ntexture;
 
@@ -149,14 +163,15 @@ void glrenderer3d_draw_mesh(const glrenderer3d_t *self, const glmesh_t *mesh)
     vbo_t vbo = vbo_static_init(
             vtx->__data, 
             vtx->__elem_size * vtx->len, 
-            vtx->len);
+            vtx->len,
+            0);
     vbo_bind(&vbo);
 
     ebo_t ebo = ebo_init(&vbo, (const u32 *)idx->__data, idx->len);
     ebo_bind(&ebo);
 
     //positions
-    vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(vec4f_t ), 0);
+    vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(vec4f_t ), 0, false);
     //...
 
     glshader_bind(self->shader);
@@ -186,6 +201,7 @@ void glrenderer3d_draw_mesh_custom(const glrendererconfig_t config)
     ASSERT(config.nsubbuffer <= 10);
     ASSERT(config.nattr <= 10 && config.nattr > 0);
     ASSERT(config.shader);
+    ASSERT(config.instance_count > 0);
 
     vao_t vao = vao_init();
     vao_bind(&vao);
@@ -194,7 +210,8 @@ void glrenderer3d_draw_mesh_custom(const glrendererconfig_t config)
     for (int i = 0; i < config.nsubbuffer; i++)
         total_vbo_size += config.subbuffer[i].size;
 
-    vbo_t vbo = vbo_static_init(NULL, total_vbo_size, 0);
+    const u32 instance_count = config.instance_count;
+    vbo_t vbo = vbo_static_init(NULL, total_vbo_size, 0, instance_count);
     vbo_bind(&vbo);
 
     for (int i = 0, offset = 0; i < config.nsubbuffer; i++) 
@@ -209,11 +226,11 @@ void glrenderer3d_draw_mesh_custom(const glrendererconfig_t config)
 
     ebo_t ebo = {0};
     if (config.index.data) {
-        ebo = ebo_init(&vbo, config.index.data, config.index.nmemb);
+        ebo = ebo_init(&vbo, (u32 *)config.index.data, config.index.nmemb);
         ebo_bind(&ebo);
     }
 
-    for (int i = 0; i < config.nattr; i++)
+    for (u32 i = 0, offset = 0; i < config.nattr; i++)
     {
         vao_set_attributes(
                 &vao, 
@@ -221,18 +238,21 @@ void glrenderer3d_draw_mesh_custom(const glrendererconfig_t config)
                 config.attr[i].ncmp, 
                 GL_FLOAT, 
                 false, 
-                config.attr[i].stride, 
-                config.attr[i].offset);
+                config.attr[i].interleaved.stride, 
+                offset,//config.attr[i].offset,
+                config.attr[i].is_instanced);
+        offset += config.subbuffer[i].size + config.attr[i].interleaved.offset;
     }
 
     glshader_bind(config.shader);
     for (int i = 0; i < config.ntexture; i++)
         gltexture2d_bind(config.texture[i].data, i);
 
-    if (config.index.data)
+    if (config.index.data) {
         vao_draw_with_ebo(&vao, &ebo);
-    else
+    } else {
         vao_draw_with_vbo(&vao, &vbo);
+    }
 
     vbo_unbind();
     vao_unbind();
