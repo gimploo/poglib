@@ -28,6 +28,7 @@ void            list_delete(list_t *list, const u64 index);
 #define         list_clear(PLIST)                               __impl_list_clear(PLIST)
 void            list_combine(list_t *dest, const list_t *src);
 #define         list_get_size(PLIST)                             ((PLIST)->__elem_size * (PLIST)->len)
+#define         list_append_multiple(PLIST, ARRAY)              __impl_list_append_multiple((PLIST), (u8*)(ARRAY), sizeof((ARRAY)), sizeof((*ARRAY)))
 
 void            list_dump(const list_t *list);
 void            list_print(const list_t *list, void (*print)(void*));
@@ -201,5 +202,26 @@ void list_combine(list_t *dest, const list_t *src)
 
     list_iterator(src, iter)
         __impl_list_append(dest, iter, dest->__elem_size);
+}
+
+void __impl_list_append_multiple(
+        list_t *slot, 
+        const u8 *arr, 
+        const u64 arr_size, 
+        const u32 elem_size)
+{
+    ASSERT(slot);
+    ASSERT(arr);
+    ASSERT(arr_size > 0);
+    ASSERT(elem_size > 0);
+
+    const u32 arr_len = (arr_size / elem_size);
+    for (u32 i = 0; i < arr_len; i++)
+    {
+        __impl_list_append(
+                slot, 
+                arr + (elem_size * i), 
+                elem_size);
+    }
 }
 #endif
