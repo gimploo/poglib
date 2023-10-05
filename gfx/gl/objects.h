@@ -8,6 +8,7 @@ typedef struct vbo_t {
     GLuint  id; 
     u64     vertex_count;
     i64     __attribute_index; 
+    u32    instance_count;
 
 } vbo_t ;
 
@@ -19,10 +20,7 @@ typedef struct ebo_t {
 
 } ebo_t ;
 
-
-#define         vbo_init(ARRAY)                                 vbo_static_init((ARRAY), sizeof(ARRAY), ARRAY_LEN(ARRAY))
-//              (or)
-vbo_t           vbo_static_init(const void *vertices, const size_t vsize, const u64 count);
+vbo_t           vbo_static_init(const void *vertices, const size_t vsize, const u64 count, const u32 instance_count);
 
 #define         vbo_bind(PVBO)                                  GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, (PVBO)->id))
 #define         vbo_unbind()                                    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, 0))
@@ -36,7 +34,7 @@ void            ebo_destroy(const ebo_t *ebo);
 
 vao_t           vao_init(void);
 #define         vao_bind(PVAO)                                   GL_CHECK(glBindVertexArray((PVAO)->id))
-void            vao_set_attributes( vao_t *vao, vbo_t *vbo, u8 component_count, GLenum type, bool normalized, size_t stride, size_t offset );
+void            vao_set_attributes( vao_t *vao, vbo_t *vbo, u8 component_count, GLenum type, bool normalized, size_t stride, size_t offset, bool changing_per_instance);
 #define         vao_unbind()                                    GL_CHECK(glBindVertexArray(0))
 #define         vao_draw_with_vbo(PVAO, PVBO)                   __impl_vao_draw_with_vbo(PVAO, PVBO, GL_TRIANGLES)
 #define         vao_draw_with_vbo_in_mode(PVAO, PVBO, MODE)     __impl_vao_draw_with_vbo(PVAO, PVBO, MODE)
@@ -60,13 +58,19 @@ void vbo_destroy(const vbo_t *obj)
 }
 
 
-vbo_t vbo_static_init(const void *vertices, const size_t vsize, const u64 vertex_count)
+vbo_t vbo_static_init(
+        const void *vertices, 
+        const size_t vsize, 
+        const u64 vertex_count, 
+        const u32 instance_count)
 {
     assert(vsize != 8);
+    assert(instance_count > 0);
 
     vbo_t VBO = {
         .vertex_count        = vertex_count,
         .__attribute_index   = -1,
+        .instance_count = instance_count
     };
 
     GL_CHECK(glGenBuffers(1, &VBO.id)); 
@@ -79,7 +83,6 @@ vbo_t vbo_static_init(const void *vertices, const size_t vsize, const u64 vertex
         GL_LOG("EMPTY VBO (STATIC)\t `%i` created", VBO.id);
     }
 
-    vbo_unbind();
     return VBO;
 }
 
@@ -134,70 +137,54 @@ void vao_set_attributes(
             GLenum type,
             bool normalized,
             size_t stride,
-            size_t offset
+            size_t offset,
+            bool changing_per_instance
 )
 {
     if (vao == NULL) eprint("vao_set_attribute: vao argument is null");
     if (vbo == NULL) eprint("vbo argument is null");
 
-    vao_bind(vao);
-    {
-        vbo_bind(vbo); 
-        {
-            GL_CHECK(glEnableVertexAttribArray(++vbo->__attribute_index));
+    GL_CHECK(glEnableVertexAttribArray(++vbo->__attribute_index));
 
-            GL_CHECK(glVertexAttribPointer(
-                        vbo->__attribute_index,
-                        component_count, 
-                        type, 
-                        normalized == false ? GL_FALSE : GL_TRUE, 
-                        stride, 
-                        (const void *)offset));
-        } 
-        vbo_unbind();
-    }
-    vao_unbind();
-    
+    GL_CHECK(glVertexAttribPointer(
+                vbo->__attribute_index,
+                component_count, 
+                type, 
+                normalized == false ? GL_FALSE : GL_TRUE, 
+                stride, 
+                (const void *)offset));
+
+    if (changing_per_instance)
+        GL_CHECK(glVertexAttribDivisor(vbo->__attribute_index, 1));
+    else
+        GL_CHECK(glVertexAttribDivisor(vbo->__attribute_index, 0));
 }
 
 void __impl_vao_draw_with_vbo(const vao_t *vao, const vbo_t *vbo, u64 gldraw_mode)
 {
     if (vao == NULL) eprint("vao_draw: vao argument is null");
 
-    vao_bind(vao);
-    {
-        vbo_bind(vbo); 
-        {
-            if (vbo->vertex_count == 0) eprint("vao_draw: vbo`s vertex_count is %lu", vbo->vertex_count);
+    if (vbo->vertex_count == 0) eprint("vao_draw: vbo`s vertex_count is %lu", vbo->vertex_count);
 
-            GL_CHECK(glDrawArrays(gldraw_mode, 0, vbo->vertex_count));
-        } 
-        vbo_unbind();
-
-    }
-    vao_unbind();
-    
+    GL_CHECK(glDrawArraysInstanced(
+                gldraw_mode, 
+                0, 
+                vbo->vertex_count,
+                vbo->instance_count));
 }
 
 void __impl_vao_draw_with_ebo(const vao_t *vao, const ebo_t *ebo, const u64 gldraw_mode)
 {
     if (vao == NULL) eprint("vao_draw: vao argument is null");
 
-    vbo_t *vbo = ebo->vbo;
+    if (ebo->indices_count == 0) eprint("vao_draw: vbo`s indices_count is %i", ebo->indices_count);
 
-    vao_bind(vao);
-    {
-        vbo_bind(vbo); 
-        {
-            if (ebo->indices_count == 0) eprint("vao_draw: vbo`s indices_count is %i", ebo->indices_count);
-
-            GL_CHECK(glDrawElements(gldraw_mode, ebo->indices_count, GL_UNSIGNED_INT, 0));
-        } 
-        vbo_unbind();
-
-    }
-    vao_unbind();
-    
+    GL_CHECK(glDrawElementsInstanced(
+                gldraw_mode, 
+                ebo->indices_count, 
+                GL_UNSIGNED_INT, 
+                0, 
+                ebo->vbo->instance_count));
 }
 
 
