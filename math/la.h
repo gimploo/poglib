@@ -25,9 +25,10 @@ typedef mat4s matrix4f_t ;
 #define vec3f(x) (vec3f_t ){x,x,x}
 #define vec4f(x) (vec4f_t ){x,x,x,x}
 
-#define vec2f_cast(X) (vec2f_t ) { (X).x, (X).y }
-#define vec3f_cast(X) (vec3f_t ) { (X).x, (X).y, (X).z }
-#define vec4f_cast(X) (vec4f_t ) { (X).x, (X).y, (X).z, (X).w }
+//NOTE: these are lower type cast
+#define vec2f_cast(X) ((vec2f_t ) { (X).x, (X).y })
+#define vec3f_cast(X) ((vec3f_t ) { (X).x, (X).y, (X).z })
+#define vec4f_cast(X) ((vec4f_t ) { (X).x, (X).y, (X).z, (X).w })
 
 matrix4f_t      matrix4f_rotate(const matrix4f_t mat, const f32 angle_in_radians, const vec3f_t along_axis);
 matrix4f_t      matrix4f_translate(const matrix4f_t mat, const vec3f_t vec);
