@@ -13,6 +13,7 @@ typedef union {
 } sprite_uv_t;
 
 typedef union {
+    f32 data[48];
     struct {
         sprite_uv_t front, back;
         sprite_uv_t left, right;
@@ -149,6 +150,17 @@ const f32 DEFAULT_CUBE_VERTICES_8[] = {
     -0.5f,  0.5f, -0.5f,
 };
 
+typedef enum {
+
+    FRONT  = 0,
+    BACK   = 12,
+    LEFT   = 24,
+    RIGHT  = 36,
+    TOP    = 48,
+    BOTTOM = 70
+
+} DEFAULT_CUBE_VERTICES_INDEX_24 ;
+
 // NOTE: for 3d textured cubes
 const f32 DEFAULT_CUBE_VERTICES_24[] = {
      // front
@@ -190,7 +202,7 @@ const f32 DEFAULT_CUBE_VERTICES_24[] = {
 
 const u32 DEFAULT_CUBE_INDICES_24[] = {
     // front
-    0, 1, 2,
+    0, 1, 2, 
     2, 3, 0,
     // back
     4, 5, 6,
