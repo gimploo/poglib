@@ -26,34 +26,32 @@ typedef struct {
     //NOTE: we are in the assumption that only float values are allowed via attributes
     //other types are not supported 
 
-    const u32 instance_count;
-
     const u8 nattr;
     const struct {
 
         u8 ncmp;
+        u8 buffer_index;
         struct {
             u32 offset;
             u32 stride;
         } interleaved;
-        bool is_instanced;  // ex: set this to true for transforms because they 
-                            // are different per instance 
+
     } attr[10];
 
-    const u8 nsubbuffer;
+    const u8 nbuffer;
     const struct {
 
         u32 size;
         u8 *data;
 
-    } subbuffer[10];
+    } buffer[10];
 
     const struct {
 
         u32 nmemb;
         u8 *data;
 
-    } index;
+    } indexbuffer;
 
     const glshader_t *shader;
 
@@ -163,15 +161,14 @@ void glrenderer3d_draw_mesh(const glrenderer3d_t *self, const glmesh_t *mesh)
     vbo_t vbo = vbo_static_init(
             vtx->__data, 
             vtx->__elem_size * vtx->len, 
-            vtx->len,
-            0);
+            vtx->len);
     vbo_bind(&vbo);
 
     ebo_t ebo = ebo_init(&vbo, (const u32 *)idx->__data, idx->len);
     ebo_bind(&ebo);
 
     //positions
-    vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(vec4f_t ), 0, false);
+    vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(vec4f_t ), 0);
     //...
 
     glshader_bind(self->shader);
@@ -196,59 +193,68 @@ void glrenderer3d_draw_model(const glrenderer3d_t *self, const glmodel_t *model)
 }
 
 
+//NOTE: we have all the buffers combined to one single vbo and this creates a concern
+//of whether can the vbo be big enough to store all of it - needs more testing
 void glrenderer3d_draw_mesh_custom(const glrendererconfig_t config)
 {
-    ASSERT(config.nsubbuffer <= 10);
+    ASSERT(config.nbuffer <= 10);
     ASSERT(config.nattr <= 10 && config.nattr > 0);
     ASSERT(config.shader);
-    ASSERT(config.instance_count > 0);
+
+    u32 buffoffsets[10] = {0};
 
     vao_t vao = vao_init();
     vao_bind(&vao);
 
     u32 total_vbo_size = 0;
-    for (int i = 0; i < config.nsubbuffer; i++)
-        total_vbo_size += config.subbuffer[i].size;
+    for (int i = 0; i < config.nbuffer; i++) {
+        buffoffsets[i] = total_vbo_size;
+        total_vbo_size += config.buffer[i].size;
+    }
 
-    const u32 instance_count = config.instance_count;
-    vbo_t vbo = vbo_static_init(NULL, total_vbo_size, 0, instance_count);
+    vbo_t vbo = vbo_static_init(NULL, total_vbo_size, 0);
     vbo_bind(&vbo);
 
-    for (int i = 0, offset = 0; i < config.nsubbuffer; i++) 
+    logging("vbo size `%i` bytes", total_vbo_size);
+    
+    for (int i = 0, offset = 0; i < config.nbuffer; i++) 
     {
+
         GL_CHECK(glBufferSubData(
                 GL_ARRAY_BUFFER, 
                 offset, 
-                config.subbuffer[i].size, 
-                config.subbuffer[i].data));
-        offset += config.subbuffer[i].size;
+                config.buffer[i].size, 
+                config.buffer[i].data));
+
+        offset += config.buffer[i].size;
     }
 
     ebo_t ebo = {0};
-    if (config.index.data) {
-        ebo = ebo_init(&vbo, (u32 *)config.index.data, config.index.nmemb);
+    if (config.indexbuffer.data) {
+        ebo = ebo_init(&vbo, (u32 *)config.indexbuffer.data, config.indexbuffer.nmemb);
         ebo_bind(&ebo);
     }
 
-    for (u32 i = 0, offset = 0; i < config.nattr; i++)
+    for (u32 i = 0; i < config.nattr; i++)
     {
+        ASSERT(config.attr[i].buffer_index >= 0); 
+        ASSERT(config.attr[i].buffer_index < config.nbuffer); 
+
         vao_set_attributes(
-                &vao, 
-                &vbo, 
-                config.attr[i].ncmp, 
-                GL_FLOAT, 
-                false, 
-                config.attr[i].interleaved.stride, 
-                offset,//config.attr[i].offset,
-                config.attr[i].is_instanced);
-        offset += config.subbuffer[i].size + config.attr[i].interleaved.offset;
+            &vao, 
+            &vbo, 
+            config.attr[i].ncmp, 
+            GL_FLOAT, 
+            false, 
+            config.attr[i].interleaved.stride, 
+            buffoffsets[config.attr[i].buffer_index] + config.attr[i].interleaved.offset);
     }
 
     glshader_bind(config.shader);
     for (int i = 0; i < config.ntexture; i++)
         gltexture2d_bind(config.texture[i].data, i);
 
-    if (config.index.data) {
+    if (config.indexbuffer.data) {
         vao_draw_with_ebo(&vao, &ebo);
     } else {
         vao_draw_with_vbo(&vao, &vbo);
