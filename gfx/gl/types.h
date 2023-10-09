@@ -159,7 +159,7 @@ typedef enum {
     TOP    = 48,
     BOTTOM = 70
 
-} DEFAULT_CUBE_VERTICES_INDEX_24 ;
+} DEFAULT_CUBE_VERTICES_ARRAY_INDEX_24 ;
 
 // NOTE: for 3d textured cubes
 const f32 DEFAULT_CUBE_VERTICES_24[] = {
