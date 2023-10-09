@@ -212,6 +212,7 @@ void glrenderer3d_draw_mesh_custom(const glrendererconfig_t config)
         total_vbo_size += config.buffer[i].size;
     }
 
+
     vbo_t vbo = vbo_static_init(NULL, total_vbo_size, 0);
     vbo_bind(&vbo);
 
@@ -233,8 +234,9 @@ void glrenderer3d_draw_mesh_custom(const glrendererconfig_t config)
     if (config.indexbuffer.data) {
         ebo = ebo_init(&vbo, (u32 *)config.indexbuffer.data, config.indexbuffer.nmemb);
         ebo_bind(&ebo);
-    }
+    } 
 
+    u8 ncmps = 0;
     for (u32 i = 0; i < config.nattr; i++)
     {
         ASSERT(config.attr[i].buffer_index >= 0); 
@@ -248,7 +250,12 @@ void glrenderer3d_draw_mesh_custom(const glrendererconfig_t config)
             false, 
             config.attr[i].interleaved.stride, 
             buffoffsets[config.attr[i].buffer_index] + config.attr[i].interleaved.offset);
+
+        ncmps += config.attr[i].ncmp;
     }
+
+    if (!config.indexbuffer.data) 
+        vbo.vertex_count = total_vbo_size / (sizeof(f32) * ncmps);
 
     glshader_bind(config.shader);
     for (int i = 0; i < config.ntexture; i++)
