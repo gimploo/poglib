@@ -47,8 +47,7 @@ typedef double          f64;
     #define FORCEINLINE __attribute__((always_inline))
 #endif
 
-
-#if defined(DEBUG)
+#if defined(DEBUG) && !defined(DISABLE_LOGGING)
     #define logging(FMT, ...) do {\
         fprintf(stdout, "[LOG : %s] \t"FMT"\n", __func__, ##__VA_ARGS__);\
     } while(0)
