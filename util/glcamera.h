@@ -115,9 +115,9 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
 
     // Looking with the mouse by holding the left mouse button
     {
-        const f32 nodot = glms_vec2_dot(newmp, oldmp);
-        const f32 mul = glms_vec2_norm(oldmp) * glms_vec2_norm(newmp);
-        const f32 angle = radians(nodot / mul);
+        const f32 angle = radians(
+                glms_vec2_dot(newmp, oldmp) / 
+                (glms_vec2_norm(oldmp) * glms_vec2_norm(newmp)));
         const vec2f_t direction = glms_vec2_normalize(glms_vec2_sub(newmp, oldmp));
                                     
         if (window_mouse_button_is_pressed(win, SDL_MOUSEBUTTON_LEFT)) {
