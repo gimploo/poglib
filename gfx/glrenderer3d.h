@@ -224,7 +224,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         vbo_t data[5];
         u8 bid[5];         //buffer index
         i32 top;
-    } vbos = {{0}, -1};
+    } vbos = {.data = {0}, .bid = {0}, .top = -1};
 
     struct {
         ebo_t data[5];
@@ -236,8 +236,6 @@ void glrenderer3d_draw(const glrendererconfig_t config)
     for (u8 i = 0; i < config.nbuffer; i++) 
     {
         if (config.buffer[i].indexbuffer.data) {
-
-            ASSERT(vbos.top < ARRAY_LEN(vbos.data));
 
             vaos.data[++vaos.top] = vao_init();
 
@@ -286,7 +284,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
     }
 
 
-    //setup attributes
+    // NOTE: Setting up attributes for both
     for (u32 i = 0; i < config.nattr; i++)
     {
         ASSERT(config.attr[i].buffer_index >= 0); 
@@ -320,6 +318,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
             continue;
         }
 
+        vao_bind(&mega.vao);
         vbo_bind(&mega.vbo);
         vao_set_attributes(
             &mega.vao, 
@@ -349,6 +348,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
     }
 
     // Drawing each vbos assigned to an ebo
+    ASSERT(vbos.top == vaos.top == ebos.top);
     for (u8 idx = 0; idx <= vaos.top; idx++) {
         vao_bind(&vaos.data[idx]);
         vbo_bind(&vbos.data[idx]);
@@ -359,14 +359,9 @@ void glrenderer3d_draw(const glrendererconfig_t config)
     vbo_unbind();
     vao_unbind();
 
-    for (u8 ebo_idx = 0; ebo_idx <= ebos.top; ebo_idx++)
-        ebo_destroy(&ebos.data[ebo_idx]);
-
-    for (u8 vbo_idx = 0; vbo_idx <= vbos.top; vbo_idx++)
-        vbo_destroy(&vbos.data[vbo_idx]);
-
-    for (u8 vao_idx = 0; vao_idx <= vbos.top; vao_idx++)
-        vao_destroy(&vaos.data[vao_idx]);
+    for (u8 ebo_idx = 0; ebo_idx <= ebos.top; ebo_idx++) ebo_destroy(&ebos.data[ebo_idx]);
+    for (u8 vbo_idx = 0; vbo_idx <= vbos.top; vbo_idx++) vbo_destroy(&vbos.data[vbo_idx]);
+    for (u8 vao_idx = 0; vao_idx <= vbos.top; vao_idx++) vao_destroy(&vaos.data[vao_idx]);
 
     vao_destroy(&mega.vao);
     vbo_destroy(&mega.vbo);
