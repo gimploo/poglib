@@ -206,22 +206,23 @@ void glrenderer3d_draw(const glrendererconfig_t config)
     // nothing else as it can have empty values if multiple buffers with index buffers are
     // present
     u32 mega_vbo_buffoffsets[10] = {0};
+    u32 mega_vbo_size = 0;
 
-    vao_t vao = vao_init();
-    vao_bind(&vao);
+    struct {
+        vao_t data[5];
+        i32 top;
+    } vaos = {{0}, -1};
 
     struct {
         vbo_t data[5];
-        u8 buffer_idx[5];
         i32 top;
-    } vbos = {{0}, {0}, 0};
+    } vbos = {{0}, -1};
 
     struct {
         ebo_t data[5];
         i32 top;
     } ebos = {{0}, -1};
 
-    u32 mega_vbo_size = 0;
 
     // setting the vbos and ebos for those buffers that have them
     for (u8 i = 0; i < config.nbuffer; i++) 
@@ -239,6 +240,10 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                                 &vbos.data[vbos.top], 
                                 (u32 *)config.buffer[i].indexbuffer.data, 
                                 config.buffer[i].indexbuffer.nmemb);
+            ebos.vbos[ebos.top] = &vbos.data[vbos.top];
+            vbos.ebos[vbos.top] = &ebos.data[ebos.top];
+
+            ebos.vaos[ebos.top] = vao_init();
 
             continue;
         }
@@ -246,8 +251,12 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         mega_vbo_size += config.buffer[i].size;
     }
 
+    vao_t vao = vao_init();
+
     // binding the mega vbo
     if (mega_vbo_size != 0) {
+
+        vao_bind(&vao);
 
         vbos.data[0] = vbo_static_init(NULL, mega_vbo_size, 0);
         vbo_bind(&vbos.data[0]);
@@ -265,6 +274,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
 
             offset += config.buffer[i].size;
         }
+        vao_unbind();
     }
 
 
@@ -280,9 +290,13 @@ void glrenderer3d_draw(const glrendererconfig_t config)
             u8 vbo_index = 0;
 
             for (u8 index = 1; index <= vbos.top; index++)
-                if (vbos.buffer_idx[index] == config.attr[i].buffer_index)
+                if (vbos.buffer_idx[index] == config.attr[i].buffer_index) {
                     vbo_index = index;
+                    break;
+                }
 
+            vao_bind(vbos.ebos->vaos[vbo_index]);
+            ebo_bind(vbos.ebos[vbo_index]);
             vbo_bind(&vbos.data[vbo_index]);
             vao_set_attributes(
                 &vao, 
@@ -292,11 +306,9 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                 false, 
                 config.attr[i].interleaved.stride, 
                 config.attr[i].interleaved.offset);
-            vbo_unbind();
 
             continue;
         }
-
         vbo_bind(&vbos.data[0]);
         vao_set_attributes(
             &vao, 
@@ -306,7 +318,6 @@ void glrenderer3d_draw(const glrendererconfig_t config)
             false, 
             config.attr[i].interleaved.stride, 
             mega_vbo_buffoffsets[config.attr[i].buffer_index] + config.attr[i].interleaved.offset);
-        vbo_unbind();
 
         ncmps += config.attr[i].ncmp;
     }
@@ -319,11 +330,15 @@ void glrenderer3d_draw(const glrendererconfig_t config)
 
     if (mega_vbo_size != 0) {
         vbos.data[0].vertex_count = mega_vbo_size / (sizeof(f32) * ncmps);
+        vbo_bind(&vbos.data[0]);
         vao_draw_with_vbo(&vao, &vbos.data[0]);
     }
 
-    for (u8 ebo_idx = 0; ebo_idx <= ebos.top; ebo_idx++)
+    for (u8 ebo_idx = 0; ebo_idx <= ebos.top; ebo_idx++) {
+        vbo_bind(ebos.vbos[ebo_idx]);
+        ebo_bind(&ebos.data[ebo_idx]);
         vao_draw_with_ebo(&vao, &ebos.data[ebo_idx]);
+    }
 
     vbo_unbind();
     vao_unbind();
