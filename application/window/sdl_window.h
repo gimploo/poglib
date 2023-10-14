@@ -865,18 +865,14 @@ void window_update_user_input(window_t *window)
                         window->mouse.button =
                             (sdl_mousebuttontype)event->button.button;
                     break;
-
-                    case SDL_MOUSESTATE_JUST_PRESSED:
-                    case SDL_MOUSESTATE_PRESSED:
-                    case SDL_MOUSESTATE_HELD:
-                        window->mouse.state = SDL_MOUSESTATE_HELD;
-                    break;
                 }
             break;
 
             case SDL_KEYDOWN:
                 window->thisframe.key      = event->key.keysym.sym;
                 window->thisframe.kstate    = SDL_KEYDOWN;
+                if (event->key.repeat) 
+                    break;
 
                 __keyboard_update_buffers(window, SDL_KEYDOWN, event->key.keysym.scancode);
             break;
