@@ -68,6 +68,7 @@ typedef struct window_t {
         sdl_mousestate      state;
         vec2f_t             norm_position;
         vec2i_t             position;
+        vec2i_t             rel;
 
         struct {
             sdl_mousewheelstate state;
@@ -822,6 +823,8 @@ void window_update_user_input(window_t *window)
             //NOTE: Here a mouse held down state is triggered if its just pressed and the mouse moved after.
             case SDL_MOUSEMOTION:
                 __mouse_update_position(window);
+                const vec2i_t rel = {event->motion.xrel, event->motion.yrel};
+                window->mouse.rel = rel;
                 switch(window->mouse.state)
                 {
                     case SDL_MOUSESTATE_RELEASED:
