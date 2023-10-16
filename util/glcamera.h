@@ -13,18 +13,18 @@ const f32 GL_CAMERA_SENSITIVITY     =  1.f;
 typedef struct glcamera_t {
 
     vec3f_t         position;
+    vec2f_t         theta;
     struct {
         vec3f_t         front;
         vec3f_t         up;
         vec3f_t         right;
         vec3f_t         worldup;
     } direction;
-    vec2f_t         theta;
     matrix4f_t      __view;
 
     struct {
-        vec3f_t  position;
-        vec2f_t  theta;
+        vec3f_t     position;
+        vec2f_t     theta;
     } __reset;
 
 } glcamera_t ;
@@ -39,12 +39,12 @@ matrix4f_t      glcamera_getview(glcamera_t *self);
 -----------------------------------------------------------------------------*/
 #ifndef IGNORE_GL_CAMERA_IMPLEMENTATION
 
-void __glcamera_update_directions(glcamera_t *self)
+void __glcamera_update_directions(glcamera_t *self, const vec2f_t rot)
 {
     const vec4f_t front = glms_mat4_mulv(
             glms_mat4_mul(
-                matrix4f_rot(self->theta.y, (vec3f_t){0.f, 1.f, 0.f}), //y
-                matrix4f_rot(self->theta.x, (vec3f_t){1.f, 0.f, 0.f}) //x
+                matrix4f_rot(rot.y, (vec3f_t){1.f, 0.f, 0.f}), //y
+                matrix4f_rot(rot.x, (vec3f_t){0.f, 1.f, 0.f}) //x
             ), 
             (vec4f_t ) {
                 self->direction.front.x,
@@ -72,14 +72,14 @@ void __glcamera_update_directions(glcamera_t *self)
                                     self->direction.right, 
                                     self->direction.front
                                 ));
+
+    self->theta = glms_vec2_add(self->theta, rot);
 }
 
 
 void glcamera_process_input(glcamera_t *self, const f32 dt)
 {
     window_t *win = window_get_current_active_window();
-
-    memset(&self->theta, 0, sizeof(self->theta));
 
     if (window_keyboard_is_key_pressed(win, SDLK_w)) 
         self->position = glms_vec3_add(
@@ -118,27 +118,33 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                                     self->direction.up
                                 ),
                                 GL_CAMERA_SPEED * dt
-                            ) 
-                        );
+                            ));
+
     if (window_keyboard_is_key_pressed(win, SDLK_r)) {
-        self->position = self->__reset.position;
-        self->theta = self->__reset.theta;
+
+        self->position        = self->__reset.position;
+        self->theta           = self->__reset.theta;
+        self->direction.front = GL_CAMERA_DIRECTION_FRONT,
+        self->direction.up    = glms_normalize(glms_cross(glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)), GL_CAMERA_DIRECTION_FRONT)),
+        self->direction.right = glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)),
+
+        __glcamera_update_directions(self, self->theta);
     }
 
     // Looking with the mouse by holding the left mouse button
     {
-        const vec2f_t angle = glms_vec2_normalize((vec2f_t ){
-                    radians(win->mouse.rel.x),
-                    radians(win->mouse.rel.y),
-                });
-                                    
         if (window_mouse_button_is_pressed(win, SDL_MOUSEBUTTON_LEFT)) {
-            self->theta.y = wrap_angle(angle.x * GL_CAMERA_SENSITIVITY * dt);
-            self->theta.x = wrap_angle(angle.y * GL_CAMERA_SENSITIVITY * dt);
+            const vec2f_t angle = glms_vec2_normalize((vec2f_t ){
+                        radians(win->mouse.rel.x),
+                        radians(win->mouse.rel.y),
+                    });
+            const vec2f_t theta = (vec2f_t ){
+                .x = wrap_angle(angle.x * GL_CAMERA_SENSITIVITY * dt),
+                .y = wrap_angle(angle.y * GL_CAMERA_SENSITIVITY * dt)
+            };
+            __glcamera_update_directions(self, theta);
         } 
     }
-
-    __glcamera_update_directions(self);
 
     logging("Camera Pos: "VEC3F_FMT " | " "Angle: " VEC2F_FMT, 
             VEC3F_ARG(self->position), VEC2F_ARG(self->theta));
@@ -157,23 +163,25 @@ matrix4f_t glcamera_getview(glcamera_t *self)
     return self->__view;
 }
 
-glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t theta)
+glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t radians)
 {
     glcamera_t o = {
         .position   = pos,
+        .theta      = radians,
         .direction = {
             .front      = GL_CAMERA_DIRECTION_FRONT,
-            .up         = glms_normalize(glms_cross(glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)), GL_CAMERA_DIRECTION_FRONT)),
-            .right      = glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)),
+            .up         = {0},
+            .right      = {0},
             .worldup    = GL_CAMERA_DIRECTION_UP,
         },
-        .theta          = theta,
-        .__view       = MATRIX4F_IDENTITY,
+        .__view         = MATRIX4F_IDENTITY,
         .__reset = {
-            .position = pos,
-            .theta = theta
+            .position   = pos,
+            .theta      = radians,
         }
     };
+
+    __glcamera_update_directions(&o, radians);
 
     logging("[CAMERA] left click look around and wasd to move the camera\n");
     return o;
