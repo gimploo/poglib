@@ -8,7 +8,7 @@
 #define GL_CAMERA_DIRECTION_UP       (vec3f_t ){0.0f, 1.0f, 0.0f }
 
 const f32 GL_CAMERA_SPEED           =  20.0f;
-const f32 GL_CAMERA_SENSITIVITY     =  100.0f;
+const f32 GL_CAMERA_SENSITIVITY     =  1.f;
 
 typedef struct glcamera_t {
 
@@ -41,12 +41,25 @@ matrix4f_t      glcamera_getview(glcamera_t *self);
 
 void __glcamera_update_directions(glcamera_t *self)
 {
+    const vec4f_t front = glms_mat4_mulv(
+            glms_mat4_mul(
+                matrix4f_rot(self->theta.y, (vec3f_t){0.f, 1.f, 0.f}), //y
+                matrix4f_rot(self->theta.x, (vec3f_t){1.f, 0.f, 0.f}) //x
+            ), 
+            (vec4f_t ) {
+                self->direction.front.x,
+                self->direction.front.y,
+                self->direction.front.z,
+                1.0f
+            });
+
     self->direction.front = glms_normalize(
-                                (vec3f_t ) {
-                                    .x = cos(self->theta.y) * cos(self->theta.x),
-                                    .y = sin(self->theta.x),
-                                    .z = sin(self->theta.y) * cos(self->theta.x),
-                                });
+            (vec3f_t ){
+                front.x,
+                front.y,
+                front.z
+            });
+
     // normalize the vectors, because their length gets closer to 0 the more 
     // you look up or down which results in slower movement.
     self->direction.right = glms_normalize(
@@ -66,8 +79,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
 {
     window_t *win = window_get_current_active_window();
 
-    const vec2f_t newmp     = window_mouse_get_norm_position(win);
-    static vec2f_t oldmp    = {0.0f};
+    memset(&self->theta, 0, sizeof(self->theta));
 
     if (window_keyboard_is_key_pressed(win, SDLK_w)) 
         self->position = glms_vec3_add(
@@ -115,14 +127,14 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
 
     // Looking with the mouse by holding the left mouse button
     {
-        const f32 angle = radians(
-                glms_vec2_dot(newmp, oldmp) / 
-                (glms_vec2_norm(oldmp) * glms_vec2_norm(newmp)));
-        const vec2f_t direction = glms_vec2_normalize(glms_vec2_sub(newmp, oldmp));
+        const vec2f_t angle = glms_vec2_normalize((vec2f_t ){
+                    radians(win->mouse.rel.x),
+                    radians(win->mouse.rel.y),
+                });
                                     
         if (window_mouse_button_is_pressed(win, SDL_MOUSEBUTTON_LEFT)) {
-            self->theta.y += wrap_angle(direction.x * angle * GL_CAMERA_SENSITIVITY * dt);
-            self->theta.x += wrap_angle(direction.y * angle * GL_CAMERA_SENSITIVITY * dt);
+            self->theta.y = wrap_angle(angle.x * GL_CAMERA_SENSITIVITY * dt);
+            self->theta.x = wrap_angle(angle.y * GL_CAMERA_SENSITIVITY * dt);
         } 
     }
 
@@ -130,8 +142,6 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
 
     logging("Camera Pos: "VEC3F_FMT " | " "Angle: " VEC2F_FMT, 
             VEC3F_ARG(self->position), VEC2F_ARG(self->theta));
-
-    oldmp = newmp;
 }
 
 
