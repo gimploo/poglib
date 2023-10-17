@@ -25,42 +25,60 @@ typedef struct {
 
     //NOTE: we are in the assumption that only float values are allowed via attributes
     //other types are not supported 
+    
+    // Draw Call
+    struct {
+        const u8 count;
+        const struct {
 
-    const u8 nattr;
-    const struct {
+            // Vertex data
+            struct {
+                u32 size;
+                u8 *data;
+            } vtx;
 
-        u8 ncmp;
-        u8 buffer_index;
-        struct {
-            u32 offset;
-            u32 stride;
-        } interleaved;
+            // Index data
+            struct {
+                u8 *data;
+                u32 nmemb;
+            } idx;
 
-    } attr[10];
+            // Attributes
+            struct {
+                u8 count;
+                struct {
+                    u8 ncmp;
+                    struct {
+                        u32 offset;
+                        u32 stride;
+                    } interleaved;
+                } attr[10];
+            } attrs;
 
-    const u8 nbuffer;
-    const struct {
+            // Textures
+            struct {
+                u8 count;
+                gltexture2d_t * const texture[10];
+            } textures;
 
-        u32 size;
-        u8 *data;
+            // Shader
+            glshader_t * const shader;
+            struct {
+                u8 count;
+                struct {
+                    const char *name;
+                    const char *type;
+                    union {
+                        matrix4f_t  mat4;
+                        vec4f_t     vec4;
+                        vec3f_t     vec3;
+                        vec2f_t     vec2;
+                    } value;
+                } uniform[10];
+            } uniforms;
 
-        struct {
-
-            u32 nmemb;
-            u8 *data;
-
-        } indexbuffer;
-
-    } buffer[10];
-
-    const glshader_t *shader;
-
-    const u8 ntexture;
-    const struct {
-
-        gltexture2d_t *data;
-
-    } texture[10];
+        } call[10];
+    } calls;
 
 } glrendererconfig_t;
 
@@ -197,174 +215,126 @@ void glrenderer3d_draw_model(const glrenderer3d_t *self, const glmodel_t *model)
 //of whether can the vbo be big enough to store all of it - needs more testing
 void glrenderer3d_draw(const glrendererconfig_t config)
 {
-    ASSERT(config.nbuffer <= 10);
-    ASSERT(config.nattr <= 10 && config.nattr > 0);
-    ASSERT(config.shader);
+    ASSERT(config.calls.count > 0);
 
-    // this to store all the buffer offsets for attributes to reference from
-    // also be thoughtfull that this buffer can only be referenced via buffer index and 
-    // nothing else as it can have empty values if multiple buffers with index buffers are
-    // present
-
-    //NOTE: This is primarly for combining all mini buffers into one single one
-    struct {
-        vao_t vao;
-        vbo_t vbo;
-        u32 buffoffsets[10];
-        u32 size;
-        u32 vertex_count;
-    } mega = {0};
-
-    struct {
-        vao_t data[5];
-        i32 top;
-    } vaos = {{0}, -1};
-
-    struct {
-        vbo_t data[5];
-        u8 bid[5];         //buffer index
-        i32 top;
-    } vbos = {.data = {0}, .bid = {0}, .top = -1};
-
-    struct {
-        ebo_t data[5];
-        i32 top;
-    } ebos = {{0}, -1};
-
-
-    // setting the vbos and ebos for those buffers that have them
-    for (u8 i = 0; i < config.nbuffer; i++) 
+    for (u8 call_idx = 0; call_idx < config.calls.count; call_idx++)
     {
-        if (config.buffer[i].indexbuffer.data) {
+        bool is_idx_null = config.calls.call[call_idx].idx.data ? false : true;
 
-            vaos.data[++vaos.top] = vao_init();
+        vao_t vao = vao_init();
+        vao_bind(&vao);
 
-            vbos.data[++vbos.top] = vbo_static_init(
-                                config.buffer[i].data, 
-                                config.buffer[i].size, 
-                                config.buffer[i].indexbuffer.nmemb);
+        vbo_t vbo = {0};
+        ebo_t ebo = {0};
 
-            vbos.bid[vbos.top] = i;
+        // Vertex and Index buffer init
+        ASSERT(config.calls.call[call_idx].vtx.data);
+        ASSERT(config.calls.call[call_idx].vtx.size > 0); 
+        if (!is_idx_null) {
 
-            ebos.data[++ebos.top] = ebo_init(
-                                &vbos.data[vbos.top], 
-                                (u32 *)config.buffer[i].indexbuffer.data, 
-                                config.buffer[i].indexbuffer.nmemb);
+            ASSERT(config.calls.call[call_idx].idx.nmemb > 0); 
 
-            continue;
+            vbo = vbo_static_init(
+                    config.calls.call[call_idx].vtx.data, 
+                    config.calls.call[call_idx].vtx.size, 
+                    config.calls.call[call_idx].idx.nmemb);
+            vbo_bind(&vbo);
+            ebo = ebo_init(
+                    &vbo, 
+                    (u32 *)config.calls.call[call_idx].idx.data, 
+                    config.calls.call[call_idx].idx.nmemb);
+            ebo_bind(&ebo);
+
+        } else {
+            u32 total_ncmp = 0;
+            ASSERT(config.calls.call[call_idx].attrs.count > 0);
+            for(u8 attr_idx = 0; 
+                    attr_idx < config.calls.call[call_idx].attrs.count; ++attr_idx)
+                total_ncmp += config.calls.call[call_idx].attrs.attr[attr_idx].ncmp;
+
+            vbo = vbo_static_init(
+                    config.calls.call[call_idx].vtx.data, 
+                    config.calls.call[call_idx].vtx.size, 
+                    config.calls.call[call_idx].vtx.size / (total_ncmp * sizeof(f32)));
+            vbo_bind(&vbo);
         }
-        mega.buffoffsets[i] = mega.size;
-        mega.size += config.buffer[i].size;
-    }
 
-
-    // Setting up the mega buffer
-    if ( mega.size != 0) {
-
-        mega.vao = vao_init();
-        vao_bind(&mega.vao);
-
-        mega.vbo = vbo_static_init(NULL, mega.size, 0);
-        vbo_bind(&mega.vbo);
-
-        // setting the mega vbo buffer
-        for (int i = 0, offset = 0; i < config.nbuffer; i++) 
+        //Attributes
+        for(u8 attr_idx = 0; attr_idx < config.calls.call[call_idx].attrs.count; ++attr_idx)
         {
-            if (config.buffer[i].indexbuffer.data) continue;
-
-            GL_CHECK(glBufferSubData(
-                    GL_ARRAY_BUFFER, 
-                    offset, 
-                    config.buffer[i].size, 
-                    config.buffer[i].data));
-
-            offset += config.buffer[i].size;
-        }
-        vao_unbind();
-    }
-
-
-    // NOTE: Setting up attributes for both
-    for (u32 i = 0; i < config.nattr; i++)
-    {
-        ASSERT(config.attr[i].buffer_index >= 0); 
-        ASSERT(config.attr[i].buffer_index < config.nbuffer); 
-
-        // NOTE: Setting attributes for those assigned with index buffers
-        if (config.buffer[config.attr[i].buffer_index].indexbuffer.data) {
-
-            u8 buffer_idx = 0;
-
-            for (u8 index = 1; index <= vbos.top; index++) 
-            {
-                if (vbos.bid[index] == config.attr[i].buffer_index) {
-                    buffer_idx = index;
-                    break;
-                }
-            }
-
-            vao_bind(&vaos.data[buffer_idx]);
-            ebo_bind(&ebos.data[buffer_idx]);
-            vbo_bind(&vbos.data[buffer_idx]);
             vao_set_attributes(
-                &vaos.data[buffer_idx], 
-                &vbos.data[buffer_idx], 
-                config.attr[i].ncmp, 
-                GL_FLOAT, 
-                false, 
-                config.attr[i].interleaved.stride, 
-                config.attr[i].interleaved.offset);
+                    &vao, 
+                    &vbo, 
+                    config.calls.call[call_idx].attrs.attr[attr_idx].ncmp, 
+                    GL_FLOAT, 
+                    false, 
+                    config.calls.call[call_idx].attrs.attr[attr_idx].interleaved.stride, 
+                    config.calls.call[call_idx].attrs.attr[attr_idx].interleaved.offset); 
 
-            continue;
         }
 
-        vao_bind(&mega.vao);
-        vbo_bind(&mega.vbo);
-        vao_set_attributes(
-            &mega.vao, 
-            &mega.vbo, 
-            config.attr[i].ncmp, 
-            GL_FLOAT, 
-            false, 
-            config.attr[i].interleaved.stride, 
-            mega.buffoffsets[config.attr[i].buffer_index] 
-            + config.attr[i].interleaved.offset);
+        // Shader
+        ASSERT(config.calls.call[call_idx].shader);
+        glshader_bind(config.calls.call[call_idx].shader); 
 
-        mega.vertex_count += config.attr[i].ncmp;
+        //uniforms
+        ASSERT(config.calls.call[call_idx].uniforms.count >= 0);
+        for (u8 uni_idx = 0; uni_idx < config.calls.call[call_idx].uniforms.count; uni_idx++)
+        {
+            const struct {
+                const char *name;
+                const char *type;
+                union {
+                    matrix4f_t  mat4;
+                    vec4f_t     vec4;
+                    vec3f_t     vec3;
+                    vec2f_t     vec2;
+                } value;
+            } *uniform = &config.calls.call[call_idx].uniforms.uniform[uni_idx];
+
+            if (strcmp(uniform->type, "matrix4f_t") == 0)
+                glshader_send_uniform_matrix4f(
+                        config.calls.call[call_idx].shader, 
+                        uniform->name, 
+                        uniform->value.mat4);
+            else if (strcmp(uniform->type, "vec4f_t" ) == 0) 
+                glshader_send_uniform_vec4f(
+                        config.calls.call[call_idx].shader, 
+                        uniform->name, 
+                        uniform->value.vec4);
+            else if (strcmp(uniform->type, "vec3f_t" ) == 0)
+                glshader_send_uniform_vec3f(
+                        config.calls.call[call_idx].shader, 
+                        uniform->name, 
+                        uniform->value.vec3);
+            else if (strcmp(uniform->type, "vec2f_t" ) == 0)
+                glshader_send_uniform_vec2f(
+                        config.calls.call[call_idx].shader, 
+                        uniform->name, 
+                        uniform->value.vec2);
+            else eprint("unknown uniform type `%s` for name `%s`", 
+                    uniform->type, uniform->name);
+        }
+
+        //Textures
+        for (u8 txt_idx = 0; txt_idx < config.calls.call[call_idx].textures.count; ++txt_idx)
+        {
+            gltexture2d_bind(
+                    config.calls.call[call_idx].textures.texture[txt_idx],
+                    txt_idx);
+        }
+
+        if (!is_idx_null)   vao_draw_with_ebo(&vao, &ebo);
+        else                vao_draw_with_vbo(&vao, &vbo);
+
+        if (!is_idx_null) ebo_destroy(&ebo);
+
+        vao_destroy(&vao);
+        vbo_destroy(&vbo);
+
+
     }
 
-
-    glshader_bind(config.shader);
-    for (int i = 0; i < config.ntexture; i++)
-        gltexture2d_bind(config.texture[i].data, i);
-
-
-    // Drawing the mega buffer
-    if (mega.size != 0) {
-        mega.vbo.vertex_count = mega.size / (sizeof(f32) * mega.vertex_count);
-        vao_bind(&mega.vao);
-        vbo_bind(&mega.vbo);
-        vao_draw_with_vbo(&mega.vao, &mega.vbo);
-    }
-
-    // Drawing each vbos assigned to an ebo
-    ASSERT(vbos.top == vaos.top == ebos.top);
-    for (u8 idx = 0; idx <= vaos.top; idx++) {
-        vao_bind(&vaos.data[idx]);
-        vbo_bind(&vbos.data[idx]);
-        ebo_bind(&ebos.data[idx]);
-        vao_draw_with_ebo(&vaos.data[idx], &ebos.data[idx]);
-    }
-
-    vbo_unbind();
-    vao_unbind();
-
-    for (u8 ebo_idx = 0; ebo_idx <= ebos.top; ebo_idx++) ebo_destroy(&ebos.data[ebo_idx]);
-    for (u8 vbo_idx = 0; vbo_idx <= vbos.top; vbo_idx++) vbo_destroy(&vbos.data[vbo_idx]);
-    for (u8 vao_idx = 0; vao_idx <= vbos.top; vao_idx++) vao_destroy(&vaos.data[vao_idx]);
-
-    vao_destroy(&mega.vao);
-    vbo_destroy(&mega.vbo);
 }
 #endif
 

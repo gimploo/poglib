@@ -62,7 +62,7 @@ vbo_t vbo_static_init(
         const size_t vsize, 
         const u64 vertex_count)
 {
-    assert(vsize != 8);
+    ASSERT(vsize != 8);
 
     vbo_t VBO = {
         .vertex_count        = vertex_count,
@@ -73,7 +73,7 @@ vbo_t vbo_static_init(
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, VBO.id));
     GL_CHECK(glBufferData(GL_ARRAY_BUFFER, vsize, vertices, GL_STATIC_DRAW));
     if (vertices != NULL) {
-        assert(vertex_count > 1);
+        ASSERT(vertex_count > 1);
         GL_LOG("VBO (STATIC)\t `%i` created", VBO.id);
     } else {
         GL_LOG("EMPTY VBO (STATIC)\t `%i` created", VBO.id);
@@ -89,7 +89,7 @@ ebo_t ebo_init(vbo_t *vbo, const u32 *indices, const u32 nindices)
     if (indices == NULL) eprint("ebo_init: indices argument is null");
     if (nindices <= 0) eprint("ebo_init: isize is not greater than 0");
 
-    assert(vbo);
+    ASSERT(vbo);
 
     ebo_t ebo = {
         .vbo = vbo,
