@@ -786,6 +786,8 @@ void window_update_user_input(window_t *window)
         window->mouse.state = SDL_MOUSESTATE_PRESSED;
     }
 
+    memset(&window->mouse.rel, 0, sizeof(window->mouse.rel));
+
     window->thisframe.key = SDLK_UNKNOWN;
     window->thisframe.kstate = SDL_KEYSTATE_UNKNOWN;
 
@@ -823,7 +825,7 @@ void window_update_user_input(window_t *window)
             //NOTE: Here a mouse held down state is triggered if its just pressed and the mouse moved after.
             case SDL_MOUSEMOTION:
                 __mouse_update_position(window);
-                const vec2i_t rel = {event->motion.xrel, event->motion.yrel};
+                const vec2i_t rel = { -1 * event->motion.xrel, -1 * event->motion.yrel };
                 window->mouse.rel = rel;
                 switch(window->mouse.state)
                 {
