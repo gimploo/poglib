@@ -24,7 +24,7 @@ typedef struct stack_t {
 void *              stack_pop(stack_t *);
 void                stack_destroy(stack_t *);
 void                stack_print(stack_t *stack, void (*print_elem)(void *));
-#define             stack_is_empty(pstack)              ((pstack)->top == -1 ? true : false)
+#define             stack_is_empty(pstack)              ((pstack)->__top == -1 ? true : false)
 #define             stack_is_full(pstack)               ((pstack)->top == ((pstack)->capacity - 1) ? true : false)
 
 #ifndef IGNORE_STACK_IMPLEMENTATION
