@@ -24,8 +24,8 @@ typedef struct hashtable_t {
 } hashtable_t ;
 
 #define         hashtable_init(CAPACITY, TYPE)                      __impl_hashtable_init((CAPACITY), (#TYPE), sizeof(TYPE))
-#define         hashtable_insert(PTABLE, KEY, VALUE)                __impl_hashtable_insert_key_value_pair_by_value((PTABLE), (KEY), &(VALUE), sizeof(VALUE))
-#define         hashtable_delete(PTABLE, KEY)                       __impl_hashtable_delete_key_value_pair((PTABLE), (KEY))
+#define         hashtable_insert(PTABLE, KEY, VALUE)                __impl_hashtable_insert_key_value_pair_by_value((PTABLE), (#KEY), &(VALUE), sizeof(VALUE))
+#define         hashtable_delete(PTABLE, KEY)                       __impl_hashtable_delete_key_value_pair((PTABLE), (#KEY)) 
 
 void *          hashtable_get_value(const hashtable_t *table, const char *key);
 
