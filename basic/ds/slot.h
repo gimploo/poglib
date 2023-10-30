@@ -24,7 +24,7 @@ typedef struct slot_t {
 
 #define             slot_init(CAPACITY, TYPE)                              __impl_slot_init((CAPACITY), (#TYPE), sizeof(TYPE))
 #define             slot_insert(PSLOTARRAY, INDEX, VALUE)                  __impl_slot_insert((PSLOTARRAY), (INDEX), &(VALUE), sizeof(VALUE))
-#define             slot_insert_multiple(PSLOT, ARRAY)                      __impl_slot_insert_multiple((PSLOT), (u8 *)(ARRAY), sizeof((ARRAY)), sizeof((ARRAY[0])))
+#define             slot_insert_multiple(PSLOT, ARRAY)                      __impl_slot_insert_multiple((PSLOT), (u8 *)(ARRAY), sizeof((ARRAY)), (PSLOT)->__elem_size)
 #define             slot_append(PSLOTARRAY, VALUE)                         slot_insert((PSLOTARRAY), (PSLOTARRAY)->len, (VALUE))
 #define             slot_delete(PSLOTARRAY, INDEX)                         __impl_slot_delete((PSLOTARRAY), (INDEX))
 slot_t              slot_clone(const slot_t *slot);
