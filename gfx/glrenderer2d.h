@@ -51,12 +51,12 @@ void glrenderer2d_draw_triangle(const glrenderer2d_t *renderer, const gltri_t tr
 
     vao_bind(&vao);
 
-            vbo = vbo_static_init(tri.vertex, sizeof(tri.vertex), sizeof(tri.vertex) / sizeof(glvertex2d_t ), 1);
-            vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, position), false);
-            vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, color), false);
+            vbo = vbo_static_init(tri.vertex, sizeof(tri.vertex), sizeof(tri.vertex) / sizeof(glvertex2d_t ));
+            vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, position));
+            vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, color));
 
             if (renderer->texture != NULL) {
-                vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, uv), false);
+                vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, uv));
                 gltexture2d_bind(renderer->texture, 0);
             }
 
@@ -80,12 +80,12 @@ void glrenderer2d_draw_circle(const glrenderer2d_t *renderer, const glcircle_t c
 
     vao_bind(&vao);
 
-            vbo = vbo_static_init(circle.vertex, sizeof(circle.vertex), sizeof(circle.vertex) / sizeof(glvertex2d_t ), 1);
-            vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, position), false);
-            vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, color), false);
+            vbo = vbo_static_init(circle.vertex, sizeof(circle.vertex), sizeof(circle.vertex) / sizeof(glvertex2d_t ));
+            vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, position));
+            vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, color));
 
             if (renderer->texture != NULL) {
-                vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, uv), false);
+                vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, uv));
                 gltexture2d_bind(renderer->texture, 0);
             }
 
@@ -113,12 +113,12 @@ void glrenderer2d_draw_polygon(const glrenderer2d_t *renderer, const glpolygon_t
             u64 vertex_count = polygon.sides * 3;
             vbo = vbo_static_init(
                  polygon.vertices.vertex , 
-                 vsize, vertex_count, 1);
-            vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, position), false);
-            vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, color), false);
+                 vsize, vertex_count);
+            vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, position));
+            vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, color));
 
             if (renderer->texture != NULL) {
-                vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, uv), false);
+                vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, uv));
                 gltexture2d_bind(renderer->texture, 0);
             }
 
@@ -144,14 +144,14 @@ void glrenderer2d_draw_quad(const glrenderer2d_t *renderer, const glquad_t quad)
 
     vao_bind(&vao);
 
-        vbo = vbo_static_init(quad.vertex, sizeof(quad.vertex), sizeof(quad.vertex) / sizeof(glvertex2d_t ), 1);
+        vbo = vbo_static_init(quad.vertex, sizeof(quad.vertex), sizeof(quad.vertex) / sizeof(glvertex2d_t ));
         ebo_t ebo = ebo_init(&vbo, DEFAULT_QUAD_INDICES, MAX_QUAD_INDICES_CAPACITY);
 
-        vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, position), false);
-        vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, color), false);
+        vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, position));
+        vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, color));
 
         if (renderer->texture != NULL) {
-            vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex2d_t ), offsetof(glvertex2d_t, uv), false);
+            vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex2d_t ), offsetof(glvertex2d_t, uv));
             gltexture2d_bind(renderer->texture, 0);
         }
 
@@ -182,8 +182,7 @@ void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_
     vbo_t vbo   = vbo_static_init(
                     batch->globjs.__data, 
                     batch->globjs.len * batch->globjs.__elem_size, 
-                    vertices_count,
-                    1);
+                    vertices_count);
     ebo_t ebo;
 
     vao_bind(&vao);
@@ -209,14 +208,14 @@ void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_
         }
 
         // Attributes setup
-        vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, position), false);
-        vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, color), false);
+        vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, position));
+        vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, color));
 
         glshader_bind((glshader_t *)renderer->shader);
 
         if (renderer->texture != NULL) {
 
-            vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex2d_t ), offsetof(glvertex2d_t, uv), false);
+            vao_set_attributes(&vao, &vbo, 2, GL_FLOAT, false, sizeof(glvertex2d_t ), offsetof(glvertex2d_t, uv));
 
             gltexture2d_bind(renderer->texture, 0);
         }
