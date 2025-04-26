@@ -26,6 +26,8 @@ poggen_t *          poggen_init(const application_t * const app);
 void                poggen_remove_scene(poggen_t *self, const char *label);
 void                poggen_change_scene(poggen_t *self, const char *scene_label);
 
+window_t *          poggen_get_window(const poggen_t *self);
+
 void                poggen_update(poggen_t *self, const f32 dt);
 #define             poggen_render(PGEN)                                         (PGEN)->current_scene->__render((PGEN)->current_scene)
 
@@ -39,6 +41,10 @@ void                poggen_destroy(poggen_t *self);
 #define MAX_SCENES_ALLOWED 10
 
 
+window_t * poggen_get_window(const poggen_t *self)
+{
+    return application_get_window(self->handle.app);
+}
 
 poggen_t * poggen_init(const application_t * const app)
 {
