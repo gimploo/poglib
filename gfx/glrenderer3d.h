@@ -22,62 +22,68 @@ typedef struct glrenderer3d_t {
 } glrenderer3d_t ;
 
 typedef struct {
+    glshader_t *shader;
+    struct {
+        u8 count;
+        struct {
+            const char *name;
+            const char *type;
+            union {
+                matrix4f_t  mat4;
+                vec4f_t     vec4;
+                vec3f_t     vec3;
+                vec2f_t     vec2;
+            } value;
+        } uniform[10];
+    } uniforms;
+} glshaderconfig_t;
+
+typedef struct {
+
+    // Vertex data
+    struct {
+        u32 size;
+        u8 *data;
+    } vtx;
+
+    // Index data
+    struct {
+        u8 *data;
+        u32 nmemb;
+    } idx;
+
+    // Attributes
+    struct {
+        u8 count;
+        struct {
+            u8 ncmp;
+            struct {
+                u32 offset;
+                u32 stride;
+            } interleaved;
+        } attr[10];
+    } attrs;
+
+    // Textures
+    struct {
+        u8 count;
+        gltexture2d_t * texture[10];
+    } textures;
+
+    // Shader Config { uniform and shader }
+    glshaderconfig_t shader_config;
+
+} glrendercall_t;
+
+typedef struct {
 
     //NOTE: we are in the assumption that only float values are allowed via attributes
     //other types are not supported 
-    
+
     // Draw Call
     struct {
         const u8 count;
-        const struct {
-
-            // Vertex data
-            struct {
-                u32 size;
-                u8 *data;
-            } vtx;
-
-            // Index data
-            struct {
-                u8 *data;
-                u32 nmemb;
-            } idx;
-
-            // Attributes
-            struct {
-                u8 count;
-                struct {
-                    u8 ncmp;
-                    struct {
-                        u32 offset;
-                        u32 stride;
-                    } interleaved;
-                } attr[10];
-            } attrs;
-
-            // Textures
-            struct {
-                u8 count;
-                gltexture2d_t * const texture[10];
-            } textures;
-
-            // Shader
-            glshader_t * const shader;
-            struct {
-                u8 count;
-                struct {
-                    const char *name;
-                    const char *type;
-                    union {
-                        matrix4f_t  mat4;
-                        vec4f_t     vec4;
-                        vec3f_t     vec3;
-                        vec2f_t     vec2;
-                    } value;
-                } uniform[10];
-            } uniforms;
-
-        } call[10];
+        const glrendercall_t call[10];
     } calls;
 
 } glrendererconfig_t;
@@ -85,8 +91,7 @@ typedef struct {
 
 
 void                glrenderer3d_draw_cube(const glrenderer3d_t *renderer);
-void                glrenderer3d_draw_mesh(const glrenderer3d_t *, const glmesh_t *);
-void                glrenderer3d_draw_model(const glrenderer3d_t *, const glmodel_t *);
+void                glrenderer3d_draw_model(const glmodel_t *, const glshaderconfig_t);
 void                glrenderer3d_draw(const glrendererconfig_t config);
 
 
@@ -168,46 +173,67 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
     GL_CHECK(glDeleteBuffers(1, &VBO));
 }
 
-void glrenderer3d_draw_mesh(const glrenderer3d_t *self, const glmesh_t *mesh)
+void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfig_t config)
 {
-    const slot_t *vtx = &mesh->vtx;
-    const slot_t *idx = &mesh->idx;
+    glrendercall_t calls[3] = {0};
+    ASSERT(model->meshes.len > 0 && model->meshes.len <= 3);
 
-    vao_t vao = vao_init();
-    vao_bind(&vao);
+    list_iterator(&model->meshes, iter) 
+    {
+        glmesh_t *mesh = iter;
+        calls[(u64)list_index] = (glrendercall_t ){
 
-    vbo_t vbo = vbo_static_init(
-            vtx->__data, 
-            vtx->__elem_size * vtx->len, 
-            vtx->len);
-    vbo_bind(&vbo);
+            //TODO: load textures from the model
+            .textures = {0},
 
-    ebo_t ebo = ebo_init(&vbo, (const u32 *)idx->__data, idx->len);
-    ebo_bind(&ebo);
+            .attrs = {
+                .count = 3,
+                .attr = {
+                    [0] = {
+                        .ncmp = 3,
+                        .interleaved = {
+                            .offset = 0,
+                            .stride = sizeof(glvertex3d_t) ,
+                        }
+                    },
+                    [1] = {
+                        .ncmp = 3,
+                        .interleaved = {
+                            .offset = offsetof(glvertex3d_t, norm),
+                            .stride = sizeof(glvertex3d_t),
+                        }
+                    },
+                    [2] = {
+                        .ncmp = 2,
+                        .interleaved = {
+                            .offset = offsetof(glvertex3d_t, uv),
+                            .stride = sizeof(glvertex3d_t)
+                        }
+                    }
+                }
+            },
+            .shader_config = config,
+            .vtx = {
+                .data = slot_get_buffer(&mesh->vtx),
+                .size = slot_get_size(&mesh->vtx)
+            },
+            .idx = {
+                .data = slot_get_buffer(&mesh->idx),
+                .nmemb = mesh->idx.len
+            },
+        };
+    }
 
-    //positions
-    vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(vec4f_t ), 0);
-    //...
-
-    glshader_bind(self->shader);
-    if (self->textures.data && self->textures.top > 0)
-        for (int i = 0; i < self->textures.top; i++)
-            gltexture2d_bind(&self->textures.data[i], i);
-
-    vao_draw_with_ebo(&vao, &ebo);
-
-    vbo_unbind();
-    vao_unbind();
-
-    ebo_destroy(&ebo);
-    vbo_destroy(&vbo);
-    vao_destroy(&vao);
-}
-
-void glrenderer3d_draw_model(const glrenderer3d_t *self, const glmodel_t *model)
-{
-    list_iterator(&model->meshes, mesh) 
-        glrenderer3d_draw_mesh(self, (glmesh_t *)mesh);
+    glrenderer3d_draw((glrendererconfig_t) {
+        .calls = {
+            .count = model->meshes.len, 
+            .call = {
+                [0] = calls[0],
+                [1] = calls[1],
+                [2] = calls[2]
+            }
+        }
+    });
 }
 
 
@@ -274,12 +300,12 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         }
 
         // Shader
-        ASSERT(config.calls.call[call_idx].shader);
-        glshader_bind(config.calls.call[call_idx].shader); 
+        ASSERT(config.calls.call[call_idx].shader_config.shader);
+        glshader_bind(config.calls.call[call_idx].shader_config.shader); 
 
         //uniforms
-        ASSERT(config.calls.call[call_idx].uniforms.count >= 0);
-        for (u8 uni_idx = 0; uni_idx < config.calls.call[call_idx].uniforms.count; uni_idx++)
+        ASSERT(config.calls.call[call_idx].shader_config.uniforms.count >= 0);
+        for (u8 uni_idx = 0; uni_idx < config.calls.call[call_idx].shader_config.uniforms.count; uni_idx++)
         {
             const struct {
                 const char *name;
@@ -290,26 +316,26 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                     vec3f_t     vec3;
                     vec2f_t     vec2;
                 } value;
-            } *uniform = &config.calls.call[call_idx].uniforms.uniform[uni_idx];
+            } *uniform = &config.calls.call[call_idx].shader_config.uniforms.uniform[uni_idx];
 
             if (strcmp(uniform->type, "matrix4f_t") == 0)
                 glshader_send_uniform_matrix4f(
-                        config.calls.call[call_idx].shader, 
+                        config.calls.call[call_idx].shader_config.shader, 
                         uniform->name, 
                         uniform->value.mat4);
             else if (strcmp(uniform->type, "vec4f_t" ) == 0) 
                 glshader_send_uniform_vec4f(
-                        config.calls.call[call_idx].shader, 
+                        config.calls.call[call_idx].shader_config.shader, 
                         uniform->name, 
                         uniform->value.vec4);
             else if (strcmp(uniform->type, "vec3f_t" ) == 0)
                 glshader_send_uniform_vec3f(
-                        config.calls.call[call_idx].shader, 
+                        config.calls.call[call_idx].shader_config.shader, 
                         uniform->name, 
                         uniform->value.vec3);
             else if (strcmp(uniform->type, "vec2f_t" ) == 0)
                 glshader_send_uniform_vec2f(
-                        config.calls.call[call_idx].shader, 
+                        config.calls.call[call_idx].shader_config.shader, 
                         uniform->name, 
                         uniform->value.vec2);
             else eprint("unknown uniform type `%s` for name `%s`", 
