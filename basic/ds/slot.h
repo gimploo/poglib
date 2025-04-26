@@ -33,6 +33,7 @@ void *              slot_get_value(const slot_t *table, const u64 index);
 #define             slot_get_capacity(PSLOT)                                (PSLOT)->__capacity
 #define             slot_get_buffer(PSLOT)                                  (PSLOT)->__data
 #define             slot_get_size(PSLOT)                                    ((PSLOT)->__elem_size * (PSLOT)->len)
+#define             slot_get_elem_size(PSLOT)                               ((PSLOT)->__elem_size)
 void                slot_print(const slot_t *table, void (*print)(void*));
 void                slot_dump(const slot_t *table);
 void                slot_clear(slot_t *);
