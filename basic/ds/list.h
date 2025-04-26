@@ -35,7 +35,7 @@ void            list_print(const list_t *list, void (*print)(void*));
 
 #define         list_get_buffer(PLIST) (PLIST)->__data
 void *          list_get_value(const list_t *list, const u64 index);
-#define         list_iterator(PLIST, ITER)                      __impl_list_iterator((PLIST), (ITER))
+#define         list_iterator(PLIST, ITER)                          __impl_list_iterator((PLIST), (ITER), list_index)
 
 void            list_destroy(list_t *list);
 
@@ -46,12 +46,12 @@ void            list_destroy(list_t *list);
 
 #ifndef IGNORE_LIST_IMPLEMENTATION
 
-#define __impl_list_iterator(PLIST, ITER)\
+#define __impl_list_iterator(PLIST, ITER, IDX)\
     if ((PLIST)->len != 0)\
-        for (void **index = 0, *(ITER) = (void *)list_get_value((PLIST), (u64)index);\
-            (u64)(index) < (PLIST)->len;\
-            index = (void **)((u64)index + 1),\
-                (ITER) = (void *)list_get_value(PLIST, ((u64)index < (PLIST)->len ? (u64)index : (u64)index-1)))
+        for (void **(IDX) = 0, *(ITER) = (void *)list_get_value((PLIST), (u64)(IDX));\
+            (u64)(IDX) < (PLIST)->len;\
+            (IDX) = (void **)((u64)(IDX) + 1),\
+                (ITER) = (void *)list_get_value(PLIST, ((u64)(IDX) < (PLIST)->len ? (u64)(IDX) : (u64)(IDX)-1)))
 
 void * list_get_value(const list_t *list, const u64 index)
 {
