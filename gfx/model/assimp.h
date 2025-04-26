@@ -62,11 +62,13 @@ glmesh_t __glmesh_processMesh(glmodel_t *self, struct aiMesh *mesh, const struct
                 mesh->mTextureCoords[0][i].y,
             },
         };
-            
         slot_append(&vtx, vt);
     }
 
-    return glmesh_init(vtx, ind);
+    return (glmesh_t) {
+        .vtx = vtx,
+        .idx = ind
+    };
 }
 
 void __glmesh_processNode(glmodel_t *self, struct aiNode *node, const struct aiScene *scene)
@@ -96,7 +98,7 @@ glmodel_t glmodel_init(const char *filepath)
 
     // Assimp: import model
 	const struct aiScene* scene = aiImportFile(filepath, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace); // http://assimp.sourceforge.net/lib_html/structai_scene.html
-                                                                                                                                                               //
+    
     if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         eprint("ERROR::ASSIMP:: %s", aiGetErrorString());
     }
