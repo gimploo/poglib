@@ -94,47 +94,28 @@ typedef struct glvertex3d_t {
 //__heap member in the struct.
 typedef struct glmesh_t {
 
-    slot_t  * const vtx;
-    const slot_t  * const idx; 
-
-    struct {
-        slot_t vtx;
-        slot_t idx;
-    } __heap;
-
-    bool __inheap;
+    slot_t vtx;
+    slot_t idx;
 
 } glmesh_t;
 
-glmesh_t glmesh(slot_t *vertices, const slot_t *indices)
+glmesh_t glmesh_init(const f32 *vtxArray, const u32 vtxArrayLen, const u32 *idxArray, const u32 idxArrayLen)
 {
-    return (glmesh_t ) {
-        .vtx      = vertices,
-        .idx      = indices,
-        .__heap = {0},
-        .__inheap = false
+    glmesh_t o = {
+        .vtx      = slot_init(vtxArrayLen, f32),
+        .idx      = slot_init(idxArrayLen, u32),
     };
-}
 
-glmesh_t glmesh_init(const slot_t vertices, const slot_t indices)
-{
-    return (glmesh_t ) {
-        .vtx      = NULL,
-        .idx      = NULL,
-        .__heap = {
-            .vtx = vertices,
-            .idx = indices,
-        },
-        .__inheap = true
-    };
+    slot_insert_multiple(&o.vtx, (u8 *)vtxArray, vtxArrayLen, sizeof(f32));
+    slot_insert_multiple(&o.idx, (u8 *)idxArray, idxArrayLen, sizeof(u32));
+
+    return o;
 }
 
 void glmesh_destroy(glmesh_t *self)
 {
-    if (!self->__inheap) eprint("This mesh is not heap initialized");
-
-    slot_destroy(&self->__heap.vtx);
-    slot_destroy(&self->__heap.idx);
+    slot_destroy(&self->vtx);
+    slot_destroy(&self->idx);
 }
 
 const f32 DEFAULT_CUBE_VERTICES_8[] = {

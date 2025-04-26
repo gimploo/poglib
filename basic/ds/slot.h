@@ -24,7 +24,7 @@ typedef struct slot_t {
 
 #define             slot_init(CAPACITY, TYPE)                              __impl_slot_init((CAPACITY), (#TYPE), sizeof(TYPE))
 #define             slot_insert(PSLOTARRAY, INDEX, VALUE)                  __impl_slot_insert((PSLOTARRAY), (INDEX), &(VALUE), sizeof(VALUE))
-#define             slot_insert_multiple(PSLOT, ARRAY)                      __impl_slot_insert_multiple((PSLOT), (u8 *)(ARRAY), sizeof((ARRAY)), (PSLOT)->__elem_size)
+void                slot_insert_multiple(slot_t *self, const u8 *arraybuffer, const u32 arraylen, const u32 elem_size);
 #define             slot_append(PSLOTARRAY, VALUE)                         slot_insert((PSLOTARRAY), (PSLOTARRAY)->len, (VALUE))
 #define             slot_delete(PSLOTARRAY, INDEX)                         __impl_slot_delete((PSLOTARRAY), (INDEX))
 slot_t              slot_clone(const slot_t *slot);
@@ -238,19 +238,18 @@ slot_t slot_clone(const slot_t *slot)
     return output;
 }
 
-void __impl_slot_insert_multiple(
+void slot_insert_multiple(
         slot_t *slot, 
         const u8 *arr, 
-        const u64 arr_size, 
+        const u32 arrlen, 
         const u32 elem_size)
 {
     ASSERT(slot);
     ASSERT(arr);
-    ASSERT(arr_size > 0);
+    ASSERT(arrlen > 0);
     ASSERT(elem_size > 0);
 
-    const u32 arr_len = (arr_size / elem_size);
-    for (u32 i = 0; i < arr_len; i++)
+    for (u32 i = 0; i < arrlen; i++)
     {
         __impl_slot_insert(
                 slot, 
