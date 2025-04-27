@@ -39,7 +39,7 @@ typedef struct {
 } glshaderconfig_t;
 
 typedef struct {
-
+  
     u32 count;
     glshaderconfig_t configs[3];
 
