@@ -17,6 +17,7 @@ typedef struct glmodel_t {
     const char *filepath[64];
     list_t meshes;
     list_t textures;
+    list_t colors;
 
 } glmodel_t ;
 
@@ -29,10 +30,12 @@ void        glmodel_destroy(glmodel_t *self);
 
 void __glmesh_processMaterials(glmodel_t *self, const struct aiMaterial *material)
 {
-    list_t *textures = &self->textures; 
-    struct { enum aiTextureType type; char *name; } textureTypes[AI_TEXTURE_TYPE_MAX] = {
+    struct { enum aiTextureType type; char *name; } textureTypes[] = {
+        //{ aiTextureType_NONE, "texture_none" },
+        //{ aiTextureType_UNKNOWN, "texture_unknown" },
         { aiTextureType_DIFFUSE, "texture_diffuse" },
         { aiTextureType_SPECULAR, "texture_specular" },
+        { aiTextureType_AMBIENT, "texture_ambient" },
         { aiTextureType_HEIGHT, "texture_height" },
         { aiTextureType_NORMALS, "texture_normal" },
         { aiTextureType_EMISSIVE, "texture_emissive"},
@@ -50,7 +53,18 @@ void __glmesh_processMaterials(glmodel_t *self, const struct aiMaterial *materia
         { aiTextureType_SHEEN, "texture_sheen"},
         { aiTextureType_CLEARCOAT, "texture_clearcoat"},
         { aiTextureType_TRANSMISSION, "texture_transmission"},
+        { aiTextureType_MAYA_BASE, "texture_maya_base" },
+        { aiTextureType_MAYA_SPECULAR, "texture_maya_specular" },
+        { aiTextureType_MAYA_SPECULAR_COLOR, "texture_maya_specular_color" },
+        { aiTextureType_MAYA_SPECULAR_ROUGHNESS, "texture_maya_specular_roughness" },
+        { aiTextureType_ANISOTROPY, "texture_anisotropy" },
+        { aiTextureType_GLTF_METALLIC_ROUGHNESS, "texture_gltf_metallic_roughness" },
     };
+
+    struct aiColor4D color;
+    if (aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &color) == AI_SUCCESS) {
+        list_append(&self->colors, color);
+    }
 
     bool loaded_textures[AI_TEXTURE_TYPE_MAX] = {0};
 
@@ -175,6 +189,7 @@ glmodel_t glmodel_init(const char *filepath)
     memcpy(o.filepath, filepath, strlen(filepath));
     o.meshes = list_init(glmesh_t );
     o.textures = list_init(gltexture2d_t );
+    o.colors = list_init(vec4f_t );
 
     // Assimp: import model
     const struct aiScene* scene = aiImportFile(filepath, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace); // http://assimp.sourceforge.net/lib_html/structai_scene.html
@@ -201,6 +216,8 @@ void glmodel_destroy(glmodel_t *self)
         gltexture2d_destroy(iter);
     }
     list_destroy(&self->textures);
+
+    list_destroy(&self->colors);
 
     memset(self->filepath, 0, sizeof(self->filepath));
 }
