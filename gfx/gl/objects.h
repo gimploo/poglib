@@ -162,6 +162,8 @@ void __impl_vao_draw_with_vbo(const vao_t *vao, const vbo_t *vbo, u64 gldraw_mod
                 gldraw_mode, 
                 0, 
                 vbo->vertex_count));
+
+    GL_CHECK(glBindVertexArray(0));
 }
 
 void __impl_vao_draw_with_ebo(const vao_t *vao, const ebo_t *ebo, const u64 gldraw_mode)
@@ -175,6 +177,7 @@ void __impl_vao_draw_with_ebo(const vao_t *vao, const ebo_t *ebo, const u64 gldr
                 ebo->indices_count, 
                 GL_UNSIGNED_INT, 
                 0));
+    GL_CHECK(glBindVertexArray(0));
 }
 
 

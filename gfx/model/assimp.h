@@ -10,11 +10,13 @@
 #include <poglib/external/assimp/include/assimp/mesh.h>
 #include <poglib/external/assimp/include/assimp/scene.h>
 #include <poglib/external/assimp/include/assimp/postprocess.h>
+#include <poglib/external/assimp/include/assimp/material.h>
 
 typedef struct glmodel_t {
 
-    const char *filepath[65];
+    const char *filepath[64];
     list_t meshes;
+    list_t textures;
 
 } glmodel_t ;
 
@@ -24,6 +26,59 @@ void        glmodel_destroy(glmodel_t *self);
 
 
 #ifndef IGNORE_ASSIMP_IMPLEMENTATION
+
+void __glmesh_processMaterials(glmodel_t *self, const struct aiMaterial *material)
+{
+    list_t *textures = &self->textures; 
+    struct { enum aiTextureType type; char *name; } textureTypes[AI_TEXTURE_TYPE_MAX] = {
+        { aiTextureType_DIFFUSE, "texture_diffuse" },
+        { aiTextureType_SPECULAR, "texture_specular" },
+        { aiTextureType_HEIGHT, "texture_height" },
+        { aiTextureType_NORMALS, "texture_normal" },
+        { aiTextureType_EMISSIVE, "texture_emissive"},
+        { aiTextureType_SHININESS, "texture_shininess"},
+        { aiTextureType_OPACITY, "texture_opacity"},
+        { aiTextureType_DISPLACEMENT, "texture_displacement"},
+        { aiTextureType_LIGHTMAP, "texture_lightmap"},
+        { aiTextureType_REFLECTION, "texture_reflection"},
+        { aiTextureType_BASE_COLOR, "texture_base_color"},
+        { aiTextureType_NORMAL_CAMERA, "texture_normal_camera"},
+        { aiTextureType_EMISSION_COLOR, "texture_emission_color"},
+        { aiTextureType_METALNESS, "texture_metalness"},
+        { aiTextureType_DIFFUSE_ROUGHNESS, "texture_diffuse_roughness"},
+        { aiTextureType_AMBIENT_OCCLUSION, "texture_occlusion"},
+        { aiTextureType_SHEEN, "texture_sheen"},
+        { aiTextureType_CLEARCOAT, "texture_clearcoat"},
+        { aiTextureType_TRANSMISSION, "texture_transmission"},
+    };
+
+    bool loaded_textures[AI_TEXTURE_TYPE_MAX] = {0};
+
+    for (u32 textype_count = 0; textype_count < ARRAY_LEN(textureTypes); textype_count++) {
+
+        if (loaded_textures[textureTypes[textype_count].type]) 
+            continue;
+
+        const u32 total_textures_for_single_type = aiGetMaterialTextureCount(material, textureTypes[textype_count].type);
+        if (!total_textures_for_single_type)
+            continue;
+
+        ASSERT(total_textures_for_single_type == 1 && "We assumed that only a single texture is loaded per type at all times");
+
+        struct aiString texture_filepath;
+        aiGetMaterialTexture(
+            material, 
+            textureTypes[textype_count].type, 
+            0, 
+            &texture_filepath, 
+            NULL, NULL, NULL, NULL, NULL, NULL);
+
+        gltexture2d_t texture = gltexture2d_init(texture_filepath.data);
+        list_append(&self->textures, texture);
+
+        loaded_textures[textureTypes[textype_count].type] = true;
+    }
+}
 
 glmesh_t __glmesh_processMesh(glmodel_t *self, struct aiMesh *mesh, const struct aiScene *scene)
 {
@@ -84,13 +139,14 @@ glmesh_t __glmesh_processMesh(glmodel_t *self, struct aiMesh *mesh, const struct
     }
 
     //Process materials
-    //__glmesh_processMaterials(self, scene->mMaterials[mesh->mMaterialIndex]);
+    __glmesh_processMaterials(self, scene->mMaterials[mesh->mMaterialIndex]);
 
     return (glmesh_t) {
         .vtx = vtx,
         .idx = ind
     };
 }
+
 
 void __glmesh_processNode(glmodel_t *self, struct aiNode *node, const struct aiScene *scene)
 {
@@ -113,13 +169,15 @@ void __glmesh_processNode(glmodel_t *self, struct aiNode *node, const struct aiS
 
 glmodel_t glmodel_init(const char *filepath)
 {
+    ASSERT(strlen(filepath) < 64);
+
     glmodel_t o = {0};
     memcpy(o.filepath, filepath, strlen(filepath));
     o.meshes = list_init(glmesh_t );
+    o.textures = list_init(gltexture2d_t );
 
     // Assimp: import model
     const struct aiScene* scene = aiImportFile(filepath, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace); // http://assimp.sourceforge.net/lib_html/structai_scene.html
-    
     if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         eprint("ERROR::ASSIMP:: %s", aiGetErrorString());
     }
@@ -138,6 +196,11 @@ void glmodel_destroy(glmodel_t *self)
         glmesh_destroy((glmesh_t *)iter);
     }
     list_destroy(&self->meshes);
+
+    list_iterator(&self->textures, iter) {
+        gltexture2d_destroy(iter);
+    }
+    list_destroy(&self->textures);
 
     memset(self->filepath, 0, sizeof(self->filepath));
 }

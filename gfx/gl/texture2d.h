@@ -45,7 +45,7 @@ void                 gltexture2d_dump(const gltexture2d_t *texture);
 \
 } while(0)
 
-#define gltexture2d_unbind()    (GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
+#define gltexture2d_unbind()    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
 
 
 //NOTE: this function was created for framebuffers since they use color textures also the data is stored in RGB not RGBA8
