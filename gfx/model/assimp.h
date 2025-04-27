@@ -35,35 +35,56 @@ glmesh_t __glmesh_processMesh(glmodel_t *self, struct aiMesh *mesh, const struct
     slot_t vtx = slot_init(mesh->mNumVertices, glvertex3d_t );
     slot_t ind = slot_init(total_indicies, u32);
 
-    // copy indices from stupid array format
-    for(int i = 0; i < mesh->mNumFaces; i++) 
+    // Copy indices
+    for(int i = 0; i < mesh->mNumFaces; i++)
     {
         struct aiFace face = mesh->mFaces[i];
-        // retrieve all indices of the face and store them in the indices vector
-        for(unsigned int j = 0; j < face.mNumIndices; j++)
-            slot_append(&ind, face.mIndices[j]);
+        slot_insert_multiple(&ind, face.mIndices, face.mNumIndices, sizeof(u32));
     }
 
+    // Copy vertices, normals, UVs
     for (int i = 0; i < mesh->mNumVertices; i++)
     {
-        const glvertex3d_t vt = {
-            .pos = {
-                mesh->mVertices[i].x,
-                mesh->mVertices[i].y,
-                mesh->mVertices[i].z,
-            },
-            .norm = {
+        ASSERT(mesh->mVertices && "Given mesh has no vertices");
+
+        glvertex3d_t vt = {0};
+
+        vt.pos = (vec3f_t ){
+            mesh->mVertices[i].x,
+            mesh->mVertices[i].y,
+            mesh->mVertices[i].z,
+        };
+
+        if (mesh->mTextureCoords) {
+            vt.uv = (vec2f_t) {
+                mesh->mTextureCoords[0][i].x,
+                mesh->mTextureCoords[0][i].y,
+            };
+            vt.tangents = (vec3f_t) {
+                .x = mesh->mTangents[i].x,
+                .y = mesh->mTangents[i].y,
+                .z = mesh->mTangents[i].z,
+            };
+            vt.bitangents = (vec3f_t) {
+                .x = mesh->mBitangents[i].x,
+                .y = mesh->mBitangents[i].y,
+                .z = mesh->mBitangents[i].z,
+            };
+        }
+
+        if (mesh->mNormals) {
+            vt.norm = (vec3f_t){
                 mesh->mNormals[i].x,
                 mesh->mNormals[i].y,
                 mesh->mNormals[i].z,
-            },
-            .uv = {
-                mesh->mTextureCoords[0][i].x,
-                mesh->mTextureCoords[0][i].y,
-            },
-        };
+            };
+        }
+
         slot_append(&vtx, vt);
     }
+
+    //Process materials
+    //__glmesh_processMaterials(self, scene->mMaterials[mesh->mMaterialIndex]);
 
     return (glmesh_t) {
         .vtx = vtx,
