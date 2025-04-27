@@ -67,7 +67,7 @@ typedef struct {
     // Textures
     struct {
         u8 count;
-        gltexture2d_t * texture[10];
+        gltexture2d_t **textures;
     } textures;
 
     // Shader Config { uniform and shader }
@@ -183,8 +183,10 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfig_t conf
         glmesh_t *mesh = iter;
         calls[(u64)list_index] = (glrendercall_t ){
 
-            //TODO: load textures from the model
-            .textures = {0},
+            .textures = {
+                .count = model->textures.len,
+                .textures = list_get_buffer(&model->textures)
+            },
 
             .attrs = {
                 .count = 3,
@@ -346,18 +348,18 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         for (u8 txt_idx = 0; txt_idx < config.calls.call[call_idx].textures.count; ++txt_idx)
         {
             gltexture2d_bind(
-                    config.calls.call[call_idx].textures.texture[txt_idx],
+                    config.calls.call[call_idx].textures.textures[txt_idx],
                     txt_idx);
         }
 
         if (!is_idx_null)   vao_draw_with_ebo(&vao, &ebo);
         else                vao_draw_with_vbo(&vao, &vbo);
 
-        if (!is_idx_null) ebo_destroy(&ebo);
+        gltexture2d_unbind();
 
+        if (!is_idx_null) ebo_destroy(&ebo);
         vao_destroy(&vao);
         vbo_destroy(&vbo);
-
 
     }
 
