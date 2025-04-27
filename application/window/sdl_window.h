@@ -779,11 +779,10 @@ void window_update_user_input(window_t *window)
 {
     SDL_Event *event = &window->__sdl_event;
 
-    if (window->mouse.state == SDL_MOUSESTATE_RELEASED) {
-        window->mouse.state = SDL_MOUSESTATE_NONE;
-        window->mouse.button = SDL_MOUSEBUTTON_NONE;
-    } else if (window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED ) {
+    if (window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED ) {
         window->mouse.state = SDL_MOUSESTATE_PRESSED;
+    } else if (window->mouse.state == SDL_MOUSESTATE_RELEASED) {
+        window->mouse.state = SDL_MOUSESTATE_NONE;
     }
 
     memset(&window->mouse.rel, 0, sizeof(window->mouse.rel));
