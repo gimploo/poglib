@@ -86,6 +86,8 @@ typedef struct glvertex3d_t {
     vec3f_t pos;
     vec3f_t norm;
     vec2f_t uv;
+    vec3f_t tangents;
+    vec3f_t bitangents;
 
 } glvertex3d_t ;
 

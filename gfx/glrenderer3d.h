@@ -39,6 +39,13 @@ typedef struct {
 } glshaderconfig_t;
 
 typedef struct {
+  
+    u32 count;
+    glshaderconfig_t configs[3];
+
+} glshaderconfiglist_t;
+
+typedef struct {
 
     // Vertex data
     struct {
@@ -67,7 +74,7 @@ typedef struct {
     // Textures
     struct {
         u8 count;
-        gltexture2d_t * texture[10];
+        gltexture2d_t **textures;
     } textures;
 
     // Shader Config { uniform and shader }
@@ -91,7 +98,7 @@ typedef struct {
 
 
 void                glrenderer3d_draw_cube(const glrenderer3d_t *renderer);
-void                glrenderer3d_draw_model(const glmodel_t *, const glshaderconfig_t);
+void                glrenderer3d_draw_model(const glmodel_t *, const glshaderconfiglist_t);
 void                glrenderer3d_draw(const glrendererconfig_t config);
 
 
@@ -173,18 +180,24 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
     GL_CHECK(glDeleteBuffers(1, &VBO));
 }
 
-void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfig_t config)
+void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t config)
 {
+    ASSERT(model->meshes.len > 0);
+    if(model->meshes.len > 3) 
+        eprint("TODO: Kept a hard limit on how many meshes (3) can be rendered per model");
+    ASSERT(config.count == model->meshes.len);
+
     glrendercall_t calls[3] = {0};
-    ASSERT(model->meshes.len > 0 && model->meshes.len <= 3);
 
     list_iterator(&model->meshes, iter) 
     {
         glmesh_t *mesh = iter;
         calls[(u64)list_index] = (glrendercall_t ){
 
-            //TODO: load textures from the model
-            .textures = {0},
+            .textures = {
+                .count = model->textures.len,
+                .textures = (gltexture2d_t **)list_get_buffer(&model->textures)
+            },
 
             .attrs = {
                 .count = 3,
@@ -212,7 +225,7 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfig_t conf
                     }
                 }
             },
-            .shader_config = config,
+            .shader_config = config.configs[(u64)list_index],
             .vtx = {
                 .data = slot_get_buffer(&mesh->vtx),
                 .size = slot_get_size(&mesh->vtx)
@@ -242,7 +255,6 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfig_t conf
 void glrenderer3d_draw(const glrendererconfig_t config)
 {
     ASSERT(config.calls.count > 0);
-
     for (u8 call_idx = 0; call_idx < config.calls.count; call_idx++)
     {
         bool is_idx_null = config.calls.call[call_idx].idx.data ? false : true;
@@ -346,18 +358,18 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         for (u8 txt_idx = 0; txt_idx < config.calls.call[call_idx].textures.count; ++txt_idx)
         {
             gltexture2d_bind(
-                    config.calls.call[call_idx].textures.texture[txt_idx],
+                    config.calls.call[call_idx].textures.textures[txt_idx],
                     txt_idx);
         }
 
         if (!is_idx_null)   vao_draw_with_ebo(&vao, &ebo);
         else                vao_draw_with_vbo(&vao, &vbo);
 
-        if (!is_idx_null) ebo_destroy(&ebo);
+        gltexture2d_unbind();
 
+        if (!is_idx_null) ebo_destroy(&ebo);
         vao_destroy(&vao);
         vbo_destroy(&vbo);
-
 
     }
 
