@@ -164,7 +164,7 @@ void __dbg_set_stacktraces(dbg_node_info_t *dn)
 
 bool __is_file_in_ignore_files(const char *filepath)
 {
-    char *pfile = filepath + strlen(filepath);
+    const char *pfile = filepath + strlen(filepath);
     for (; pfile > filepath; pfile--)
     {
         if ((*pfile == '\\') || (*pfile == '/'))
@@ -173,7 +173,7 @@ bool __is_file_in_ignore_files(const char *filepath)
             break;
         }
     }
-    for (int i = 0; i < (sizeof(IGNORE_FILES) / sizeof(IGNORE_FILES[0])); i++)
+    for (unsigned long i = 0; i < (sizeof(IGNORE_FILES) / sizeof(IGNORE_FILES[0])); i++)
     {
         if (strcmp(IGNORE_FILES[i], pfile) == 0) return true;
     }

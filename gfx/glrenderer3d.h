@@ -328,7 +328,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                     vec3f_t     vec3;
                     vec2f_t     vec2;
                 } value;
-            } *uniform = &config.calls.call[call_idx].shader_config.uniforms.uniform[uni_idx];
+            } *uniform = (void *)&config.calls.call[call_idx].shader_config.uniforms.uniform[uni_idx];
 
             if (strcmp(uniform->type, "matrix4f_t") == 0)
                 glshader_send_uniform_matrix4f(
