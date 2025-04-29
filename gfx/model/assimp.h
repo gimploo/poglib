@@ -53,12 +53,14 @@ void __glmesh_processMaterials(glmodel_t *self, const struct aiMaterial *materia
         { aiTextureType_SHEEN, "texture_sheen"},
         { aiTextureType_CLEARCOAT, "texture_clearcoat"},
         { aiTextureType_TRANSMISSION, "texture_transmission"},
+#ifdef _WIN64
         { aiTextureType_MAYA_BASE, "texture_maya_base" },
         { aiTextureType_MAYA_SPECULAR, "texture_maya_specular" },
         { aiTextureType_MAYA_SPECULAR_COLOR, "texture_maya_specular_color" },
         { aiTextureType_MAYA_SPECULAR_ROUGHNESS, "texture_maya_specular_roughness" },
         { aiTextureType_ANISOTROPY, "texture_anisotropy" },
         { aiTextureType_GLTF_METALLIC_ROUGHNESS, "texture_gltf_metallic_roughness" },
+#endif
     };
 
     struct aiColor4D color;
