@@ -28,6 +28,7 @@ typedef struct hashtable_t {
 #define         hashtable_delete(PTABLE, KEY)                       __impl_hashtable_delete_key_value_pair((PTABLE), (#KEY)) 
 
 void *          hashtable_get_value(const hashtable_t *table, const char *key);
+bool            hashtable_is_key_used(const hashtable_t *, const char *key);
 
 void            hashtable_print(const hashtable_t *table, void (*print)(void*));
 void            hashtable_dump(const hashtable_t *table);
@@ -52,6 +53,7 @@ u64 hash_cstr(const char *word, const u64 word_len)
 
 hashtable_t __impl_hashtable_init(const u64 array_capacity, const char *elem_type, const u64 elem_size)
 {
+    ASSERT(array_capacity > 0);
     bool flag = false;
     u32 len = strlen(elem_type);
     if (elem_type[len] > MAX_TYPE_CHARACTER_LENGTH) eprint("variable name is too big, exceeded the %i limit threshold\n", MAX_TYPE_CHARACTER_LENGTH);
@@ -158,6 +160,14 @@ void hashtable_print(const hashtable_t *table, void (*print)(void*))
 
 }
 
+bool hashtable_is_key_used(const hashtable_t *table, const char *key)
+{
+    ASSERT(table != NULL);
+    ASSERT(key != NULL);
+
+    const u32 index = hash_cstr(key, strlen(key)) % table->__capacity;
+    return table->__index_table[index];
+}
 
 void * hashtable_get_value(const hashtable_t *table, const char *key)
 {

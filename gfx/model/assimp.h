@@ -100,21 +100,21 @@ glmesh_t __glmesh_processMesh(glmodel_t *self, struct aiMesh *mesh, const struct
 {
     // get the total total indicies in the mesh
     u64 total_indicies = 0;
-    for(int i = 0; i < mesh->mNumFaces; i++) 
+    for(u32 i = 0; i < mesh->mNumFaces; i++) 
         total_indicies += mesh->mFaces[i].mNumIndices;
 
     slot_t vtx = slot_init(mesh->mNumVertices, glvertex3d_t );
     slot_t ind = slot_init(total_indicies, u32);
 
     // Copy indices
-    for(int i = 0; i < mesh->mNumFaces; i++)
+    for(u32 i = 0; i < mesh->mNumFaces; i++)
     {
         struct aiFace face = mesh->mFaces[i];
-        slot_insert_multiple(&ind, face.mIndices, face.mNumIndices, sizeof(u32));
+        slot_insert_multiple(&ind, (const u8 *)face.mIndices, face.mNumIndices, sizeof(u32));
     }
 
     // Copy vertices, normals, UVs
-    for (int i = 0; i < mesh->mNumVertices; i++)
+    for (u32 i = 0; i < mesh->mNumVertices; i++)
     {
         ASSERT(mesh->mVertices && "Given mesh has no vertices");
 
@@ -126,10 +126,10 @@ glmesh_t __glmesh_processMesh(glmodel_t *self, struct aiMesh *mesh, const struct
             mesh->mVertices[i].z,
         };
 
-        if (mesh->mTextureCoords) {
+        if (i < AI_MAX_NUMBER_OF_TEXTURECOORDS && mesh->mTextureCoords[i]) {
             vt.uv = (vec2f_t) {
-                mesh->mTextureCoords[0][i].x,
-                mesh->mTextureCoords[0][i].y,
+                mesh->mTextureCoords[i]->x,
+                mesh->mTextureCoords[i]->y,
             };
             vt.tangents = (vec3f_t) {
                 .x = mesh->mTangents[i].x,
@@ -145,9 +145,9 @@ glmesh_t __glmesh_processMesh(glmodel_t *self, struct aiMesh *mesh, const struct
 
         if (mesh->mNormals) {
             vt.norm = (vec3f_t){
-                mesh->mNormals[i].x,
-                mesh->mNormals[i].y,
-                mesh->mNormals[i].z,
+                mesh->mNormals->x,
+                mesh->mNormals->y,
+                mesh->mNormals->z,
             };
         }
 
@@ -194,7 +194,9 @@ glmodel_t glmodel_init(const char *filepath)
     o.colors = list_init(vec4f_t );
 
     // Assimp: import model
-    const struct aiScene* scene = aiImportFile(filepath, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace); // http://assimp.sourceforge.net/lib_html/structai_scene.html
+    const struct aiScene* scene = aiImportFile(filepath,
+       aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs | aiProcess_CalcTangentSpace
+    ); // http://assimp.sourceforge.net/lib_html/structai_scene.html
     if(!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         eprint("ERROR::ASSIMP:: %s", aiGetErrorString());
     }
