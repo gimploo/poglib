@@ -19,6 +19,7 @@ typedef struct hashtable_t {
     u64                 __elem_size;
     u64                 __capacity;
     bool                *__index_table;
+    u32                 *__psl;
     bool                __are_values_pointers;
 
 } hashtable_t ;
@@ -49,6 +50,15 @@ u64 hash_cstr(const char *word, const u64 word_len)
     return hash;
 }
 
+//NOTE: hash function apparently is really good for strings keys
+uint32_t fnv1a_hash(const char *key) {
+    uint32_t hash = 2166136261u;
+    while (*key) {
+        hash ^= (unsigned char)*key++;
+        hash *= 16777619u;
+    }
+    return hash;
+}
 
 
 hashtable_t __impl_hashtable_init(const u64 array_capacity, const char *elem_type, const u64 elem_size)
@@ -66,6 +76,7 @@ hashtable_t __impl_hashtable_init(const u64 array_capacity, const char *elem_typ
         .__elem_size           = elem_size,
         .__capacity             = array_capacity,
         .__index_table          = (bool *)calloc(array_capacity, sizeof(bool)),
+        .__psl                  = (u32 *)calloc(array_capacity, sizeof(u32)),
         .__are_values_pointers  = flag,
     };
 
@@ -99,7 +110,7 @@ void * __impl_hashtable_insert_key_value_pair_by_value(
     if (strlen(key) > HT_MAX_KEY_LENGTH) eprint("%s key cant be greater than %i character long\n", key, HT_MAX_KEY_SIZE);
     if (value_size != table->__elem_size) eprint("expected value size (%li) but got (%li)", table->__elem_size, value_size);
 
-    u64 index = hash_cstr(key, strlen(key)) % table->__capacity;
+    u64 index = fnv1a_hash(key) % table->__capacity; //hash_cstr(key, strlen(key)) % table->__capacity;
     assert(index >= 0 && index < table->__capacity);
 
     if (!__check_for_collision(table, index)) {
@@ -109,16 +120,35 @@ void * __impl_hashtable_insert_key_value_pair_by_value(
             value_addr, 
             table->__elem_size);
 
+        table->__psl[index] = 1;
         table->__index_table[index] = true;
 
     } else {
-
-        eprint("hashtable %li index collision found", index);
-
-    } 
+        // x 1 2 3 x 1
+        u32 current_psl = 1;
+        bool hashtable_updated = false;
+        while (index < table->__capacity) {
+            if (!table->__psl[index]) {
+                memcpy(
+                    table->__data + (index * table->__elem_size), 
+                    value_addr, 
+                    table->__elem_size);
+                table->__psl[index] = current_psl;
+                hashtable_updated = true;
+                break;
+            }
+            if (current_psl > table->__psl[index]) {
+                swap((void **)&table->__data[index], (void **)value_addr);
+                swap((void **)&table->__psl[index], (void **)&current_psl);
+            }
+            current_psl++;
+            index++;
+        }
+        ASSERT(hashtable_updated);
+        hashtable_dump(table);
+    }
 
     table->len++;
-    
     return __hashtable_get_reference_to_only_value_at_index(table, index);
 }
 
@@ -140,6 +170,7 @@ void __impl_hashtable_destroy(hashtable_t *table)
     if (table == NULL) eprint("table arguemnt is null");
 
     free(table->__data);
+    free(table->__psl);
     free(table->__index_table);
 }
 

@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
-#include <errno.h>
+#include <errno.h> 
 #include <time.h>
 #include <ctype.h>
 
@@ -71,4 +71,11 @@ f32 randf32(const f32 min, const f32 max)
     srand(time(NULL));
     float scale = rand() / (float) RAND_MAX; /* [0, 1.0] */
     return min + scale * ( max - min );      /* [min, max] */
+}
+
+void swap(void **x, void **y)
+{
+    void *t = *x;
+    *x = *y;
+    *y = t;
 }
