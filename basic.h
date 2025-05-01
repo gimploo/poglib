@@ -6,3 +6,4 @@
 #include "basic/color.h"
 #include "basic/str.h"
 #include "basic/buffer.h"
+#include "basic/test.h"
