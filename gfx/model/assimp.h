@@ -105,13 +105,15 @@ void __glmesh_processBones(glmodel_t *self, const struct aiMesh *mesh)
     {
         const char *bone_name = mesh->mBones[i]->mName.data;
 
+        /*
         if (bone_name != NULL && hashtable_is_key_used(&bone_index_mapping, bone_name)) continue;
 
         hashtable_insert(&bone_index_mapping, , index_count);
+        */
         ++index_count;
     }
 
-    hashtable_dump(&bone_index_mapping);
+    //hashtable_dump(&bone_index_mapping);
     exit(1);
 }
 
