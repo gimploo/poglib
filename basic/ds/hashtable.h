@@ -1,7 +1,7 @@
 #pragma once
 #include "../common.h"
 #include "./list.h"
-#include "../str.h"
+#include "../str.h" 
 #include "./slot.h"
 #include "../util.h"
 
@@ -73,7 +73,7 @@ hashtable_t __impl_hashtable_init(const u32 capacity, const u32 value_size)
     };
 }
 
-void hashtable_insert_raw(hashtable_t *table, const char *key, void *value)
+table_entry_t * hashtable_insert_raw(hashtable_t *table, const char *key, void *value)
 {
     if (table->entries.len == slot_get_capacity(&table->entries)) {
         eprint("Exceeded limit");
@@ -88,7 +88,8 @@ void hashtable_insert_raw(hashtable_t *table, const char *key, void *value)
         table_entry_t *entry = slot_get_value(&table->entries,index);
 
         if(!entry->is_occupied) {
-            slot_insert(
+            printf("Inserting %s at index %u, probe_distance %u\n", key, index, probe_distance);
+            return slot_insert(
                 &table->entries, 
                 index, 
                 &(table_entry_t) {
@@ -99,14 +100,12 @@ void hashtable_insert_raw(hashtable_t *table, const char *key, void *value)
                 }, 
                 sizeof(table_entry_t)
             );
-            printf("Inserting %s at index %u, probe_distance %u\n", key, index, probe_distance);
-            return;
         }
 
         if(!strcmp(entry->key.data, key)) {
             str_free(&str_key);
             entry->ptr = value;
-            return;
+            return entry;
         }
 
         if(probe_distance > entry->probe_distance){
@@ -125,19 +124,17 @@ void hashtable_insert_raw(hashtable_t *table, const char *key, void *value)
 }
 
 // For small data types (≤ 8 bytes) passed by value
-static inline void __hashtable_insert_val(hashtable_t *table, const char *key, int val)
+static inline void * __hashtable_insert_val(hashtable_t *table, const char *key, int val)
 {
-    printf("value\n");
     ASSERT(table->mode == VALUE_MODE_INLINE_COPY);
-    hashtable_insert_raw(table, key, &val);
+    return hashtable_insert_raw(table, key, &val)->data;
 }
 
 // For actual pointers (≥ 8 bytes or heap data)
-static inline void __hashtable_insert_ptr(hashtable_t *table, const char *key, void *ptr)
+static inline void * __hashtable_insert_ptr(hashtable_t *table, const char *key, void *ptr)
 {
-    printf("pointer\n");
     ASSERT(table->mode == VALUE_MODE_POINTER);
-    hashtable_insert_raw(table, key, ptr);
+    return hashtable_insert_raw(table, key, ptr)->ptr;
 }
 
 const void * __get_value(const hashtable_t *table, const table_entry_t *entry) 
@@ -155,14 +152,14 @@ const void * hashtable_get_value(const hashtable_t *table, const char *key)
         const table_entry_t *entry = slot_get_value(&table->entries,index);
 
         if(!entry->is_occupied)
-            return NULL;
+            eprint("No entry");
 
         if(!strcmp(entry->key.data, key)){
             return __get_value(table, entry);
         }
 
         if(probe_distance > entry->probe_distance) {
-            return NULL;
+            eprint("Error here");
         }
 
         index = (index + 1) % entries_capacity;
@@ -277,6 +274,10 @@ void hashtable_print(const hashtable_t *table, void (*print)(void *)) {
         }
     }
 }
+
+#define hashtable_get_entry_value(ENTRY) ((table_entry_t *)ENTRY)->ptr
+
+#define hashtable_iterator(TABLE, ENTRY) slot_iterator(&(TABLE)->entries, (ENTRY))
 
 
 #endif

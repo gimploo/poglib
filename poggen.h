@@ -10,7 +10,7 @@
 typedef struct poggen_t {
 
     assetmanager_t      assets;
-    map_t               scenes;
+    hashtable_t               scenes;
     scene_t             *current_scene;
 
     struct {
@@ -53,7 +53,7 @@ poggen_t * poggen_init(const application_t * const app)
 
     poggen_t tmp =  (poggen_t ){
         .assets         = assetmanager_init(),
-        .scenes         = map_init(MAX_SCENES_ALLOWED, scene_t ),
+        .scenes         = hashtable_init(MAX_SCENES_ALLOWED, scene_t ),
         .current_scene  = NULL,
         .handle = {
             .app          = app
@@ -72,10 +72,12 @@ poggen_t * poggen_init(const application_t * const app)
 void __impl_poggen_add_scene(poggen_t *self, const scene_t scene)
 {
     assert(self);
-    map_t *map = &self->scenes;
+    hashtable_t *map = &self->scenes;
+    scene_t *heap_scene = calloc(1, sizeof(scene_t));
+    *heap_scene = scene;
     char label[64] = {0};
-    memcpy(label, scene.label, sizeof(label));
-    scene_t *tmp = (scene_t *)map_insert(map, label, scene);
+    memcpy(label, heap_scene->label, sizeof(label));
+    scene_t *tmp = (scene_t *)hashtable_insert(map, label, heap_scene);
 
     if (!self->current_scene)
         self->current_scene = tmp;
@@ -89,7 +91,7 @@ void poggen_remove_scene(poggen_t *self, const char *label)
     assert(self);
     assert(label);
 
-    map_delete(&self->scenes, label);
+    hashtable_delete(&self->scenes, label);
 }
 
 void poggen_change_scene(poggen_t *self, const char *scene_label)
@@ -97,12 +99,11 @@ void poggen_change_scene(poggen_t *self, const char *scene_label)
     assert(self);
     assert(scene_label);
 
-    const map_t *table = &self->scenes;
+    const hashtable_t *table = &self->scenes;
 
-    scene_t *scene = (scene_t *)map_get_value(table, scene_label);
+    scene_t *scene = (scene_t *)hashtable_get_value(table, scene_label);
     assert(scene);
-
-    printf("SCENE UPDATED FROM (%s) TO (%s)\n", self->current_scene->label, scene->label);
+printf("SCENE UPDATED FROM (%s) TO (%s)\n", self->current_scene->label, scene->label);
     self->current_scene = scene;
 }
 
@@ -125,12 +126,12 @@ void poggen_destroy(poggen_t *self)
 
     assetmanager_destroy(&self->assets);
 
-    map_t *map = &self->scenes;
+    hashtable_t *map = &self->scenes;
 
-    map_iterator(map, tmp) {
-        __scene_destroy((scene_t *)tmp);
+    hashtable_iterator(map, entry) {
+        __scene_destroy((scene_t *)hashtable_get_entry_value(entry));
     }
-    map_destroy(&self->scenes);
+    hashtable_destroy(&self->scenes);
 
     self->current_scene = NULL;
 
