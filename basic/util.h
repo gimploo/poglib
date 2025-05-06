@@ -1,0 +1,21 @@
+#pragma once
+#include "./common.h"
+#include "./dbg.h"
+
+void swap(void **x, void **y)
+{
+    void *t = *x;
+    *x = *y;
+    *y = t;
+}
+
+static u8 __tmp_scrap_memory[4 * MB] = {0};
+
+void swap_memory(void *x, void *y, const u64 size)
+{
+    ASSERT(size <= sizeof(__tmp_scrap_memory));
+
+    memcpy(__tmp_scrap_memory, x, size);
+    memcpy(x, y, size);
+    memcpy(y, __tmp_scrap_memory, size);
+}
