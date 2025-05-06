@@ -11,3 +11,4 @@ test/application/test
 *.db
 **/bin/*
 **/test/**/lib/
+test/ds/hashtable/.cache/clangd/index
