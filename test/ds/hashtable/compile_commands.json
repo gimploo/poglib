@@ -1,0 +1,19 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-std=c11",
+      "-g3",
+      "-DDEBUG",
+      "-O0",
+      "-Wall",
+      "-o",
+      "a.out",
+      "main.c"
+    ],
+    "directory": "/home/simploo/dev/projects/GetBack/lib/poglib/test/ds/hashtable",
+    "file": "/home/simploo/dev/projects/GetBack/lib/poglib/test/ds/hashtable/main.c",
+    "output": "/home/simploo/dev/projects/GetBack/lib/poglib/test/ds/hashtable/a.out"
+  }
+]
