@@ -1,5 +1,4 @@
 #pragma once
-#include <stdbool.h>
 #include "./common.h"
 
 #define TEST_ASSERT(PARAM)  if (!(PARAM)) return false;
@@ -12,8 +11,8 @@ static const char *__TESTS_NAMES_LIST[10];
 static u32 __TEST_LIST_COUNT = 0;
 #endif
 
-#define TEST(TEST_LABEL, FUNCTION_BODY)\
-    bool TEST_LABEL(void) FUNCTION_BODY
+#define TEST(TEST_LABEL, ...) \
+    bool TEST_LABEL(void) { __VA_ARGS__ }
 
 #define REGISTER_TEST(TEST_LABEL)do {\
     ASSERT(__TEST_LIST_COUNT <= ARRAY_LEN(__TESTS_LIST));\

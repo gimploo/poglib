@@ -1,57 +1,28 @@
 #pragma once
 #include "../common.h"
 #include "./list.h"
+#include "../str.h"
+#include "./slot.h"
+#include "../util.h"
 
-//NOTE: better to have hashtable take str_t type key instead of a number to avoid confusion
-//NOTE: This hashtable allows to insert values either by reference or by value
-
-#define HT_MAX_KEY_LENGTH   63
-#define HT_MAX_KEY_SIZE     HT_MAX_KEY_LENGTH + 1
+typedef struct table_entry_t {
+    str_t   key;
+    void    *value;
+    u32     value_size;
+    u32     probe_distance;
+    bool    is_occupied;
+} table_entry_t;
 
 typedef struct hashtable_t {
-
-    // public 
-    u64                 len;
-
-    //private
-    u8                  *__data;
-    char                __elem_type[MAX_TYPE_CHARACTER_LENGTH];
-    u64                 __elem_size;
-    u64                 __capacity;
-    bool                *__index_table;
-    u32                 *__psl;
-    bool                __are_values_pointers;
-
+    slot_t entries;
 } hashtable_t ;
 
-#define         hashtable_init(CAPACITY, TYPE)                      __impl_hashtable_init((CAPACITY), (#TYPE), sizeof(TYPE))
-#define         hashtable_insert(PTABLE, KEY, VALUE)                __impl_hashtable_insert_key_value_pair_by_value((PTABLE), (#KEY), &(VALUE), sizeof(VALUE))
-#define         hashtable_delete(PTABLE, KEY)                       __impl_hashtable_delete_key_value_pair((PTABLE), (#KEY)) 
-
-void *          hashtable_get_value(const hashtable_t *table, const char *key);
-bool            hashtable_is_key_used(const hashtable_t *, const char *key);
-
-void            hashtable_print(const hashtable_t *table, void (*print)(void*));
-void            hashtable_dump(const hashtable_t *table);
-
-#define         hashtable_destroy(PTABLE)                           __impl_hashtable_destroy(PTABLE)
-
+void hashtable_insert(hashtable_t *table, const char *key, void *value, const u32 value_size);
 
 #ifndef IGNORE_HASHTABLE_IMPLEMENTATION
 
-
-//NOTE: hashfunction from python3 docs
-u64 hash_cstr(const char *word, const u64 word_len)
-{
-    u64 hash = 7;
-    for (u64 i = 0; i < word_len; i++) {
-        hash = hash*31 + word[i];
-    }
-    return hash;
-}
-
-//NOTE: hash function apparently is really good for strings keys
-uint32_t fnv1a_hash(const char *key) {
+//NOTE: hash function apparently is really good for strings keys -- //fnv1a_hash
+uint32_t hash_cstr(const char *key) {
     uint32_t hash = 2166136261u;
     while (*key) {
         hash ^= (unsigned char)*key++;
@@ -60,179 +31,61 @@ uint32_t fnv1a_hash(const char *key) {
     return hash;
 }
 
-
-hashtable_t __impl_hashtable_init(const u64 array_capacity, const char *elem_type, const u64 elem_size)
+void hashtable_insert(hashtable_t *table, const char *key, void *value, const u32 value_size)
 {
-    ASSERT(array_capacity > 0);
-    bool flag = false;
-    u32 len = strlen(elem_type);
-    if (elem_type[len] > MAX_TYPE_CHARACTER_LENGTH) eprint("variable name is too big, exceeded the %i limit threshold\n", MAX_TYPE_CHARACTER_LENGTH);
-    if (elem_type[len - 1] == '*') flag = true;
+    u32 index = hash_cstr(key);
+    u32 probe_distance = 0;
 
-    hashtable_t o = {
-        .len = 0,
-        .__data               = (u8 *)calloc(array_capacity, elem_size),
-        .__elem_type           = {0},
-        .__elem_size           = elem_size,
-        .__capacity             = array_capacity,
-        .__index_table          = (bool *)calloc(array_capacity, sizeof(bool)),
-        .__psl                  = (u32 *)calloc(array_capacity, sizeof(u32)),
-        .__are_values_pointers  = flag,
-    };
+    while(true) {
+        table_entry_t *entry = slot_get_value(&table->entries,index);
 
-    if (!flag)  memcpy(o.__elem_type, elem_type, MAX_TYPE_CHARACTER_LENGTH);
-    else        memcpy(o.__elem_type, elem_type, len - 1);
-
-    return o;
-}
-
-bool __check_for_collision(const hashtable_t *table, const u64 index)
-{
-    return table->__index_table[index];
-}
-
-void * __hashtable_get_reference_to_only_value_at_index(const hashtable_t *table, const u64 index)
-{
-    if (!table->__are_values_pointers)
-        return (void *)(table->__data + index * table->__elem_size);
-    else 
-        return *(void **)(table->__data + index * table->__elem_size);
-}
-
-
-void * __impl_hashtable_insert_key_value_pair_by_value(
-        hashtable_t *table,
-        const char  *key, 
-        const void  *value_addr, 
-        const u64   value_size)
-{ 
-    assert(table);
-    if (strlen(key) > HT_MAX_KEY_LENGTH) eprint("%s key cant be greater than %i character long\n", key, HT_MAX_KEY_SIZE);
-    if (value_size != table->__elem_size) eprint("expected value size (%li) but got (%li)", table->__elem_size, value_size);
-
-    u64 index = fnv1a_hash(key) % table->__capacity; //hash_cstr(key, strlen(key)) % table->__capacity;
-    assert(index >= 0 && index < table->__capacity);
-
-    if (!__check_for_collision(table, index)) {
-
-        memcpy(
-            table->__data + (index * table->__elem_size), 
-            value_addr, 
-            table->__elem_size);
-
-        table->__psl[index] = 1;
-        table->__index_table[index] = true;
-
-    } else {
-        // x 1 2 3 x 1
-        u32 current_psl = 1;
-        bool hashtable_updated = false;
-        while (index < table->__capacity) {
-            if (!table->__psl[index]) {
-                memcpy(
-                    table->__data + (index * table->__elem_size), 
-                    value_addr, 
-                    table->__elem_size);
-                table->__psl[index] = current_psl;
-                hashtable_updated = true;
-                break;
-            }
-            if (current_psl > table->__psl[index]) {
-                swap((void **)&table->__data[index], (void **)value_addr);
-                swap((void **)&table->__psl[index], (void **)&current_psl);
-            }
-            current_psl++;
-            index++;
+        if(!entry->is_occupied) {
+            slot_insert(&table->entries, index, entry, sizeof(table_entry_t));
+            entry->probe_distance = probe_distance;
+            entry->is_occupied = true;
+            return;
         }
-        ASSERT(hashtable_updated);
-        hashtable_dump(table);
+
+        if(!strcmp(entry->key.data, key)) {
+            entry->value = value;
+            return;
+        }
+
+        if(probe_distance > entry->probe_distance){
+            swap_memory((char *)key, entry->key.data, sizeof(str_t));
+            swap_memory(value, entry->value, entry->value_size);
+            swap_memory(&probe_distance, &entry->probe_distance, sizeof(probe_distance));
+        }
+
+        // Move to next slot
+        index = (index + 1) % slot_get_capacity(&table->entries);
+        probe_distance += 1;
     }
-
-    table->len++;
-    return __hashtable_get_reference_to_only_value_at_index(table, index);
 }
 
-void __impl_hashtable_delete_key_value_pair(hashtable_t *table, const char *key_value)
+void *hashtable_get_value(const hashtable_t *table, const char *key)
 {
-    if (table == NULL) eprint("table argument is null");
+    u32 index = hash_cstr(key);
+    u32 probe_distance = 0;
 
-    u64 index_cstr = hash_cstr(key_value, strlen(key_value)) % table->__capacity;
-    assert(index_cstr >= 0 && index_cstr < table->__capacity);
+    while(true){
+        table_entry_t *entry = slot_get_value(&table->entries,index);
 
-    table->__index_table[index_cstr] = false;
+        if(!entry->is_occupied)
+            return NULL;
 
-    table->len--;
-}
+        if(!strcmp(entry->key.data, key)){
+            return entry->value;
+        }
 
+        if(probe_distance > entry->probe_distance) {
+            return NULL;
+        }
 
-void __impl_hashtable_destroy(hashtable_t *table)
-{
-    if (table == NULL) eprint("table arguemnt is null");
-
-    free(table->__data);
-    free(table->__psl);
-    free(table->__index_table);
-}
-
-void hashtable_print(const hashtable_t *table, void (*print)(void*))
-{
-    assert(table);
-    assert(print);
-
-    printf("{\n");
-
-    for (u64 i = 0; i < table->__capacity; i++)
-    {
-        if (!table->__index_table[i]) continue;
-        print(__hashtable_get_reference_to_only_value_at_index(table, i));
-        printf(",\n");
+        index = (index + 1) % slot_get_capacity(&table->entries);
+        probe_distance += 1;
     }
-    printf("}\n");
-
 }
 
-bool hashtable_is_key_used(const hashtable_t *table, const char *key)
-{
-    ASSERT(table != NULL);
-    ASSERT(key != NULL);
 
-    const u32 index = hash_cstr(key, strlen(key)) % table->__capacity;
-    return table->__index_table[index];
-}
-
-void * hashtable_get_value(const hashtable_t *table, const char *key)
-{
-    assert(table);
-    assert(key);
-
-    const u64 index = hash_cstr(key, strlen(key)) % table->__capacity;
-
-    if (!table->__index_table[index]) eprint("`%s` key doesnt have an entry in table", key);
-
-    return __hashtable_get_reference_to_only_value_at_index(table, index);
-}
-
-void hashtable_dump(const hashtable_t *table)
-{
-    assert(table);
-
-    printf("len = %li\ncapacity = %li\nelem_size = %li\nelem_type = %s\nare_values_are_pointers = %s\n",
-         table->len,
-         table->__capacity,
-         table->__elem_size,
-         table->__elem_type,
-         table->__are_values_pointers ? "TRUE" : "FALSE");
-
-    const char *output = 
-        "=====================\n"
-        "   INDEX | OCCUPIED \n"
-        "=====================\n";
-
-    printf("%s", output);
-    for (u64 i = 0; i < table->__capacity; i++)
-    {
-        printf("%02li | %s \n", i, table->__index_table[i] ? "TRUE" : "FALSE");
-    }
-    printf("=====================\n");
-}
 #endif

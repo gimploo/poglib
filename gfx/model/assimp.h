@@ -18,7 +18,9 @@ typedef struct glmodel_t {
     list_t meshes;
     list_t textures;
     list_t colors;
-
+    struct {
+        hashtable_t bone_index_map;
+    } __meta_bone_data;
 } glmodel_t ;
 
 
@@ -96,6 +98,23 @@ void __glmesh_processMaterials(glmodel_t *self, const struct aiMaterial *materia
     }
 }
 
+void __glmesh_processBones(glmodel_t *self, const struct aiMesh *mesh)
+{
+    hashtable_t bone_index_mapping = hashtable_init(mesh->mNumBones, u32);
+    for(u32 i = 0, index_count = 0; i < mesh->mNumBones; i++)
+    {
+        const char *bone_name = mesh->mBones[i]->mName.data;
+
+        if (bone_name != NULL && hashtable_is_key_used(&bone_index_mapping, bone_name)) continue;
+
+        hashtable_insert(&bone_index_mapping, , index_count);
+        ++index_count;
+    }
+
+    hashtable_dump(&bone_index_mapping);
+    exit(1);
+}
+
 glmesh_t __glmesh_processMesh(glmodel_t *self, struct aiMesh *mesh, const struct aiScene *scene)
 {
     // get the total total indicies in the mesh
@@ -157,6 +176,9 @@ glmesh_t __glmesh_processMesh(glmodel_t *self, struct aiMesh *mesh, const struct
     //Process materials
     __glmesh_processMaterials(self, scene->mMaterials[mesh->mMaterialIndex]);
 
+    //Process bone
+    //__glmesh_processBones(self, mesh);
+
     return (glmesh_t) {
         .vtx = vtx,
         .idx = ind
@@ -202,7 +224,7 @@ glmodel_t glmodel_init(const char *filepath)
     }
 
     __glmesh_processNode(&o, scene->mRootNode, scene);
-	
+
     // free scene
     aiReleaseImport(scene);
 

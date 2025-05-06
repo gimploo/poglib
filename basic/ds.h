@@ -99,7 +99,7 @@ void __impl_file_save_ds(file_t *file, void *ds, u64 ds_size, ds_type type)
             file_writebytes(file, ds, sizeof(hashtable_t ));
             file_writebytes(
                     file, 
-                    ((hashtable_t *)ds)->__data,
+                    ((hashtable_t *)ds)->__values,
                     ((hashtable_t *)ds)->__capacity * ((hashtable_t *)ds)->__elem_size);
             file_writebytes(
                     file, 
@@ -116,7 +116,7 @@ void __impl_file_save_ds(file_t *file, void *ds, u64 ds_size, ds_type type)
                     ((map_t *)ds)->__keys.__capacity * ((map_t *)ds)->__keys.__elem_size);
             file_writebytes(
                     file, 
-                    ((map_t *)ds)->__values.__data,
+                    ((map_t *)ds)->__values.__values,
                     ((map_t *)ds)->__values.__capacity * ((map_t *)ds)->__values.__elem_size);
             file_writebytes(
                     file, 
@@ -210,15 +210,15 @@ __ds_t __impl_file_load_ds(file_t *file, ds_type type)
                     ((hashtable_t *)ds)->__elem_type,
                     ((hashtable_t *)ds)->__elem_size);
             {
-                tmps[0] = output.h.__data;
+                tmps[0] = output.h.__values;
                 tmps[1] = output.h.__index_table;
                 memcpy(&output.h, ds, sizeof(hashtable_t ));
-                output.h.__data = (u8 *)tmps[0];
+                output.h.__values = (u8 *)tmps[0];
                 output.h.__index_table = (bool *)tmps[1];
             }
             file_readbytes(
                     file, 
-                    output.h.__data,
+                    output.h.__values,
                     output.h.__capacity * output.h.__elem_size);
             file_readbytes(
                     file, 
@@ -235,11 +235,11 @@ __ds_t __impl_file_load_ds(file_t *file, ds_type type)
 
             {   
                 tmps[0] = output.m.__keys.__data;
-                tmps[1] = output.m.__values.__data;
+                tmps[1] = output.m.__values.__values;
                 tmps[2] = output.m.__values.__index_table;
                 memcpy(&output.m, ds, sizeof(map_t ));
                 output.m.__keys.__data         = (u8 *)tmps[0];
-                output.m.__values.__data      = (u8 *)tmps[1];
+                output.m.__values.__values      = (u8 *)tmps[1];
                 output.m.__values.__index_table = (bool *)tmps[2];
             }
 
@@ -249,7 +249,7 @@ __ds_t __impl_file_load_ds(file_t *file, ds_type type)
                     output.m.__keys.__capacity * output.m.__keys.__elem_size);
             file_readbytes(
                     file, 
-                    output.m.__values.__data,
+                    output.m.__values.__values,
                     output.m.__values.__capacity * output.m.__values.__elem_size);
             file_readbytes(
                     file, 

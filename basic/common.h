@@ -73,9 +73,3 @@ f32 randf32(const f32 min, const f32 max)
     return min + scale * ( max - min );      /* [min, max] */
 }
 
-void swap(void **x, void **y)
-{
-    void *t = *x;
-    *x = *y;
-    *y = t;
-}
