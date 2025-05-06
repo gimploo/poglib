@@ -11,7 +11,7 @@ void swap(void **x, void **y)
 
 static u8 __tmp_scrap_memory[4 * MB] = {0};
 
-void swap_memory(void *x, void *y, const u64 size)
+void swap_memory(void * const x, void * const y, const u64 size)
 {
     ASSERT(size <= sizeof(__tmp_scrap_memory));
 
