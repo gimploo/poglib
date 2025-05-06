@@ -5,19 +5,48 @@
 #include "./slot.h"
 #include "../util.h"
 
+//NOTE: hashtable inlines data that are of 8 bytes less and pointers of 8 bytes more
+
 typedef struct table_entry_t {
     str_t   key;
-    void    *value;
-    u32     value_size;
+    union {
+        void    *ptr;
+        u8      data[sizeof(void *)];
+    };
     u32     probe_distance;
     bool    is_occupied;
 } table_entry_t;
 
 typedef struct hashtable_t {
     slot_t entries;
+    enum value_mode_t {
+        VALUE_MODE_POINTER = 0,
+        VALUE_MODE_INLINE_COPY = 1,
+        VALUE_MODE_COUNT
+    } mode;
+    const u32 type_size;
 } hashtable_t ;
 
-void hashtable_insert(hashtable_t *table, const char *key, void *value, const u32 value_size);
+#define hashtable_init(CAPACITY, TYPE)\
+    __impl_hashtable_init((CAPACITY), sizeof(TYPE))
+
+#define hashtable_insert(TABLE, KEY, VALUE) \
+    _Generic((VALUE), \
+        int:         __hashtable_insert_val, \
+        unsigned:    __hashtable_insert_val, \
+        long:        __hashtable_insert_val, \
+        float:       __hashtable_insert_val, \
+        double:      __hashtable_insert_val, \
+        char:        __hashtable_insert_val, \
+        short:       __hashtable_insert_val, \
+        long long:   __hashtable_insert_val, \
+        default:     __hashtable_insert_ptr \
+    )((TABLE), (KEY), (VALUE))
+
+void            hashtable_delete(hashtable_t *table, const char *key);
+const void *    hashtable_get_value(const hashtable_t *table, const char *key);
+void            hashtable_print(const hashtable_t *table, void (*print)(void *));
+void            hashtable_destroy(hashtable_t *table);
 
 #ifndef IGNORE_HASHTABLE_IMPLEMENTATION
 
@@ -31,59 +60,221 @@ uint32_t hash_cstr(const char *key) {
     return hash;
 }
 
-void hashtable_insert(hashtable_t *table, const char *key, void *value, const u32 value_size)
+
+hashtable_t __impl_hashtable_init(const u32 capacity, const u32 value_size)
 {
-    u32 index = hash_cstr(key);
+    ASSERT(capacity > 0);
+    ASSERT(value_size > 0);
+
+    return (hashtable_t ) {
+        .entries = slot_init(capacity, table_entry_t),
+        .mode = value_size >= sizeof(void *) ? VALUE_MODE_POINTER : VALUE_MODE_INLINE_COPY,
+        .type_size = value_size
+    };
+}
+
+void hashtable_insert_raw(hashtable_t *table, const char *key, void *value)
+{
+    if (table->entries.len == slot_get_capacity(&table->entries)) {
+        eprint("Exceeded limit");
+    }
+
+    const u32 entries_capacity = slot_get_capacity(&table->entries);
+    u32 index = hash_cstr(key) % entries_capacity;
     u32 probe_distance = 0;
+    str_t str_key = str_init(key);
 
     while(true) {
         table_entry_t *entry = slot_get_value(&table->entries,index);
 
         if(!entry->is_occupied) {
-            slot_insert(&table->entries, index, entry, sizeof(table_entry_t));
-            entry->probe_distance = probe_distance;
-            entry->is_occupied = true;
+            slot_insert(
+                &table->entries, 
+                index, 
+                &(table_entry_t) {
+                    .key = str_key,
+                    .ptr = value,
+                    .probe_distance = probe_distance,
+                    .is_occupied = true,
+                }, 
+                sizeof(table_entry_t)
+            );
+            printf("Inserting %s at index %u, probe_distance %u\n", key, index, probe_distance);
             return;
         }
 
         if(!strcmp(entry->key.data, key)) {
-            entry->value = value;
+            str_free(&str_key);
+            entry->ptr = value;
             return;
         }
 
         if(probe_distance > entry->probe_distance){
-            swap_memory((char *)key, entry->key.data, sizeof(str_t));
-            swap_memory(value, entry->value, entry->value_size);
+            swap_memory(&str_key, &entry->key, sizeof(str_t));
+            if (table->mode == VALUE_MODE_POINTER)
+                swap(value, entry->ptr);
+            else
+                swap_memory(value, entry->data, table->type_size);
             swap_memory(&probe_distance, &entry->probe_distance, sizeof(probe_distance));
         }
 
         // Move to next slot
-        index = (index + 1) % slot_get_capacity(&table->entries);
+        index = (index + 1) % entries_capacity;
         probe_distance += 1;
     }
 }
 
-void *hashtable_get_value(const hashtable_t *table, const char *key)
+// For small data types (≤ 8 bytes) passed by value
+static inline void __hashtable_insert_val(hashtable_t *table, const char *key, int val)
 {
-    u32 index = hash_cstr(key);
+    printf("value\n");
+    ASSERT(table->mode == VALUE_MODE_INLINE_COPY);
+    hashtable_insert_raw(table, key, &val);
+}
+
+// For actual pointers (≥ 8 bytes or heap data)
+static inline void __hashtable_insert_ptr(hashtable_t *table, const char *key, void *ptr)
+{
+    printf("pointer\n");
+    ASSERT(table->mode == VALUE_MODE_POINTER);
+    hashtable_insert_raw(table, key, ptr);
+}
+
+const void * __get_value(const hashtable_t *table, const table_entry_t *entry) 
+{
+    return table->mode == VALUE_MODE_POINTER ? entry->ptr : entry->data;
+}
+
+const void * hashtable_get_value(const hashtable_t *table, const char *key)
+{
+    const u32 entries_capacity = slot_get_capacity(&table->entries);
+    u32 index = hash_cstr(key) % entries_capacity;
     u32 probe_distance = 0;
 
     while(true){
-        table_entry_t *entry = slot_get_value(&table->entries,index);
+        const table_entry_t *entry = slot_get_value(&table->entries,index);
 
         if(!entry->is_occupied)
             return NULL;
 
         if(!strcmp(entry->key.data, key)){
-            return entry->value;
+            return __get_value(table, entry);
         }
 
         if(probe_distance > entry->probe_distance) {
             return NULL;
         }
 
-        index = (index + 1) % slot_get_capacity(&table->entries);
+        index = (index + 1) % entries_capacity;
         probe_distance += 1;
+    }
+}
+
+
+void hashtable_delete(hashtable_t *table, const char *key)
+{
+    const u32 entries_capacity = slot_get_capacity(&table->entries);
+    u32 index = hash_cstr(key) % entries_capacity;
+    u32 probe_distance = 0;
+
+    while(true) {
+        table_entry_t *entry = slot_get_value(&table->entries, index);
+
+        if(!entry->is_occupied) {
+            eprint("Tried to access an unoccupied element - investigate upstream");
+        }
+
+        if(!strcmp(entry->key.data, key)){
+            break;
+        }
+
+        if(probe_distance > entry->probe_distance){
+            eprint("Tried to probe further - investigate upstream");
+        }
+
+        index = (index + 1) % entries_capacity;
+        probe_distance += 1;
+    }
+
+    //Remove entry
+    u32 current = index;
+    slot_delete(&table->entries, current);
+
+    //Backward shift entries to fill the gap
+    u32 next = (current + 1) % entries_capacity;
+
+    while(true) {
+        table_entry_t *next_entry = slot_get_value(&table->entries, next);
+        if (!next_entry->is_occupied || next_entry->probe_distance == 0) 
+            break;
+
+        // Move next entry back to current position
+        table_entry_t *current_entry = slot_get_value(&table->entries, current);
+        *current_entry = *next_entry;
+        current_entry->probe_distance -= 1;
+
+        // Clear next position
+        next_entry->is_occupied = false;
+
+        // Advance pointers
+        current = next;
+        next = (next + 1) % entries_capacity;
+    }
+
+}
+
+void hashtable_destroy(hashtable_t *table)
+{
+    slot_iterator(&table->entries, iter)
+    {
+        table_entry_t *entry = iter;
+        str_free(&entry->key);
+    }
+    slot_destroy(&table->entries);
+}
+
+void hashtable_print(const hashtable_t *table, void (*print)(void *)) {
+    if (table == NULL) {
+        printf("Hashtable is NULL\n");
+        return;
+    }
+
+    // Print basic hashtable information
+    printf("Hashtable Details:\n");
+    printf("  Type Size: %u\n", table->type_size);
+    printf("  Value Mode: %s\n", table->mode ? "VALUE" : "POINTER");
+    printf("  Entries Capacity: %u\n", slot_get_capacity(&table->entries));
+    printf("  Number of Entries (Occupied): ");
+
+    u32 occupied_count = 0;
+    slot_iterator(&table->entries, iter) {
+        table_entry_t *entry = iter;
+        if (entry->is_occupied) {
+            occupied_count++;
+        }
+    }
+    printf("%u\n", occupied_count);
+
+    // Print the entries in the hashtable
+    printf("  Entries:\n");
+    slot_iterator(&table->entries, iter) {
+        table_entry_t *entry = iter;
+        if (entry->is_occupied) {
+            printf("    Key: %s\n", entry->key.data);
+            printf("    Probe Distance: %u\n", entry->probe_distance);
+            printf("    Value: ");
+            if (table->mode == VALUE_MODE_POINTER) {
+                printf("Pointer: %p\n", entry->ptr);
+                printf("    Data: ");
+                print(entry->ptr);
+            } else if (table->mode == VALUE_MODE_INLINE_COPY) {
+                // Print value inline if it's small data
+                for (u32 i = 0; i < table->type_size; ++i) {
+                    printf("%02x ", entry->data[i]);
+                }
+                printf("\n");
+            }
+        }
     }
 }
 
