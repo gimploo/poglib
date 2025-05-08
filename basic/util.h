@@ -30,3 +30,9 @@ void * mem_init(void *data, const u32 data_size)
     memcpy(tmp, data, data_size);
     return tmp;
 }
+
+void mem_free(void *data, const u32 data_size)
+{
+    free(data);
+    memset(data, 0, data_size);
+}

@@ -72,12 +72,11 @@ poggen_t * poggen_init(const application_t * const app)
 void __impl_poggen_add_scene(poggen_t *self, const scene_t scene)
 {
     assert(self);
-    hashtable_t *map = &self->scenes;
-    scene_t *heap_scene = calloc(1, sizeof(scene_t));
-    *heap_scene = scene;
-    char label[64] = {0};
-    memcpy(label, heap_scene->label, sizeof(label));
-    scene_t *tmp = (scene_t *)hashtable_insert(map, label, heap_scene);
+    scene_t *tmp = (scene_t *)hashtable_insert(
+        &self->scenes, 
+        scene.label, 
+        mem_init((scene_t *)&scene, sizeof(scene_t))
+    );
 
     if (!self->current_scene)
         self->current_scene = tmp;
@@ -126,10 +125,9 @@ void poggen_destroy(poggen_t *self)
 
     assetmanager_destroy(&self->assets);
 
-    hashtable_t *map = &self->scenes;
-
-    hashtable_iterator(map, entry) {
+    hashtable_iterator(&self->scenes, entry) {
         __scene_destroy((scene_t *)hashtable_get_entry_value(entry));
+        mem_free(hashtable_get_entry_value(entry), sizeof(scene_t));
     }
     hashtable_destroy(&self->scenes);
 

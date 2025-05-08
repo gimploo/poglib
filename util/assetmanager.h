@@ -48,8 +48,6 @@ assetmanager_t assetmanager_init(void)
 
 asset_t * __impl_assetmanager_add_asset(assetmanager_t *manager, const char *label, const char *filepath01, const char *filepath02, const u32 fontsize, asset_type type) 
 {
-    eprint("Not implemented");
-    /*
     assert(filepath01);
     assert(manager);
 
@@ -92,15 +90,12 @@ asset_t * __impl_assetmanager_add_asset(assetmanager_t *manager, const char *lab
     hashtable_t *table = &manager->assetmaps[type];
     assert(table);
     
-    return (asset_t *)hashtable_insert(table, label, output);
-    */
+    return (asset_t *)hashtable_insert(table, label, mem_init(&output, sizeof(output)));
 }
 
 
 void assetmanager_destroy(assetmanager_t *self) 
 {
-    eprint("Not implemented");
-    /*
     assert(self);
 
     for (u32 type = 0; type < AT_COUNT; type++)
@@ -112,21 +107,24 @@ void assetmanager_destroy(assetmanager_t *self)
         {
             case AT_GLSHADER: 
                 hashtable_iterator(table, asset) {
-                    glshader_t *shader = &((table_entry_t *)entry)->shader;
+                    glshader_t *shader = ((table_entry_t *)asset)->ptr;
                     glshader_destroy(shader);
+                    mem_free(asset, sizeof(asset_t));
                 }
             break;
             case AT_GLTEXTURE2D:
                 hashtable_iterator(table, asset) {
-                    gltexture2d_t *tex = &((asset_t *)asset)->texture2d;
+                    gltexture2d_t *tex = ((table_entry_t *)asset)->ptr;
                     gltexture2d_destroy(tex);
+                    mem_free(asset, sizeof(asset_t));
                 }
             break;
 
             case AT_FONT_FREETYPE:
                 hashtable_iterator(table, asset) {
-                    glfreetypefont_t *font = &((asset_t *)asset)->font;
+                    glfreetypefont_t *font = ((table_entry_t *)asset)->ptr;
                     glfreetypefont_destroy(font);
+                    mem_free(asset, sizeof(asset_t));
                 }
             break;
 
@@ -139,7 +137,6 @@ void assetmanager_destroy(assetmanager_t *self)
         hashtable_destroy(table);
 
     }
-        */
 }
 
 
