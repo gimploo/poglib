@@ -19,3 +19,14 @@ void swap_memory(void * const x, void * const y, const u64 size)
     memcpy(x, y, size);
     memcpy(y, __tmp_scrap_memory, size);
 }
+
+
+
+void * mem_init(void *data, const u32 data_size)
+{
+    void *tmp = calloc(1, data_size);
+    ASSERT(tmp);
+
+    memcpy(tmp, data, data_size);
+    return tmp;
+}
