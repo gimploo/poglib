@@ -306,7 +306,10 @@ bool hashtable_has_key(const hashtable_t *table, const char *key)
     return false;
 }
 
-#define hashtable_get_entry_value(ENTRY) ((table_entry_t *)ENTRY)->ptr
+const void *hashtable_get_entry_value(const hashtable_t *table, const table_entry_t *entry) 
+{
+    return __get_value(table, entry);
+}
 
 #define hashtable_iterator(TABLE, ENTRY) slot_iterator(&(TABLE)->entries, (ENTRY))
 

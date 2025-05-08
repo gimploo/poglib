@@ -126,8 +126,8 @@ void poggen_destroy(poggen_t *self)
     assetmanager_destroy(&self->assets);
 
     hashtable_iterator(&self->scenes, entry) {
-        __scene_destroy((scene_t *)hashtable_get_entry_value(entry));
-        mem_free(hashtable_get_entry_value(entry), sizeof(scene_t));
+        __scene_destroy((scene_t *)hashtable_get_entry_value(&self->scenes, entry));
+        mem_free((void *)hashtable_get_entry_value(&self->scenes, entry), sizeof(scene_t));
     }
     hashtable_destroy(&self->scenes);
 
