@@ -15,12 +15,36 @@
 
 #define MAX_BONES 128
 
+typedef struct {
+    matrix4f_t offset;
+    matrix4f_t transform;
+} boneinfo_t;
+
+void print_boneinfo(void *data)
+{
+    boneinfo_t *b = data;
+    matrix4f_print(&b->offset);
+    matrix4f_print(&b->transform);
+}
+
+boneinfo_t boneinfo(matrix4f_t offset) {
+    return (boneinfo_t ) {
+        .offset = offset,
+        .transform = MATRIX4F_IDENTITY
+    };
+}
+
+#define MAX_MESHES_PER_MODEL 3
+
 typedef struct glmodel_t {
 
     const char *filepath[64];
     list_t meshes;
     list_t textures;
     list_t colors;
+    list_t bone_infos;
+
+    list_t transforms[MAX_MESHES_PER_MODEL];
 
 } glmodel_t;
 
@@ -28,6 +52,8 @@ glmodel_t       glmodel_init(const char *filepath);
 void            glmodel_destroy(glmodel_t *self);
 
 #ifndef IGNORE_ASSIMP_IMPLEMENTATION
+
+void debug_assimp_vertex_bones(const struct aiScene *scene);
 
 void __glmesh_processMaterials(glmodel_t *self, const struct aiMaterial *material) {
     struct {
@@ -165,12 +191,12 @@ glmesh_t __glmesh_processMesh(const struct aiMesh *mesh) {
     };
 }
 
-u32 __get_bone_id(hashtable_t *bone_name_to_index, const struct aiBone *bone)
+i32 __get_bone_id(hashtable_t *bone_name_to_index, const struct aiBone *bone)
 {
-    u32 bone_id = 0;
+    i32 bone_id = 0;
     const char *bone_name = bone->mName.data;
     if (hashtable_has_key(bone_name_to_index, bone_name)) {
-        bone_id = *(u32 *)hashtable_get_value(bone_name_to_index, bone_name);
+        bone_id = *(i32 *)hashtable_get_value(bone_name_to_index, bone_name);
     } else {
         bone_id = bone_name_to_index->entries.len; //Sets total occupied entries as the index
         hashtable_insert(bone_name_to_index, bone_name, bone_id);
@@ -178,48 +204,107 @@ u32 __get_bone_id(hashtable_t *bone_name_to_index, const struct aiBone *bone)
     return bone_id;
 }
 
-void __glmesh_process_bones(struct aiMesh *mesh, slot_t *vertices, const list_t *mesh_base_vertex, const u32 mesh_index, hashtable_t *bone_name_to_index)
+void __glmesh_process_bones(struct aiMesh *mesh, slot_t *vertices, hashtable_t *bone_name_to_index, list_t *bone_infos)
 {
     //Parse individual bone
     for (u32 i = 0; i < mesh->mNumBones; i++)
     {
-        struct aiBone *bone = mesh->mBones[i];
-        u32 bone_id = __get_bone_id(bone_name_to_index, bone);
+        const struct aiBone *bone = mesh->mBones[i];
+        i32 bone_id = __get_bone_id(bone_name_to_index, bone);
+
+        if (bone_id == (i32)bone_infos->len) {
+            const boneinfo_t data = boneinfo(glms_mat4_transpose(*(matrix4f_t *)&bone->mOffsetMatrix));
+            list_append(bone_infos, data);
+        }
 
         for (u32 weight_count = 0; weight_count < bone->mNumWeights; weight_count++)
         {
             const struct aiVertexWeight vw = bone->mWeights[weight_count];
-            const i32 global_vertex_index = *(u32 *)list_get_value(mesh_base_vertex, mesh_index) + vw.mVertexId;
 
             //Update glvertex3d with vertex bone data
-            glvertex3d_t *vtx = (glvertex3d_t *)slot_get_value(vertices, global_vertex_index);
-            for (u32 bone_cmp = 0; bone_cmp < 4; bone_cmp++) 
+            glvertex3d_t *vtx = (glvertex3d_t *)slot_get_value(vertices, vw.mVertexId);
+            bool found_entry = false;
+            for (u32 bone_cmp = 0; bone_cmp < 4; ++bone_cmp) 
             {
-                if (!vtx->bone_weights.raw[bone_cmp]) {
+                if (vtx->bone_ids.raw[bone_cmp] == 0) {
                     vtx->bone_ids.raw[bone_cmp] = bone_id;
                     vtx->bone_weights.raw[bone_cmp] = vw.mWeight;
-                    return;
+                    found_entry = true;
+                    break;
                 }
-                ASSERT(false && "The given model has more than 4 bones affecting each vertex - increment the glvertex3d members - boneid & boneweights");
+            }
+
+            if (!found_entry) {
+                eprint("Serious bug - bone count per vertex exceeded here, check model whether each vertex has less than or equal to 4 bones");
             }
         }
     }
 }
 
+void print_u32(void *data)
+{
+    printf("%i\n", *(u32 *)data);
+}
+
+void __glmodel_read_node_heirarchy(const hashtable_t *bone_name_to_index, list_t *bone_info, const struct aiNode *node, const matrix4f_t parentTransform)
+{
+    const char *node_name = node->mName.data;
+    const matrix4f_t node_transform = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
+    const matrix4f_t global_transform = matrix4f_multiply(parentTransform, node_transform);
+
+    if (hashtable_has_key(bone_name_to_index, node_name)) {
+        const u32 bone_index = *(u32 *)hashtable_get_value(bone_name_to_index, node_name);
+        boneinfo_t *boneinfo = (boneinfo_t *)list_get_value(bone_info, bone_index);
+        boneinfo->transform = matrix4f_multiply(global_transform, boneinfo->offset);
+    }
+
+    for (u32 i = 0; i < node->mNumChildren; i++)
+    {
+        __glmodel_read_node_heirarchy(bone_name_to_index, bone_info, node->mChildren[i], global_transform);
+    }
+
+}
+
+void __glmodel_set_bone_transforms(glmodel_t *self, const hashtable_t *bone_name_to_index, const struct aiNode *node, const u32 mesh_index)
+{
+    __glmodel_read_node_heirarchy(
+        bone_name_to_index, 
+        &self->bone_infos, 
+        node, 
+        MATRIX4F_IDENTITY);
+
+    list_iterator(&self->bone_infos, iter)
+    {
+        boneinfo_t *info = iter;
+        list_append(&self->transforms[mesh_index], info->transform);
+    }
+
+    ASSERT(self->transforms[mesh_index].len <= MAX_BONES);
+    ASSERT(self->transforms[mesh_index].len <= bone_name_to_index->entries.len);
+}
+
+u32 __get_total_bones(const struct aiScene *scene)
+{
+    u32 total = 0;
+    for (u32 i = 0; i < scene->mNumMeshes; i++)
+    {
+        total += scene->mMeshes[i]->mNumBones;
+    }
+    return total;
+}
 
 void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene) {
 
     //NOTE: Since assimp has mesh bones hold the local vertex id, and since we club together all vertices 
     //in a buffer, we need to translate vertex ids to bone ids - since its the reverse assimp gives us
-    list_t mesh_base_vertex = list_init(u32);
-    hashtable_t bone_name_to_index = hashtable_init(MAX_BONES, u32);
 
+    hashtable_t bone_name_to_index = hashtable_init(__get_total_bones(scene), i32);
+    ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL && "Updated the transforms list in glmodel_t");
     for (u32 mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
         struct aiMesh *mesh = scene->mMeshes[mesh_index];
 
-        // Holds the offset to where this mesh starts in glmodel's vtx buffer
-        list_append(&mesh_base_vertex, mesh->mNumVertices);
+        self->transforms[mesh_index] = list_init(matrix4f_t);
 
         // Process mesh
         glmesh_t m = __glmesh_processMesh(mesh);
@@ -227,17 +312,19 @@ void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene) {
         // Process materials
         __glmesh_processMaterials(self, scene->mMaterials[mesh->mMaterialIndex]);
 
-        // Process bone
         if (mesh->mNumBones) {
-            //__glmesh_process_bones(self, mesh, &m.vtx);
-            __glmesh_process_bones(mesh, &m.vtx, &mesh_base_vertex, mesh_index, &bone_name_to_index);
+            __glmesh_process_bones(mesh, &m.vtx, &bone_name_to_index, &self->bone_infos);
+            __glmodel_set_bone_transforms(
+                self, 
+                &bone_name_to_index, 
+                scene->mRootNode,
+                mesh_index
+            );
         }
 
         list_append(&self->meshes, m);
     }
-
     hashtable_destroy(&bone_name_to_index);
-    list_destroy(&mesh_base_vertex);
 }
 
 glmodel_t glmodel_init(const char *filepath) {
@@ -248,6 +335,7 @@ glmodel_t glmodel_init(const char *filepath) {
     o.meshes = list_init(glmesh_t);
     o.textures = list_init(gltexture2d_t);
     o.colors = list_init(vec4f_t);
+    o.bone_infos = list_init(boneinfo_t);
 
     // Assimp: import model
     const struct aiScene *scene = aiImportFile(
@@ -260,6 +348,7 @@ glmodel_t glmodel_init(const char *filepath) {
         eprint("ERROR::ASSIMP:: %s", aiGetErrorString());
     }
 
+    //debug_assimp_vertex_bones(scene);
     __glmesh_processScene(&o, scene);
 
     // free scene
@@ -269,6 +358,10 @@ glmodel_t glmodel_init(const char *filepath) {
 }
 
 void glmodel_destroy(glmodel_t *self) {
+
+    for (u32 i = 0; i < self->meshes.len; i++) 
+        list_destroy(&self->transforms[i]);
+
     list_iterator(&self->meshes, iter) { 
         glmesh_destroy((glmesh_t *)iter); 
     }
@@ -279,7 +372,79 @@ void glmodel_destroy(glmodel_t *self) {
 
     list_destroy(&self->colors);
 
+    list_destroy(&self->bone_infos);
+
     memset(self->filepath, 0, sizeof(self->filepath));
+}
+
+void debug_assimp_vertex_bones(const struct aiScene *scene) {
+    if (!scene || !scene->mMeshes) {
+        printf("Error: Invalid or empty scene.\n");
+        return;
+    }
+
+    printf("Debugging vertex bone assignments for scene\n");
+    printf("Total meshes: %u\n", scene->mNumMeshes);
+    printf("Total bones across all meshes: ");
+    u32 total_bones = 0;
+    for (u32 i = 0; i < scene->mNumMeshes; i++) {
+        total_bones += scene->mMeshes[i]->mNumBones;
+    }
+    printf("%u\n", total_bones);
+
+    // Iterate through each mesh
+    for (u32 mesh_idx = 0; mesh_idx < scene->mNumMeshes; mesh_idx++) {
+        struct aiMesh *mesh = scene->mMeshes[mesh_idx];
+        printf("\nMesh %u: %s\n", mesh_idx, mesh->mName.data);
+        printf("  Total vertices: %u\n", mesh->mNumVertices);
+        printf("  Total bones: %u\n", mesh->mNumBones);
+
+        // Create an array to track bone weights for each vertex
+        struct VertexBoneInfo {
+            u32 bone_ids[4];
+            float weights[4];
+            u32 count;
+        } *vertex_bones = calloc(mesh->mNumVertices, sizeof(struct VertexBoneInfo));
+        if (!vertex_bones) {
+            printf("Error: Failed to allocate memory for vertex bone info.\n");
+            continue;
+        }
+
+        // Process each bone and its weights
+        for (u32 bone_idx = 0; bone_idx < mesh->mNumBones; bone_idx++) {
+            struct aiBone *bone = mesh->mBones[bone_idx];
+            for (u32 weight_idx = 0; weight_idx < bone->mNumWeights; weight_idx++) {
+                struct aiVertexWeight *weight = &bone->mWeights[weight_idx];
+                u32 vertex_id = weight->mVertexId;
+                float weight_value = weight->mWeight;
+
+                // Add bone influence to the vertex
+                if (vertex_bones[vertex_id].count < 4) {
+                    vertex_bones[vertex_id].bone_ids[vertex_bones[vertex_id].count] = bone_idx;
+                    vertex_bones[vertex_id].weights[vertex_bones[vertex_id].count] = weight_value;
+                    vertex_bones[vertex_id].count++;
+                } else {
+                    printf("Warning: Vertex %u in mesh %u has more than 4 bones affecting it.\n", vertex_id, mesh_idx);
+                }
+            }
+        }
+
+        // Print bone information for each vertex
+        for (u32 vertex_id = 0; vertex_id < mesh->mNumVertices; vertex_id++) {
+            printf("  Vertex %u (pos: %.2f, %.2f, %.2f):\n", vertex_id,
+                   mesh->mVertices[vertex_id].x, mesh->mVertices[vertex_id].y, mesh->mVertices[vertex_id].z);
+            printf("    Bones affecting vertex: %u\n", vertex_bones[vertex_id].count);
+            for (u32 i = 0; i < vertex_bones[vertex_id].count; i++) {
+                printf("      Bone ID: %u (Name: %s), Weight: %.4f\n",
+                       vertex_bones[vertex_id].bone_ids[i],
+                       mesh->mBones[vertex_bones[vertex_id].bone_ids[i]]->mName.data,
+                       vertex_bones[vertex_id].weights[i]);
+            }
+        }
+
+        free(vertex_bones);
+    }
+    printf("\n");
 }
 
 #endif

@@ -40,12 +40,12 @@ matrix4f_t      matrix4f_translation(const vec3f_t vec);
 matrix4f_t      matrix4f_rotation(const f32 angle_in_radians, const vec3f_t axis);
 matrix4f_t      matrix4f_lookat(const vec3f_t eye, const vec3f_t center, const vec3f_t up); 
 
-#define         MATRIX4F_IDENTITY       glms_mat4_identity()
+#define         MATRIX4F_IDENTITY       GLMS_MAT4_IDENTITY
 
 matrix4f_t      matrix4f_multiply(const matrix4f_t a, const matrix4f_t b);
 matrix4f_t      matrix4f_transpose(const matrix4f_t a);
 
-void            matrix4f_print(const char *message, const matrix4f_t m);
+void matrix4f_print(void *data);
 
 
 
@@ -72,10 +72,9 @@ matrix4f_t matrix4f_translate(const matrix4f_t mat, const vec3f_t vec)
     return glms_translate(mat, vec);
 }
 
-void matrix4f_print(const char *message, const matrix4f_t m)
+void matrix4f_print(void *data)
 {
-    printf("%s", message);
-    glms_mat4_print(m, stdout);
+    glms_mat4_print(*(matrix4f_t *)data, stdout);
 }
 
 matrix4f_t matrix4f_transpose(const matrix4f_t a)
@@ -92,6 +91,20 @@ matrix4f_t matrix4f_inverse(const matrix4f_t matrix)
 matrix4f_t matrix4f_scale(const matrix4f_t matrix, const f32 s)
 {
     return glms_mat4_scale(matrix, s);
+}
+
+matrix4f_t matrix4f_scale_vec3(const matrix4f_t mat, const vec3f_t scale) {
+
+    matrix4f_t scale_matrix = MATRIX4F_IDENTITY;
+
+    // Set diagonal elements to scale factors
+    scale_matrix.raw[0][0] = scale.x; // Scale X
+    scale_matrix.raw[1][1] = scale.y; // Scale Y
+    scale_matrix.raw[2][2] = scale.z; // Scale Z
+    scale_matrix.raw[3][3] = 1.0f;    // Homogeneous coordinate
+
+    // Multiply input matrix by scale matrix
+    return matrix4f_multiply(mat, scale_matrix);
 }
 
 matrix4f_t matrix4f_perpective(const f32 fovy, const f32 aspect, const f32 nearZ, const f32 farZ)

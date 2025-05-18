@@ -139,8 +139,10 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
 
     last_mouse_position = win->mouse.norm_position;
 
+#ifndef DISABLE_CAMERA_LOGGING
     logging("Camera Pos: "VEC3F_FMT " | " "Angle: " VEC2F_FMT, 
             VEC3F_ARG(self->position), VEC2F_ARG(self->theta));
+#endif
 }
 
 
