@@ -45,10 +45,12 @@ typedef struct glmodel_t {
     list_t bone_infos;
 
     list_t transforms[MAX_MESHES_PER_MODEL];
+    animator_t animator;
 
 } glmodel_t;
 
 glmodel_t       glmodel_init(const char *filepath);
+void            glmodel_update_transforms(glmodel_t *self, const f32 dt);
 void            glmodel_destroy(glmodel_t *self);
 
 #ifndef IGNORE_ASSIMP_IMPLEMENTATION
@@ -336,6 +338,9 @@ glmodel_t glmodel_init(const char *filepath) {
     o.textures = list_init(gltexture2d_t);
     o.colors = list_init(vec4f_t);
     o.bone_infos = list_init(boneinfo_t);
+    o.animator = animator_init();
+
+    logging("Loading model %s ...", filepath)   ;
 
     // Assimp: import model
     const struct aiScene *scene = aiImportFile(
@@ -351,8 +356,13 @@ glmodel_t glmodel_init(const char *filepath) {
     //debug_assimp_vertex_bones(scene);
     __glmesh_processScene(&o, scene);
 
+    //load all animations
+    animator_load_all_animations(&o.animator, scene);
+
     // free scene
     aiReleaseImport(scene);
+
+    logging("Completed loading model %s ...", filepath);
 
     return o;
 }
@@ -373,6 +383,8 @@ void glmodel_destroy(glmodel_t *self) {
     list_destroy(&self->colors);
 
     list_destroy(&self->bone_infos);
+
+    animator_destroy(&self->animator);
 
     memset(self->filepath, 0, sizeof(self->filepath));
 }
@@ -445,6 +457,11 @@ void debug_assimp_vertex_bones(const struct aiScene *scene) {
         free(vertex_bones);
     }
     printf("\n");
+}
+
+
+void glmodel_update_transforms(glmodel_t *self, const f32 dt)
+{
 }
 
 #endif
