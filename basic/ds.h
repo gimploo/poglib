@@ -85,7 +85,7 @@ void __impl_file_save_ds(file_t *file, void *ds, u64 ds_size, ds_type type)
             file_writebytes(file, ds, sizeof(list_t ));
             file_writebytes(
                     file, 
-                    ((list_t *)ds)->__data, 
+                    ((list_t *)ds)->data, 
                     ((list_t *)ds)->__capacity * ((list_t *)ds)->__elem_size);
         break;
 
@@ -161,13 +161,13 @@ __ds_t __impl_file_load_ds(file_t *file, ds_type type)
                     ((list_t *)ds)->__elem_type,
                     ((list_t *)ds)->__elem_size);
             {
-                tmps[0] = output.l.__data;
+                tmps[0] = output.l.data;
                 memcpy(&output.l, ds, sizeof(list_t ));
-                output.l.__data = (u8 *)tmps[0];
+                output.l.data = (u8 *)tmps[0];
             }
             file_readbytes(
                     file, 
-                    output.l.__data, 
+                    output.l.data, 
                     output.l.__capacity * output.l.__elem_size);
         break;
 
