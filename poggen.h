@@ -29,7 +29,7 @@ void                poggen_change_scene(poggen_t *self, const char *scene_label)
 window_t *          poggen_get_window(const poggen_t *self);
 
 void                poggen_update(poggen_t *self, const f32 dt);
-#define             poggen_render(PGEN)                                         (PGEN)->current_scene->__render((PGEN)->current_scene)
+#define             poggen_render(PGEN, DT)                                         (PGEN)->current_scene->__render((PGEN)->current_scene, DT)
 
 void                poggen_destroy(poggen_t *self);
 

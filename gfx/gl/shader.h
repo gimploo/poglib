@@ -63,6 +63,7 @@ void            glshader_send_uniform_vec2f(const glshader_t *shader, const char
 void            glshader_send_uniform_vec3f(const glshader_t *shader, const char *uniform, vec3f_t val);
 void            glshader_send_uniform_vec4f(const glshader_t *shader, const char *uniform, vec4f_t val);
 void            glshader_send_uniform_matrix4f(const glshader_t *shader, const char *uniform, matrix4f_t val);
+void            glshader_send_uniform_matrix4fv(const glshader_t *shader, const char *uniform, const matrix4f_t *val, const u32 matrices_count);
 
 void            glshader_send_uniform_material(const glshader_t *shader, const glmaterial_t material);
 void            glshader_send_uniform_lightmap(const glshader_t *shader, const gllightmap_t map);
@@ -247,6 +248,16 @@ void glshader_send_uniform_matrix4f(const glshader_t *shader, const char *unifor
     if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", uniform);
 
     GL_CHECK(glUniformMatrix4fv(location, 1, GL_FALSE, &val.raw[0][0]));
+}
+
+void glshader_send_uniform_matrix4fv(const glshader_t *shader, const char *uniform, const matrix4f_t *val, const u32 matrices_count)
+{
+    GL_SHADER_BIND(shader);
+    int location;
+    GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
+    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", uniform);
+
+    GL_CHECK(glUniformMatrix4fv(location, matrices_count, GL_FALSE, (f32 *)val));
 }
 
 void glshader_send_uniform_material(const glshader_t *shader, const glmaterial_t material)

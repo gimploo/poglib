@@ -7,6 +7,8 @@
 #include "gl/types.h"
 #include "model/assimp.h"
 
+//NOTE: Attributes are only handelled for GL_FLOAT (default) and GL_INT
+
 /*=============================================================================
                         - OPENGL 2D RENDERER -
 =============================================================================*/
@@ -22,19 +24,25 @@ typedef struct glrenderer3d_t {
 } glrenderer3d_t ;
 
 typedef struct {
+    const char *name;
+    const char *type;
+    union {
+        matrix4f_t  mat4;
+        vec4f_t     vec4;
+        vec3f_t     vec3;
+        vec2f_t     vec2;
+        struct {
+            matrix4f_t *data;
+            u32 count;
+        } mat4s;
+    } value;
+} uniform_t;
+
+typedef struct {
     glshader_t *shader;
     struct {
         u8 count;
-        struct {
-            const char *name;
-            const char *type;
-            union {
-                matrix4f_t  mat4;
-                vec4f_t     vec4;
-                vec3f_t     vec3;
-                vec2f_t     vec2;
-            } value;
-        } uniform[10];
+        uniform_t uniform[10];
     } uniforms;
 } glshaderconfig_t;
 
@@ -64,6 +72,7 @@ typedef struct {
         u8 count;
         struct {
             u8 ncmp;
+            u32 type; // GL_FLOAT | GL_INT
             struct {
                 u32 offset;
                 u32 stride;
@@ -184,7 +193,7 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
 {
     ASSERT(model->meshes.len > 0);
     if(model->meshes.len > 3) 
-        eprint("TODO: Kept a hard limit on how many meshes (3) can be rendered per model");
+        eprint("FIXME: Kept a hard limit on how many meshes (3) can be rendered per model");
     ASSERT(config.count == model->meshes.len);
 
     glrendercall_t calls[3] = {0};
@@ -200,10 +209,11 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
             },
 
             .attrs = {
-                .count = 3,
+                .count = 7,
                 .attr = {
                     [0] = {
                         .ncmp = 3,
+                        .type = GL_FLOAT,
                         .interleaved = {
                             .offset = 0,
                             .stride = sizeof(glvertex3d_t) ,
@@ -211,15 +221,50 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
                     },
                     [1] = {
                         .ncmp = 3,
+                        .type = GL_FLOAT,
                         .interleaved = {
                             .offset = offsetof(glvertex3d_t, norm),
                             .stride = sizeof(glvertex3d_t),
                         }
                     },
+
                     [2] = {
                         .ncmp = 2,
+                        .type = GL_FLOAT,
                         .interleaved = {
                             .offset = offsetof(glvertex3d_t, uv),
+                            .stride = sizeof(glvertex3d_t)
+                        }
+                    },
+                    [3] = {
+                        .ncmp = 3,
+                        .type = GL_FLOAT,
+                        .interleaved = {
+                            .offset = offsetof(glvertex3d_t, tangents),
+                            .stride = sizeof(glvertex3d_t)
+                        }
+                    },
+                    [4] = {
+                        .ncmp = 3,
+                        .type = GL_FLOAT,
+                        .interleaved = {
+                            .offset = offsetof(glvertex3d_t, bitangents),
+                            .stride = sizeof(glvertex3d_t)
+                        }
+                    },
+                    [5] = {
+                        .ncmp = 4,
+                        .type = GL_INT,
+                        .interleaved = {
+                            .offset = offsetof(glvertex3d_t, bone_ids),
+                            .stride = sizeof(glvertex3d_t)
+                        }
+                    },
+                    [6] = {
+                        .ncmp = 4,
+                        .type = GL_FLOAT,
+                        .interleaved = {
+                            .offset = offsetof(glvertex3d_t, bone_weights),
                             .stride = sizeof(glvertex3d_t)
                         }
                     }
@@ -298,13 +343,15 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         }
 
         //Attributes
-        for(u8 attr_idx = 0; attr_idx < config.calls.call[call_idx].attrs.count; ++attr_idx)
+        for(u32 attr_idx = 0; attr_idx < config.calls.call[call_idx].attrs.count; ++attr_idx)
         {
+            const u32 data_type = config.calls.call[call_idx].attrs.attr[attr_idx].type;
+
             vao_set_attributes(
                     &vao, 
                     &vbo, 
                     config.calls.call[call_idx].attrs.attr[attr_idx].ncmp, 
-                    GL_FLOAT, 
+                    data_type == GL_INT ? GL_INT : GL_FLOAT,
                     false, 
                     config.calls.call[call_idx].attrs.attr[attr_idx].interleaved.stride, 
                     config.calls.call[call_idx].attrs.attr[attr_idx].interleaved.offset); 
@@ -319,16 +366,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         ASSERT(config.calls.call[call_idx].shader_config.uniforms.count >= 0);
         for (u8 uni_idx = 0; uni_idx < config.calls.call[call_idx].shader_config.uniforms.count; uni_idx++)
         {
-            const struct {
-                const char *name;
-                const char *type;
-                union {
-                    matrix4f_t  mat4;
-                    vec4f_t     vec4;
-                    vec3f_t     vec3;
-                    vec2f_t     vec2;
-                } value;
-            } *uniform = (void *)&config.calls.call[call_idx].shader_config.uniforms.uniform[uni_idx];
+            uniform_t *uniform = (void *)&config.calls.call[call_idx].shader_config.uniforms.uniform[uni_idx];
 
             if (strcmp(uniform->type, "matrix4f_t") == 0)
                 glshader_send_uniform_matrix4f(
@@ -350,6 +388,12 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                         config.calls.call[call_idx].shader_config.shader, 
                         uniform->name, 
                         uniform->value.vec2);
+            else if (strcmp(uniform->type, "matrix4f_t []") == 0)
+                glshader_send_uniform_matrix4fv(
+                        config.calls.call[call_idx].shader_config.shader, 
+                        uniform->name,
+                        uniform->value.mat4s.data,
+                        uniform->value.mat4s.count);
             else eprint("unknown uniform type `%s` for name `%s`", 
                     uniform->type, uniform->name);
         }
