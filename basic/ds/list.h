@@ -68,7 +68,6 @@ void __impl_list_clear(list_t *list)
     assert(list);
     list->__top = -1;
     list->len = 0;
-    list->data = (u8 *)realloc(list->data, list->__original_capacity * list->__elem_size);
     memset(list->data, 0, list->__elem_size * list->__capacity);
 
 }
