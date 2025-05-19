@@ -5,6 +5,11 @@
 
 //NOTE: Find the operation / transformation u need from here
 //      -- https://github.com/recp/cglm/tree/master/include/cglm 
+//
+
+
+//TODO: remove this file, keep the typedefs but funcitons are really unnecessary.
+//Better to get comfortable with cglm way of doing things
 
 #define X 0
 #define Y 1
@@ -34,8 +39,8 @@ matrix4f_t      matrix4f_rotate(const matrix4f_t mat, const f32 angle_in_radians
 matrix4f_t      matrix4f_translate(const matrix4f_t mat, const vec3f_t vec);
 matrix4f_t      matrix4f_perpective(const f32 fov, const f32 aspect, const f32 nearz, const f32 farz);
 matrix4f_t      matrix4f_inverse(const matrix4f_t mat);
-matrix4f_t      matrix4f_scale(const matrix4f_t matrix, const f32 s);
 
+matrix4f_t      matrix4f_scale(const vec3f_t scale);
 matrix4f_t      matrix4f_translation(const vec3f_t vec);
 matrix4f_t      matrix4f_rotation(const f32 angle_in_radians, const vec3f_t axis);
 matrix4f_t      matrix4f_lookat(const vec3f_t eye, const vec3f_t center, const vec3f_t up); 
@@ -88,23 +93,9 @@ matrix4f_t matrix4f_inverse(const matrix4f_t matrix)
     return glms_mat4_inv_fast(matrix);
 }
 
-matrix4f_t matrix4f_scale(const matrix4f_t matrix, const f32 s)
+matrix4f_t matrix4f_scale(const vec3f_t scale)
 {
-    return glms_mat4_scale(matrix, s);
-}
-
-matrix4f_t matrix4f_scale_vec3(const matrix4f_t mat, const vec3f_t scale) {
-
-    matrix4f_t scale_matrix = MATRIX4F_IDENTITY;
-
-    // Set diagonal elements to scale factors
-    scale_matrix.raw[0][0] = scale.x; // Scale X
-    scale_matrix.raw[1][1] = scale.y; // Scale Y
-    scale_matrix.raw[2][2] = scale.z; // Scale Z
-    scale_matrix.raw[3][3] = 1.0f;    // Homogeneous coordinate
-
-    // Multiply input matrix by scale matrix
-    return matrix4f_multiply(mat, scale_matrix);
+    return glms_scale_make(scale);
 }
 
 matrix4f_t matrix4f_perpective(const f32 fovy, const f32 aspect, const f32 nearZ, const f32 farZ)
@@ -120,12 +111,7 @@ matrix4f_t matrix4f_lookat(const vec3f_t eye, const vec3f_t center, const vec3f_
 
 matrix4f_t matrix4f_translation(const vec3f_t vec)
 {
-    return (matrix4f_t ){
-         1.0f, 0.0f, 0.0f, vec.x,
-         0.0f, 1.0f, 0.0f, vec.y,
-         0.0f, 0.0f, 1.0f, vec.z,
-         0.0f, 0.0f, 0.0f, 1.0f 
-    };
+    return glms_translate_make(vec);
 }
 
 #endif

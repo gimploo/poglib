@@ -46,11 +46,15 @@ typedef struct glmodel_t {
 
     list_t transforms[MAX_MESHES_PER_MODEL];
     animator_t animator;
+    hashtable_t bone_name_to_index;
+
+    const struct aiScene *scene;
+    f32 current_time;
 
 } glmodel_t;
 
 glmodel_t       glmodel_init(const char *filepath);
-void            glmodel_update_transforms(glmodel_t *self, const f32 dt);
+void            glmodel_set_animation(glmodel_t *self, const char *animation_label, const f32 dt);
 void            glmodel_destroy(glmodel_t *self);
 
 #ifndef IGNORE_ASSIMP_IMPLEMENTATION
@@ -184,6 +188,9 @@ glmesh_t __glmesh_processMesh(const struct aiMesh *mesh) {
             };
         }
 
+        vt.bone_ids = (vec4i_t ){ -1, -1, -1, -1 }; 
+        vt.bone_weights = (vec4f_t){ 0.0f, 0.0f, 0.0f, 0.0f };
+
         slot_append(&vtx, vt);
     }
 
@@ -228,7 +235,7 @@ void __glmesh_process_bones(struct aiMesh *mesh, slot_t *vertices, hashtable_t *
             bool found_entry = false;
             for (u32 bone_cmp = 0; bone_cmp < 4; ++bone_cmp) 
             {
-                if (vtx->bone_ids.raw[bone_cmp] == 0) {
+                if (vtx->bone_ids.raw[bone_cmp] == -1) {
                     vtx->bone_ids.raw[bone_cmp] = bone_id;
                     vtx->bone_weights.raw[bone_cmp] = vw.mWeight;
                     found_entry = true;
@@ -295,12 +302,15 @@ u32 __get_total_bones(const struct aiScene *scene)
     return total;
 }
 
-void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene) {
+void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene) 
+{
 
     //NOTE: Since assimp has mesh bones hold the local vertex id, and since we club together all vertices 
     //in a buffer, we need to translate vertex ids to bone ids - since its the reverse assimp gives us
 
-    hashtable_t bone_name_to_index = hashtable_init(__get_total_bones(scene), i32);
+    //Map all bones to an index for easy lookup
+    self->bone_name_to_index = hashtable_init(__get_total_bones(scene), i32);
+
     ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL && "Updated the transforms list in glmodel_t");
     for (u32 mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
@@ -315,10 +325,10 @@ void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene) {
         __glmesh_processMaterials(self, scene->mMaterials[mesh->mMaterialIndex]);
 
         if (mesh->mNumBones) {
-            __glmesh_process_bones(mesh, &m.vtx, &bone_name_to_index, &self->bone_infos);
+            __glmesh_process_bones(mesh, &m.vtx, &self->bone_name_to_index, &self->bone_infos);
             __glmodel_set_bone_transforms(
                 self, 
-                &bone_name_to_index, 
+                &self->bone_name_to_index, 
                 scene->mRootNode,
                 mesh_index
             );
@@ -326,10 +336,10 @@ void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene) {
 
         list_append(&self->meshes, m);
     }
-    hashtable_destroy(&bone_name_to_index);
 }
 
-glmodel_t glmodel_init(const char *filepath) {
+glmodel_t glmodel_init(const char *filepath) 
+{
     ASSERT(strlen(filepath) < 64);
 
     glmodel_t o = {0};
@@ -339,8 +349,9 @@ glmodel_t glmodel_init(const char *filepath) {
     o.colors = list_init(vec4f_t);
     o.bone_infos = list_init(boneinfo_t);
     o.animator = animator_init();
+    o.current_time = 0.0f;
 
-    logging("Loading model %s ...", filepath)   ;
+    logging("Loading model %s ...", filepath);
 
     // Assimp: import model
     const struct aiScene *scene = aiImportFile(
@@ -353,14 +364,13 @@ glmodel_t glmodel_init(const char *filepath) {
         eprint("ERROR::ASSIMP:: %s", aiGetErrorString());
     }
 
+    o.scene = scene;
+
     //debug_assimp_vertex_bones(scene);
     __glmesh_processScene(&o, scene);
 
     //load all animations
     animator_load_all_animations(&o.animator, scene);
-
-    // free scene
-    aiReleaseImport(scene);
 
     logging("Completed loading model %s ...", filepath);
 
@@ -385,6 +395,10 @@ void glmodel_destroy(glmodel_t *self) {
     list_destroy(&self->bone_infos);
 
     animator_destroy(&self->animator);
+
+    hashtable_destroy(&self->bone_name_to_index);
+
+    aiReleaseImport(self->scene);
 
     memset(self->filepath, 0, sizeof(self->filepath));
 }
@@ -459,9 +473,90 @@ void debug_assimp_vertex_bones(const struct aiScene *scene) {
     printf("\n");
 }
 
+// Helper function to process node hierarchy for animation
+static void __process_node_anim(glmodel_t *self, const struct aiNode *node, const matrix4f_t parent_transform, const list_t *channels, animation_t *current_anim) {
+    ASSERT(node);
 
-void glmodel_update_transforms(glmodel_t *self, const f32 dt)
+    const char *node_name = node->mName.data;
+    matrix4f_t node_transform = MATRIX4F_IDENTITY;
+
+    // Find animation channel for this node
+    list_iterator(channels, iter) {
+        node_anim_t *channel = iter;
+        if (strcmp(channel->node_name, node_name) == 0) {
+            node_transform = compute_node_transform(channel, self->current_time, current_anim->duration);
+            break;
+        }
+    }
+
+    // Apply node transformation from Assimp (transpose required)
+    matrix4f_t node_static_transform = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
+    matrix4f_t combined_transform = matrix4f_multiply(node_transform, node_static_transform);
+
+    // Compute global transform
+    matrix4f_t global_transform = matrix4f_multiply(parent_transform, combined_transform);
+
+    // Update bone transform if this node is a bone
+    if (hashtable_has_key(&self->bone_name_to_index, node_name)) {
+        u32 bone_index = *(u32 *)hashtable_get_value(&self->bone_name_to_index, node_name);
+        boneinfo_t *bone_info = (boneinfo_t *)list_get_value(&self->bone_infos, bone_index);
+        bone_info->transform = matrix4f_multiply(global_transform, bone_info->offset);
+
+        // Assign to transforms array for each mesh
+        for (u32 mesh_idx = 0; mesh_idx < self->meshes.len; mesh_idx++) {
+            list_append(&self->transforms[mesh_idx], bone_info->transform);
+        }
+    }
+
+    // Recurse through children
+    for (u32 i = 0; i < node->mNumChildren; i++) {
+        __process_node_anim(self, node->mChildren[i], global_transform, channels, current_anim);
+    }
+}
+
+void glmodel_set_animation(glmodel_t *self, const char *animation_label, const f32 dt)
 {
+    if (self->animator.animations.len == 0) {
+        logging("No animations to process");
+        return;
+    }
+
+    // Get the specified animation
+    animation_t *current_anim = animator_get_animation(&self->animator, animation_label);
+    if (!current_anim || current_anim->ticks_per_second == 0.0f) {
+        logging("Invalid animation or ticks per second is zero");
+        return;
+    }
+
+    // Track current animation and time to reset time on animation change
+    static const char *last_animation = NULL;
+    if (last_animation != animation_label) {
+        self->current_time = 0.0f; // Reset time when switching animations
+        last_animation = animation_label;
+    }
+
+    // Increment animation time (convert dt from seconds to ticks)
+    self->current_time += dt * current_anim->ticks_per_second;
+    self->current_time = fmod(self->current_time, current_anim->duration); // Loop animation
+
+    // Clear previous transforms
+    for (u32 i = 0; i < self->meshes.len; i++) {
+        list_clear(&self->transforms[i]);
+    }
+
+    // Traverse node hierarchy starting from root
+    if (self->scene->mRootNode) {
+        __process_node_anim(self, self->scene->mRootNode, MATRIX4F_IDENTITY, &current_anim->channels, current_anim);
+    } else {
+        eprint("No root node available.");
+    }
+
+    // Pad transforms to MAX_BONES
+    for (u32 mesh_idx = 0; mesh_idx < self->meshes.len; mesh_idx++) {
+        while (self->transforms[mesh_idx].len < MAX_BONES) {
+            list_append(&self->transforms[mesh_idx], MATRIX4F_IDENTITY);
+        }
+    }
 }
 
 #endif
