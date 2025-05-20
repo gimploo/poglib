@@ -51,6 +51,8 @@ typedef struct glmodel_t {
     const struct aiScene *scene;
     f32 current_time;
 
+    matrix4f_t global_inverse_transform;
+
 } glmodel_t;
 
 glmodel_t       glmodel_init(const char *filepath);
@@ -365,6 +367,11 @@ glmodel_t glmodel_init(const char *filepath)
     }
 
     o.scene = scene;
+    o.global_inverse_transform  = glms_mat4_inv(
+        glms_mat4_transpose(
+            *(matrix4f_t *)&scene->mRootNode->mTransformation
+        )
+    );
 
     //debug_assimp_vertex_bones(scene);
     __glmesh_processScene(&o, scene);
@@ -474,11 +481,11 @@ void debug_assimp_vertex_bones(const struct aiScene *scene) {
 }
 
 // Helper function to process node hierarchy for animation
-static void __process_node_anim(glmodel_t *self, const struct aiNode *node, const matrix4f_t parent_transform, const list_t *channels, animation_t *current_anim) {
+static void __process_node_anim(glmodel_t *self, struct aiNode *node, const matrix4f_t parent_transform, const list_t *channels, animation_t *current_anim) {
     ASSERT(node);
 
     const char *node_name = node->mName.data;
-    matrix4f_t node_transform = MATRIX4F_IDENTITY;
+    matrix4f_t node_transform = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
 
     // Find animation channel for this node
     list_iterator(channels, iter) {
@@ -489,18 +496,20 @@ static void __process_node_anim(glmodel_t *self, const struct aiNode *node, cons
         }
     }
 
-    // Apply node transformation from Assimp (transpose required)
-    matrix4f_t node_static_transform = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
-    matrix4f_t combined_transform = matrix4f_multiply(node_transform, node_static_transform);
-
     // Compute global transform
-    matrix4f_t global_transform = matrix4f_multiply(parent_transform, combined_transform);
+    matrix4f_t global_transform = matrix4f_multiply(
+        parent_transform, node_transform
+    );
 
     // Update bone transform if this node is a bone
     if (hashtable_has_key(&self->bone_name_to_index, node_name)) {
         u32 bone_index = *(u32 *)hashtable_get_value(&self->bone_name_to_index, node_name);
         boneinfo_t *bone_info = (boneinfo_t *)list_get_value(&self->bone_infos, bone_index);
-        bone_info->transform = matrix4f_multiply(global_transform, bone_info->offset);
+        bone_info->transform = 
+            matrix4f_multiply(
+                self->global_inverse_transform,
+                matrix4f_multiply(global_transform, bone_info->offset)
+            );
 
         // Assign to transforms array for each mesh
         for (u32 mesh_idx = 0; mesh_idx < self->meshes.len; mesh_idx++) {
