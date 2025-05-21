@@ -56,7 +56,7 @@ typedef struct glmodel_t {
 } glmodel_t;
 
 glmodel_t       glmodel_init(const char *filepath);
-void            glmodel_set_animation(glmodel_t *self, const char *animation_label, const f32 dt);
+void            glmodel_set_animation(glmodel_t *self, const char *animation_label, const f32 dt, const bool loop);
 void            glmodel_destroy(glmodel_t *self);
 
 #ifndef IGNORE_ASSIMP_IMPLEMENTATION
@@ -523,7 +523,7 @@ static void __process_node_anim(glmodel_t *self, struct aiNode *node, const matr
     }
 }
 
-void glmodel_set_animation(glmodel_t *self, const char *animation_label, const f32 dt)
+void glmodel_set_animation(glmodel_t *self, const char *animation_label, const f32 dt, const bool loop)
 {
     if (self->animator.animations.len == 0) {
         logging("No animations to process");
@@ -546,7 +546,9 @@ void glmodel_set_animation(glmodel_t *self, const char *animation_label, const f
 
     // Increment animation time (convert dt from seconds to ticks)
     self->current_time += dt * current_anim->ticks_per_second;
-    self->current_time = fmod(self->current_time, current_anim->duration); // Loop animation
+    if (loop) {
+        self->current_time = fmod(self->current_time, current_anim->duration); // Loop animation
+    }
 
     // Clear previous transforms
     for (u32 i = 0; i < self->meshes.len; i++) {
