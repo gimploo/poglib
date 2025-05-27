@@ -79,7 +79,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
     window_t *win = window_get_current_active_window();
     static vec2f_t last_mouse_position = {0};
 
-    if (window_keyboard_is_key_pressed(win, SDLK_w)) 
+    if (window_keyboard_is_key_pressed(win, SDLK_UP)) 
         self->position = glms_vec3_add(
                             self->position, 
                             glms_vec3_scale(
@@ -88,7 +88,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                             )
                         );
 
-    if (window_keyboard_is_key_pressed(win, SDLK_s))
+    if (window_keyboard_is_key_pressed(win, SDLK_DOWN))
         self->position = glms_vec3_sub(
                             self->position, 
                             glms_vec3_scale(
@@ -96,7 +96,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                                 GL_CAMERA_SPEED *dt
                             )
                         );
-    if (window_keyboard_is_key_pressed(win, SDLK_a))
+    if (window_keyboard_is_key_pressed(win, SDLK_LEFT))
         self->position = glms_vec3_sub(
                             self->position, 
                             glms_vec3_scale(
@@ -107,7 +107,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                                 GL_CAMERA_SPEED * dt
                             ) 
                         );
-    if (window_keyboard_is_key_pressed(win, SDLK_d))
+    if (window_keyboard_is_key_pressed(win, SDLK_RIGHT))
         self->position = glms_vec3_add(
                             self->position, 
                             glms_vec3_scale(
