@@ -193,7 +193,7 @@ void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_
             case GLBT_gltri_t:
             case GLBT_glpolygon_t:
             case GLBT_glcircle_t:
-                // skipping ...
+                eprint("batch type not accounted for");
             break;
 
             case GLBT_glquad_t:

@@ -10,7 +10,7 @@
 typedef struct poggen_t {
 
     assetmanager_t      assets;
-    hashtable_t               scenes;
+    hashtable_t         scenes;
     scene_t             *current_scene;
 
     struct {

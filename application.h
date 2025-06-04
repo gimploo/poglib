@@ -35,6 +35,10 @@ typedef struct application_t {
     } window;
 
     struct {
+        const char *base_dir;
+    } context;
+
+    struct {
         //NOTE: Add content related stuff in here
         const u64           size;
     } content;
@@ -76,6 +80,31 @@ f32             application_get_tick(const application_t *);
 
 #ifndef IGNORE_APPLICATION_IMPLEMENTATION
 
+const char *__get_base_dir()
+{
+    char *exe_dir = SDL_GetBasePath();
+
+#ifdef _WIN64
+    char delimter = '\\';
+#else
+    char delimter = '/';
+#endif
+
+    u32 starting_len = strlen(exe_dir);
+    ASSERT(starting_len > 0);
+    starting_len = exe_dir[starting_len - 1] == delimter ? starting_len - 1 : starting_len;
+
+    for (u32 i = starting_len - 1; i >= 0; i--)
+    {
+        if (exe_dir[i] == delimter) {
+            break;
+        }
+        exe_dir[i] = '\0';
+    }
+
+    return exe_dir;
+}
+
 f32 application_get_tick(const application_t *app)
 {
     return app->handle.timer->__now;
@@ -114,6 +143,7 @@ void application_run(application_t *app)
 #endif
 
     app->window.aspect_ratio = (f32)app->window.width / (f32)app->window.height;
+    app->context.base_dir = __get_base_dir();
 
     window_t * win = window_init(
             app->window.title, 
@@ -176,6 +206,7 @@ void application_run(application_t *app)
 
     printf("[!] APPLICATION SHUTDOWN!\n");
     app->destroy(app);
+    SDL_free((char *)app->context.base_dir);
 
     window_destroy();
 

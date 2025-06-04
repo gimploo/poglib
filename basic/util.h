@@ -27,7 +27,9 @@ void * mem_init(void *data, const u32 data_size)
     void *tmp = calloc(1, data_size);
     ASSERT(tmp);
 
-    memcpy(tmp, data, data_size);
+    if (data) {
+        memcpy(tmp, data, data_size);
+    }
     return tmp;
 }
 

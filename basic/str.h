@@ -16,15 +16,14 @@ str_t           str_init(const char *__buffer);
 void            str_free(str_t *x);
 void            str_print(str_t *str);
 void            str_get_data(const str_t *data, char *output);
-u32             str_is_string_in___buffer(str_t *word, str_t *__buffer);
-u32             str_where_is_string_in___buffer(str_t *word, str_t *__buffer);
+u32             str_where_is_string_in_buffer(str_t *word, str_t *__buffer);
 str_t           str_read_file_to_str(const char *file_path);
 str_t           str_cpy_delimiter(str_t *__buffer, char ch);
 bool            str_cmp(const str_t *a, const str_t *b);
 void            str_cpy(str_t *dest, str_t *source);
 str_t           str_get_directory_path(const char *string);
 
-void            cstr_combine_path(const char *path1, const char *path2, char output[32]);
+void            cstr_combine_path(const char *path1, const char *path2, char *output, const u32 output_size);
 void            cstr_copy(char *dest, const char *source);
 void            cstr_get_file_extension(const char *filepath, char output[32]);
 
@@ -136,7 +135,7 @@ str_t str_read_file_to_str(const char *file_path)
 }
 
 // Returns the pos of the word in __buffer
-u32 str_where_is_string_in___buffer(str_t *word, str_t *__buffer)
+u32 str_where_is_string_in_buffer(str_t *word, str_t *__buffer)
 {
     //TODO: account for null characters
     
@@ -212,17 +211,15 @@ str_t str_get_directory_path(const char *string)
     return o;
 }
 
-void cstr_combine_path(const char *path1, const char *path2, char output[32])
+void cstr_combine_path(const char *path1, const char *path2, char *output, const u32 output_size)
 {
-    memset(output, 0, sizeof(char [32]));
-
     u32 len = strlen(path1);
     if (path1[len - 1] == '\\' || path1[len - 1] == '/') 
         len--;
 #if defined(_WIN64)
-    snprintf(output, sizeof(char [32]), "%.*s\\%s",len, path1, path2);
+    snprintf(output, output_size, "%.*s\\%s",len, path1, path2);
 #else
-    snprintf(output, sizeof(char [32]), "%.*s/%s", len, path1, path2);
+    snprintf(output, output_size, "%.*s/%s", len, path1, path2);
 #endif
 }
 
