@@ -141,14 +141,27 @@ void vao_set_attributes(
 
     GL_CHECK(glEnableVertexAttribArray(++vbo->__attribute_index));
 
-    GL_CHECK(glVertexAttribPointer(
-                vbo->__attribute_index,
-                component_count, 
-                type, 
-                normalized == false ? GL_FALSE : GL_TRUE, 
-                stride, 
-                (const void *)offset));
-
+    switch(type)
+    {
+        case GL_INT:
+            GL_CHECK(glVertexAttribIPointer(
+                        vbo->__attribute_index,
+                        component_count, 
+                        GL_INT,
+                        stride,
+                        (const void *)offset));
+        break;
+        case GL_FLOAT:
+            GL_CHECK(glVertexAttribPointer(
+                        vbo->__attribute_index,
+                        component_count, 
+                        GL_FLOAT, 
+                        normalized == false ? GL_FALSE : GL_TRUE, 
+                        stride, 
+                        (const void *)offset));
+        break;
+        default: eprint("Not implemented");
+    }
     GL_CHECK(glVertexAttribDivisor(vbo->__attribute_index, 0));
 }
 

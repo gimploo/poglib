@@ -23,9 +23,10 @@ typedef struct slot_t {
 
 
 #define             slot_init(CAPACITY, TYPE)                              __impl_slot_init((CAPACITY), (#TYPE), sizeof(TYPE))
-#define             slot_insert(PSLOTARRAY, INDEX, VALUE)                  __impl_slot_insert((PSLOTARRAY), (INDEX), &(VALUE), sizeof(VALUE))
+void *              slot_insert(slot_t *, const u64 index, const void *value, const u64 value_size);
+void *              slot_update(slot_t *, const u64 index, const void *value, const u64 value_size);
 void                slot_insert_multiple(slot_t *self, const u8 *arraybuffer, const u32 arraylen, const u32 elem_size);
-#define             slot_append(PSLOTARRAY, VALUE)                         slot_insert((PSLOTARRAY), (PSLOTARRAY)->len, (VALUE))
+#define             slot_append(PSLOTARRAY, VALUE)                         slot_insert((PSLOTARRAY), (PSLOTARRAY)->len, &(VALUE), sizeof(VALUE))
 #define             slot_delete(PSLOTARRAY, INDEX)                         __impl_slot_delete((PSLOTARRAY), (INDEX))
 slot_t              slot_clone(const slot_t *slot);
 void *              slot_get_value(const slot_t *table, const u64 index);
@@ -112,7 +113,7 @@ void * __slot_get_reference_to_only_value_at_index(const slot_t *table, const u6
 }
 
 
-void * __impl_slot_insert(
+void * slot_insert(
         slot_t *table,
         const u64   index, 
         const void  *value_addr, 
@@ -138,6 +139,35 @@ void * __impl_slot_insert(
     } 
     table->len++;
     
+    return __slot_get_reference_to_only_value_at_index(table, index);
+}
+
+void * slot_update(
+        slot_t *table,
+        const u64   index, 
+        const void  *value_addr, 
+        const u64   value_size)
+{
+    if (table == NULL) eprint("table argument is null");
+    if (value_size != table->__elem_size) eprint("expected value size (%li) but got (%li)", table->__elem_size, value_size);
+    assert(index >= 0 && index < table->__capacity);
+
+    if (__check_if_empty(table, index)) {
+
+        memcpy(
+            table->__data + (index * table->__elem_size), 
+            value_addr, 
+            table->__elem_size);
+
+        table->__index_table[index] = true;
+
+    } else {
+
+        logging("slot at [%li] index is empty - use slot_insert instead (better for readability)", index);
+        slot_insert(table, index, value_addr, value_size);
+
+    } 
+
     return __slot_get_reference_to_only_value_at_index(table, index);
 }
 
@@ -230,7 +260,7 @@ slot_t slot_clone(const slot_t *slot)
             slot->__elem_size);
 
     slot_iterator(slot, iter) {
-        __impl_slot_insert(&output,
+        slot_insert(&output,
             output.len, 
             iter, 
             slot->__elem_size);
@@ -252,7 +282,7 @@ void slot_insert_multiple(
 
     for (u32 i = 0; i < arrlen; i++)
     {
-        __impl_slot_insert(
+        slot_insert(
                 slot, 
                 slot->len, 
                 arr + (elem_size * i), 

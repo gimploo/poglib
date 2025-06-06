@@ -6,7 +6,6 @@
 #include "ds/queue.h"
 #include "ds/list.h"
 #include "ds/hashtable.h"
-#include "ds/map.h"
 #include "ds/linkedlist.h"
 #include "ds/slot.h"
 
@@ -40,9 +39,6 @@
 #define file_load_hashtable(PFILE) \
     __impl_file_load_ds((PFILE),DS_Type(hashtable_t)).h
 
-#define file_load_map(PFILE) \
-    __impl_file_load_ds((PFILE),DS_Type(map_t)).m
-
 #define file_load_slot(PFILE) \
     __impl_file_load_ds((PFILE),DS_Type(slot_t)).sl
 
@@ -52,7 +48,6 @@ typedef enum {
     DS_queue_t,
     DS_list_t,
     DS_hashtable_t,
-    DS_map_t,
     DS_linkedlist_t,
     DS_slot_t,
     DS_COUNT
@@ -90,38 +85,12 @@ void __impl_file_save_ds(file_t *file, void *ds, u64 ds_size, ds_type type)
             file_writebytes(file, ds, sizeof(list_t ));
             file_writebytes(
                     file, 
-                    ((list_t *)ds)->__data, 
+                    ((list_t *)ds)->data, 
                     ((list_t *)ds)->__capacity * ((list_t *)ds)->__elem_size);
         break;
 
         case DS_hashtable_t: 
-            assert(ds_size == sizeof(hashtable_t ));
-            file_writebytes(file, ds, sizeof(hashtable_t ));
-            file_writebytes(
-                    file, 
-                    ((hashtable_t *)ds)->__data,
-                    ((hashtable_t *)ds)->__capacity * ((hashtable_t *)ds)->__elem_size);
-            file_writebytes(
-                    file, 
-                    ((hashtable_t *)ds)->__index_table,
-                    ((hashtable_t *)ds)->__capacity * sizeof(bool));
-        break;
-
-        case DS_map_t: 
-            assert(ds_size == sizeof(map_t ));
-            file_writebytes(file, ds, sizeof(map_t ));
-            file_writebytes(
-                    file, 
-                    ((map_t *)ds)->__keys.__data, 
-                    ((map_t *)ds)->__keys.__capacity * ((map_t *)ds)->__keys.__elem_size);
-            file_writebytes(
-                    file, 
-                    ((map_t *)ds)->__values.__data,
-                    ((map_t *)ds)->__values.__capacity * ((map_t *)ds)->__values.__elem_size);
-            file_writebytes(
-                    file, 
-                    ((map_t *)ds)->__values.__index_table,
-                    ((map_t *)ds)->__values.__capacity * sizeof(bool));
+            eprint("Not implemented");
         break;
 
         case DS_slot_t: 
@@ -148,7 +117,6 @@ typedef union {
     llist_t     ll;
     list_t      l;
     hashtable_t h;
-    map_t       m;
     slot_t      sl;     
 } __ds_t;
 
@@ -193,68 +161,18 @@ __ds_t __impl_file_load_ds(file_t *file, ds_type type)
                     ((list_t *)ds)->__elem_type,
                     ((list_t *)ds)->__elem_size);
             {
-                tmps[0] = output.l.__data;
+                tmps[0] = output.l.data;
                 memcpy(&output.l, ds, sizeof(list_t ));
-                output.l.__data = (u8 *)tmps[0];
+                output.l.data = (u8 *)tmps[0];
             }
             file_readbytes(
                     file, 
-                    output.l.__data, 
+                    output.l.data, 
                     output.l.__capacity * output.l.__elem_size);
         break;
 
         case DS_hashtable_t: 
-            file_readbytes(file, ds, sizeof(hashtable_t ));
-            output.h = __impl_hashtable_init(
-                    ((hashtable_t *)ds)->__capacity, 
-                    ((hashtable_t *)ds)->__elem_type,
-                    ((hashtable_t *)ds)->__elem_size);
-            {
-                tmps[0] = output.h.__data;
-                tmps[1] = output.h.__index_table;
-                memcpy(&output.h, ds, sizeof(hashtable_t ));
-                output.h.__data = (u8 *)tmps[0];
-                output.h.__index_table = (bool *)tmps[1];
-            }
-            file_readbytes(
-                    file, 
-                    output.h.__data,
-                    output.h.__capacity * output.h.__elem_size);
-            file_readbytes(
-                    file, 
-                    output.h.__index_table,
-                    output.h.__capacity * sizeof(bool));
-        break;
-
-        case DS_map_t: 
-            file_readbytes(file, ds, sizeof(map_t ));
-            output.m = __impl_map_init(
-                    ((map_t *)ds)->__values.__capacity, 
-                    ((map_t *)ds)->__values.__elem_type,
-                    ((map_t *)ds)->__values.__elem_size);
-
-            {   
-                tmps[0] = output.m.__keys.__data;
-                tmps[1] = output.m.__values.__data;
-                tmps[2] = output.m.__values.__index_table;
-                memcpy(&output.m, ds, sizeof(map_t ));
-                output.m.__keys.__data         = (u8 *)tmps[0];
-                output.m.__values.__data      = (u8 *)tmps[1];
-                output.m.__values.__index_table = (bool *)tmps[2];
-            }
-
-            file_readbytes(
-                    file, 
-                    output.m.__keys.__data, 
-                    output.m.__keys.__capacity * output.m.__keys.__elem_size);
-            file_readbytes(
-                    file, 
-                    output.m.__values.__data,
-                    output.m.__values.__capacity * output.m.__values.__elem_size);
-            file_readbytes(
-                    file, 
-                    output.m.__values.__index_table,
-                    output.m.__values.__capacity * sizeof(bool));
+            eprint("Not implemented");
         break;
 
         case DS_slot_t: 
