@@ -88,12 +88,23 @@ typedef struct glvertex3d_t {
     vec2f_t uv;
     vec3f_t tangents;
     vec3f_t bitangents;
+    vec4i_t bone_ids;
+    vec4f_t bone_weights;
 
 } glvertex3d_t ;
 
-//NOTE: i dont like how mesh is setup, need to think of a better way to do this.
-//i am thinking of changing how assimp.h is setup, this may allow me to remove the 
-//__heap member in the struct.
+void print_glvertex3d(void *data)
+{
+    glvertex3d_t *v = data;
+    printf("POS:        "VEC3F_FMT"\n", VEC3F_ARG(v->pos));
+    printf("NORM:       "VEC3F_FMT"\n", VEC3F_ARG(v->norm));
+    printf("UV:         "VEC2F_FMT"\n", VEC2F_ARG(v->uv));
+    printf("TAN:        "VEC3F_FMT"\n", VEC3F_ARG(v->tangents));
+    printf("BITAN:      "VEC3F_FMT"\n", VEC3F_ARG(v->bitangents));
+    printf("BONEIDS:    "VEC4I_FMT"\n", VEC4I_ARG(v->bone_ids));
+    printf("BONE_WGHT:  "VEC4F_FMT"\n", VEC4F_ARG(v->bone_weights));
+}
+
 typedef struct glmesh_t {
 
     slot_t vtx;

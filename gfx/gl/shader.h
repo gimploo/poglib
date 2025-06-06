@@ -50,6 +50,21 @@ const char * const DEFAULT_FSHADER =
         "\n"
     "}";
 
+const char * const DEFAULT_SIMPLE_SHAPES_VSHADER = 
+    "#version 330 core\n"
+    "layout (location = 0) in vec3 v_pos;\n"
+    "layout (location = 1) in vec4 v_uv;\n"
+    "layout (location = 2) in vec2 v_normals;\n"
+    "\n"
+    "out vec4 color;\n"
+    "out vec2 tex_coord;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+        "gl_Position = vec4(v_pos, 1.0f);\n"
+        "color = v_color;\n"
+        "tex_coord = v_tex_coord;\n"
+    "}";
 
 #define         glshader_default_init(...)                                      glshader_from_cstr_init(DEFAULT_VSHADER, DEFAULT_FSHADER)
 
@@ -63,6 +78,7 @@ void            glshader_send_uniform_vec2f(const glshader_t *shader, const char
 void            glshader_send_uniform_vec3f(const glshader_t *shader, const char *uniform, vec3f_t val);
 void            glshader_send_uniform_vec4f(const glshader_t *shader, const char *uniform, vec4f_t val);
 void            glshader_send_uniform_matrix4f(const glshader_t *shader, const char *uniform, matrix4f_t val);
+void            glshader_send_uniform_matrix4fv(const glshader_t *shader, const char *uniform, const matrix4f_t *val, const u32 matrices_count);
 
 void            glshader_send_uniform_material(const glshader_t *shader, const glmaterial_t material);
 void            glshader_send_uniform_lightmap(const glshader_t *shader, const gllightmap_t map);
@@ -247,6 +263,16 @@ void glshader_send_uniform_matrix4f(const glshader_t *shader, const char *unifor
     if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", uniform);
 
     GL_CHECK(glUniformMatrix4fv(location, 1, GL_FALSE, &val.raw[0][0]));
+}
+
+void glshader_send_uniform_matrix4fv(const glshader_t *shader, const char *uniform, const matrix4f_t *val, const u32 matrices_count)
+{
+    GL_SHADER_BIND(shader);
+    int location;
+    GL_CHECK(location = glGetUniformLocation(shader->id, uniform));
+    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", uniform);
+
+    GL_CHECK(glUniformMatrix4fv(location, matrices_count, GL_FALSE, (f32 *)val));
 }
 
 void glshader_send_uniform_material(const glshader_t *shader, const glmaterial_t material)

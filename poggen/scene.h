@@ -25,7 +25,7 @@ typedef struct scene_t {
     void                 (*__init)(struct scene_t *);
     void                 (*__update)(struct scene_t *, const f32 dt);
     void                 (*__input)(struct scene_t *, const f32 dt);
-    void                 (*__render)(struct scene_t *);
+    void                 (*__render)(struct scene_t *, const f32 dt);
     void                 (*__destroy)(struct scene_t *);
 
 } scene_t ;

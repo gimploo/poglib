@@ -20,7 +20,7 @@ const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h" };
 \
 } while (0)
 
-#define ASSERT(FMT, ...) if (!(FMT)) eprint("ASSERTION: " #FMT " " ##__VA_ARGS__)
+#define ASSERT(FMT, ...) if (!(FMT)) eprint(#FMT " " ##__VA_ARGS__)
 #define assert ASSERT
 
 /*=============================================================================
@@ -164,7 +164,7 @@ void __dbg_set_stacktraces(dbg_node_info_t *dn)
 
 bool __is_file_in_ignore_files(const char *filepath)
 {
-    char *pfile = filepath + strlen(filepath);
+    const char *pfile = filepath + strlen(filepath);
     for (; pfile > filepath; pfile--)
     {
         if ((*pfile == '\\') || (*pfile == '/'))
@@ -173,7 +173,7 @@ bool __is_file_in_ignore_files(const char *filepath)
             break;
         }
     }
-    for (int i = 0; i < (sizeof(IGNORE_FILES) / sizeof(IGNORE_FILES[0])); i++)
+    for (unsigned long i = 0; i < (sizeof(IGNORE_FILES) / sizeof(IGNORE_FILES[0])); i++)
     {
         if (strcmp(IGNORE_FILES[i], pfile) == 0) return true;
     }
@@ -417,7 +417,7 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
             if (!pointer) 
                 fprintf(stderr, "[DBG] `%s` is a null pointer\n", pointer_name);
             else 
-                fprintf(stderr, "[DBG] `%s` is a pointer to address %x\n", pointer);
+                fprintf(stderr, "[DBG] `%s` is a pointer to address %p\n", pointer_name, pointer);
 
             stacktrace_print();
             exit(1);
@@ -438,7 +438,7 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
 
     } else {
 
-        printf("[!] Warning DBG tried to delete pointer %p from the list but the list is empty\n");
+        printf("[!] Warning DBG tried to delete pointer %p from the list but the list is empty\n", pointer);
     }
 
     free(pointer);

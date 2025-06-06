@@ -9,7 +9,7 @@
 
 typedef struct assetmanager_t {
 
-    map_t assetmaps[AT_COUNT];
+    hashtable_t assetmaps[AT_COUNT];
 
 } assetmanager_t ;
 
@@ -38,10 +38,10 @@ assetmanager_t assetmanager_init(void)
 {
     return (assetmanager_t ){
         .assetmaps = {
-            [AT_GLSHADER]       = map_init(10, asset_t ),
-            [AT_GLTEXTURE2D]    = map_init(10, asset_t ),
-            [AT_SOUND_WAV]      = map_init(10, asset_t ),
-            [AT_FONT_FREETYPE]  = map_init(10, asset_t ),
+            [AT_GLSHADER]       = hashtable_init(10, asset_t ),
+            [AT_GLTEXTURE2D]    = hashtable_init(10, asset_t ),
+            [AT_SOUND_WAV]      = hashtable_init(10, asset_t ),
+            [AT_FONT_FREETYPE]  = hashtable_init(10, asset_t ),
         }
     };
 }
@@ -87,10 +87,10 @@ asset_t * __impl_assetmanager_add_asset(assetmanager_t *manager, const char *lab
         default: eprint("type not accounted for");
     }
 
-    map_t *table = &manager->assetmaps[type];
+    hashtable_t *table = &manager->assetmaps[type];
     assert(table);
     
-    return (asset_t *)map_insert(table, label, output);
+    return (asset_t *)hashtable_insert(table, label, mem_init(&output, sizeof(output)));
 }
 
 
@@ -100,28 +100,31 @@ void assetmanager_destroy(assetmanager_t *self)
 
     for (u32 type = 0; type < AT_COUNT; type++)
     {
-        map_t *table = &self->assetmaps[type];
+        hashtable_t *table = &self->assetmaps[type];
         assert(table);
 
         switch(type)
         {
             case AT_GLSHADER: 
-                map_iterator(table, asset) {
-                    glshader_t *shader = &((asset_t *)asset)->shader;
+                hashtable_iterator(table, asset) {
+                    glshader_t *shader = ((table_entry_t *)asset)->ptr;
                     glshader_destroy(shader);
+                    mem_free(asset, sizeof(asset_t));
                 }
             break;
             case AT_GLTEXTURE2D:
-                map_iterator(table, asset) {
-                    gltexture2d_t *tex = &((asset_t *)asset)->texture2d;
+                hashtable_iterator(table, asset) {
+                    gltexture2d_t *tex = ((table_entry_t *)asset)->ptr;
                     gltexture2d_destroy(tex);
+                    mem_free(asset, sizeof(asset_t));
                 }
             break;
 
             case AT_FONT_FREETYPE:
-                map_iterator(table, asset) {
-                    glfreetypefont_t *font = &((asset_t *)asset)->font;
+                hashtable_iterator(table, asset) {
+                    glfreetypefont_t *font = ((table_entry_t *)asset)->ptr;
                     glfreetypefont_destroy(font);
+                    mem_free(asset, sizeof(asset_t));
                 }
             break;
 
@@ -131,7 +134,7 @@ void assetmanager_destroy(assetmanager_t *self)
 
             default: eprint("type not accounted for ");
         }
-        map_destroy(table);
+        hashtable_destroy(table);
 
     }
 }
@@ -141,10 +144,10 @@ const void * __impl_assetmanager_get_asset(const assetmanager_t *manager, const 
 {
     assert(manager);
 
-    const map_t *table = &manager->assetmaps[type];
+    const hashtable_t *table = &manager->assetmaps[type];
     assert(table);
 
-    asset_t *asset = (asset_t *)map_get_value(table, label);
+    asset_t *asset = (asset_t *)hashtable_get_value(table, label);
     assert(asset);
 
     switch(type)

@@ -302,14 +302,13 @@ INTERNAL void __mouse_update_position(window_t *window)
 
     //SDL_Log("Window (%s) Mouse pos := (%d, %d)\n", window->title, x, y);
 
-    f32 normalizedX = -1.0 + 2.0 *  (f32) x / window->width;
-    f32 normalizedY = (1.0 - 2.0 * (f32) y / window->height);
-    
+    f32 normalizedX = 2.f *  ((f32) x / window->width) - 1.f;
+    f32 normalizedY = 1.f - 2.f * ((f32) y / window->height);
     pos.x = normalizedX;
     pos.y = normalizedY;
-    
-    //SDL_Log("Mouse pos := (%f, %f)\n", normalizedX, normalizedY);
-    
+
+    SDL_Log("Mouse pos := (%f, %f)\n", normalizedX, normalizedY);
+
     window->mouse.position = (vec2i_t ){ x, y };
     window->mouse.norm_position = pos;
 
