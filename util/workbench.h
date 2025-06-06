@@ -10,10 +10,14 @@ typedef struct {
     glcamera_t world_camera;
     vec3f_t player_camera_position;
 
+    list_t lines;
+
 } workbench_t;
 
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){-125.f, 40.0f, 200.0f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){-0.3f, -0.9f}
+
+const vec3f_t origin = {0.f, 0.f, 0.f};
 
 workbench_t workbench_init(const application_t *app)
 {
@@ -31,7 +35,8 @@ workbench_t workbench_init(const application_t *app)
             WORKBENCH_CAMERA_DEFAULT_POSITION,
             WORKBENCH_CAMERA_DEFAULT_ROTATION 
         ),
-        .player_camera_position = vec3f(0.f)
+        .player_camera_position = vec3f(0.f),
+        .lines = list_init(vec3f_t *)
     };
 }
 
@@ -40,11 +45,26 @@ void workbench_update_player_camera_position(workbench_t *self, const vec3f_t po
     self->player_camera_position = pos;
 }
 
+void workbench_track_line(workbench_t *self, vec3f_t * const line) {
+    list_append(&self->lines, line);
+}
+
 void workbench_render(workbench_t *self)
 {
+    if(self->lines.len == 0) eprint("No lines to render!");
+
+    vec3f_t linebuffer[KB] = {0};
+    {
+        ASSERT(self->lines.len <= ARRAY_LEN(linebuffer));
+        list_iterator(&self->lines, iter) {
+            linebuffer[(u64)list_index] = origin;
+            linebuffer[(u64)list_index + 1] = *(vec3f_t *)iter;
+        }
+    }
+
     glrenderer3d_draw((glrendererconfig_t){
         .calls = {
-            .count = 2,
+            .count = 3,
             .call = {
                 //camera
                 [0] = {
@@ -153,6 +173,39 @@ void workbench_render(workbench_t *self)
                             }
                         } 
                     }
+                },
+                // lines
+                [2] = {
+                    .draw_mode = GL_LINE,
+                    .textures = {0},
+                    .shader_config = {
+                        .shader = &self->shader,
+                        .uniforms = {
+                            .count = 1,
+                            .uniform = {
+                                [0] = {
+                                    .type = "vec4f_t",
+                                    .name = "color",
+                                    .value.vec4 = COLOR_RED
+                                }
+                            }
+
+                        }
+                    },
+                    .idx = {0},
+                    .vtx = {
+                        .data = (u8 *)linebuffer,
+                        .size = 2 * self->lines.len * sizeof(vec3f_t),
+                    },
+                    .attrs = {
+                        .count = 1,
+                        .attr = {
+                            [0] = {
+                                .ncmp = 3,
+                                .interleaved = {0},
+                            }
+                        }
+                    }
                 }
             },
         },
@@ -164,6 +217,7 @@ void workbench_destroy(workbench_t *self)
     free((void *)self->shader.vs_file_path);
     free((void *)self->shader.fg_file_path);
     glshader_destroy(&self->shader);
+    list_destroy(&self->lines);
 }
 
 
