@@ -73,7 +73,7 @@ vbo_t vbo_static_init(
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, VBO.id));
     GL_CHECK(glBufferData(GL_ARRAY_BUFFER, vsize, vertices, GL_STATIC_DRAW));
     if (vertices != NULL) {
-        ASSERT(vertex_count > 1);
+        ASSERT(vertex_count > 0);
         GL_LOG("VBO (STATIC)\t `%i` created", VBO.id);
     } else {
         GL_LOG("EMPTY VBO (STATIC)\t `%i` created", VBO.id);
