@@ -18,6 +18,7 @@ typedef struct glrenderer3d_t {
     const glshader_t    *shader;
     struct {
         gltexture2d_t   *data;
+
         int             top;
     } textures;
 
@@ -54,6 +55,12 @@ typedef struct {
 } glshaderconfiglist_t;
 
 typedef struct {
+
+    // Draw type
+    enum {
+        LINE = GL_LINE,
+        TRIANGLES = GL_TRIANGLES,
+    } draw_mode;
 
     // Vertex data
     struct {
@@ -304,6 +311,12 @@ void glrenderer3d_draw(const glrendererconfig_t config)
     {
         bool is_idx_null = config.calls.call[call_idx].idx.data ? false : true;
 
+        //Defaults to GL_TRIANGES if not set else to whatever modes that is available
+        u8 draw_mode = GL_TRIANGLES;
+        if (config.calls.call[call_idx].draw_mode) {
+            draw_mode = config.calls.call[call_idx].draw_mode;
+        }
+
         vao_t vao = vao_init();
         vao_bind(&vao);
 
@@ -407,7 +420,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         }
 
         if (!is_idx_null)   vao_draw_with_ebo(&vao, &ebo);
-        else                vao_draw_with_vbo(&vao, &vbo);
+        else                vao_draw_with_vbo_in_mode(&vao, &vbo, draw_mode);
 
         gltexture2d_unbind();
 
