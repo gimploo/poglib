@@ -35,7 +35,7 @@ typedef enum {
 
 typedef enum {
 
-    SDL_MOUSEWHEEL_NONE,
+    SDL_MOUSEWHEEL_NONE = 0,
     SDL_MOUSEWHEEL_UP,
     SDL_MOUSEWHEEL_DOWN,
     SDL_MOUSEWHEEL_LEFT,
@@ -220,27 +220,35 @@ bool window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key)
 
 bool window_mouse_wheel_is_scroll_up(window_t *w)
 {
-    bool output = w->mouse.wheel.state == SDL_MOUSEWHEEL_UP;
-    w->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
-    return output;
+    if(w->mouse.wheel.state == SDL_MOUSEWHEEL_UP) {
+        w->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
+        return true;
+    }
+    return false;
 }
 bool window_mouse_wheel_is_scroll_down(window_t *w)
 {
-    bool output = w->mouse.wheel.state == SDL_MOUSEWHEEL_DOWN;
-    w->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
-    return output;
+    if(w->mouse.wheel.state == SDL_MOUSEWHEEL_DOWN) {
+        w->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
+        return true;
+    }
+    return false;
 }
 bool window_mouse_wheel_is_scroll_right(window_t *w)
 {
-    bool output = w->mouse.wheel.state == SDL_MOUSEWHEEL_RIGHT;
-    w->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
-    return output;
+    if(w->mouse.wheel.state == SDL_MOUSEWHEEL_RIGHT) {
+        w->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
+        return true;
+    }
+    return false;
 }
 bool window_mouse_wheel_is_scroll_left(window_t *w)
 {
-    bool output = w->mouse.wheel.state == SDL_MOUSEWHEEL_LEFT;
-    w->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
-    return output;
+    if(w->mouse.wheel.state == SDL_MOUSEWHEEL_LEFT) {
+        w->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
+        return true;
+    }
+    return false;
 }
 
 #define __impl_window_subwindow_gl_render_begin(PWINDOW) do {\
@@ -802,22 +810,6 @@ void window_update_user_input(window_t *window)
                 else if(event->wheel.y < 0) window->mouse.wheel.state = SDL_MOUSEWHEEL_DOWN;
                 else if(event->wheel.x > 0) window->mouse.wheel.state = SDL_MOUSEWHEEL_RIGHT;
                 else if(event->wheel.x < 0) window->mouse.wheel.state = SDL_MOUSEWHEEL_LEFT;
-
-                /*switch(window->mouse.wheel.state)*/
-                /*{*/
-                    /*case SDL_MOUSEWHEEL_UP:*/
-                        /*printf("UP\n");*/
-                    /*break;*/
-                    /*case SDL_MOUSEWHEEL_DOWN:*/
-                        /*printf("DOWN\n");*/
-                    /*break;*/
-                    /*case SDL_MOUSEWHEEL_RIGHT:*/
-                        /*printf("RIGHT\n");*/
-                    /*break;*/
-                    /*case SDL_MOUSEWHEEL_LEFT:*/
-                        /*printf("LEFT\n");*/
-                    /*break;*/
-                /*}*/
             break;
 
             //NOTE: Here a mouse held down state is triggered if its just pressed and the mouse moved after.

@@ -7,7 +7,7 @@
 #define GL_CAMERA_DIRECTION_FRONT    (vec3f_t ){0.0f, 0.0f, -1.0f}
 #define GL_CAMERA_DIRECTION_UP       (vec3f_t ){0.0f, 1.0f, 0.0f }
 
-const f32 GL_CAMERA_SPEED           =  25.0f;
+const f32 GL_CAMERA_SPEED           =  500.0f;
 const f32 GL_CAMERA_SENSITIVITY     =  1.f;
 
 typedef struct glcamera_t {
@@ -79,7 +79,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
     window_t *win = window_get_current_active_window();
     static vec2f_t last_mouse_position = {0};
 
-    if (window_keyboard_is_key_pressed(win, SDLK_UP)) 
+    if (window_mouse_wheel_is_scroll_up(win))
         self->position = glms_vec3_add(
                             self->position, 
                             glms_vec3_scale(
@@ -88,7 +88,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                             )
                         );
 
-    if (window_keyboard_is_key_pressed(win, SDLK_DOWN))
+    if (window_mouse_wheel_is_scroll_down(win)) {
         self->position = glms_vec3_sub(
                             self->position, 
                             glms_vec3_scale(
@@ -96,6 +96,8 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                                 GL_CAMERA_SPEED *dt
                             )
                         );
+    }
+    /*
     if (window_keyboard_is_key_pressed(win, SDLK_LEFT))
         self->position = glms_vec3_sub(
                             self->position, 
@@ -117,6 +119,7 @@ void glcamera_process_input(glcamera_t *self, const f32 dt)
                                 ),
                                 GL_CAMERA_SPEED * dt
                             ));
+    */
 
     if (window_keyboard_is_key_pressed(win, SDLK_r)) {
 
