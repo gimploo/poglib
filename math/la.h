@@ -26,6 +26,8 @@ typedef mat2s matrix2f_t ;
 typedef mat3s matrix3f_t ;
 typedef mat4s matrix4f_t ;
 
+static const vec3f_t ORIGIN = { .x = 0.f, .y = 0.f, .z = 0.f};
+
 #define vec2f(x) (vec2f_t ){x,x}
 #define vec3f(x) (vec3f_t ){x,x,x}
 #define vec4f(x) (vec4f_t ){x,x,x,x}

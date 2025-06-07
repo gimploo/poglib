@@ -3,6 +3,14 @@
 #include "./glcamera.h"
 #include <poglib/gfx/glrenderer2d.h>
 #include <poglib/gfx/glrenderer3d.h>
+#include "./workbench/workbench-constants.h"
+
+typedef struct {
+
+    vec3f_t start;
+    vec3f_t end;
+
+} line_t;
 
 typedef struct {
 
@@ -10,33 +18,39 @@ typedef struct {
     glcamera_t world_camera;
     vec3f_t player_camera_position;
 
-    list_t lines;
+    // Lines that draws - this clears up after every render
+    list_t draw_lines;
+
+    //FIXME: Need to get rid of this maybe with introducing arenas here will be able to
+    struct {
+        str_t vshader;
+        str_t fshader;
+    } filepaths;
 
 } workbench_t;
 
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){-125.f, 40.0f, 200.0f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){-0.3f, -0.9f}
 
-const vec3f_t origin = {0.f, 0.f, 0.f};
-
 workbench_t workbench_init(const application_t *app)
 {
-    const char *base_dir = app->context.base_dir;
-    char *vshader = mem_init(NULL, 255);
-    char *fshader = mem_init(NULL, 255);
-    cstr_combine_path(base_dir, "lib/poglib/util/workbench/workbench-shader.vs", vshader, 255);
-    cstr_combine_path(base_dir, "lib/poglib/util/workbench/workbench-shader.fs", fshader, 255);
+    str_t vshader = application_get_absolute_filepath(app, "lib/poglib/util/workbench/workbench-shader.vs");
+    str_t fshader = application_get_absolute_filepath(app, "lib/poglib/util/workbench/workbench-shader.fs");
 
     return (workbench_t) {
         .shader = glshader_from_file_init(
-            vshader, 
-            fshader),
+            vshader.data, 
+            fshader.data),
         .world_camera = glcamera_perspective(
             WORKBENCH_CAMERA_DEFAULT_POSITION,
             WORKBENCH_CAMERA_DEFAULT_ROTATION 
         ),
         .player_camera_position = vec3f(0.f),
-        .lines = list_init(vec3f_t *)
+        .draw_lines = list_init(line_t),
+        .filepaths = {
+            .vshader = vshader,
+            .fshader = fshader
+        }
     };
 }
 
@@ -45,22 +59,13 @@ void workbench_update_player_camera_position(workbench_t *self, const vec3f_t po
     self->player_camera_position = pos;
 }
 
-void workbench_track_line(workbench_t *self, vec3f_t * const line) {
-    list_append(&self->lines, line);
+void workbench_pass_line(workbench_t *self, const line_t line) {
+    list_append(&self->draw_lines, line);
 }
 
 void workbench_render(workbench_t *self)
 {
-    if(self->lines.len == 0) eprint("No lines to render!");
-
-    vec3f_t linebuffer[KB] = {0};
-    {
-        ASSERT(self->lines.len <= ARRAY_LEN(linebuffer));
-        list_iterator(&self->lines, iter) {
-            linebuffer[(u64)list_index] = origin;
-            linebuffer[(u64)list_index + 1] = *(vec3f_t *)iter;
-        }
-    }
+    if(self->draw_lines.len == 0) eprint("No lines to render!");
 
     glrenderer3d_draw((glrendererconfig_t){
         .calls = {
@@ -68,14 +73,15 @@ void workbench_render(workbench_t *self)
             .call = {
                 //camera
                 [0] = {
+                    .is_wireframe = true,
                     .textures = {0},
                     .idx = {
-                        .data = (u8 *)&DEFAULT_CUBE_INDICES_8,
-                        .nmemb = ARRAY_LEN(DEFAULT_CUBE_INDICES_8)
+                        .data = (u8 *)&CAMERA_INDICES,
+                        .nmemb = ARRAY_LEN(CAMERA_INDICES)
                     },
                     .vtx = {
-                        .data = (u8 *)&DEFAULT_CUBE_VERTICES_8,
-                        .size = sizeof(DEFAULT_CUBE_VERTICES_8)
+                        .data = (u8 *)&CAMERA_VERTICES,
+                        .size = sizeof(CAMERA_VERTICES)
                     },
                     .textures = {0},
                     .attrs = {
@@ -106,14 +112,14 @@ void workbench_render(workbench_t *self)
                                 [2] = {
                                     .name = "color",
                                     .type = "vec4f_t",
-                                    .value.vec4 = COLOR_RED
+                                    .value.vec4 = COLOR_BLACK
                                 },
                                 [3] = {
                                     .name = "transform",
                                     .type = "matrix4f_t",
                                     .value = glms_mat4_mul(
                                         glms_translate_make(self->player_camera_position),
-                                        glms_scale_make((vec3f_t){2.f, 2.f, 2.f})
+                                        glms_scale_make((vec3f_t){4.f, 4.f, 4.f})
                                     ),
                                 },
                             }
@@ -169,7 +175,7 @@ void workbench_render(workbench_t *self)
                                     .name = "color",
                                     .type = "vec4f_t",
                                     .value.vec4 = COLOR_DARK_GRAY
-                                }
+                                },
                             }
                         } 
                     }
@@ -181,43 +187,64 @@ void workbench_render(workbench_t *self)
                     .shader_config = {
                         .shader = &self->shader,
                         .uniforms = {
-                            .count = 1,
+                            .count = 4,
                             .uniform = {
                                 [0] = {
-                                    .type = "vec4f_t",
+                                    .name = "view",
+                                    .type = "matrix4f_t",
+                                    .value = glcamera_getview(&self->world_camera)
+                                },
+                                [1] = {
+                                    .name = "projection",
+                                    .type = "matrix4f_t",
+                                    .value = glms_perspective(
+                                        radians(45), 
+                                        global_poggen->handle.app->window.aspect_ratio, 
+                                        1.0f, 1000.0f
+                                    )
+                                },
+                                [2] = {
+                                    .name = "transform",
+                                    .type = "matrix4f_t",
+                                    .value = MATRIX4F_IDENTITY
+                                },
+                                [3] = {
                                     .name = "color",
-                                    .value.vec4 = COLOR_RED
-                                }
+                                    .type = "vec4f_t",
+                                    .value.vec4 = COLOR_BLUE
+                                },
                             }
-
-                        }
+                        } 
                     },
                     .idx = {0},
                     .vtx = {
-                        .data = (u8 *)linebuffer,
-                        .size = 2 * self->lines.len * sizeof(vec3f_t),
+                        .data = list_get_buffer(&self->draw_lines),
+                        .size = list_get_size(&self->draw_lines),
                     },
                     .attrs = {
                         .count = 1,
                         .attr = {
+                            // position
                             [0] = {
                                 .ncmp = 3,
                                 .interleaved = {0},
-                            }
+                            },
                         }
                     }
                 }
             },
         },
     });
+
+    list_clear(&self->draw_lines);
 }
 
 void workbench_destroy(workbench_t *self)
 {
-    free((void *)self->shader.vs_file_path);
-    free((void *)self->shader.fg_file_path);
+    str_free(&self->filepaths.fshader);
+    str_free(&self->filepaths.vshader);
     glshader_destroy(&self->shader);
-    list_destroy(&self->lines);
+    list_destroy(&self->draw_lines);
 }
 
 

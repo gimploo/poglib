@@ -32,6 +32,10 @@ typedef struct {
         vec4f_t     vec4;
         vec3f_t     vec3;
         vec2f_t     vec2;
+        f32         f32;
+        i32         i32;
+        u32         u32;
+        bool        boolean;
         struct {
             matrix4f_t *data;
             u32 count;
@@ -61,6 +65,8 @@ typedef struct {
         LINE = GL_LINE,
         TRIANGLES = GL_TRIANGLES,
     } draw_mode;
+
+    bool is_wireframe; //default false
 
     // Vertex data
     struct {
@@ -407,6 +413,26 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                         uniform->name,
                         uniform->value.mat4s.data,
                         uniform->value.mat4s.count);
+            else if (strcmp(uniform->type, "i32") == 0)
+                glshader_send_uniform_ival(
+                        config.calls.call[call_idx].shader_config.shader, 
+                        uniform->name,
+                        uniform->value.i32);
+            else if (strcmp(uniform->type, "f32") == 0)
+                glshader_send_uniform_fval(
+                        config.calls.call[call_idx].shader_config.shader, 
+                        uniform->name,
+                        uniform->value.f32);
+            else if (strcmp(uniform->type, "u32") == 0)
+                glshader_send_uniform_uival(
+                        config.calls.call[call_idx].shader_config.shader, 
+                        uniform->name,
+                        uniform->value.u32);
+            else if (strcmp(uniform->type, "boolean") == 0)
+                glshader_send_uniform_ival(
+                        config.calls.call[call_idx].shader_config.shader, 
+                        uniform->name,
+                        uniform->value.boolean);
             else eprint("unknown uniform type `%s` for name `%s`", 
                     uniform->type, uniform->name);
         }
@@ -417,6 +443,12 @@ void glrenderer3d_draw(const glrendererconfig_t config)
             gltexture2d_bind(
                     config.calls.call[call_idx].textures.textures[txt_idx],
                     txt_idx);
+        }
+
+        if (config.calls.call[call_idx].is_wireframe) {
+            GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
+        } else {
+            GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
         }
 
         if (!is_idx_null)   vao_draw_with_ebo(&vao, &ebo);

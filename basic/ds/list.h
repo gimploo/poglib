@@ -24,6 +24,7 @@ typedef struct list_t {
 #define         list_init(TYPE)                                 __impl_list_init(DEFAULT_LIST_STARTING_CAPACITY, #TYPE, sizeof(TYPE))
 
 #define         list_append(PLIST, VALUE)                       __impl_list_append((PLIST), &(VALUE), sizeof(VALUE)) 
+#define         list_append_ptr(PLIST, PVALUE)                   __impl_list_append((PLIST), PVALUE, sizeof(void *)) 
 void            list_delete(list_t *list, const u64 index);
 #define         list_clear(PLIST)                               __impl_list_clear(PLIST)
 void            list_combine(list_t *dest, const list_t *src);
