@@ -116,7 +116,7 @@ static inline void __shader_load_code(glshader_t *shader, const char *vs_code, c
     GL_CHECK(glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status));
     if (!status) {
         GL_CHECK(glGetShaderInfoLog(vertexShader, KB, NULL, error_log));
-        eprint("Vertex Error:\n\t%s\n", error_log);
+        eprint("FILE: %s\n\tVertex Error:\n\t%s\n", shader->vs_file_path, error_log);
     }
     GL_LOG("Vertex Shader successfully compiled");
 
@@ -127,7 +127,7 @@ static inline void __shader_load_code(glshader_t *shader, const char *vs_code, c
     GL_CHECK(glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status));
     if (!status) {
         GL_CHECK(glGetShaderInfoLog(fragmentShader, KB, NULL, error_log));
-        eprint("Fragment Error:\n\t%s\n", error_log);
+        eprint("FILE: %s\n\tFragment Error:\n\t%s\n", shader->fg_file_path, error_log);
     }
     GL_LOG("Fragment Shader successfully compiled");
 

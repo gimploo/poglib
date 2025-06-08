@@ -85,7 +85,7 @@ void workbench_toggle_wireframe_mode(workbench_t *self)
     self->render_config.wireframe_mode = !self->render_config.wireframe_mode;
 }
 
-void __workbench_render_lightsources(const workbench_t *self)
+void __workbench_render_lightsources(workbench_t *self)
 {
     if (self->lightsources.len == 0) 
         return;
@@ -97,15 +97,15 @@ void __workbench_render_lightsources(const workbench_t *self)
                 .count = 1,
                 .call = {
                     [0] = {
-                        .is_wireframe = true || self->render_config.wireframe_mode,
+                        .is_wireframe = self->render_config.wireframe_mode,
                         .textures = {0},
                         .vtx = {
-                            .data = (u8 *)BULB_VERTICES,
-                            .size = sizeof(BULB_VERTICES)
+                            .data = (u8 *)DEFAULT_CUBE_VERTICES_8,
+                            .size = sizeof(DEFAULT_CUBE_VERTICES_8)
                         },
                         .idx = {
-                            .data = (u8 *)BULB_INDICES,
-                            .nmemb = ARRAY_LEN(BULB_INDICES)
+                            .data = (u8 *)DEFAULT_CUBE_INDICES_8,
+                            .nmemb = ARRAY_LEN(DEFAULT_CUBE_INDICES_8)
                         },
                         .attrs = {
                             .count = 1,
@@ -142,7 +142,7 @@ void __workbench_render_lightsources(const workbench_t *self)
                                         .type = "matrix4f_t",
                                         .value = glms_mat4_mul(
                                             glms_translate_make(((gllight_t *)iter)->position),
-                                            glms_scale_make((vec3f_t){4.f, 4.f, 4.f})
+                                            glms_scale_make((vec3f_t){10.f, 10.f, 10.f})
                                         ),
                                     },
                                 }
@@ -212,7 +212,7 @@ void workbench_render(workbench_t *self)
                                     .type = "matrix4f_t",
                                     .value = glms_mat4_mul(
                                         glms_translate_make(self->player_camera_position),
-                                        glms_scale_make((vec3f_t){4.f, 4.f, 4.f})
+                                        glms_scale_make((vec3f_t){10.f, 10.f, 10.f})
                                     ),
                                 },
                             }
