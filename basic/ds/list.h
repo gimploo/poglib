@@ -116,7 +116,11 @@ void __impl_list_append(list_t *list, const void *value_addr, u64 value_size)
 
     list->len = ++list->__top + 1;
 
-    memcpy(list->data + list->__top * list->__elem_size, value_addr, list->__elem_size);
+    if (!list->__are_values_pointers) {
+        memcpy(list->data + list->__top * list->__elem_size, value_addr, list->__elem_size);
+    } else {
+        ((void **)list->data)[list->__top] = value_addr;
+    }
 }
 
 
