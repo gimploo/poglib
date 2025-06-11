@@ -34,6 +34,19 @@ boneinfo_t boneinfo(matrix4f_t offset) {
     };
 }
 
+//NOTE:
+/*
+1. Model File (Blender/FBX)  
+   │ → Vertices/Bones defined in *model space*.  
+   │ → Exported with root transform (e.g., scale=2.0).  
+2. Assimp Loads:  
+   │ → Applies root transform: *model space → world space*.  
+3. Animation:  
+   │ → Inverse root transform: *world space → model space*.  
+   │ → Apply animations in *model space*.  
+   │ → Transform back to world space (if needed).
+*/
+
 #define MAX_MESHES_PER_MODEL 3
 
 typedef struct glmodel_t {
@@ -183,11 +196,11 @@ glmesh_t __glmesh_processMesh(const struct aiMesh *mesh) {
         }
 
         if (mesh->mNormals) {
-            vt.norm = (vec3f_t){
-                mesh->mNormals->x,
-                mesh->mNormals->y,
-                mesh->mNormals->z,
-            };
+            vt.norm = glms_normalize((vec3f_t){
+                mesh->mNormals[i].x,
+                mesh->mNormals[i].y,
+                mesh->mNormals[i].z,
+            });
         }
 
         vt.bone_ids = (vec4i_t ){ -1, -1, -1, -1 }; 
@@ -367,6 +380,8 @@ glmodel_t glmodel_init(const char *filepath)
     }
 
     o.scene = scene;
+
+    //NOTE: This is used to get the vertex in world space back to model space
     o.global_inverse_transform  = glms_mat4_inv(
         glms_mat4_transpose(
             *(matrix4f_t *)&scene->mRootNode->mTransformation
@@ -497,9 +512,7 @@ static void __process_node_anim(glmodel_t *self, struct aiNode *node, const matr
     }
 
     // Compute global transform
-    matrix4f_t global_transform = matrix4f_multiply(
-        parent_transform, node_transform
-    );
+    matrix4f_t global_transform = matrix4f_multiply(parent_transform, node_transform);
 
     // Update bone transform if this node is a bone
     if (hashtable_has_key(&self->bone_name_to_index, node_name)) {
