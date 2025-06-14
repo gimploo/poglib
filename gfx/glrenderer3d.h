@@ -63,7 +63,7 @@ typedef struct {
     // Draw type
     enum {
         LINE = GL_LINE,
-        TRIANGLES = GL_TRIANGLES,
+        TRIANGLES = GL_TRIANGLES, //default
     } draw_mode;
 
     bool is_wireframe; //default false
@@ -85,7 +85,7 @@ typedef struct {
         u8 count;
         struct {
             u8 ncmp;
-            u32 type; // GL_FLOAT | GL_INT
+            u32 type; // GL_FLOAT (default) | GL_INT
             struct {
                 u32 offset;
                 u32 stride;
