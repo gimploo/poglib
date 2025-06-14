@@ -133,7 +133,9 @@ typedef union ivec4s {
     int z;
     int w;
   };
-  
+  struct {
+    int left, top, bottom, right;
+  };
   struct {
     int r;
     int g;
@@ -152,7 +154,9 @@ typedef union CGLM_ALIGN_IF(16) vec4s {
     float z;
     float w;
   };
-  
+  struct {
+    float left, top, bottom, right;
+  };
   struct {
     float r;
     float g;
