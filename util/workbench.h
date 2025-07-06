@@ -42,12 +42,26 @@ typedef struct {
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){-125.f, 40.0f, 200.0f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){-0.3f, -0.9f}
 
+void __gui_setup(void)
+{
+
+    GUI {
+        UI_BUTTON((style_t){ 
+            .color = COLOR_RED,
+            .padding = {0},
+            .margin = {10, 10},
+            .dim = {0}
+        });
+    }
+
+}
+
 workbench_t workbench_init(const application_t *app)
 {
     str_t vshader = application_get_absolute_filepath(app, "lib/poglib/util/workbench/workbench-shader.vs");
     str_t fshader = application_get_absolute_filepath(app, "lib/poglib/util/workbench/workbench-shader.fs");
 
-    return (workbench_t) {
+    workbench_t o = {
         .shader = glshader_from_file_init(
             vshader.data, 
             fshader.data),
@@ -65,14 +79,12 @@ workbench_t workbench_init(const application_t *app)
         .render_config = {
             .wireframe_mode = false
         },
-        .gui = gui_init((style_t){
-            .dim = {0.3f, 0.6f},
-            .margin = {
-                .right = 0.05f,
-                .top = 0.05f
-            }
-        })
+        .gui = gui_init()
     };
+
+    __gui_setup();
+
+    return o;
 }
 
 void workbench_update_player_camera_position(workbench_t *self, const vec3f_t pos)
