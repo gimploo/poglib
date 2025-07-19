@@ -48,7 +48,7 @@ void            list_destroy(list_t *list);
 #ifndef IGNORE_LIST_IMPLEMENTATION
 
 #define __impl_list_iterator(PLIST, ITER, IDX)\
-    if ((PLIST)->len != 0)\
+    if ((PLIST)->len != 0 && (PLIST)->__capacity != 0)\
         for (void **(IDX) = 0, *(ITER) = (void *)list_get_value((PLIST), (u64)(IDX));\
             (u64)(IDX) < (PLIST)->len;\
             (IDX) = (void **)((u64)(IDX) + 1),\

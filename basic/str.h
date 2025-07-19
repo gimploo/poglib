@@ -48,15 +48,11 @@ str_t str_init(const char * const __buffer)
 
 void str_free(str_t *x)
 {
-    if (x->__is_heap_allocated) {
+    if (!x->__is_heap_allocated) 
+        return;
 
-        free(x->data);
-        x->data = NULL;
-
-    } else {
-
-        eprint("[!] WARNING: tried to free a stack allocated string");
-    }
+    free(x->data);
+    x->data = NULL;
 }
 
 void str_print(str_t *str)

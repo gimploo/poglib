@@ -5,7 +5,6 @@
 #include <poglib/gfx/glrenderer3d.h>
 #include "./workbench/workbench-constants.h"
 #include "./gllight.h"
-#include <poglib/gui.h>
 
 typedef struct {
 
@@ -28,8 +27,6 @@ typedef struct {
     list_t draw_lines;
 
     list_t lightsources;
-
-    gui_t gui;
 
     //FIXME: Need to get rid of this maybe with introducing arenas here will be able to
     struct {
@@ -105,6 +102,10 @@ void workbench_track_lightsource(workbench_t *self, const gllight_t *light)
 void workbench_toggle_wireframe_mode(workbench_t *self)
 {
     self->render_config.wireframe_mode = !self->render_config.wireframe_mode;
+}
+
+void workbench_update_ui(workbench_t *self)
+{
 }
 
 void __workbench_render_lightsources(workbench_t *self)
@@ -355,8 +356,6 @@ void workbench_render(workbench_t *self)
 
     __workbench_render_lightsources(self);
 
-    gui_render(&self->gui, self->render_config.wireframe_mode);
-
     list_clear(&self->draw_lines);
 }
 
@@ -367,7 +366,6 @@ void workbench_destroy(workbench_t *self)
     glshader_destroy(&self->shader);
     list_destroy(&self->draw_lines);
     list_destroy(&self->lightsources);
-    gui_destroy(&self->gui);
 }
 
 

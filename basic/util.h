@@ -35,6 +35,7 @@ void * mem_init(const void *data, const u32 data_size)
 
 void mem_free(void *data, const u32 data_size)
 {
+    ASSERT(data);
     memset(data, 0, data_size);
     free(data);
 }
