@@ -38,6 +38,7 @@ typedef struct {
 
 typedef struct ui_t {
 
+    str_t label;
     style_t style;
     ui_type type;
 
@@ -64,10 +65,11 @@ typedef struct {
         list_t idx;
         glshader_t shader;
     } gfx;
+
 } gui_t;
 
-static gui_t *global_gui = NULL;
 
+global gui_t *global_gui_instance = NULL;
 
 
 /*======================================================
@@ -90,11 +92,12 @@ vec2i_t __compute_pos(const vec2i_t pos, const style_t style)
     };
 }
 
-ui_t * __ui_init(const ui_t *parent, const ui_type type, const style_t *style) 
+ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, const style_t *style) 
 {
     const vec2i_t prev_pos = parent ? parent->computed.pos : (vec2i_t){0};
 
     ui_t * ui =mem_init(&(ui_t) {
+        .label = label,
         .type = type,
         .parent = parent,
         .children = list_init(ui_t *),
@@ -110,12 +113,13 @@ ui_t * __ui_init(const ui_t *parent, const ui_type type, const style_t *style)
 
 gui_t * gui_init(void)
 {
-    if(global_gui) {
-        eprint("Already another gui instance is running, multiple instances are not supported.");
+    if (global_gui_instance) {
+        return global_gui_instance;
     }
 
     ui_t *panel_ui = __ui_init(
         NULL, 
+        str("GUI"),
         UI_TYPE_PANEL, 
         &(const style_t ){
             .color = COLOR_BLACK, 
@@ -137,9 +141,9 @@ gui_t * gui_init(void)
         }
     }, sizeof(gui_t));
 
-    global_gui = gui;
+    global_gui_instance = gui;
 
-    return global_gui;
+    return gui;
 }
 
 vec3f_t __get_ndc_position(const ui_t *ui) { 
@@ -291,7 +295,7 @@ void gui_destroy(gui_t *self)
     list_destroy(&self->gfx.idx);
     glshader_destroy(&self->gfx.shader);
     mem_free(self, sizeof(gui_t));
-    global_gui = NULL;
+    global_gui_instance = NULL;
 }
 
 
@@ -311,32 +315,47 @@ void gui_destroy(gui_t *self)
     }
  }
 */
-
-
-ui_t *__gui_add_ui(ui_t *parent, ui_type type, const style_t style) 
+ui_t *__ui_already_exist(const ui_t *ui, const str_t label) 
 {
-    ui_t *ui = __ui_init(parent, type, &style);
-    list_append_ptr(parent->children, ui);
+    if (ui == NULL)                         return NULL;
+    if (str_cmp(&ui->label, &label))    return ui;
+
+    list_iterator(&ui->children, child) {
+        return __ui_already_exist(child, label);
+    }
+    return NULL;
+}
+
+
+ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const style_t style, list_t *parents) 
+{
+    ui_t *ui = __ui_already_exist(gui->root, label);
+    if (ui) return ui;
+
+    ui_t *parent = parents->len ? (ui_t *)list_get_value(parents, parents->len - 1) : NULL;
+    ui = __ui_init(parent, label, type, &style);
+    if (!parent) {
+        list_append_ptr(parents, ui);
+    } else {
+        list_append_ptr(&parent->children, ui);
+    }
     return ui;
 }
 
+#define WRAPPED_PLEX(TYPE, ...) (((struct { TYPE wrapped; }){ .wrapped = (__VA_ARGS__) }).wrapped)
+
 #define GUI\
-    list_t __ui_stack = list_init(ui_t *);\
-    list_append(&__ui_stack, global_gui->root);\
-    void *__ui_current_context = list_get_value(&__ui_stack, __ui_stack.len - 1);\
-    for(ui_t *__ui_parent = __ui_current_context; __ui_stack.len; list_destroy(&__ui_stack))
+    for(bool __1 = true; __1;)\
+        for(list_t __gui_stack = list_init(ui_t *); __1; list_destroy(&__gui_stack))\
+            for(gui_t *PGUI = gui_init(); __1; __1 = false)
 
-#define UI_BUTTON(...)\
-    list_append_ptr(&__ui_stack, __gui_add_ui(__ui_parent, UI_TYPE_BUTTON, __VA_ARGS__ ));\
-    __ui_current_context = list_get_value(&__ui_stack, __ui_stack.len - 1);\
-    for(__ui_parent = __ui_current_context; \
-        __ui_parent != __ui_current_context;\
-        list_delete(&__ui_stack, __ui_stack.len - 1), __ui_parent = list_get_value(&__ui_stack, __ui_stack.len - 1))
+#define UI_BUTTON(LABEL, STYLE)\
+    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE_BUTTON, WRAPPED_PLEX(style_t, (STYLE)), &__gui_stack);\
+        LABEL;\
+        list_delete(&__gui_stack, __gui_stack.len - 1), LABEL = NULL)
 
-#define UI_PANEL(...)\
-    list_append_ptr(&__ui_stack, __gui_add_ui(__ui_parent, UI_TYPE_PANEL, __VA_ARGS__ ));\
-    __ui_current_context = list_get_value(&__ui_stack, __ui_stack.len - 1);\
-    for(__ui_parent = __ui_current_context; \
-        __ui_parent != __ui_current_context;\
-        list_delete(&__ui_stack, __ui_stack.len - 1), __ui_parent = list_get_value(&__ui_stack, __ui_stack.len - 1))
+#define UI_LABEL(LABEL, STYLE)\
+    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE_LABEL, WRAPPED_PLEX(style_t, (STYLE)), &__gui_stack);\
+        LABEL;\
+        list_delete(&__gui_stack, __gui_stack.len - 1), LABEL = NULL)
 
