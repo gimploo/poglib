@@ -1,5 +1,6 @@
 #pragma once
 #include <poglib/poggen.h>
+#include <poglib/gui.h>
 #include "./glcamera.h"
 #include <poglib/gfx/glrenderer2d.h>
 #include <poglib/gfx/glrenderer3d.h>
@@ -39,20 +40,6 @@ typedef struct {
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){-125.f, 40.0f, 200.0f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){-0.3f, -0.9f}
 
-void __gui_setup(void)
-{
-
-    GUI {
-        UI_BUTTON((style_t){ 
-            .color = COLOR_RED,
-            .padding = {0},
-            .margin = {10, 10},
-            .dim = {0}
-        });
-    }
-
-}
-
 workbench_t workbench_init(const application_t *app)
 {
     str_t vshader = application_get_absolute_filepath(app, "lib/poglib/util/workbench/workbench-shader.vs");
@@ -76,10 +63,7 @@ workbench_t workbench_init(const application_t *app)
         .render_config = {
             .wireframe_mode = false
         },
-        .gui = gui_init()
     };
-
-    __gui_setup();
 
     return o;
 }
@@ -104,8 +88,19 @@ void workbench_toggle_wireframe_mode(workbench_t *self)
     self->render_config.wireframe_mode = !self->render_config.wireframe_mode;
 }
 
-void workbench_update_ui(workbench_t *self)
+void __workbench_render_ui(workbench_t *self)
 {
+    GUI {
+        UI_BUTTON(dksfj, 
+            ((style_t){
+                .color = COLOR_RED, 
+                .padding = {0}, 
+                .margin = {10, 10}, 
+                .dim = {0} 
+            }));
+    }
+
+    gui_render(global_gui_instance, self->render_config.wireframe_mode);
 }
 
 void __workbench_render_lightsources(workbench_t *self)
@@ -355,6 +350,7 @@ void workbench_render(workbench_t *self)
     });
 
     __workbench_render_lightsources(self);
+    __workbench_render_ui(self);
 
     list_clear(&self->draw_lines);
 }
@@ -366,6 +362,7 @@ void workbench_destroy(workbench_t *self)
     glshader_destroy(&self->shader);
     list_destroy(&self->draw_lines);
     list_destroy(&self->lightsources);
+    gui_destroy(global_gui_instance);
 }
 
 
