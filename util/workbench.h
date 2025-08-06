@@ -103,7 +103,7 @@ void __workbench_render_ui(workbench_t *self)
                 .width = 200,
                 .height = 200
             },
-            .layout = UI_LAYOUT_HORIZONTAL
+            .layout = UI_LAYOUT_VERTICAL
         })) {
             UI_BUTTON(button1, 
                 ((style_t){
@@ -131,8 +131,8 @@ void __workbench_render_ui(workbench_t *self)
                     .padding = {0}, 
                     .margin = {10, 10}, 
                     .dim = {
-                          .width = 30,
-                          .height = 30
+                      .width = 30,
+                      .height = 30
                     }
                 }));
             UI_BUTTON(button4, 
