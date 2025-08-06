@@ -358,6 +358,7 @@ void __ui_update(gui_t *gui, ui_t *ui)
         ui->computed.is_dirty = false;
     }
 
+    ui->state.is_clicked = is_cursor_on_ui && window_mouse_button_is_pressed(win, SDL_MOUSEBUTTON_LEFT);
     gui->internals.is_dirty = gui->internals.is_dirty || ui->computed.is_dirty;
 }
 
