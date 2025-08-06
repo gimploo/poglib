@@ -121,7 +121,7 @@ bool                window_keyboard_is_key_held(window_t *window, SDL_Keycode ke
 bool                window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key);
 
 bool                window_mouse_button_just_pressed(window_t *window, sdl_mousebuttontype button);
-bool                window_mouse_button_is_pressed(window_t *window, sdl_mousebuttontype button);
+bool                window_mouse_button_is_pressed(const window_t *window, sdl_mousebuttontype button);
 bool                window_mouse_button_is_held(window_t *window, sdl_mousebuttontype button);
 
 bool                window_mouse_wheel_is_scroll_up(window_t *w);
@@ -168,7 +168,7 @@ bool window_mouse_button_just_pressed(
 }
 
 bool window_mouse_button_is_pressed(
-        window_t *window,
+        const window_t *window,
         sdl_mousebuttontype button)
 {
   return window->mouse.button == button 

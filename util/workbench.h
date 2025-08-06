@@ -114,7 +114,10 @@ void __workbench_render_ui(workbench_t *self)
                       .width = 30,
                       .height = 30
                     }
-                }));
+                }))
+            if (button1->state.is_clicked) {
+                printf("Button1 is clicked\n");
+            }
             UI_BUTTON(button2, 
                 ((style_t){
                     .color = COLOR_BLUE, 
