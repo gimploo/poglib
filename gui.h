@@ -59,6 +59,7 @@ typedef struct ui_t {
         vec2i_t pos;
         vec4f_t color;
         f32 zorder;
+        bool is_dirty;
         //TODO: cache the vertices
     } computed;
 
@@ -69,6 +70,7 @@ typedef struct ui_t {
 
 typedef struct {
     ui_t *root;
+
     struct {
         list_t vtx;
         list_t idx;
@@ -78,6 +80,7 @@ typedef struct {
     struct {
         list_t uistack;
         bool is_wireframe;
+        bool is_dirty;
     } internals;
 
 } gui_t;
@@ -164,7 +167,8 @@ gui_t * gui_init(void)
         },
         .internals = {
             .uistack = list_init(ui_t *),
-            .is_wireframe = false
+            .is_wireframe = false,
+            .is_dirty = true
         }
     }, sizeof(gui_t));
 
@@ -243,7 +247,14 @@ void __recache_ui(gui_t *gui, ui_t *ui)
 {
     if (!ui) return;
 
-    ui->computed.color = ui->style.color;
+    ui->computed.is_dirty = false;
+
+    if (ui->state.is_hot) {
+        ui->computed.color = ui->style.color;
+        ui->computed.color.a = 0.5f;
+    } else {
+        ui->computed.color = ui->style.color;
+    }
 
     __recache_ui_vtx(gui, ui);
 
@@ -255,12 +266,17 @@ void __recache_ui(gui_t *gui, ui_t *ui)
 
 void __recache_gui_vtx(gui_t *self)
 {
+    list_clear(&self->gfx.vtx);
+    list_clear(&self->gfx.idx);
+
     __recache_ui(self, self->root);
+
+    self->internals.is_dirty = false;
 }
 
 void __gui_render(gui_t *gui)
 {
-    if (!gui->gfx.vtx.len) {
+    if (gui->internals.is_dirty) {
         __recache_gui_vtx(gui);
     }
 
@@ -317,6 +333,32 @@ void __gui_render(gui_t *gui)
             }
         }
     }});
+}
+
+void __ui_update(gui_t *gui, ui_t *ui)
+{
+    ASSERT(gui);
+    ASSERT(ui);
+
+    const window_t *win = window_get_current_active_window();
+    const vec2i_t mouse_pos = window_mouse_get_position(win);
+
+    const bool is_cursor_on_ui = mouse_pos.x > ui->computed.pos.x
+        && mouse_pos.x < ui->computed.pos.x + ui->style.dim.width
+        && mouse_pos.y > ui->computed.pos.y
+        && mouse_pos.y < ui->computed.pos.y + ui->style.dim.height;
+
+    if (is_cursor_on_ui) {
+        ui->state.is_hot = true; 
+        ui->computed.is_dirty = true;
+    } else if (!is_cursor_on_ui && ui->state.is_hot){
+        ui->state.is_hot = false; 
+        ui->computed.is_dirty = true;
+    } else {
+        ui->computed.is_dirty = false;
+    }
+
+    gui->internals.is_dirty = gui->internals.is_dirty || ui->computed.is_dirty;
 }
 
 
@@ -387,23 +429,17 @@ ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const styl
 
 #define WRAPPED_PLEX(TYPE, ...) (((struct { TYPE wrapped; }){ .wrapped = (__VA_ARGS__) }).wrapped)
 
+#define __GEN_UI(UI_TYPE, LABEL, STYLE)\
+    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
+        LABEL;\
+        __ui_update(PGUI, LABEL), list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
+
 #define GUI(PHANDLER)\
     for(bool __1 = true; __1;)\
         for(gui_t *PGUI = PHANDLER; __1; __gui_render(PHANDLER))\
             for(list_t *__gui_stack = &PGUI->internals.uistack; __1; __1 = false, list_clear(__gui_stack))
 
-#define UI_PANEL(LABEL, STYLE)\
-    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE_PANEL, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
-        LABEL;\
-        list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
-
-#define UI_BUTTON(LABEL, STYLE)\
-    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE_BUTTON, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
-        LABEL;\
-        list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
-
-#define UI_LABEL(LABEL, STYLE)\
-    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE_LABEL, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
-        LABEL;\
-        list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
+#define UI_PANEL(LABEL, STYLE)  __GEN_UI(UI_TYPE_PANEL, LABEL, STYLE)
+#define UI_BUTTON(LABEL, STYLE) __GEN_UI(UI_TYPE_BUTTON, LABEL, STYLE)
+#define UI_LABEL(LABEL, STYLE)  __GEN_UI(UI_TYPE_LABEL, LABEL, STYLE)
 
