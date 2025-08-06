@@ -6,7 +6,7 @@
 
 /*
  * LAYOUT - origin is at the top left of the screen
- *
+ * Uses pixel units as measurements
  *
  *
  */
@@ -24,14 +24,22 @@ typedef enum ui_type {
 
 } ui_type;
 
+typedef enum {
+    UI_LAYOUT_VERTICAL = 0,
+    UI_LAYOUT_HORIZONTAL = 1,
+    UI_LAYOUT_COUNT
+} ui_layout_type;
+
 typedef struct {
     vec4i_t padding;
     vec4i_t margin;
     vec4f_t color;
 
-    union {
-        vec2i_t vec;
-        struct { u32 width; u32 height; } size;
+    ui_layout_type layout;
+
+    struct {
+        u32 width; 
+        u32 height;
     } dim;
 
 } style_t;
@@ -69,12 +77,10 @@ typedef struct {
 
     struct {
         list_t uistack;
+        bool is_wireframe;
     } internals;
 
 } gui_t;
-
-
-global gui_t *global_gui_instance = NULL;
 
 
 /*======================================================
@@ -88,41 +94,64 @@ void        gui_destroy(gui_t *self);
                     Implemenentation
 ======================================================*/
 
-vec2i_t __compute_pos(const vec2i_t pos, const style_t style)
+vec2i_t __accumulator_next_position_for_vertical_layout(const vec2i_t accum_pos, const ui_t *current_ui)
 {
-    return (vec2i_t) {
-        .x = pos.x + style.margin.x,
-        .y = pos.y + style.margin.y,
+    const u32 pos_y = accum_pos.y + current_ui->style.dim.height + current_ui->style.margin.y;
+    return (vec2i_t){
+        .x = accum_pos.x,
+        .y = pos_y
     };
+}
+
+vec2i_t __accumulator_next_position_for_horizontal_layout(const vec2i_t accum_pos, const ui_t *current_ui)
+{
+    const u32 pos_x = accum_pos.x + current_ui->style.dim.width + current_ui->style.margin.x; 
+    return (vec2i_t) {
+        .x = pos_x,
+        .y = accum_pos.y
+    };
+}
+
+vec2i_t __get_next_available_pos(const ui_t *parent)
+{
+    ASSERT(parent);
+    vec2i_t pos = parent->computed.pos;
+    list_iterator(&parent->children, child)
+    {
+        switch(parent->style.layout)
+        {
+            case UI_LAYOUT_VERTICAL:
+                pos = __accumulator_next_position_for_vertical_layout(pos, child);
+            break;
+            case UI_LAYOUT_HORIZONTAL:
+                pos = __accumulator_next_position_for_horizontal_layout(pos, child);
+            break;
+            default: eprint("Unfamiliar layout kind.");
+        }
+    }
+    return pos;
 }
 
 ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, const style_t *style) 
 {
-    const vec2i_t prev_pos = parent ? parent->computed.pos : (vec2i_t){0};
-    const f32 zorder = parent ? parent->computed.zorder + 0.2f : -1.0f;
-
-    ui_t * ui =mem_init(&(ui_t) {
+    ui_t * ui = mem_init(&(ui_t) {
         .label = label,
         .type = type,
         .parent = parent,
         .children = list_init(ui_t *),
-        .computed = {
-            .pos = style ? __compute_pos(prev_pos, *style) : (vec2i_t){0},
-            .zorder = zorder,
-        },
+        .computed = {0},
         .style = style ? *style : (style_t){0},
         .state = {0}
     }, sizeof(ui_t));
+
+    ui->computed.zorder = parent ? parent->computed.zorder + 0.2f : -1.0f;
+    ui->computed.pos = parent ? __get_next_available_pos(parent) : (vec2i_t){0};
 
     return ui;
 }
 
 gui_t * gui_init(void)
 {
-    if (global_gui_instance) {
-        return global_gui_instance;
-    }
-
     gui_t *gui = mem_init(&(gui_t) {
         .root = NULL,
         .gfx = {
@@ -134,37 +163,51 @@ gui_t * gui_init(void)
             )
         },
         .internals = {
-            .uistack = list_init(ui_t *)
+            .uistack = list_init(ui_t *),
+            .is_wireframe = false
         }
     }, sizeof(gui_t));
 
-    global_gui_instance = gui;
-
     return gui;
+}
+
+void gui_set_wireframe_mode(gui_t *self, bool toggle)
+{
+    self->internals.is_wireframe = toggle;
+}
+
+vec2i_t __applied_styled_pos(const ui_t *ui)
+{
+    vec2i_t pos = ui->computed.pos;
+    pos.x += ui->style.margin.x;
+    pos.y += ui->style.margin.y;
+    return pos;
 }
 
 quadf_t __generate_ui_quad(ui_t *ui)
 {
     quadf_t output = {0};
 
+    const vec2i_t pos = __applied_styled_pos(ui);
+
     output.vertex[TOP_LEFT] = (vec3f_t) { 
-        ui->computed.pos.x, 
-        ui->computed.pos.y, 
+        pos.x, 
+        pos.y, 
         ui->computed.zorder 
     };
     output.vertex[TOP_RIGHT] = (vec3f_t) { 
-        ui->computed.pos.x + ui->style.dim.size.width, 
-        ui->computed.pos.y, 
+        pos.x + ui->style.dim.width, 
+        pos.y, 
         ui->computed.zorder 
     };
     output.vertex[BOTTOM_LEFT] = (vec3f_t) { 
-        ui->computed.pos.x, 
-        ui->computed.pos.y + ui->style.dim.size.height, 
+        pos.x, 
+        pos.y + ui->style.dim.height, 
         ui->computed.zorder 
     };
     output.vertex[BOTTOM_RIGHT] = (vec3f_t) { 
-        ui->computed.pos.x + ui->style.dim.size.width, 
-        ui->computed.pos.y + ui->style.dim.size.height, 
+        pos.x + ui->style.dim.width, 
+        pos.y + ui->style.dim.height, 
         ui->computed.zorder 
     };
 
@@ -215,7 +258,7 @@ void __recache_gui_vtx(gui_t *self)
     __recache_ui(self, self->root);
 }
 
-void __gui_render(gui_t *gui, const bool enabled_wireframe)
+void __gui_render(gui_t *gui)
 {
     if (!gui->gfx.vtx.len) {
         __recache_gui_vtx(gui);
@@ -227,7 +270,7 @@ void __gui_render(gui_t *gui, const bool enabled_wireframe)
             .call = {
                 [0] = {
                     .draw_mode = GL_TRIANGLES,
-                    .is_wireframe = enabled_wireframe,
+                    .is_wireframe = gui->internals.is_wireframe,
                     .vtx = {
                         .data = gui->gfx.vtx.data,
                         .size = list_get_size(&gui->gfx.vtx)
@@ -297,7 +340,6 @@ void gui_destroy(gui_t *self)
     list_destroy(&self->gfx.idx);
     glshader_destroy(&self->gfx.shader);
     mem_free(self, sizeof(gui_t));
-    global_gui_instance = NULL;
 }
 
 ui_t *__ui_already_exist(const ui_t *ui, const str_t label) 
@@ -347,7 +389,7 @@ ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const styl
 
 #define GUI(PHANDLER)\
     for(bool __1 = true; __1;)\
-        for(gui_t *PGUI = PHANDLER; __1; __gui_render(PHANDLER, false))\
+        for(gui_t *PGUI = PHANDLER; __1; __gui_render(PHANDLER))\
             for(list_t *__gui_stack = &PGUI->internals.uistack; __1; __1 = false, list_clear(__gui_stack))
 
 #define UI_PANEL(LABEL, STYLE)\
