@@ -22,7 +22,7 @@ void swap_memory(void * const x, void * const y, const u64 size)
 
 
 
-void * mem_init(void *data, const u32 data_size)
+void * mem_init(const void *data, const u32 data_size)
 {
     void *tmp = calloc(1, data_size);
     ASSERT(tmp);
@@ -35,6 +35,7 @@ void * mem_init(void *data, const u32 data_size)
 
 void mem_free(void *data, const u32 data_size)
 {
-    free(data);
+    ASSERT(data);
     memset(data, 0, data_size);
+    free(data);
 }

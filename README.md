@@ -1,10 +1,13 @@
 # Poglib
    * A header only C11 library for game and desktop development.
-   * Multiplatorm i.e Windows and Unix (Android soon)
+   * Multiplatorm i.e Windows and Unix
+
+## NOTE
+    Check dev branch for latest build
 
 # Requirements
     For windows:    msvc compiler
-    For unix:       gcc
+    For unix:       gcc / clang
 
 # Usage
 ```bash

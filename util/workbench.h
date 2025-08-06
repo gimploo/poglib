@@ -1,5 +1,6 @@
 #pragma once
 #include <poglib/poggen.h>
+#include <poglib/gui.h>
 #include "./glcamera.h"
 #include <poglib/gfx/glrenderer2d.h>
 #include <poglib/gfx/glrenderer3d.h>
@@ -18,6 +19,8 @@ typedef struct {
     struct {
         bool wireframe_mode;
     } render_config;
+
+    gui_t *gui;
 
     glshader_t shader;
     glcamera_t world_camera;
@@ -44,7 +47,7 @@ workbench_t workbench_init(const application_t *app)
     str_t vshader = application_get_absolute_filepath(app, "lib/poglib/util/workbench/workbench-shader.vs");
     str_t fshader = application_get_absolute_filepath(app, "lib/poglib/util/workbench/workbench-shader.fs");
 
-    return (workbench_t) {
+    workbench_t o = {
         .shader = glshader_from_file_init(
             vshader.data, 
             fshader.data),
@@ -61,8 +64,11 @@ workbench_t workbench_init(const application_t *app)
         },
         .render_config = {
             .wireframe_mode = false
-        }
+        },
+        .gui = gui_init()
     };
+
+    return o;
 }
 
 void workbench_update_player_camera_position(workbench_t *self, const vec3f_t pos)
@@ -83,6 +89,87 @@ void workbench_track_lightsource(workbench_t *self, const gllight_t *light)
 void workbench_toggle_wireframe_mode(workbench_t *self)
 {
     self->render_config.wireframe_mode = !self->render_config.wireframe_mode;
+    gui_set_wireframe_mode(self->gui, self->render_config.wireframe_mode);
+}
+
+void __workbench_render_ui(workbench_t *self)
+{
+    GUI(self->gui) {
+        UI_PANEL(panel, ((style_t){
+            .color = COLOR_RED,
+            .padding = vec4i(0),
+            .margin = vec4i(4),
+            .dim = {
+                .width = 200,
+                .height = 200
+            },
+            .layout = UI_LAYOUT_VERTICAL
+        })) {
+            UI_BUTTON(button1, 
+                ((style_t){
+                    .color = COLOR_WHITE, 
+                    .padding = {0}, 
+                    .margin = {10, 10}, 
+                    .dim = {
+                      .width = 30,
+                      .height = 30
+                    }
+                }))
+            if (button1->state.is_clicked) {
+                printf("Button1 is clicked\n");
+            }
+            UI_BUTTON(button2, 
+                ((style_t){
+                    .color = COLOR_BLUE, 
+                    .padding = {0}, 
+                    .margin = {10, 10}, 
+                    .dim = {
+                      .width = 30,
+                      .height = 30
+                    }
+                }));
+            UI_BUTTON(button3, 
+                ((style_t){
+                    .color = COLOR_GREEN, 
+                    .padding = {0}, 
+                    .margin = {10, 10}, 
+                    .dim = {
+                      .width = 30,
+                      .height = 30
+                    }
+                }));
+            UI_BUTTON(button4, 
+                ((style_t){
+                    .color = COLOR_GREEN, 
+                    .padding = {0}, 
+                    .margin = {10, 10}, 
+                    .dim = {
+                      .width = 30,
+                      .height = 30
+                    }
+                }));
+            UI_BUTTON(button5, 
+                ((style_t){
+                    .color = COLOR_GREEN, 
+                    .padding = {0}, 
+                    .margin = {10, 10}, 
+                    .dim = {
+                      .width = 30,
+                      .height = 30
+                    }
+                }));
+            UI_BUTTON(button6, 
+                ((style_t){
+                    .color = COLOR_GREEN, 
+                    .padding = {0}, 
+                    .margin = {10, 10}, 
+                    .dim = {
+                      .width = 30,
+                      .height = 30
+                    }
+                }));
+        }
+    }
 }
 
 void __workbench_render_lightsources(workbench_t *self)
@@ -332,6 +419,7 @@ void workbench_render(workbench_t *self)
     });
 
     __workbench_render_lightsources(self);
+    __workbench_render_ui(self);
 
     list_clear(&self->draw_lines);
 }
@@ -343,6 +431,7 @@ void workbench_destroy(workbench_t *self)
     glshader_destroy(&self->shader);
     list_destroy(&self->draw_lines);
     list_destroy(&self->lightsources);
+    gui_destroy(self->gui);
 }
 
 
