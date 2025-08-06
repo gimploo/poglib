@@ -102,7 +102,7 @@ void poggen_change_scene(poggen_t *self, const char *scene_label)
 
     scene_t *scene = (scene_t *)hashtable_get_value(table, scene_label);
     assert(scene);
-printf("SCENE UPDATED FROM (%s) TO (%s)\n", self->current_scene->label, scene->label);
+    printf("SCENE UPDATED FROM (%s) TO (%s)\n", self->current_scene->label, scene->label);
     self->current_scene = scene;
 }
 
