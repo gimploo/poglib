@@ -20,6 +20,8 @@ typedef struct {
         bool wireframe_mode;
     } render_config;
 
+    gui_t *gui;
+
     glshader_t shader;
     glcamera_t world_camera;
     vec3f_t player_camera_position;
@@ -63,6 +65,7 @@ workbench_t workbench_init(const application_t *app)
         .render_config = {
             .wireframe_mode = false
         },
+        .gui = gui_init()
     };
 
     return o;
@@ -90,17 +93,32 @@ void workbench_toggle_wireframe_mode(workbench_t *self)
 
 void __workbench_render_ui(workbench_t *self)
 {
-    GUI {
-        UI_BUTTON(dksfj, 
-            ((style_t){
-                .color = COLOR_RED, 
-                .padding = {0}, 
-                .margin = {10, 10}, 
-                .dim = {0} 
-            }));
+    GUI(self->gui) {
+        UI_PANEL(panel, ((style_t){
+            .color = COLOR_RED,
+            .padding = vec4i(0),
+            .margin = vec4i(4),
+            .dim = {
+                .size = {
+                    .width = 200,
+                    .height = 200
+                }
+            }
+        })) {
+            UI_BUTTON(dksfj, 
+                ((style_t){
+                    .color = COLOR_WHITE, 
+                    .padding = {0}, 
+                    .margin = {10, 10}, 
+                    .dim = {
+                      .size = {
+                          .width = 10,
+                          .height = 10
+                      }
+                    }
+                }));
+        }
     }
-
-    gui_render(global_gui_instance, self->render_config.wireframe_mode);
 }
 
 void __workbench_render_lightsources(workbench_t *self)
@@ -362,7 +380,7 @@ void workbench_destroy(workbench_t *self)
     glshader_destroy(&self->shader);
     list_destroy(&self->draw_lines);
     list_destroy(&self->lightsources);
-    gui_destroy(global_gui_instance);
+    gui_destroy(self->gui);
 }
 
 

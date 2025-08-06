@@ -50,6 +50,7 @@ typedef struct ui_t {
     struct {
         vec2i_t pos;
         vec4f_t color;
+        f32 zorder;
         //TODO: cache the vertices
     } computed;
 
@@ -66,6 +67,10 @@ typedef struct {
         glshader_t shader;
     } gfx;
 
+    struct {
+        list_t uistack;
+    } internals;
+
 } gui_t;
 
 
@@ -76,9 +81,8 @@ global gui_t *global_gui_instance = NULL;
                     Declaration
 ======================================================*/
 
-gui_t * gui_init(void);
-void gui_render(gui_t *gui, const bool enabled_wireframe);
-void gui_destroy(gui_t *self);
+gui_t *     gui_init(void);
+void        gui_destroy(gui_t *self);
 
 /*======================================================
                     Implemenentation
@@ -95,6 +99,7 @@ vec2i_t __compute_pos(const vec2i_t pos, const style_t style)
 ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, const style_t *style) 
 {
     const vec2i_t prev_pos = parent ? parent->computed.pos : (vec2i_t){0};
+    const f32 zorder = parent ? parent->computed.zorder + 0.2f : -1.0f;
 
     ui_t * ui =mem_init(&(ui_t) {
         .label = label,
@@ -102,7 +107,8 @@ ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, cons
         .parent = parent,
         .children = list_init(ui_t *),
         .computed = {
-            .pos = style ? __compute_pos(prev_pos, *style) : (vec2i_t){0}
+            .pos = style ? __compute_pos(prev_pos, *style) : (vec2i_t){0},
+            .zorder = zorder,
         },
         .style = style ? *style : (style_t){0},
         .state = {0}
@@ -117,20 +123,8 @@ gui_t * gui_init(void)
         return global_gui_instance;
     }
 
-    ui_t *panel_ui = __ui_init(
-        NULL, 
-        str("GUI"),
-        UI_TYPE_PANEL, 
-        &(const style_t ){
-            .color = COLOR_BLACK, 
-            .dim = { 20, 30 },
-            .margin = { 9, 9 },
-            .padding = {0}
-        }
-    );
-
     gui_t *gui = mem_init(&(gui_t) {
-        .root = panel_ui,
+        .root = NULL,
         .gfx = {
             .vtx = list_init(glquad_t),
             .idx = list_init(u32),
@@ -138,6 +132,9 @@ gui_t * gui_init(void)
                 "lib/poglib/gui/uishader.vs",
                 "lib/poglib/gui/uishader.fs"
             )
+        },
+        .internals = {
+            .uistack = list_init(ui_t *)
         }
     }, sizeof(gui_t));
 
@@ -146,20 +143,32 @@ gui_t * gui_init(void)
     return gui;
 }
 
-vec3f_t __get_ndc_position(const ui_t *ui) { 
+quadf_t __generate_ui_quad(ui_t *ui)
+{
+    quadf_t output = {0};
 
-    const window_t *win = global_window;
-    vec3f_t result = {0, 0, -1.f};
+    output.vertex[TOP_LEFT] = (vec3f_t) { 
+        ui->computed.pos.x, 
+        ui->computed.pos.y, 
+        ui->computed.zorder 
+    };
+    output.vertex[TOP_RIGHT] = (vec3f_t) { 
+        ui->computed.pos.x + ui->style.dim.size.width, 
+        ui->computed.pos.y, 
+        ui->computed.zorder 
+    };
+    output.vertex[BOTTOM_LEFT] = (vec3f_t) { 
+        ui->computed.pos.x, 
+        ui->computed.pos.y + ui->style.dim.size.height, 
+        ui->computed.zorder 
+    };
+    output.vertex[BOTTOM_RIGHT] = (vec3f_t) { 
+        ui->computed.pos.x + ui->style.dim.size.width, 
+        ui->computed.pos.y + ui->style.dim.size.height, 
+        ui->computed.zorder 
+    };
 
-    // Normalize UI coordinates to [0, 1] range
-    f32 x_normalized = ui->computed.pos.x / (f32)win->width;
-    f32 y_normalized = ui->computed.pos.y / (f32)win->height;
-
-    // Map to OpenGL NDC: [-1, 1] range, flip y-axis
-    result.x = 2.0f * x_normalized - 1.0f; // Maps [0, 1] to [-1, 1]
-    result.y = 1.0f - 2.0f * y_normalized; // Maps [0, 1] to [1, -1], flipping y
-
-    return result;
+    return output;
 }
 
 void __recache_ui_vtx(gui_t *gui, ui_t *ui)
@@ -167,29 +176,19 @@ void __recache_ui_vtx(gui_t *gui, ui_t *ui)
     list_t *vtxs = &gui->gfx.vtx;
     list_t *idxs = &gui->gfx.idx;
 
-    vec3f_t dim_norm = glms_normalize((vec3f_t){
-        .x = (f32)ui->style.dim.vec.x,
-        .y = (f32)ui->style.dim.vec.y,
-        .z = 0.f
-    });
-
     glquad_t quad = glquad(
-        quadf(
-            __get_ndc_position(ui), 
-            dim_norm.x, 
-            dim_norm.y
-        ),
+        __generate_ui_quad(ui),
         ui->computed.color,
         (quadf_t){0}
     );
 
     const u32 idx[] = {
-        [0] = vtxs->len + DEFAULT_QUAD_INDICES[0],
-        [1] = vtxs->len + DEFAULT_QUAD_INDICES[1],
-        [2] = vtxs->len + DEFAULT_QUAD_INDICES[2],
-        [3] = vtxs->len + DEFAULT_QUAD_INDICES[3],
-        [4] = vtxs->len + DEFAULT_QUAD_INDICES[4],
-        [5] = vtxs->len + DEFAULT_QUAD_INDICES[5],
+        [0] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[0],
+        [1] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[1],
+        [2] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[2],
+        [3] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[3],
+        [4] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[4],
+        [5] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[5],
     };
 
     list_append(vtxs, quad);
@@ -216,7 +215,7 @@ void __recache_gui_vtx(gui_t *self)
     __recache_ui(self, self->root);
 }
 
-void gui_render(gui_t *gui, const bool enabled_wireframe)
+void __gui_render(gui_t *gui, const bool enabled_wireframe)
 {
     if (!gui->gfx.vtx.len) {
         __recache_gui_vtx(gui);
@@ -261,22 +260,25 @@ void gui_render(gui_t *gui, const bool enabled_wireframe)
                     },
                     .shader_config = {
                         .shader = &gui->gfx.shader,
-                        .uniforms = {0}
+                        .uniforms = {
+                            .count = 1,
+                            .uniform = {
+                                [0] = {
+                                    .name = "projection",
+                                    .type = "matrix4f_t",
+                                    .value.mat4 = glms_ortho(0.0f, 1080.f, 920.f, 0.0f, -2.0f, 2.0f)
+                            }
+                        }
                     }
                 }
             }
         }
-
-    });
+    }});
 }
 
 
 void __ui_destroy(ui_t *ui)
 {
-    if (ui->parent) {
-        mem_free(ui->parent, sizeof(ui_t));
-    }
-
     list_iterator(&ui->children, ui_elem) {
         __ui_destroy(ui_elem);
     }
@@ -284,13 +286,13 @@ void __ui_destroy(ui_t *ui)
     mem_free(ui, sizeof(ui_t));
 }
 
-
 void gui_destroy(gui_t *self)
 {
     if (self->root) {
         __ui_destroy(self->root);
     }
 
+    list_destroy(&self->internals.uistack);
     list_destroy(&self->gfx.vtx);
     list_destroy(&self->gfx.idx);
     glshader_destroy(&self->gfx.shader);
@@ -298,64 +300,68 @@ void gui_destroy(gui_t *self)
     global_gui_instance = NULL;
 }
 
-
-
-/*
- * GUI {
-    PANEL({}) {
-        ui_t *ui = BUTTON({});
-        if (ui->ishot) {
-
-        }
-
-        BUTTON({}) {
-            LABEL();
-        };
-        BUTTON({});
-    }
- }
-*/
 ui_t *__ui_already_exist(const ui_t *ui, const str_t label) 
 {
-    if (ui == NULL)                         return NULL;
+    if (ui == NULL)                     return NULL;
     if (str_cmp(&ui->label, &label))    return ui;
 
     list_iterator(&ui->children, child) {
-        return __ui_already_exist(child, label);
+        ui_t *ui_child = __ui_already_exist(child, label);
+        if (ui_child != NULL) {
+            return ui_child;
+        }
     }
     return NULL;
 }
 
 
-ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const style_t style, list_t *parents) 
+ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const style_t style, list_t *gui_stack) 
 {
-    ui_t *ui = __ui_already_exist(gui->root, label);
-    if (ui) return ui;
-
-    ui_t *parent = parents->len ? (ui_t *)list_get_value(parents, parents->len - 1) : NULL;
-    ui = __ui_init(parent, label, type, &style);
-    if (!parent) {
-        list_append_ptr(parents, ui);
-    } else {
-        list_append_ptr(&parent->children, ui);
+    ASSERT(gui);
+    if(gui->root == NULL && type != UI_TYPE_PANEL) {
+        eprint("UI Panel is missing");
     }
+
+    ui_t *parent = gui_stack->len 
+        ? (ui_t *)list_get_value(gui_stack, gui_stack->len - 1) 
+        : NULL;
+
+    ui_t *ui = __ui_already_exist(gui->root, label);
+    if (!ui) {
+        ui = __ui_init(parent, label, type, &style);
+        if (!gui->root) {
+            gui->root = ui;
+        }
+
+        if (parent && type != UI_TYPE_PANEL) {
+            list_append_ptr(&parent->children, ui);
+        }
+    }
+    list_append_ptr(gui_stack, ui); 
+
+
     return ui;
 }
 
 #define WRAPPED_PLEX(TYPE, ...) (((struct { TYPE wrapped; }){ .wrapped = (__VA_ARGS__) }).wrapped)
 
-#define GUI\
+#define GUI(PHANDLER)\
     for(bool __1 = true; __1;)\
-        for(list_t __gui_stack = list_init(ui_t *); __1; list_destroy(&__gui_stack))\
-            for(gui_t *PGUI = gui_init(); __1; __1 = false)
+        for(gui_t *PGUI = PHANDLER; __1; __gui_render(PHANDLER, false))\
+            for(list_t *__gui_stack = &PGUI->internals.uistack; __1; __1 = false, list_clear(__gui_stack))
+
+#define UI_PANEL(LABEL, STYLE)\
+    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE_PANEL, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
+        LABEL;\
+        list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
 
 #define UI_BUTTON(LABEL, STYLE)\
-    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE_BUTTON, WRAPPED_PLEX(style_t, (STYLE)), &__gui_stack);\
+    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE_BUTTON, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
         LABEL;\
-        list_delete(&__gui_stack, __gui_stack.len - 1), LABEL = NULL)
+        list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
 
 #define UI_LABEL(LABEL, STYLE)\
-    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE_LABEL, WRAPPED_PLEX(style_t, (STYLE)), &__gui_stack);\
+    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE_LABEL, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
         LABEL;\
-        list_delete(&__gui_stack, __gui_stack.len - 1), LABEL = NULL)
+        list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
 

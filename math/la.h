@@ -1,6 +1,7 @@
 #pragma once
 #include <poglib/basic.h>
 #define CGLM_USE_ANONYMOUS_STRUCT 1
+#define CGLM_CLIP_CONTROL_RH_NO // for opengl
 #include <poglib/external/cglm/struct.h>
 
 //NOTE: Find the operation / transformation u need from here
@@ -27,6 +28,10 @@ typedef mat3s matrix3f_t ;
 typedef mat4s matrix4f_t ;
 
 static const vec3f_t ORIGIN = { .x = 0.f, .y = 0.f, .z = 0.f};
+
+#define vec2i(x) (vec2i_t ){x,x}
+#define vec3i(x) (vec3i_t ){x,x,x}
+#define vec4i(x) (vec4i_t ){x,x,x,x}
 
 #define vec2f(x) (vec2f_t ){x,x}
 #define vec3f(x) (vec3f_t ){x,x,x}
