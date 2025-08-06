@@ -89,6 +89,7 @@ void workbench_track_lightsource(workbench_t *self, const gllight_t *light)
 void workbench_toggle_wireframe_mode(workbench_t *self)
 {
     self->render_config.wireframe_mode = !self->render_config.wireframe_mode;
+    gui_set_wireframe_mode(self->gui, self->render_config.wireframe_mode);
 }
 
 void __workbench_render_ui(workbench_t *self)
@@ -99,22 +100,69 @@ void __workbench_render_ui(workbench_t *self)
             .padding = vec4i(0),
             .margin = vec4i(4),
             .dim = {
-                .size = {
-                    .width = 200,
-                    .height = 200
-                }
-            }
+                .width = 200,
+                .height = 200
+            },
+            .layout = UI_LAYOUT_HORIZONTAL
         })) {
-            UI_BUTTON(dksfj, 
+            UI_BUTTON(button1, 
                 ((style_t){
                     .color = COLOR_WHITE, 
                     .padding = {0}, 
                     .margin = {10, 10}, 
                     .dim = {
-                      .size = {
-                          .width = 10,
-                          .height = 10
-                      }
+                      .width = 30,
+                      .height = 30
+                    }
+                }));
+            UI_BUTTON(button2, 
+                ((style_t){
+                    .color = COLOR_BLUE, 
+                    .padding = {0}, 
+                    .margin = {10, 10}, 
+                    .dim = {
+                      .width = 30,
+                      .height = 30
+                    }
+                }));
+            UI_BUTTON(button3, 
+                ((style_t){
+                    .color = COLOR_GREEN, 
+                    .padding = {0}, 
+                    .margin = {10, 10}, 
+                    .dim = {
+                          .width = 30,
+                          .height = 30
+                    }
+                }));
+            UI_BUTTON(button4, 
+                ((style_t){
+                    .color = COLOR_GREEN, 
+                    .padding = {0}, 
+                    .margin = {10, 10}, 
+                    .dim = {
+                      .width = 30,
+                      .height = 30
+                    }
+                }));
+            UI_BUTTON(button5, 
+                ((style_t){
+                    .color = COLOR_GREEN, 
+                    .padding = {0}, 
+                    .margin = {10, 10}, 
+                    .dim = {
+                      .width = 30,
+                      .height = 30
+                    }
+                }));
+            UI_BUTTON(button6, 
+                ((style_t){
+                    .color = COLOR_GREEN, 
+                    .padding = {0}, 
+                    .margin = {10, 10}, 
+                    .dim = {
+                      .width = 30,
+                      .height = 30
                     }
                 }));
         }
