@@ -149,18 +149,26 @@ vec2f_t __get_next_available_pos(const ui_t *parent)
     return pos;
 }
 
+f32 __get_text_total_glyph_width(const ui_t *ui, const gui_t *gui)
+{
+    f32 width = 0;
+    for (u8 i = 0; i < ui->label.len; i++)
+        width += gui->font.handler.fontatlas[(u8)ui->label.data[i]].bw;
+    return width;
+}
+
 f32 __get_ui_width(const ui_t *ui, const gui_t *gui)
 {
     if (ui->style.dim.width) 
         return ui->style.dim.width;
-    return ui->type == UI_TYPE_BUTTON ? ui->label.len * gui->font.handler.fontsize: 0;
+    return (ui->type == UI_TYPE_BUTTON || ui->type == UI_TYPE_LABEL ) ? __get_text_total_glyph_width(ui, gui) : 0;
 }
 
 f32 __get_ui_height(const ui_t *ui, const gui_t *gui)
 {
     if (ui->style.dim.height) 
         return ui->style.dim.height;
-    return ui->type == UI_TYPE_BUTTON ? gui->font.handler.fontsize : 0;
+    return (ui->type == UI_TYPE_BUTTON || ui->type == UI_TYPE_LABEL) ? gui->font.handler.fontsize : 0;
 }
 
 ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, const style_t *style, gui_t *gui) 
@@ -250,6 +258,12 @@ quadf_t __generate_ui_quad(const ui_t *ui, const gui_t *gui)
     );
 }
 
+vec4f_t __get_ui_color(const ui_t *ui)
+{
+    if (!ui->style.color.r && !ui->style.color.g && !ui->style.color.b && !ui->style.color.a) return COLOR_BLACK;
+    return ui->type == UI_TYPE_LABEL ? ui->style.color : COLOR_BLACK;
+}
+
 void __recache_ui_text(gui_t *gui, const ui_t *ui)
 {
     if (ui->type == UI_TYPE_PANEL) return;
@@ -274,7 +288,8 @@ void __recache_ui_text(gui_t *gui, const ui_t *ui)
             &gui->font.handler,
             ui->label.data[str_index], 
             glms_vec3_add(text_pos, (vec3f_t){ 0.f, baseline, 0.f }), 
-            COLOR_BLACK);
+            __get_ui_color(ui)
+        );
 
         text_pos.x += gui->font.handler.fontatlas[(u8)ui->label.data[str_index]].ax;
 
@@ -287,6 +302,8 @@ void __recache_ui_text(gui_t *gui, const ui_t *ui)
 
 void __recache_ui_vtx(gui_t *gui, const ui_t *ui)
 {
+    if (ui->type == UI_TYPE_LABEL) return;
+
     list_t *vtxs = &gui->gfx.vtx[VTX_BUFFER_QUAD_INDEX];
     list_t *idxs = &gui->gfx.idx[VTX_BUFFER_QUAD_INDEX];
 
@@ -464,7 +481,7 @@ void __ui_update(gui_t *gui, ui_t *ui)
     ASSERT(gui);
     ASSERT(ui);
 
-    if (ui->type == UI_TYPE_PANEL) return;
+    if (ui->type == UI_TYPE_PANEL || ui->type == UI_TYPE_LABEL) return;
 
     const window_t *win = window_get_current_active_window();
     const vec2i_t mouse_pos = window_mouse_get_position(win);
