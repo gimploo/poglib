@@ -32,8 +32,8 @@ typedef enum {
 } ui_layout_type;
 
 typedef struct {
-    vec4i_t padding;
-    vec4i_t margin;
+    vec4f_t padding;
+    vec4f_t margin;
     vec4f_t color;
 
     ui_layout_type layout;
@@ -111,6 +111,12 @@ void        gui_destroy(gui_t *self);
                     Implemenentation
 ======================================================*/
 
+vec4f_t __get_ui_padding(const ui_t *ui)
+{
+    return ui->type == UI_TYPE_LABEL ? vec4f(0.f) : ui->style.padding;
+}
+
+
 vec2f_t __accumulator_get_next_position_for_vertical_layout(const vec2f_t accum_pos, const ui_t *current_ui)
 {
     const u32 pos_y = accum_pos.y + current_ui->computed.dim.height + current_ui->style.margin.y;
@@ -151,7 +157,7 @@ vec2f_t __get_next_available_pos(const ui_t *parent)
 
 f32 __get_text_total_glyph_width(const ui_t *ui, const gui_t *gui)
 {
-    f32 width = 0;
+    f32 width = gui->font.handler.fontatlas[(u8)ui->label.data[0]].bw;
     for (u8 i = 0; i < ui->label.len; i++)
         width += gui->font.handler.fontatlas[(u8)ui->label.data[i]].bw;
     return width;
@@ -161,14 +167,20 @@ f32 __get_ui_width(const ui_t *ui, const gui_t *gui)
 {
     if (ui->style.dim.width) 
         return ui->style.dim.width;
-    return (ui->type == UI_TYPE_BUTTON || ui->type == UI_TYPE_LABEL ) ? __get_text_total_glyph_width(ui, gui) : 0;
+    const f32 final_padding_x  = max(__get_ui_padding(ui).left - __get_ui_padding(ui).right, 0);
+    return (ui->type == UI_TYPE_BUTTON || ui->type == UI_TYPE_LABEL) 
+        ? __get_text_total_glyph_width(ui, gui) + final_padding_x
+        : 0;
 }
 
 f32 __get_ui_height(const ui_t *ui, const gui_t *gui)
 {
     if (ui->style.dim.height) 
         return ui->style.dim.height;
-    return (ui->type == UI_TYPE_BUTTON || ui->type == UI_TYPE_LABEL) ? gui->font.handler.fontsize : 0;
+    const f32 final_padding_y  = max(__get_ui_padding(ui).top - __get_ui_padding(ui).bottom, 0);
+    return (ui->type == UI_TYPE_BUTTON || ui->type == UI_TYPE_LABEL) 
+        ? final_padding_y + gui->font.handler.fontsize
+        : 0;
 }
 
 ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, const style_t *style, gui_t *gui) 
@@ -231,38 +243,48 @@ void gui_set_wireframe_mode(gui_t *self, bool toggle)
     self->internals.is_wireframe = toggle;
 }
 
-vec2f_t __get_applied_styled_pos_outter(const ui_t *ui)
+vec3f_t __get_applied_styled_pos_outter(const ui_t *ui)
 {
-    vec2f_t pos = ui->computed.pos;
-    pos.x += ui->style.margin.x;
-    pos.y += ui->style.margin.y;
-    return pos;
+    const vec2f_t pos = ui->computed.pos;
+    return (vec3f_t) {
+        .x = pos.x + ui->style.margin.x,
+        .y = pos.y + ui->style.margin.y,
+        .z = ui->computed.zorder,
+    };
 }
 
-vec2f_t __get_applied_styled_pos_inner(const ui_t *ui)
+vec3f_t __get_applied_padding_on_all_sides(const vec3f_t pos, const vec4f_t padding)
 {
-    vec2f_t pos = __get_applied_styled_pos_outter(ui);
-    pos.x += ui->style.padding.x;
-    pos.y += ui->style.padding.y;
-    return pos;
+    return (vec3f_t) {
+        .x = pos.x + padding.left - padding.right,
+        .y = pos.y + padding.top - padding.bottom,
+        .z = pos.z
+    };
 }
 
+vec3f_t __get_applied_styled_pos_inner(const ui_t *ui)
+{
+    return __get_applied_padding_on_all_sides(
+        __get_applied_styled_pos_outter(ui),
+        ui->style.padding
+    );
+}
 
 quadf_t __generate_ui_quad(const ui_t *ui, const gui_t *gui)
 {
-    const vec2f_t pos = __get_applied_styled_pos_outter(ui);
     return quadf_for_window_coordinates(
-        (vec3f_t ) { pos.x, pos.y, ui->computed.zorder },
+        __get_applied_styled_pos_outter(ui),
         ui->computed.dim.width,
         ui->computed.dim.height
     );
 }
 
-vec4f_t __get_ui_color(const ui_t *ui)
+vec4f_t __get_ui_text_color(const ui_t *ui)
 {
     if (!ui->style.color.r && !ui->style.color.g && !ui->style.color.b && !ui->style.color.a) return COLOR_BLACK;
     return ui->type == UI_TYPE_LABEL ? ui->style.color : COLOR_BLACK;
 }
+
 
 void __recache_ui_text(gui_t *gui, const ui_t *ui)
 {
@@ -271,27 +293,30 @@ void __recache_ui_text(gui_t *gui, const ui_t *ui)
     list_t *vtxs = &gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX];
     list_t *idxs = &gui->gfx.idx[VTX_BUFFER_TEXT_INDEX];
 
-    const vec2f_t containerpos = __get_applied_styled_pos_outter(ui);
-    const vec2f_t textpos = __get_applied_styled_pos_inner(ui);
-    vec3f_t text_pos = { 
-        textpos.x, 
-        textpos.y, 
+    const vec3f_t containerpos = __get_applied_styled_pos_outter(ui);
+    vec3f_t textpos = { 
+        containerpos.x, 
+        containerpos.y, 
         ui->computed.zorder + 0.2f
     };
+
     for (u8 str_index = 0; str_index < ui->label.len; str_index++)
     {
-        const f32 baseline = max(
+        const f32 text_baseline = max(
             (containerpos.y + ui->computed.dim.height) - (textpos.y + gui->font.handler.fontatlas[(u8)ui->label.data[str_index]].bh), 
             0
         );
         const glquad_t quad = glfreetypefont_generate_glquad_for_char(
             &gui->font.handler,
             ui->label.data[str_index], 
-            glms_vec3_add(text_pos, (vec3f_t){ 0.f, baseline, 0.f }), 
-            __get_ui_color(ui)
+            __get_applied_padding_on_all_sides(
+                glms_vec3_add(textpos, (vec3f_t){ 0.f, text_baseline, 0.f }), 
+                ui->style.padding
+            ),
+            __get_ui_text_color(ui)
         );
 
-        text_pos.x += gui->font.handler.fontatlas[(u8)ui->label.data[str_index]].ax;
+        textpos.x += gui->font.handler.fontatlas[(u8)ui->label.data[str_index]].ax;
 
         const u32 idx[] = GENERATE_QUAD_IDX(vtxs->len);
 
