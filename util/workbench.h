@@ -97,8 +97,7 @@ void __workbench_render_ui(workbench_t *self)
     GUI(self->gui) {
         UI_PANEL(panel, ((style_t){
             .color = COLOR_RED,
-            .padding = vec4i(0),
-            .margin = vec4i(4),
+            .margin = vec4f(2.f),
             .dim = {
                 .width = 200,
                 .height = 200
@@ -108,7 +107,7 @@ void __workbench_render_ui(workbench_t *self)
             UI_BUTTON(button1, 
                 ((style_t){
                     .color = COLOR_WHITE, 
-                    .padding = {0}, 
+                    .padding = {0.f, 0.f, 3.f, 0.f}, 
                     .margin = {10, 10}, 
                 }))
             if (button1->state.is_clicked) {
