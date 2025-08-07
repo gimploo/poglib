@@ -442,7 +442,8 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         {
             gltexture2d_bind(
                     config.calls.call[call_idx].textures.textures[txt_idx],
-                    txt_idx);
+                    txt_idx
+            );
         }
 
         if (config.calls.call[call_idx].is_wireframe) {

@@ -3,6 +3,7 @@
 #include <poglib/math.h>
 #include <poglib/gfx/glrenderer3d.h>
 #include <poglib/application.h>
+#include <poglib/font/glfreetypefont.h>
 
 /*
  * LAYOUT - origin is at the top left of the screen
@@ -56,10 +57,11 @@ typedef struct ui_t {
     } state;
 
     struct {
-        vec2i_t pos;
+        vec2f_t pos;
         vec4f_t color;
         f32 zorder;
         bool is_dirty;
+        struct { f32 width; f32 height; } dim;
         //TODO: cache the vertices
     } computed;
 
@@ -68,14 +70,25 @@ typedef struct ui_t {
 
 } ui_t;
 
+typedef enum {
+    VTX_BUFFER_QUAD_INDEX = 0,
+    VTX_BUFFER_TEXT_INDEX = 1,
+    VTX_BUFFER_COUNT
+} vtx_buffer_types;
+
 typedef struct {
     ui_t *root;
 
     struct {
-        list_t vtx;
-        list_t idx;
+        list_t vtx[VTX_BUFFER_COUNT];
+        list_t idx[VTX_BUFFER_COUNT];
         glshader_t shader;
     } gfx;
+
+    struct {
+        glfreetypefont_t handler;
+        glshader_t custom_shader;
+    } font;
 
     struct {
         list_t uistack;
@@ -91,43 +104,44 @@ typedef struct {
 ======================================================*/
 
 gui_t *     gui_init(void);
+void        gui_set_wireframe_mode(gui_t *self, bool toggle);
 void        gui_destroy(gui_t *self);
 
 /*======================================================
                     Implemenentation
 ======================================================*/
 
-vec2i_t __accumulator_next_position_for_vertical_layout(const vec2i_t accum_pos, const ui_t *current_ui)
+vec2f_t __accumulator_get_next_position_for_vertical_layout(const vec2f_t accum_pos, const ui_t *current_ui)
 {
-    const u32 pos_y = accum_pos.y + current_ui->style.dim.height + current_ui->style.margin.y;
-    return (vec2i_t){
+    const u32 pos_y = accum_pos.y + current_ui->computed.dim.height + current_ui->style.margin.y;
+    return (vec2f_t){
         .x = accum_pos.x,
         .y = pos_y
     };
 }
 
-vec2i_t __accumulator_next_position_for_horizontal_layout(const vec2i_t accum_pos, const ui_t *current_ui)
+vec2f_t __accumulator_get_next_position_for_horizontal_layout(const vec2f_t accum_pos, const ui_t *current_ui)
 {
-    const u32 pos_x = accum_pos.x + current_ui->style.dim.width + current_ui->style.margin.x; 
-    return (vec2i_t) {
+    const u32 pos_x = accum_pos.x + current_ui->computed.dim.width + current_ui->style.margin.x; 
+    return (vec2f_t) {
         .x = pos_x,
         .y = accum_pos.y
     };
 }
 
-vec2i_t __get_next_available_pos(const ui_t *parent)
+vec2f_t __get_next_available_pos(const ui_t *parent)
 {
     ASSERT(parent);
-    vec2i_t pos = parent->computed.pos;
+    vec2f_t pos = parent->computed.pos;
     list_iterator(&parent->children, child)
     {
         switch(parent->style.layout)
         {
             case UI_LAYOUT_VERTICAL:
-                pos = __accumulator_next_position_for_vertical_layout(pos, child);
+                pos = __accumulator_get_next_position_for_vertical_layout(pos, child);
             break;
             case UI_LAYOUT_HORIZONTAL:
-                pos = __accumulator_next_position_for_horizontal_layout(pos, child);
+                pos = __accumulator_get_next_position_for_horizontal_layout(pos, child);
             break;
             default: eprint("Unfamiliar layout kind.");
         }
@@ -135,7 +149,21 @@ vec2i_t __get_next_available_pos(const ui_t *parent)
     return pos;
 }
 
-ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, const style_t *style) 
+f32 __get_ui_width(const ui_t *ui, const gui_t *gui)
+{
+    if (ui->style.dim.width) 
+        return ui->style.dim.width;
+    return ui->type == UI_TYPE_BUTTON ? ui->label.len * gui->font.handler.fontsize: 0;
+}
+
+f32 __get_ui_height(const ui_t *ui, const gui_t *gui)
+{
+    if (ui->style.dim.height) 
+        return ui->style.dim.height;
+    return ui->type == UI_TYPE_BUTTON ? gui->font.handler.fontsize : 0;
+}
+
+ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, const style_t *style, gui_t *gui) 
 {
     ui_t * ui = mem_init(&(ui_t) {
         .label = label,
@@ -148,7 +176,9 @@ ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, cons
     }, sizeof(ui_t));
 
     ui->computed.zorder = parent ? parent->computed.zorder + 0.2f : -1.0f;
-    ui->computed.pos = parent ? __get_next_available_pos(parent) : (vec2i_t){0};
+    ui->computed.pos = parent ? __get_next_available_pos(parent) : (vec2f_t){0};
+    ui->computed.dim.width = __get_ui_width(ui, gui);
+    ui->computed.dim.height = __get_ui_height(ui, gui);
 
     return ui;
 }
@@ -158,11 +188,24 @@ gui_t * gui_init(void)
     gui_t *gui = mem_init(&(gui_t) {
         .root = NULL,
         .gfx = {
-            .vtx = list_init(glquad_t),
-            .idx = list_init(u32),
+            .vtx = {
+               [VTX_BUFFER_QUAD_INDEX] = list_init(glquad_t),
+               [VTX_BUFFER_TEXT_INDEX] = list_init(glquad_t),
+            },
+            .idx = {
+               [VTX_BUFFER_QUAD_INDEX] = list_init(u32),
+               [VTX_BUFFER_TEXT_INDEX] = list_init(u32),
+            },
             .shader = glshader_from_file_init(
                 "lib/poglib/gui/uishader.vs",
                 "lib/poglib/gui/uishader.fs"
+            )
+        },
+        .font = {
+            .handler = glfreetypefont_init(DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH, 24, true),
+            .custom_shader = glshader_from_file_init(
+                "lib/poglib/gui/ui-text-shader.vs",
+                "lib/poglib/gui/ui-text-shader.fs"
             )
         },
         .internals = {
@@ -180,70 +223,86 @@ void gui_set_wireframe_mode(gui_t *self, bool toggle)
     self->internals.is_wireframe = toggle;
 }
 
-vec2i_t __applied_styled_pos(const ui_t *ui)
+vec2f_t __get_applied_styled_pos_outter(const ui_t *ui)
 {
-    vec2i_t pos = ui->computed.pos;
+    vec2f_t pos = ui->computed.pos;
     pos.x += ui->style.margin.x;
     pos.y += ui->style.margin.y;
     return pos;
 }
 
-quadf_t __generate_ui_quad(ui_t *ui)
+vec2f_t __get_applied_styled_pos_inner(const ui_t *ui)
 {
-    quadf_t output = {0};
-
-    const vec2i_t pos = __applied_styled_pos(ui);
-
-    output.vertex[TOP_LEFT] = (vec3f_t) { 
-        pos.x, 
-        pos.y, 
-        ui->computed.zorder 
-    };
-    output.vertex[TOP_RIGHT] = (vec3f_t) { 
-        pos.x + ui->style.dim.width, 
-        pos.y, 
-        ui->computed.zorder 
-    };
-    output.vertex[BOTTOM_LEFT] = (vec3f_t) { 
-        pos.x, 
-        pos.y + ui->style.dim.height, 
-        ui->computed.zorder 
-    };
-    output.vertex[BOTTOM_RIGHT] = (vec3f_t) { 
-        pos.x + ui->style.dim.width, 
-        pos.y + ui->style.dim.height, 
-        ui->computed.zorder 
-    };
-
-    return output;
+    vec2f_t pos = __get_applied_styled_pos_outter(ui);
+    pos.x += ui->style.padding.x;
+    pos.y += ui->style.padding.y;
+    return pos;
 }
 
-void __recache_ui_vtx(gui_t *gui, ui_t *ui)
+
+quadf_t __generate_ui_quad(const ui_t *ui, const gui_t *gui)
 {
-    list_t *vtxs = &gui->gfx.vtx;
-    list_t *idxs = &gui->gfx.idx;
+    const vec2f_t pos = __get_applied_styled_pos_outter(ui);
+    return quadf_for_window_coordinates(
+        (vec3f_t ) { pos.x, pos.y, ui->computed.zorder },
+        ui->computed.dim.width,
+        ui->computed.dim.height
+    );
+}
+
+void __recache_ui_text(gui_t *gui, const ui_t *ui)
+{
+    if (ui->type == UI_TYPE_PANEL) return;
+
+    list_t *vtxs = &gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX];
+    list_t *idxs = &gui->gfx.idx[VTX_BUFFER_TEXT_INDEX];
+
+    const vec2f_t containerpos = __get_applied_styled_pos_outter(ui);
+    const vec2f_t textpos = __get_applied_styled_pos_inner(ui);
+    vec3f_t text_pos = { 
+        textpos.x, 
+        textpos.y, 
+        ui->computed.zorder + 0.2f
+    };
+    for (u8 str_index = 0; str_index < ui->label.len; str_index++)
+    {
+        const f32 baseline = max(
+            (containerpos.y + ui->computed.dim.height) - (textpos.y + gui->font.handler.fontatlas[(u8)ui->label.data[str_index]].bh), 
+            0
+        );
+        const glquad_t quad = glfreetypefont_generate_glquad_for_char(
+            &gui->font.handler,
+            ui->label.data[str_index], 
+            glms_vec3_add(text_pos, (vec3f_t){ 0.f, baseline, 0.f }), 
+            COLOR_BLACK);
+
+        text_pos.x += gui->font.handler.fontatlas[(u8)ui->label.data[str_index]].ax;
+
+        const u32 idx[] = GENERATE_QUAD_IDX(vtxs->len);
+
+        list_append(vtxs, quad);
+        list_append_multiple(idxs, idx);
+    }
+}
+
+void __recache_ui_vtx(gui_t *gui, const ui_t *ui)
+{
+    list_t *vtxs = &gui->gfx.vtx[VTX_BUFFER_QUAD_INDEX];
+    list_t *idxs = &gui->gfx.idx[VTX_BUFFER_QUAD_INDEX];
 
     glquad_t quad = glquad(
-        __generate_ui_quad(ui),
+        __generate_ui_quad(ui, gui),
         ui->computed.color,
         (quadf_t){0}
     );
 
-    const u32 idx[] = {
-        [0] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[0],
-        [1] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[1],
-        [2] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[2],
-        [3] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[3],
-        [4] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[4],
-        [5] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[5],
-    };
+    const u32 idx[] = GENERATE_QUAD_IDX(vtxs->len);
 
     list_append(vtxs, quad);
     list_append_multiple(idxs, idx);
-
 }
 
-void __recache_ui(gui_t *gui, ui_t *ui)
+void __recache_ui(gui_t *gui, ui_t *ui, bool recache_text)
 {
     if (!ui) return;
 
@@ -256,20 +315,23 @@ void __recache_ui(gui_t *gui, ui_t *ui)
         ui->computed.color = ui->style.color;
     }
 
+    if (recache_text) {
+        __recache_ui_text(gui, ui);
+    }
     __recache_ui_vtx(gui, ui);
 
     list_iterator(&ui->children, child)
     {
-        __recache_ui(gui, child);
+        __recache_ui(gui, child, recache_text);
     }
 }
 
-void __recache_gui_vtx(gui_t *self)
+void __recache_gui_vtx(gui_t *self, bool recache_text)
 {
-    list_clear(&self->gfx.vtx);
-    list_clear(&self->gfx.idx);
+    list_clear(&self->gfx.vtx[VTX_BUFFER_QUAD_INDEX]);
+    list_clear(&self->gfx.idx[VTX_BUFFER_QUAD_INDEX]);
 
-    __recache_ui(self, self->root);
+    __recache_ui(self, self->root, recache_text);
 
     self->internals.is_dirty = false;
 }
@@ -277,23 +339,28 @@ void __recache_gui_vtx(gui_t *self)
 void __gui_render(gui_t *gui)
 {
     if (gui->internals.is_dirty) {
-        __recache_gui_vtx(gui);
+        const bool recache_text = !gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX].len;
+        __recache_gui_vtx(gui, recache_text);
     }
+
+    const gltexture2d_t *textures[1] = {
+        &gui->font.handler.texture
+    };
 
     glrenderer3d_draw((glrendererconfig_t){
         .calls = {
-            .count = 1,
+            .count = 2,
             .call = {
                 [0] = {
                     .draw_mode = GL_TRIANGLES,
                     .is_wireframe = gui->internals.is_wireframe,
                     .vtx = {
-                        .data = gui->gfx.vtx.data,
-                        .size = list_get_size(&gui->gfx.vtx)
+                        .data = gui->gfx.vtx[VTX_BUFFER_QUAD_INDEX].data,
+                        .size = list_get_size(&gui->gfx.vtx[VTX_BUFFER_QUAD_INDEX])
                     },
                     .idx = {
-                        .data = gui->gfx.idx.data,
-                        .nmemb = gui->gfx.idx.len
+                        .data = gui->gfx.idx[VTX_BUFFER_QUAD_INDEX].data,
+                        .nmemb = gui->gfx.idx[VTX_BUFFER_QUAD_INDEX].len
                     },
                     .textures = {0},
                     .attrs = {
@@ -326,13 +393,70 @@ void __gui_render(gui_t *gui)
                                     .name = "projection",
                                     .type = "matrix4f_t",
                                     .value.mat4 = glms_ortho(0.0f, 1080.f, 920.f, 0.0f, -2.0f, 2.0f)
+                                }
+                            }
+                        }
+                    }
+                },
+                [1] = {
+                    .vtx = {
+                        .data = list_get_buffer(&gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX]),
+                        .size = list_get_size(&gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX])
+                    },
+                    .idx = {
+                        .data = list_get_buffer(&gui->gfx.idx[VTX_BUFFER_TEXT_INDEX]),
+                        .nmemb = gui->gfx.idx[VTX_BUFFER_TEXT_INDEX].len
+                    },
+                    .textures = {
+                        .count = 1,
+                        .textures = textures,
+                    },
+                    .shader_config = {
+                        .shader = &gui->font.custom_shader,
+                        .uniforms = {
+                            .count = 1,
+                            .uniform = {
+                                [0] = {
+                                    .name = "projection",
+                                    .type = "matrix4f_t",
+                                    .value.mat4 = glms_ortho(0.0f, 1080.f, 920.f, 0.0f, -2.0f, 2.0f)
+                                }
+                            }
+                        },
+                    },
+                    .is_wireframe = gui->internals.is_wireframe,
+                    .attrs = {
+                        .count = 3,
+                        .attr = {
+                            [0] = {
+                                .type = GL_FLOAT,
+                                .ncmp = 3,
+                                .interleaved = {
+                                    .offset = offsetof(glvertex2d_t, position),
+                                    .stride = sizeof(glvertex2d_t)
+                                },
+                            },
+                            [1] = {
+                                .type = GL_FLOAT,
+                                .ncmp = 4,
+                                .interleaved = {
+                                    .offset = offsetof(glvertex2d_t, color),
+                                    .stride = sizeof(glvertex2d_t)
+                                },
+                            },
+                            [2] = {
+                                .type = GL_FLOAT,
+                                .ncmp = 2,
+                                .interleaved = {
+                                    .offset = offsetof(glvertex2d_t, uv),
+                                    .stride = sizeof(glvertex2d_t)
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-    }});
+        }});
 }
 
 void __ui_update(gui_t *gui, ui_t *ui)
@@ -340,13 +464,15 @@ void __ui_update(gui_t *gui, ui_t *ui)
     ASSERT(gui);
     ASSERT(ui);
 
+    if (ui->type == UI_TYPE_PANEL) return;
+
     const window_t *win = window_get_current_active_window();
     const vec2i_t mouse_pos = window_mouse_get_position(win);
 
-    const bool is_cursor_on_ui = mouse_pos.x > ui->computed.pos.x
-        && mouse_pos.x < ui->computed.pos.x + ui->style.dim.width
-        && mouse_pos.y > ui->computed.pos.y
-        && mouse_pos.y < ui->computed.pos.y + ui->style.dim.height;
+    const bool is_cursor_on_ui = (f32)mouse_pos.x > ui->computed.pos.x
+        && (f32)mouse_pos.x < ui->computed.pos.x + ui->computed.dim.width
+        && (f32)mouse_pos.y > ui->computed.pos.y
+        && (f32)mouse_pos.y < ui->computed.pos.y + ui->computed.dim.height;
 
     if (is_cursor_on_ui) {
         ui->state.is_hot = true; 
@@ -379,19 +505,23 @@ void gui_destroy(gui_t *self)
     }
 
     list_destroy(&self->internals.uistack);
-    list_destroy(&self->gfx.vtx);
-    list_destroy(&self->gfx.idx);
+    list_destroy(&self->gfx.vtx[VTX_BUFFER_QUAD_INDEX]);
+    list_destroy(&self->gfx.idx[VTX_BUFFER_QUAD_INDEX]);
+    list_destroy(&self->gfx.vtx[VTX_BUFFER_TEXT_INDEX]);
+    list_destroy(&self->gfx.idx[VTX_BUFFER_TEXT_INDEX]);
     glshader_destroy(&self->gfx.shader);
+    glshader_destroy(&self->font.custom_shader);
+    glfreetypefont_destroy(&self->font.handler);
     mem_free(self, sizeof(gui_t));
 }
 
-ui_t *__ui_already_exist(const ui_t *ui, const str_t label) 
+const ui_t *__ui_already_exist(const ui_t *ui, const str_t label) 
 {
     if (ui == NULL)                     return NULL;
     if (str_cmp(&ui->label, &label))    return ui;
 
     list_iterator(&ui->children, child) {
-        ui_t *ui_child = __ui_already_exist(child, label);
+        const ui_t *ui_child = __ui_already_exist(child, label);
         if (ui_child != NULL) {
             return ui_child;
         }
@@ -400,7 +530,7 @@ ui_t *__ui_already_exist(const ui_t *ui, const str_t label)
 }
 
 
-ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const style_t style, list_t *gui_stack) 
+const ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const style_t style, list_t *gui_stack) 
 {
     ASSERT(gui);
     if(gui->root == NULL && type != UI_TYPE_PANEL) {
@@ -411,9 +541,9 @@ ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const styl
         ? (ui_t *)list_get_value(gui_stack, gui_stack->len - 1) 
         : NULL;
 
-    ui_t *ui = __ui_already_exist(gui->root, label);
+    const ui_t *ui = __ui_already_exist(gui->root, label);
     if (!ui) {
-        ui = __ui_init(parent, label, type, &style);
+        ui = __ui_init(parent, label, type, &style, gui);
         if (!gui->root) {
             gui->root = ui;
         }
