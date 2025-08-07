@@ -406,6 +406,16 @@ const u32 DEFAULT_QUAD_INDICES[] = {
     2, 3, 0
 };
 
+#define GENERATE_QUAD_IDX(OFFSET)\
+    {\
+        [0] = 4 * OFFSET + DEFAULT_QUAD_INDICES[0],\
+        [1] = 4 * OFFSET + DEFAULT_QUAD_INDICES[1],\
+        [2] = 4 * OFFSET + DEFAULT_QUAD_INDICES[2],\
+        [3] = 4 * OFFSET + DEFAULT_QUAD_INDICES[3],\
+        [4] = 4 * OFFSET + DEFAULT_QUAD_INDICES[4],\
+        [5] = 4 * OFFSET + DEFAULT_QUAD_INDICES[5],\
+    }
+
 // Creates a quad suited for OpenGL
 glquad_t glquad(const quadf_t positions, const vec4f_t color, const quadf_t tex_coord)
 {

@@ -119,6 +119,37 @@ quadf_t quadf(vec3f_t position, f32 width, f32 height)
     return output;
 }
 
+quadf_t quadf_for_window_coordinates(
+    const vec3f_t pos, 
+    const f32 width, 
+    const f32 height
+) {
+    return (quadf_t) {
+        .vertex = {
+            [TOP_LEFT] = (vec3f_t) { 
+                pos.x, 
+                pos.y, 
+                pos.z
+            },
+            [TOP_RIGHT] = (vec3f_t) { 
+                pos.x + width, 
+                pos.y, 
+                pos.z
+            },
+            [BOTTOM_LEFT] = (vec3f_t) { 
+                pos.x, 
+                pos.y + height, 
+                pos.z
+            },
+            [BOTTOM_RIGHT] = (vec3f_t) { 
+                pos.x + width, 
+                pos.y + height, 
+                pos.z
+            }
+        }
+    };
+}
+
 void quadf_translate(quadf_t *quad, vec3f_t vec)
 {
     quad->vertex[0] = glms_vec3_add(quad->vertex[0],vec);

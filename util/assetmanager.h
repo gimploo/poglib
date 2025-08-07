@@ -75,7 +75,7 @@ asset_t * __impl_assetmanager_add_asset(assetmanager_t *manager, const char *lab
         case AT_FONT_FREETYPE:
         {
             assert(fontsize != 0);
-            glfreetypefont_t font = glfreetypefont_init(filepath01, fontsize);
+            glfreetypefont_t font = glfreetypefont_init(filepath01, fontsize, false);
             memcpy(&output.font, &font, sizeof(font)); 
         }
         break;

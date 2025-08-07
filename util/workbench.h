@@ -110,10 +110,6 @@ void __workbench_render_ui(workbench_t *self)
                     .color = COLOR_WHITE, 
                     .padding = {0}, 
                     .margin = {10, 10}, 
-                    .dim = {
-                      .width = 30,
-                      .height = 30
-                    }
                 }))
             if (button1->state.is_clicked) {
                 printf("Button1 is clicked\n");
@@ -123,50 +119,30 @@ void __workbench_render_ui(workbench_t *self)
                     .color = COLOR_BLUE, 
                     .padding = {0}, 
                     .margin = {10, 10}, 
-                    .dim = {
-                      .width = 30,
-                      .height = 30
-                    }
                 }));
             UI_BUTTON(button3, 
                 ((style_t){
                     .color = COLOR_GREEN, 
                     .padding = {0}, 
                     .margin = {10, 10}, 
-                    .dim = {
-                      .width = 30,
-                      .height = 30
-                    }
                 }));
             UI_BUTTON(button4, 
                 ((style_t){
                     .color = COLOR_GREEN, 
                     .padding = {0}, 
                     .margin = {10, 10}, 
-                    .dim = {
-                      .width = 30,
-                      .height = 30
-                    }
                 }));
             UI_BUTTON(button5, 
                 ((style_t){
                     .color = COLOR_GREEN, 
                     .padding = {0}, 
                     .margin = {10, 10}, 
-                    .dim = {
-                      .width = 30,
-                      .height = 30
-                    }
                 }));
             UI_BUTTON(button6, 
                 ((style_t){
                     .color = COLOR_GREEN, 
                     .padding = {0}, 
                     .margin = {10, 10}, 
-                    .dim = {
-                      .width = 30,
-                      .height = 30
-                    }
                 }));
         }
     }
