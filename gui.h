@@ -116,6 +116,33 @@ vec4f_t __get_ui_padding(const ui_t *ui)
     return ui->type == UI_TYPE_LABEL ? vec4f(0.f) : ui->style.padding;
 }
 
+vec3f_t __get_applied_styled_pos_outter(const ui_t *ui)
+{
+    const vec2f_t pos = ui->computed.pos;
+    return (vec3f_t) {
+        .x = pos.x + (ui->style.margin.left - ui->style.margin.right),
+        .y = pos.y + (ui->style.margin.top - ui->style.margin.bottom),
+        .z = ui->computed.zorder,
+    };
+}
+
+vec3f_t __get_applied_padding_on_all_sides(const vec3f_t pos, const vec4f_t padding)
+{
+    return (vec3f_t) {
+        .x = pos.x + padding.left - padding.right,
+        .y = pos.y + padding.top - padding.bottom,
+        .z = pos.z
+    };
+}
+
+vec3f_t __get_applied_styled_pos_inner(const ui_t *ui)
+{
+    return __get_applied_padding_on_all_sides(
+        __get_applied_styled_pos_outter(ui),
+        ui->style.padding
+    );
+}
+
 
 vec2f_t __accumulator_get_next_position_for_vertical_layout(const vec2f_t accum_pos, const ui_t *current_ui)
 {
@@ -138,7 +165,8 @@ vec2f_t __accumulator_get_next_position_for_horizontal_layout(const vec2f_t accu
 vec2f_t __get_next_available_pos(const ui_t *parent)
 {
     ASSERT(parent);
-    vec2f_t pos = parent->computed.pos;
+    const vec3f_t parentpos = __get_applied_styled_pos_inner(parent);
+    vec2f_t pos = vec2f_cast(parentpos);
     list_iterator(&parent->children, child)
     {
         switch(parent->style.layout)
@@ -243,32 +271,7 @@ void gui_set_wireframe_mode(gui_t *self, bool toggle)
     self->internals.is_wireframe = toggle;
 }
 
-vec3f_t __get_applied_styled_pos_outter(const ui_t *ui)
-{
-    const vec2f_t pos = ui->computed.pos;
-    return (vec3f_t) {
-        .x = pos.x + (ui->style.margin.left - ui->style.margin.right),
-        .y = pos.y + (ui->style.margin.top - ui->style.margin.bottom),
-        .z = ui->computed.zorder,
-    };
-}
 
-vec3f_t __get_applied_padding_on_all_sides(const vec3f_t pos, const vec4f_t padding)
-{
-    return (vec3f_t) {
-        .x = pos.x + padding.left - padding.right,
-        .y = pos.y + padding.top - padding.bottom,
-        .z = pos.z
-    };
-}
-
-vec3f_t __get_applied_styled_pos_inner(const ui_t *ui)
-{
-    return __get_applied_padding_on_all_sides(
-        __get_applied_styled_pos_outter(ui),
-        ui->style.padding
-    );
-}
 
 quadf_t __generate_ui_quad(const ui_t *ui, const gui_t *gui)
 {

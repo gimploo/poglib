@@ -97,10 +97,10 @@ void __workbench_render_ui(workbench_t *self)
     GUI(self->gui) {
         UI_PANEL(panel, ((style_t){
             .color = COLOR_RED,
-            .margin = vec4f(2.f),
+            .margin = {800.f, 10.f, 0.f, 0.f},
             .dim = {
                 .width = 200,
-                .height = 200
+                .height = 300
             },
             .layout = UI_LAYOUT_VERTICAL
         })) {
