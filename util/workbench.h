@@ -114,7 +114,7 @@ void __workbench_render_ui(workbench_t *self)
             if (button1->state.is_clicked) {
                 printf("Button1 is clicked\n");
             }
-            UI_BUTTON(button2, 
+            UI_LABEL(label1, 
                 ((style_t){
                     .color = COLOR_BLUE, 
                     .padding = {0}, 
