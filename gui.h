@@ -119,7 +119,7 @@ vec4f_t __get_ui_padding(const ui_t *ui)
 
 vec2f_t __accumulator_get_next_position_for_vertical_layout(const vec2f_t accum_pos, const ui_t *current_ui)
 {
-    const u32 pos_y = accum_pos.y + current_ui->computed.dim.height + current_ui->style.margin.y;
+    const u32 pos_y = accum_pos.y + current_ui->computed.dim.height + (current_ui->style.margin.top - current_ui->style.margin.bottom);
     return (vec2f_t){
         .x = accum_pos.x,
         .y = pos_y
@@ -128,7 +128,7 @@ vec2f_t __accumulator_get_next_position_for_vertical_layout(const vec2f_t accum_
 
 vec2f_t __accumulator_get_next_position_for_horizontal_layout(const vec2f_t accum_pos, const ui_t *current_ui)
 {
-    const u32 pos_x = accum_pos.x + current_ui->computed.dim.width + current_ui->style.margin.x; 
+    const u32 pos_x = accum_pos.x + current_ui->computed.dim.width + (current_ui->style.margin.left - current_ui->style.margin.right); 
     return (vec2f_t) {
         .x = pos_x,
         .y = accum_pos.y
@@ -247,8 +247,8 @@ vec3f_t __get_applied_styled_pos_outter(const ui_t *ui)
 {
     const vec2f_t pos = ui->computed.pos;
     return (vec3f_t) {
-        .x = pos.x + ui->style.margin.x,
-        .y = pos.y + ui->style.margin.y,
+        .x = pos.x + (ui->style.margin.left - ui->style.margin.right),
+        .y = pos.y + (ui->style.margin.top - ui->style.margin.bottom),
         .z = ui->computed.zorder,
     };
 }

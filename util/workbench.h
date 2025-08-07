@@ -124,7 +124,10 @@ void __workbench_render_ui(workbench_t *self)
                     .color = COLOR_GREEN, 
                     .padding = {0}, 
                     .margin = {10, 10}, 
-                }));
+                }))
+            if (button3->state.is_clicked) {
+                printf("Button3 is clicked\n");
+            }
             UI_BUTTON(button4, 
                 ((style_t){
                     .color = COLOR_GREEN, 
