@@ -17,10 +17,28 @@ trif_t          trif(vec3f_t pos, f32 side);
 #define         TRI_FMT         VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT ",\n"
 #define         TRI_ARG(TRI)    VEC3F_ARG(&(TRI.vertex[0])), VEC3F_ARG(&(TRI.vertex[1])), VEC3F_ARG(&(TRI.vertex[3]))
 
+typedef struct rect_t { 
+    vec2f_t vertex[4]; 
+} rect_t ;
+
+
 //Quad
 typedef struct quadf_t { 
     vec3f_t vertex[4]; 
 } quadf_t ;
+
+quadf_t quadf_cast(const rect_t self)
+{
+    const f32 fill = 0.f;
+    return (quadf_t) {
+        .vertex = {
+            [0] = { self.vertex[0].x, self.vertex[0].y, fill },
+            [1] = { self.vertex[1].x, self.vertex[1].y, fill },
+            [2] = { self.vertex[2].x, self.vertex[2].y, fill },
+            [3] = { self.vertex[3].x, self.vertex[3].y, fill },
+        }
+    };
+}
 
 #define         QUAD_FMT                        VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT "\n" 
 #define         QUAD_ARG(QUAD)                  VEC3F_ARG(&(QUAD.vertex[0])), VEC3F_ARG(&(QUAD.vertex[1])), VEC3F_ARG(&(QUAD.vertex[3])), VEC3F_ARG(&(QUAD.vertex[3]))

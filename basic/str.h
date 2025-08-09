@@ -22,6 +22,7 @@ str_t           str_cpy_delimiter(str_t *__buffer, char ch);
 bool            str_cmp(const str_t *a, const str_t *b);
 void            str_cpy(str_t *dest, str_t *source);
 str_t           str_get_directory_path(const char *string);
+str_t           str_join(const str_t *part1, const char *part2);
 
 void            cstr_combine_path(const char *path1, const char *path2, char *output, const u32 output_size);
 void            cstr_copy(char *dest, const char *source);
@@ -227,6 +228,23 @@ void cstr_copy(char *dest, const char *source)
 void str_get_data(const str_t *data, char *output)
 {
     memcpy(output, data->data, data->len);
+}
+
+str_t str_join(const str_t *part1, const char *part2)
+{
+    ASSERT(part1);
+    ASSERT(part2);
+
+    const u32 part2_len = strlen(part2);
+
+    char *buffer = calloc(sizeof(char), (part1->len + part2_len + 1));
+    ASSERT(buffer);
+    sprintf(buffer, "%s%s", part1->data, part2);
+    return (str_t) {
+        .len = part1->len + part2_len,
+        .data = buffer,
+        .__is_heap_allocated = true
+    };
 }
 
 //credit: gunslinger

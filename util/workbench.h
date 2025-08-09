@@ -97,7 +97,7 @@ void __workbench_render_ui(workbench_t *self)
     GUI(self->gui) {
         UI_PANEL(panel, ((style_t){
             .color = COLOR_RED,
-            .margin = {800.f, 10.f, 0.f, 0.f},
+            .margin = {10.f, 10.f, 0.f, 0.f},
             .dim = {
                 .width = 200,
                 .height = 300
@@ -120,7 +120,7 @@ void __workbench_render_ui(workbench_t *self)
                     .margin = {10, 10}, 
                 }));
             UI_BUTTON(button3, 
-                ((style_t){
+                ((style_t ){
                     .color = COLOR_GREEN, 
                     .padding = {0}, 
                     .margin = {10, 10}, 
@@ -128,19 +128,13 @@ void __workbench_render_ui(workbench_t *self)
             if (button3->state.is_clicked) {
                 printf("Button3 is clicked\n");
             }
+            UI_CHECKBOX(
+                checkbox, 
+                ((style_t){
+                    .margin = {10, 10}
+                })
+            );
             UI_BUTTON(button4, 
-                ((style_t){
-                    .color = COLOR_GREEN, 
-                    .padding = {0}, 
-                    .margin = {10, 10}, 
-                }));
-            UI_BUTTON(button5, 
-                ((style_t){
-                    .color = COLOR_GREEN, 
-                    .padding = {0}, 
-                    .margin = {10, 10}, 
-                }));
-            UI_BUTTON(button6, 
                 ((style_t){
                     .color = COLOR_GREEN, 
                     .padding = {0}, 
