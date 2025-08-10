@@ -414,7 +414,7 @@ void __recache_ui_icons_vtx(gui_t *gui, const ui_t *ui)
     list_t *vtxs = &gui->gfx.vtx[VTX_BUFFER_ICONS_INDEX];
     list_t *idxs = &gui->gfx.idx[VTX_BUFFER_ICONS_INDEX];
 
-    glquad_t quad = glquad(
+    const glquad_t quad = glquad(
         __generate_ui_quad(ui, gui),
         COLOR_WHITE,
         __get_ui_icon_uvs(ui, gui)
@@ -451,7 +451,7 @@ void __recache_ui(gui_t *gui, ui_t *ui, bool recache_text, bool recache_icons)
 
     __recache_ui_text(gui, ui);
 
-    if (ui->type & (UI_TYPE_ICON) && recache_icons)
+    if (ui->type & (UI_TYPE_ICON))
         __recache_ui_icons_vtx(gui, ui);
 
     if (ui->type & (UI_TYPE_BUTTON | UI_TYPE_PANEL)) {
@@ -473,6 +473,10 @@ void __recache_gui_vtx(gui_t *self, bool recache_text, bool recache_icons)
     list_clear(&self->gfx.vtx[VTX_BUFFER_QUAD_INDEX]);
     list_clear(&self->gfx.idx[VTX_BUFFER_QUAD_INDEX]);
 
+    //FIXME: think of a better way to clear this
+    list_clear(&self->gfx.vtx[VTX_BUFFER_ICONS_INDEX]);
+    list_clear(&self->gfx.idx[VTX_BUFFER_ICONS_INDEX]);
+
     __recache_ui(self, self->root, recache_text, recache_icons);
 
     self->internals.is_dirty = false;
@@ -483,7 +487,7 @@ void __gui_render(gui_t *gui)
     if (gui->internals.is_dirty) {
         const bool recache_text = !gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX].len;
         const bool recache_icons = !gui->gfx.vtx[VTX_BUFFER_ICONS_INDEX].len;
-        __recache_gui_vtx(gui, recache_text, true);
+        __recache_gui_vtx(gui, recache_text, recache_icons);
     }
 
     const gltexture2d_t *fonttexture[1] = {
@@ -696,8 +700,7 @@ void __ui_update(gui_t *gui, ui_t *ui)
             ui->state.is_clicked = clicked_on_ui;
         break;
         case UI_TYPE_CHECKBOX: 
-            if(is_cursor_on_ui && window_mouse_button_just_pressed(win, SDL_MOUSEBUTTON_LEFT))
-                ui->state.is_clicked = !ui->state.is_clicked;
+            if(clicked_on_ui) ui->state.is_clicked = !ui->state.is_clicked;
         break;
     }
 
