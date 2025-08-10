@@ -27,7 +27,6 @@ typedef enum {
 
     SDL_MOUSESTATE_NONE,
     SDL_MOUSESTATE_JUST_PRESSED,
-    SDL_MOUSESTATE_PRESSED,
     SDL_MOUSESTATE_RELEASED,
     SDL_MOUSESTATE_HELD,
 
@@ -163,8 +162,13 @@ bool window_mouse_button_just_pressed(
         window_t *window, 
         sdl_mousebuttontype button)
 {
-  return window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED 
-         && window->mouse.button == button;
+    bool is_active = window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED 
+        && window->mouse.button == button;
+    if (is_active) {
+        window->mouse.state = SDL_MOUSESTATE_NONE;
+        return is_active;
+    }
+    return false;
 }
 
 bool window_mouse_button_is_pressed(
@@ -173,7 +177,6 @@ bool window_mouse_button_is_pressed(
 {
   return window->mouse.button == button 
          && (window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED 
-             || window->mouse.state == SDL_MOUSESTATE_PRESSED
              || window->mouse.state == SDL_MOUSESTATE_HELD);
 }
 
@@ -196,8 +199,11 @@ bool window_mouse_button_is_released(
 bool window_keyboard_is_key_just_pressed(window_t *window, SDL_Keycode key)
 {
     bool output = window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)];
-    // window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)] = false;
-    return output;
+    if (output) {
+        window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)] = false;
+        return output;
+    }
+    return false;
 }
 
 bool window_keyboard_is_key_held(window_t *window, SDL_Keycode key)
@@ -764,9 +770,7 @@ void window_update_user_input(window_t *window)
 {
     SDL_Event *event = &window->__sdl_event;
 
-    if (window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED ) {
-        window->mouse.state = SDL_MOUSESTATE_PRESSED;
-    } else if (window->mouse.state == SDL_MOUSESTATE_RELEASED) {
+    if (window->mouse.state == SDL_MOUSESTATE_RELEASED) {
         window->mouse.state = SDL_MOUSESTATE_NONE;
     }
 
@@ -803,7 +807,6 @@ void window_update_user_input(window_t *window)
                     break;
 
                     case SDL_MOUSESTATE_JUST_PRESSED:
-                    case SDL_MOUSESTATE_PRESSED:
                     case SDL_MOUSESTATE_HELD:
                         window->mouse.state = SDL_MOUSESTATE_HELD;
                     break;
@@ -820,7 +823,6 @@ void window_update_user_input(window_t *window)
                     break;
 
                     case SDL_MOUSESTATE_JUST_PRESSED:
-                    case SDL_MOUSESTATE_PRESSED:
                     case SDL_MOUSESTATE_HELD:
                         window->mouse.state = SDL_MOUSESTATE_RELEASED;
                     break;

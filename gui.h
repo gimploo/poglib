@@ -688,7 +688,7 @@ void __ui_update(gui_t *gui, ui_t *ui)
         ui->computed.is_dirty = false;
     }
 
-    const bool clicked_on_ui = is_cursor_on_ui && window_mouse_button_is_pressed(win, SDL_MOUSEBUTTON_LEFT);
+    const bool clicked_on_ui = is_cursor_on_ui && window_mouse_button_just_pressed(win, SDL_MOUSEBUTTON_LEFT);
 
     switch(ui->type)
     {
@@ -696,7 +696,7 @@ void __ui_update(gui_t *gui, ui_t *ui)
             ui->state.is_clicked = clicked_on_ui;
         break;
         case UI_TYPE_CHECKBOX: 
-            if(is_cursor_on_ui && window_mouse_button_is_pressed(win, SDL_MOUSEBUTTON_LEFT))
+            if(is_cursor_on_ui && window_mouse_button_just_pressed(win, SDL_MOUSEBUTTON_LEFT))
                 ui->state.is_clicked = !ui->state.is_clicked;
         break;
     }
