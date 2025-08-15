@@ -15,8 +15,8 @@
 
 typedef enum {
 
-    UI_SPRITE_CHECKBOX_ROUNDED_UNSELECTED = 12,
-    UI_SPRITE_CHECKBOX_ROUNDED_SELECTED = 15,
+    UI_SPRITE_CHECKBOX_ROUNDED_UNSELECTED = 14,
+    UI_SPRITE_CHECKBOX_ROUNDED_SELECTED = 16,
 
 } UI_SPRITE_INDEX_TYPE;
 
@@ -400,13 +400,16 @@ quadf_t __get_ui_icon_uvs(const ui_t *ui, const gui_t *gui)
     switch(ui->type)
     {
         case UI_TYPE_ICON:
-            return quadf_cast(atlasmanager_get_sprite(
-                &gui->atlas, 
-                ui->state.is_clicked ? UI_SPRITE_CHECKBOX_ROUNDED_SELECTED : UI_SPRITE_CHECKBOX_ROUNDED_UNSELECTED
-            ));
+            if (ui->parent && ui->parent->type == UI_TYPE_CHECKBOX) {
+                return quadf_cast(atlasmanager_get_sprite(
+                    &gui->atlas, 
+                    ui->parent->state.is_clicked ? UI_SPRITE_CHECKBOX_ROUNDED_SELECTED : UI_SPRITE_CHECKBOX_ROUNDED_UNSELECTED
+                ));
+            }
         break;
         default: return (quadf_t){0};
     }
+    return (quadf_t){0};
 }
 
 void __recache_ui_icons_vtx(gui_t *gui, const ui_t *ui)
