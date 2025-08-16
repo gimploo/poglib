@@ -97,77 +97,57 @@ void __workbench_render_ui(workbench_t *self)
     GUI(self->gui) {
         UI_PANEL(panel, ((style_t){
             .color = COLOR_RED,
-            .padding = vec4i(0),
-            .margin = vec4i(4),
+            .margin = {10.f, 10.f, 0.f, 0.f},
+            .padding = {10, 10}, 
             .dim = {
                 .width = 200,
-                .height = 200
+                .height = 300
             },
             .layout = UI_LAYOUT_VERTICAL
         })) {
             UI_BUTTON(button1, 
                 ((style_t){
                     .color = COLOR_WHITE, 
-                    .padding = {0}, 
-                    .margin = {10, 10}, 
-                    .dim = {
-                      .width = 30,
-                      .height = 30
-                    }
                 }))
             if (button1->state.is_clicked) {
                 printf("Button1 is clicked\n");
             }
-            UI_BUTTON(button2, 
+            UI_LABEL(label1, 
                 ((style_t){
                     .color = COLOR_BLUE, 
-                    .padding = {0}, 
-                    .margin = {10, 10}, 
-                    .dim = {
-                      .width = 30,
-                      .height = 30
-                    }
                 }));
             UI_BUTTON(button3, 
-                ((style_t){
+                ((style_t ){
                     .color = COLOR_GREEN, 
-                    .padding = {0}, 
-                    .margin = {10, 10}, 
-                    .dim = {
-                      .width = 30,
-                      .height = 30
-                    }
-                }));
+                })) {
+                if (button3->state.is_clicked) {
+                    printf("Button3 is clicked\n");
+                }
+            };
+            UI_CHECKBOX(
+                checkbox, 
+                ((style_t){0})
+            ) {
+                if (checkbox->state.is_clicked) {
+                    //printf("true\n");
+                }
+            }
+            UI_SLIDER(
+                slider,
+                ((ui_config_t){.range={.min = 10, .max = 100}}),
+                ((style_t){
+                    .dim = {10, 10},
+                })
+            ) {
+               printf("value %f\n", slider->state.value);
+            }
             UI_BUTTON(button4, 
                 ((style_t){
                     .color = COLOR_GREEN, 
-                    .padding = {0}, 
-                    .margin = {10, 10}, 
-                    .dim = {
-                      .width = 30,
-                      .height = 30
-                    }
-                }));
-            UI_BUTTON(button5, 
-                ((style_t){
-                    .color = COLOR_GREEN, 
-                    .padding = {0}, 
-                    .margin = {10, 10}, 
-                    .dim = {
-                      .width = 30,
-                      .height = 30
-                    }
-                }));
-            UI_BUTTON(button6, 
-                ((style_t){
-                    .color = COLOR_GREEN, 
-                    .padding = {0}, 
-                    .margin = {10, 10}, 
-                    .dim = {
-                      .width = 30,
-                      .height = 30
-                    }
-                }));
+                }))
+            if (button4->state.is_clicked) {
+                printf("Button4 is clicked\n");
+            }
         }
     }
 }

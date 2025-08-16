@@ -1,6 +1,7 @@
 #pragma once
 #include <poglib/basic.h>
 #include "../gfx/glrenderer2d.h"
+#include "../gfx/glrenderer3d.h"
 #if defined(WINDOW_GLFW)
 #include <poglib/application/window/glfw_window.h>
 #elif defined(WINDOW_SDL)
@@ -18,6 +19,7 @@
 //quad, when passing the position
 
 #define MAX_CHARACTERS_IN_FREETYPE 128
+#define DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH "lib/poglib/res/ttf_fonts/Roboto-Medium.ttf"
 
 typedef struct glfreetypefont_t {
 
@@ -27,34 +29,37 @@ typedef struct glfreetypefont_t {
 
     struct {
 
-        f32 ax;	// advance.x
-		f32 ay;	// advance.y
-
-		f32 bw;	// bitmap.width;
-		f32 bh;	// bitmap.height;
-
-		f32 bl;	// bitmap_left;
-		f32 bt;	// bitmap_top;
-
-		f32 tx;	// x offset of glyph in texture coordinates
-		f32 ty;	// y offset of glyph in texture coordinates
+        f32 ax;// advance.x
+        f32 ay;// advance.y
+        f32 bw;// bitmap.width;
+        f32 bh;// bitmap.height;
+        f32 bl;// bitmap_left;
+        f32 bt;// bitmap_top;
+        f32 tx;// x offset of glyph in texture coordinates
+        f32 ty;// y offset of glyph in texture coordinates
 
     } fontatlas[MAX_CHARACTERS_IN_FREETYPE];
 
     glshader_t      shader;
     gltexture2d_t   texture;
 
+    struct {
+        bool shader_initialized;
+    } internals;
+
 } glfreetypefont_t ;
 
 
-glfreetypefont_t    glfreetypefont_init(const char *filepath, const u32 fontsize);
+glfreetypefont_t    glfreetypefont_init(const char *filepath, const u32 fontsize, bool ignore_shader);
+
+glquad_t            glfreetypefont_generate_glquad_for_char(const glfreetypefont_t *self, const char c, const vec3f_t pos, const vec4f_t color);
 void                glfreetypefont_add_text_to_batch(
                         const glfreetypefont_t *self, 
                         glbatch_t *batch, 
                         const char *text, 
                         vec2f_t pos, 
                         vec4f_t color);
-void                glfreetypefont_draw(const glfreetypefont_t *self, const glbatch_t *batch);
+void                glfreetypefont_draw_with_r2d(const glfreetypefont_t *self, const glbatch_t *batch);
 void                glfreetypefont_destroy(glfreetypefont_t *self);
 
 
@@ -99,8 +104,7 @@ const char * freetype_fs =
 
 
 
-
-glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize)
+glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize, bool ignore_shader)
 {
     assert(filepath);
 
@@ -109,6 +113,9 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize)
         .height = 0,
         .fontsize = fontsize,
         .fontatlas = {0},
+        .internals = {
+            .shader_initialized = !ignore_shader
+        }
     };
 
     gltexture2d_t tex = {
@@ -138,10 +145,10 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize)
             eprint("Loading character %c failed!", i);
 
         if (roww + g->bitmap.width + 1 >= tex.width) {
-				o.width = MAX(o.width, roww);
-				o.height += rowh;
-				roww = 0;
-				rowh = 0;
+            o.width = MAX(o.width, roww);
+            o.height += rowh;
+            roww = 0;
+            rowh = 0;
         }
         roww += g->bitmap.width + 1;
         rowh = MAX(rowh, g->bitmap.rows);
@@ -184,37 +191,65 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize)
             eprint("ERROR::FREETYTPE: Failed to load Glyph");
 
         if (ox + g->bitmap.width + 1 >= o.width) {
-				oy += rowh;
-				rowh = 0;
-				ox = 0;
-			}
+            oy += rowh;
+            rowh = 0;
+            ox = 0;
+        }
 
-			glTexSubImage2D(GL_TEXTURE_2D, 0, ox, oy, g->bitmap.width, g->bitmap.rows, GL_ALPHA, GL_UNSIGNED_BYTE, g->bitmap.buffer);
-			o.fontatlas[c].ax = g->advance.x >> 6;
-			o.fontatlas[c].ay = g->advance.y >> 6;
+        glTexSubImage2D(GL_TEXTURE_2D, 0, ox, oy, g->bitmap.width, g->bitmap.rows, GL_ALPHA, GL_UNSIGNED_BYTE, g->bitmap.buffer);
+        o.fontatlas[c].ax = g->advance.x >> 6;
+        o.fontatlas[c].ay = g->advance.y >> 6;
 
-			o.fontatlas[c].bw = g->bitmap.width;
-			o.fontatlas[c].bh = g->bitmap.rows;
+        o.fontatlas[c].bw = g->bitmap.width;
+        o.fontatlas[c].bh = g->bitmap.rows;
 
-			o.fontatlas[c].bl = g->bitmap_left;
-			o.fontatlas[c].bt = g->bitmap_top;
+        o.fontatlas[c].bl = g->bitmap_left;
+        o.fontatlas[c].bt = g->bitmap_top;
 
-			o.fontatlas[c].tx = ox / (float)o.width;
-			o.fontatlas[c].ty = oy / (float)o.height;
+        o.fontatlas[c].tx = ox / (float)o.width;
+        o.fontatlas[c].ty = oy / (float)o.height;
 
-			rowh = MAX(rowh, g->bitmap.rows);
-			ox += g->bitmap.width + 1;
+        rowh = MAX(rowh, g->bitmap.rows);
+        ox += g->bitmap.width + 1;
     }
     GL_CHECK(glActiveTexture(GL_TEXTURE0));
+
+    memcpy(&o.texture, &tex, sizeof(tex));
 
     FT_Done_Face(face);
     FT_Done_FreeType(ft);
 
     //Shader
-    o.shader = glshader_from_cstr_init(freetype_vs, freetype_fs);
-    memcpy(&o.texture, &tex, sizeof(tex));
+    if (!ignore_shader) {
+        o.shader = glshader_from_cstr_init(freetype_vs, freetype_fs);
+    }
 
     return o;
+}
+
+//NOTE: Pos is expected to be for origin set at Top left corner (Window Width x Window Height in pixels)
+glquad_t glfreetypefont_generate_glquad_for_char(const glfreetypefont_t *self, const char c, const vec3f_t pos, const vec4f_t color)
+{
+    ASSERT(self);
+
+    const f32 glyph_width = self->fontatlas[(u8)c].bw;
+    const f32 glyph_height = self->fontatlas[(u8)c].bh;
+    const f32 x2 = pos.x + self->fontatlas[(u8)c].bl;
+    const f32 y2 = pos.y + self->fontatlas[(u8)c].bt - glyph_height;
+
+    if(!glyph_width || !glyph_height) eprint("Glyph has no pixels");
+
+    const quadf_t uv = {
+        self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty, 0.0f,
+        self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty, 0.0f,
+        self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height, 0.0f,
+        self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height, 0.0f,
+    };
+    return glquad(
+        quadf_for_window_coordinates((vec3f_t ){ x2, y2, pos.z }, glyph_width, glyph_height),
+        color, 
+        uv
+    );
 }
 
 void glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *batch, const char *text, vec2f_t pos, vec4f_t color)
@@ -234,14 +269,14 @@ void glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *b
     { 
         char c = text[i];
         /* Calculate the vertex and texture coordinates */
-		float x2 = x + self->fontatlas[c].bl * sx;
-		float y2 = -y - self->fontatlas[c].bt * sy;
-		float w = self->fontatlas[c].bw * sx;
-		float h = self->fontatlas[c].bh * sy;
+        float x2 = x + self->fontatlas[c].bl * sx;
+        float y2 = -y - self->fontatlas[c].bt * sy;
+        float w = self->fontatlas[c].bw * sx;
+        float h = self->fontatlas[c].bh * sy;
 
-		/* Advance the cursor to the start of the next character */
-		x += self->fontatlas[c].ax * sx;
-		y += self->fontatlas[c].ay * sy;
+        /* Advance the cursor to the start of the next character */
+        x += self->fontatlas[c].ax * sx;
+        y += self->fontatlas[c].ay * sy;
 
         /* Skip glyphs that have no pixels */
         if(!w || !h) continue;
@@ -262,7 +297,7 @@ void glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *b
 }
 
 
-void glfreetypefont_draw(const glfreetypefont_t *self, const glbatch_t *batch)
+void glfreetypefont_draw_with_r2d(const glfreetypefont_t *self, const glbatch_t *batch)
 {
     glrenderer2d_t rd2d = {
         .shader = &self->shader,
@@ -273,7 +308,9 @@ void glfreetypefont_draw(const glfreetypefont_t *self, const glbatch_t *batch)
 
 void glfreetypefont_destroy(glfreetypefont_t *self)
 {
-    glshader_destroy(&self->shader);
+    if (self->internals.shader_initialized) {
+        glshader_destroy(&self->shader);
+    }
     gltexture2d_destroy(&self->texture);
 }
 

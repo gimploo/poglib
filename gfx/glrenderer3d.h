@@ -67,6 +67,7 @@ typedef struct {
     } draw_mode;
 
     bool is_wireframe; //default false
+    bool allow_empty_vtx_buffer; //default to false
 
     // Vertex data
     struct {
@@ -120,7 +121,7 @@ typedef struct {
 
 
 void                glrenderer3d_draw_cube(const glrenderer3d_t *renderer);
-void                glrenderer3d_draw_model(const glmodel_t *, const glshaderconfiglist_t);
+void                glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t config, bool in_wireframe);
 void                glrenderer3d_draw(const glrendererconfig_t config);
 
 
@@ -202,7 +203,7 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
     GL_CHECK(glDeleteBuffers(1, &VBO));
 }
 
-void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t config)
+void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t config, bool in_wireframe)
 {
     ASSERT(model->meshes.len > 0);
     if(model->meshes.len > 3) 
@@ -215,7 +216,7 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
     {
         glmesh_t *mesh = iter;
         calls[(u64)list_index] = (glrendercall_t ){
-
+            .is_wireframe = in_wireframe,
             .textures = {
                 .count = model->textures.len,
                 .textures = (gltexture2d_t **)list_get_buffer(&model->textures)
@@ -330,8 +331,11 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         ebo_t ebo = {0};
 
         // Vertex and Index buffer init
+        if (config.calls.call[call_idx].allow_empty_vtx_buffer && !config.calls.call[call_idx].vtx.size) 
+            return;
+        else ASSERT(config.calls.call[call_idx].vtx.size > 0);
+
         ASSERT(config.calls.call[call_idx].vtx.data);
-        ASSERT(config.calls.call[call_idx].vtx.size > 0); 
         if (!is_idx_null) {
 
             ASSERT(config.calls.call[call_idx].idx.nmemb > 0); 
@@ -442,7 +446,8 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         {
             gltexture2d_bind(
                     config.calls.call[call_idx].textures.textures[txt_idx],
-                    txt_idx);
+                    txt_idx
+            );
         }
 
         if (config.calls.call[call_idx].is_wireframe) {

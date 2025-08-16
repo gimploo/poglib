@@ -3,6 +3,8 @@
 #include <poglib/math.h>
 #include <poglib/gfx/glrenderer3d.h>
 #include <poglib/application.h>
+#include <poglib/font/glfreetypefont.h>
+#include <poglib/util/atlasmanager.h>
 
 /*
  * LAYOUT - origin is at the top left of the screen
@@ -11,16 +13,21 @@
  *
  */
 
+typedef enum {
+
+    UI_SPRITE_CHECKBOX_ROUNDED_UNSELECTED = 14,
+    UI_SPRITE_CHECKBOX_ROUNDED_SELECTED = 16,
+
+} UI_SPRITE_INDEX_TYPE;
+
 typedef enum ui_type {
 
-    UI_TYPE_PANEL = 0,
-    UI_TYPE_BUTTON,
-    UI_TYPE_LABEL,
-    UI_TYPE_CHECKBOX,
-    UI_TYPE_RADIOBUTTON,
-    UI_TYPE_SLIDER,
-
-    UI_TYPE_COUNT
+    UI_TYPE_PANEL               = 1 << 0,
+    UI_TYPE_BUTTON              = 1 << 1,
+    UI_TYPE_LABEL               = 1 << 2,
+    UI_TYPE_CHECKBOX            = 1 << 3,
+    UI_TYPE_SLIDER              = 1 << 4,
+    UI_TYPE_ICON                = 1 << 5,
 
 } ui_type;
 
@@ -30,10 +37,18 @@ typedef enum {
     UI_LAYOUT_COUNT
 } ui_layout_type;
 
+typedef union {
+    struct {
+        f32 min;
+        f32 max;
+    } range;
+} ui_config_t;
+
 typedef struct {
-    vec4i_t padding;
-    vec4i_t margin;
+    vec4f_t padding;
+    vec4f_t margin;
     vec4f_t color;
+    f32 gap;
 
     ui_layout_type layout;
 
@@ -49,33 +64,55 @@ typedef struct ui_t {
     str_t label;
     style_t style;
     ui_type type;
+    ui_config_t config;
 
     struct {
         bool is_hot;
         bool is_clicked;
+        f32 value;
     } state;
 
     struct {
-        vec2i_t pos;
+        vec2f_t pos;
         vec4f_t color;
         f32 zorder;
         bool is_dirty;
+        str_t *display_text;
+        struct { f32 width; f32 height; } dim;
+        bool is_movable;
+        bool toggle_click_state;
         //TODO: cache the vertices
     } computed;
 
+    struct ui_t *owner; //UI_TYPE_SLIDER
     const struct ui_t * const parent;
+
     list_t children; //ui_t *
 
 } ui_t;
+
+typedef enum {
+    VTX_BUFFER_QUAD_INDEX = 0,
+    VTX_BUFFER_TEXT_INDEX = 1,
+    VTX_BUFFER_ICONS_INDEX = 2,
+    VTX_BUFFER_COUNT
+} vtx_buffer_types;
 
 typedef struct {
     ui_t *root;
 
     struct {
-        list_t vtx;
-        list_t idx;
+        list_t vtx[VTX_BUFFER_COUNT];
+        list_t idx[VTX_BUFFER_COUNT];
         glshader_t shader;
     } gfx;
+
+    struct {
+        glfreetypefont_t handler;
+        glshader_t custom_shader;
+    } font;
+
+    atlasmanager_t atlas;
 
     struct {
         list_t uistack;
@@ -91,43 +128,85 @@ typedef struct {
 ======================================================*/
 
 gui_t *     gui_init(void);
+void        gui_set_wireframe_mode(gui_t *self, bool toggle);
 void        gui_destroy(gui_t *self);
 
 /*======================================================
                     Implemenentation
 ======================================================*/
 
-vec2i_t __accumulator_next_position_for_vertical_layout(const vec2i_t accum_pos, const ui_t *current_ui)
+vec4f_t __get_ui_padding(const ui_t *ui)
 {
-    const u32 pos_y = accum_pos.y + current_ui->style.dim.height + current_ui->style.margin.y;
-    return (vec2i_t){
+    return ui->type == UI_TYPE_LABEL ? vec4f(0.f) : ui->style.padding;
+}
+
+vec3f_t __get_applied_styled_pos_outter(const ui_t *ui)
+{
+    const vec2f_t pos = ui->computed.pos;
+    return (vec3f_t) {
+        .x = pos.x + (ui->style.margin.left - ui->style.margin.right),
+        .y = pos.y + (ui->style.margin.top - ui->style.margin.bottom),
+        .z = ui->computed.zorder,
+    };
+}
+
+vec3f_t __get_applied_padding_on_all_sides(const vec3f_t pos, const vec4f_t padding)
+{
+    return (vec3f_t) {
+        .x = pos.x + padding.left - padding.right,
+        .y = pos.y + padding.top - padding.bottom,
+        .z = pos.z
+    };
+}
+
+vec3f_t __get_applied_styled_pos_inner(const ui_t *ui)
+{
+    return __get_applied_padding_on_all_sides(
+        __get_applied_styled_pos_outter(ui),
+        ui->style.padding
+    );
+}
+
+
+vec2f_t __accumulator_get_next_position_for_vertical_layout(const vec2f_t accum_pos, const ui_t *current_ui, const ui_t *parent)
+{
+    const u32 pos_y = accum_pos.y 
+        + current_ui->computed.dim.height 
+        + (current_ui->style.margin.top - current_ui->style.margin.bottom) 
+        + parent->style.gap;
+    return (vec2f_t){
         .x = accum_pos.x,
         .y = pos_y
     };
 }
 
-vec2i_t __accumulator_next_position_for_horizontal_layout(const vec2i_t accum_pos, const ui_t *current_ui)
+vec2f_t __accumulator_get_next_position_for_horizontal_layout(const vec2f_t accum_pos, const ui_t *current_ui, const ui_t *parent)
 {
-    const u32 pos_x = accum_pos.x + current_ui->style.dim.width + current_ui->style.margin.x; 
-    return (vec2i_t) {
+    const u32 pos_x = accum_pos.x 
+        + current_ui->computed.dim.width 
+        + (current_ui->style.margin.left - current_ui->style.margin.right)
+        + parent->style.gap; 
+
+    return (vec2f_t) {
         .x = pos_x,
         .y = accum_pos.y
     };
 }
 
-vec2i_t __get_next_available_pos(const ui_t *parent)
+vec2f_t __get_next_available_pos(const ui_t *parent)
 {
     ASSERT(parent);
-    vec2i_t pos = parent->computed.pos;
+    const vec3f_t parentpos = __get_applied_styled_pos_inner(parent);
+    vec2f_t pos = vec2f_cast(parentpos);
     list_iterator(&parent->children, child)
     {
         switch(parent->style.layout)
         {
             case UI_LAYOUT_VERTICAL:
-                pos = __accumulator_next_position_for_vertical_layout(pos, child);
+                pos = __accumulator_get_next_position_for_vertical_layout(pos, child, parent);
             break;
             case UI_LAYOUT_HORIZONTAL:
-                pos = __accumulator_next_position_for_horizontal_layout(pos, child);
+                pos = __accumulator_get_next_position_for_horizontal_layout(pos, child, parent);
             break;
             default: eprint("Unfamiliar layout kind.");
         }
@@ -135,20 +214,134 @@ vec2i_t __get_next_available_pos(const ui_t *parent)
     return pos;
 }
 
-ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, const style_t *style) 
+f32 __get_text_total_glyph_width(const ui_t *ui, const gui_t *gui)
+{
+    f32 width = gui->font.handler.fontatlas[(u8)ui->label.data[0]].bw;
+    for (u8 i = 0; i < ui->label.len; i++)
+        width += gui->font.handler.fontatlas[(u8)ui->label.data[i]].bw;
+    return width;
+}
+
+f32 __get_ui_width(const ui_t *ui, const gui_t *gui)
+{
+    if (ui->style.dim.width) 
+        return ui->style.dim.width;
+    const f32 final_padding_x  = max(__get_ui_padding(ui).left - __get_ui_padding(ui).right, 0);
+    return ui->type & (UI_TYPE_BUTTON | UI_TYPE_LABEL) 
+        ? __get_text_total_glyph_width(ui, gui) + final_padding_x
+        : 0;
+}
+
+f32 __get_ui_height(const ui_t *ui, const gui_t *gui)
+{
+    if (ui->style.dim.height) 
+        return ui->style.dim.height;
+    const f32 final_padding_y  = max(__get_ui_padding(ui).top - __get_ui_padding(ui).bottom, 0);
+    return ui->type & (UI_TYPE_BUTTON | UI_TYPE_LABEL)
+        ? final_padding_y + gui->font.handler.fontsize
+        : 0;
+}
+
+str_t * __get_ui_display_text(const ui_t *ui)
+{
+    if (ui->type & (UI_TYPE_LABEL | UI_TYPE_BUTTON)) {
+        if (ui->parent->type & (UI_TYPE_CHECKBOX)) {
+            return &ui->parent->label;
+        } else {
+            return &ui->label;
+        }
+    }
+    return NULL;
+}
+
+void __apply_parent_styles_on_child(const ui_t *parent, ui_t *child)
+{
+    child->style.margin = glms_vec4_add(
+        child->style.margin,
+        parent->style.padding
+    );
+}
+
+ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, const ui_config_t *config, const style_t *style, gui_t *gui) 
 {
     ui_t * ui = mem_init(&(ui_t) {
         .label = label,
         .type = type,
         .parent = parent,
+        .owner = parent,
         .children = list_init(ui_t *),
         .computed = {0},
         .style = style ? *style : (style_t){0},
-        .state = {0}
+        .state = {0},
+        .config = config ? *config : (ui_config_t){0},
     }, sizeof(ui_t));
 
     ui->computed.zorder = parent ? parent->computed.zorder + 0.2f : -1.0f;
-    ui->computed.pos = parent ? __get_next_available_pos(parent) : (vec2i_t){0};
+    ui->computed.pos = parent ? __get_next_available_pos(parent) : (vec2f_t){0};
+    ui->computed.dim.width = __get_ui_width(ui, gui);
+    ui->computed.dim.height = __get_ui_height(ui, gui);
+    ui->computed.display_text = __get_ui_display_text(ui);
+
+    if (parent) {
+        list_append_ptr(&parent->children, ui);
+        __apply_parent_styles_on_child(parent, ui);
+    }
+
+    switch(type)
+    {
+        case UI_TYPE_CHECKBOX: {
+
+            ui->style.gap = !ui->style.gap ? 10 : ui->style.gap;
+            ui->style.layout = UI_LAYOUT_HORIZONTAL;
+
+            const style_t label_style = {0};
+            const style_t icon_style = {
+                .dim = {
+                    .width = 20,
+                    .height = 20
+                }
+            };
+
+            ui_t *icon = __ui_init(ui, str("__icon"), UI_TYPE_ICON, NULL, &icon_style, gui);
+            icon->computed.toggle_click_state = true;
+            const ui_t *label_item = __ui_init(ui, str("__label"), UI_TYPE_LABEL, NULL, &label_style, gui);
+
+            ui->computed.dim.height = max(icon->computed.dim.height, label_item->computed.dim.height);
+            ui->computed.dim.width = max(icon->computed.dim.width, label_item->computed.dim.width);
+
+        }
+        break;
+        case UI_TYPE_SLIDER: {
+
+            ui->style.gap = 10.0f;
+            ui->style.layout = UI_LAYOUT_HORIZONTAL;
+
+            char buffer[KB] = {0};
+            snprintf(buffer, sizeof(buffer), "%zi", (u64)ui->config.range.min);
+
+            __ui_init(ui, str_init(buffer), UI_TYPE_LABEL, NULL, NULL, gui);
+            ui_t *container = __ui_init(ui, str("__container"), UI_TYPE_PANEL, NULL, &(style_t){
+                .color = COLOR_WHITE,
+                .dim = {60, 20}
+            }, gui); {
+
+                ui_t *slider = __ui_init(container, str(""), UI_TYPE_BUTTON, NULL, &(style_t){
+                    .color = COLOR_GREEN,
+                    .dim = {5, 20}
+                }, gui);
+                slider->computed.is_movable = true;
+                slider->owner = ui;
+            }
+            snprintf(buffer, sizeof(buffer), "%zi", (u64)ui->config.range.max);
+            __ui_init(ui, str_init(buffer), UI_TYPE_LABEL, NULL, NULL, gui);
+
+            ui->computed.dim.height = 20;
+            ui->computed.dim.width = 60;
+
+        } break;
+        default: break;
+    }
+
 
     return ui;
 }
@@ -158,18 +351,34 @@ gui_t * gui_init(void)
     gui_t *gui = mem_init(&(gui_t) {
         .root = NULL,
         .gfx = {
-            .vtx = list_init(glquad_t),
-            .idx = list_init(u32),
+            .vtx = {
+               [VTX_BUFFER_QUAD_INDEX] = list_init(glquad_t),
+               [VTX_BUFFER_TEXT_INDEX] = list_init(glquad_t),
+               [VTX_BUFFER_ICONS_INDEX] = list_init(glquad_t),
+            },
+            .idx = {
+               [VTX_BUFFER_QUAD_INDEX] = list_init(u32),
+               [VTX_BUFFER_TEXT_INDEX] = list_init(u32),
+               [VTX_BUFFER_ICONS_INDEX] = list_init(u32),
+            },
             .shader = glshader_from_file_init(
                 "lib/poglib/gui/uishader.vs",
                 "lib/poglib/gui/uishader.fs"
+            )
+        },
+        .font = {
+            .handler = glfreetypefont_init(DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH, 24, true),
+            .custom_shader = glshader_from_file_init(
+                "lib/poglib/gui/ui-text-shader.vs",
+                "lib/poglib/gui/ui-text-shader.fs"
             )
         },
         .internals = {
             .uistack = list_init(ui_t *),
             .is_wireframe = false,
             .is_dirty = true
-        }
+        },
+        .atlas = atlasmanager_init("lib/poglib/res/sprites/windows-ui.png", 17, 1)
     }, sizeof(gui_t));
 
     return gui;
@@ -180,96 +389,166 @@ void gui_set_wireframe_mode(gui_t *self, bool toggle)
     self->internals.is_wireframe = toggle;
 }
 
-vec2i_t __applied_styled_pos(const ui_t *ui)
+quadf_t __generate_ui_quad(const ui_t *ui, const gui_t *gui)
 {
-    vec2i_t pos = ui->computed.pos;
-    pos.x += ui->style.margin.x;
-    pos.y += ui->style.margin.y;
-    return pos;
+    return quadf_for_window_coordinates(
+        __get_applied_styled_pos_outter(ui),
+        ui->computed.dim.width,
+        ui->computed.dim.height
+    );
 }
 
-quadf_t __generate_ui_quad(ui_t *ui)
+vec4f_t __get_ui_text_color(const ui_t *ui)
 {
-    quadf_t output = {0};
-
-    const vec2i_t pos = __applied_styled_pos(ui);
-
-    output.vertex[TOP_LEFT] = (vec3f_t) { 
-        pos.x, 
-        pos.y, 
-        ui->computed.zorder 
-    };
-    output.vertex[TOP_RIGHT] = (vec3f_t) { 
-        pos.x + ui->style.dim.width, 
-        pos.y, 
-        ui->computed.zorder 
-    };
-    output.vertex[BOTTOM_LEFT] = (vec3f_t) { 
-        pos.x, 
-        pos.y + ui->style.dim.height, 
-        ui->computed.zorder 
-    };
-    output.vertex[BOTTOM_RIGHT] = (vec3f_t) { 
-        pos.x + ui->style.dim.width, 
-        pos.y + ui->style.dim.height, 
-        ui->computed.zorder 
-    };
-
-    return output;
+    if (!ui->style.color.r && !ui->style.color.g && !ui->style.color.b && !ui->style.color.a) return COLOR_BLACK;
+    return ui->type == UI_TYPE_LABEL ? ui->style.color : COLOR_BLACK;
 }
 
-void __recache_ui_vtx(gui_t *gui, ui_t *ui)
+f32 __get_max_text_height(const gui_t *gui, const str_t *label)
 {
-    list_t *vtxs = &gui->gfx.vtx;
-    list_t *idxs = &gui->gfx.idx;
+    f32 max_height = 0;
+    for(u8 i = 0; i < label->len; i++)
+    {
+        max_height = max(
+            max_height, 
+            gui->font.handler.fontatlas[(u8)label->data[i]].bh
+        );
+    }
+    return max_height;
+}
 
-    glquad_t quad = glquad(
-        __generate_ui_quad(ui),
-        ui->computed.color,
-        (quadf_t){0}
+void __recache_ui_text(gui_t *gui, const ui_t *ui)
+{
+    if (!ui->computed.display_text) return;
+
+    list_t *vtxs = &gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX];
+    list_t *idxs = &gui->gfx.idx[VTX_BUFFER_TEXT_INDEX];
+
+    const vec3f_t containerpos = __get_applied_styled_pos_outter(ui);
+    vec3f_t textpos = {
+        containerpos.x,
+        containerpos.y,
+        ui->computed.zorder + 0.2f
+    };
+
+    const str_t *label = ui->computed.display_text;
+
+    const f32 text_max_height = __get_max_text_height(gui, label);
+
+    for (u8 str_index = 0; str_index < label->len; str_index++)
+    {
+        const f32 adjusted_text_pos_y = text_max_height - gui->font.handler.fontatlas[(u8)label->data[str_index]].bh;
+        const glquad_t quad = glfreetypefont_generate_glquad_for_char(
+            &gui->font.handler,
+            label->data[str_index], 
+            __get_applied_padding_on_all_sides(
+                glms_vec3_add(textpos, (vec3f_t){ 
+                    0.f,
+                    adjusted_text_pos_y,
+                    0.f
+                }), 
+                ui->style.padding
+            ),
+            __get_ui_text_color(ui)
+        );
+
+        textpos.x += gui->font.handler.fontatlas[(u8)label->data[str_index]].ax;
+
+        const u32 idx[] = GENERATE_QUAD_IDX(vtxs->len);
+
+        list_append(vtxs, quad);
+        list_append_multiple(idxs, idx);
+    }
+}
+
+quadf_t __get_ui_icon_uvs(const ui_t *ui, const gui_t *gui)
+{
+    if (!ui->owner) return (quadf_t){0};
+
+    switch(ui->type)
+    {
+        case UI_TYPE_ICON:
+            if (ui->owner->type & UI_TYPE_CHECKBOX) {
+                return quadf_cast(atlasmanager_get_sprite(
+                    &gui->atlas,
+                    ui->owner->state.is_clicked ? UI_SPRITE_CHECKBOX_ROUNDED_SELECTED : UI_SPRITE_CHECKBOX_ROUNDED_UNSELECTED
+                ));
+            }
+        break;
+        default: return (quadf_t){0};
+    }
+    return (quadf_t){0};
+}
+
+void __recache_ui_icons_vtx(gui_t *gui, const ui_t *ui)
+{
+    list_t *vtxs = &gui->gfx.vtx[VTX_BUFFER_ICONS_INDEX];
+    list_t *idxs = &gui->gfx.idx[VTX_BUFFER_ICONS_INDEX];
+
+    const glquad_t quad = glquad(
+        __generate_ui_quad(ui, gui),
+        COLOR_WHITE,
+        __get_ui_icon_uvs(ui, gui)
     );
 
-    const u32 idx[] = {
-        [0] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[0],
-        [1] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[1],
-        [2] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[2],
-        [3] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[3],
-        [4] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[4],
-        [5] = 4 * vtxs->len + DEFAULT_QUAD_INDICES[5],
-    };
+    const u32 idx[] = GENERATE_QUAD_IDX(vtxs->len);
 
     list_append(vtxs, quad);
     list_append_multiple(idxs, idx);
-
 }
 
-void __recache_ui(gui_t *gui, ui_t *ui)
+void __recache_ui_vtx(gui_t *gui, const ui_t *ui)
+{
+    list_t *vtxs = &gui->gfx.vtx[VTX_BUFFER_QUAD_INDEX];
+    list_t *idxs = &gui->gfx.idx[VTX_BUFFER_QUAD_INDEX];
+
+    glquad_t quad = glquad(
+        __generate_ui_quad(ui, gui),
+        ui->computed.color,
+        (quadf_t){0.f}
+    );
+
+    const u32 idx[] = GENERATE_QUAD_IDX(vtxs->len);
+
+    list_append(vtxs, quad);
+    list_append_multiple(idxs, idx);
+}
+
+void __recache_ui(gui_t *gui, ui_t *ui, bool recache_text, bool recache_icons)
 {
     if (!ui) return;
 
     ui->computed.is_dirty = false;
 
-    if (ui->state.is_hot) {
-        ui->computed.color = ui->style.color;
-        ui->computed.color.a = 0.5f;
-    } else {
-        ui->computed.color = ui->style.color;
-    }
+    __recache_ui_text(gui, ui);
 
-    __recache_ui_vtx(gui, ui);
+    if (ui->type & (UI_TYPE_ICON))
+        __recache_ui_icons_vtx(gui, ui);
+
+    if (ui->type & (UI_TYPE_BUTTON | UI_TYPE_PANEL)) {
+        if (ui->state.is_hot && (ui->type & UI_TYPE_BUTTON)) {
+            ui->computed.color = ui->style.color;
+            ui->computed.color.a = 0.5f;
+        } else {
+            ui->computed.color = ui->style.color;
+        }
+        __recache_ui_vtx(gui, ui);
+    }
 
     list_iterator(&ui->children, child)
-    {
-        __recache_ui(gui, child);
-    }
+        __recache_ui(gui, child, recache_text, recache_icons);
 }
 
-void __recache_gui_vtx(gui_t *self)
+void __recache_gui_vtx(gui_t *self, bool recache_text, bool recache_icons)
 {
-    list_clear(&self->gfx.vtx);
-    list_clear(&self->gfx.idx);
+    list_clear(&self->gfx.vtx[VTX_BUFFER_QUAD_INDEX]);
+    list_clear(&self->gfx.idx[VTX_BUFFER_QUAD_INDEX]);
 
-    __recache_ui(self, self->root);
+    //FIXME: think of a better way to clear this
+    list_clear(&self->gfx.vtx[VTX_BUFFER_ICONS_INDEX]);
+    list_clear(&self->gfx.idx[VTX_BUFFER_ICONS_INDEX]);
+
+    __recache_ui(self, self->root, recache_text, recache_icons);
 
     self->internals.is_dirty = false;
 }
@@ -277,25 +556,36 @@ void __recache_gui_vtx(gui_t *self)
 void __gui_render(gui_t *gui)
 {
     if (gui->internals.is_dirty) {
-        __recache_gui_vtx(gui);
+        const bool recache_text = !gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX].len;
+        const bool recache_icons = !gui->gfx.vtx[VTX_BUFFER_ICONS_INDEX].len;
+        __recache_gui_vtx(gui, recache_text, recache_icons);
     }
+
+    const gltexture2d_t *fonttexture[1] = {
+        &gui->font.handler.texture
+    };
+
+    const gltexture2d_t *spritetexture[1] = {
+        &gui->atlas.texture
+    };
+
+    const matrix4f_t ortho_ndc = glms_ortho(0.0f, 1080.f, 920.f, 0.0f, -2.0f, 2.0f);
 
     glrenderer3d_draw((glrendererconfig_t){
         .calls = {
-            .count = 1,
+            .count = 3,
             .call = {
                 [0] = {
                     .draw_mode = GL_TRIANGLES,
                     .is_wireframe = gui->internals.is_wireframe,
                     .vtx = {
-                        .data = gui->gfx.vtx.data,
-                        .size = list_get_size(&gui->gfx.vtx)
+                        .data = gui->gfx.vtx[VTX_BUFFER_QUAD_INDEX].data,
+                        .size = list_get_size(&gui->gfx.vtx[VTX_BUFFER_QUAD_INDEX])
                     },
                     .idx = {
-                        .data = gui->gfx.idx.data,
-                        .nmemb = gui->gfx.idx.len
+                        .data = gui->gfx.idx[VTX_BUFFER_QUAD_INDEX].data,
+                        .nmemb = gui->gfx.idx[VTX_BUFFER_QUAD_INDEX].len
                     },
-                    .textures = {0},
                     .attrs = {
                         .count = 2,
                         .attr = {
@@ -325,14 +615,151 @@ void __gui_render(gui_t *gui)
                                 [0] = {
                                     .name = "projection",
                                     .type = "matrix4f_t",
-                                    .value.mat4 = glms_ortho(0.0f, 1080.f, 920.f, 0.0f, -2.0f, 2.0f)
+                                    .value.mat4 = ortho_ndc
+                                }
+                            }
+                        }
+                    }
+                },
+                [1] = {
+                    .vtx = {
+                        .data = list_get_buffer(&gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX]),
+                        .size = list_get_size(&gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX])
+                    },
+                    .idx = {
+                        .data = list_get_buffer(&gui->gfx.idx[VTX_BUFFER_TEXT_INDEX]),
+                        .nmemb = gui->gfx.idx[VTX_BUFFER_TEXT_INDEX].len
+                    },
+                    .textures = {
+                        .count = 1,
+                        .textures = fonttexture,
+                    },
+                    .shader_config = {
+                        .shader = &gui->font.custom_shader,
+                        .uniforms = {
+                            .count = 1,
+                            .uniform = {
+                                [0] = {
+                                    .name = "projection",
+                                    .type = "matrix4f_t",
+                                    .value.mat4 = ortho_ndc
+                                }
+                            }
+                        },
+                    },
+                    .is_wireframe = gui->internals.is_wireframe,
+                    .attrs = {
+                        .count = 3,
+                        .attr = {
+                            [0] = {
+                                .type = GL_FLOAT,
+                                .ncmp = 3,
+                                .interleaved = {
+                                    .offset = offsetof(glvertex2d_t, position),
+                                    .stride = sizeof(glvertex2d_t)
+                                },
+                            },
+                            [1] = {
+                                .type = GL_FLOAT,
+                                .ncmp = 4,
+                                .interleaved = {
+                                    .offset = offsetof(glvertex2d_t, color),
+                                    .stride = sizeof(glvertex2d_t)
+                                },
+                            },
+                            [2] = {
+                                .type = GL_FLOAT,
+                                .ncmp = 2,
+                                .interleaved = {
+                                    .offset = offsetof(glvertex2d_t, uv),
+                                    .stride = sizeof(glvertex2d_t)
+                                }
+                            }
+                        }
+                    }
+                },
+                [2] = {
+                    .allow_empty_vtx_buffer = true,
+                    .vtx = {
+                        .data = list_get_buffer(&gui->gfx.vtx[VTX_BUFFER_ICONS_INDEX]),
+                        .size = list_get_size(&gui->gfx.vtx[VTX_BUFFER_ICONS_INDEX])
+                    },
+                    .idx = {
+                        .data = list_get_buffer(&gui->gfx.idx[VTX_BUFFER_ICONS_INDEX]),
+                        .nmemb = gui->gfx.idx[VTX_BUFFER_ICONS_INDEX].len
+                    },
+                    .textures = {
+                        .count = 1,
+                        .textures = spritetexture,
+                    },
+                    .shader_config = {
+                        .shader = &gui->font.custom_shader,
+                        .uniforms = {
+                            .count = 1,
+                            .uniform = {
+                                [0] = {
+                                    .name = "projection",
+                                    .type = "matrix4f_t",
+                                    .value.mat4 = ortho_ndc
+                                }
+                            }
+                        },
+                    },
+                    .is_wireframe = gui->internals.is_wireframe,
+                    .attrs = {
+                        .count = 3,
+                        .attr = {
+                            [0] = {
+                                .type = GL_FLOAT,
+                                .ncmp = 3,
+                                .interleaved = {
+                                    .offset = offsetof(glvertex2d_t, position),
+                                    .stride = sizeof(glvertex2d_t)
+                                },
+                            },
+                            [1] = {
+                                .type = GL_FLOAT,
+                                .ncmp = 4,
+                                .interleaved = {
+                                    .offset = offsetof(glvertex2d_t, color),
+                                    .stride = sizeof(glvertex2d_t)
+                                },
+                            },
+                            [2] = {
+                                .type = GL_FLOAT,
+                                .ncmp = 2,
+                                .interleaved = {
+                                    .offset = offsetof(glvertex2d_t, uv),
+                                    .stride = sizeof(glvertex2d_t)
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-    }});
+        }});
+}
+
+void __update_owner_data(ui_t *ui)
+{
+    if (!ui->owner) return;
+
+    switch(ui->type)
+    {
+        case UI_TYPE_BUTTON:
+            if (ui->owner->type & UI_TYPE_SLIDER) {
+                const f32 value = (ui->owner->config.range.max - ui->owner->config.range.min);
+                const f32 offset = ui->computed.pos.x - ui->parent->computed.pos.x;
+                ui->owner->state.value = value * (offset / ui->parent->style.dim.width) + ui->owner->config.range.min;
+            } 
+        break;
+        case UI_TYPE_ICON:
+            if (ui->owner->type & UI_TYPE_CHECKBOX) {
+                ui->owner->state.is_clicked = ui->state.is_clicked;
+            }
+        break;
+    }
+
 }
 
 void __ui_update(gui_t *gui, ui_t *ui)
@@ -340,13 +767,15 @@ void __ui_update(gui_t *gui, ui_t *ui)
     ASSERT(gui);
     ASSERT(ui);
 
+    if (ui->type & (UI_TYPE_LABEL)) return;
+
     const window_t *win = window_get_current_active_window();
     const vec2i_t mouse_pos = window_mouse_get_position(win);
 
-    const bool is_cursor_on_ui = mouse_pos.x > ui->computed.pos.x
-        && mouse_pos.x < ui->computed.pos.x + ui->style.dim.width
-        && mouse_pos.y > ui->computed.pos.y
-        && mouse_pos.y < ui->computed.pos.y + ui->style.dim.height;
+    const bool is_cursor_on_ui = (f32)mouse_pos.x > ui->computed.pos.x
+        && (f32)mouse_pos.x < ui->computed.pos.x + ui->computed.dim.width
+        && (f32)mouse_pos.y > ui->computed.pos.y
+        && (f32)mouse_pos.y < ui->computed.pos.y + ui->computed.dim.height;
 
     if (is_cursor_on_ui) {
         ui->state.is_hot = true; 
@@ -358,8 +787,40 @@ void __ui_update(gui_t *gui, ui_t *ui)
         ui->computed.is_dirty = false;
     }
 
-    ui->state.is_clicked = is_cursor_on_ui && window_mouse_button_is_pressed(win, SDL_MOUSEBUTTON_LEFT);
+    const bool clicked_on_ui = is_cursor_on_ui && window_mouse_button_just_pressed(win, SDL_MOUSEBUTTON_LEFT);
+    const bool held_on_ui = is_cursor_on_ui && window_mouse_button_is_held(win, SDL_MOUSEBUTTON_LEFT);
+
+    if (held_on_ui && ui->computed.is_movable) {
+        const f32 min_width = ui->parent->computed.pos.x;
+        const f32 max_width = ui->parent->computed.pos.x + (ui->parent->style.dim.width - ui->computed.dim.width);
+        ui->computed.pos.x = mouse_pos.x - (ui->computed.dim.width / 2);
+        ui->computed.pos.x = min(max(ui->computed.pos.x, min_width), max_width);
+    }
+
+    if (clicked_on_ui) {
+        if (ui->computed.toggle_click_state) {
+            ui->state.is_clicked = !ui->state.is_clicked;
+        } else {
+            ui->state.is_clicked = clicked_on_ui;
+        }
+    } else {
+        if (!ui->computed.toggle_click_state) {
+            ui->state.is_clicked = false;
+        }
+    }
+
+    __update_owner_data(ui);
+
     gui->internals.is_dirty = gui->internals.is_dirty || ui->computed.is_dirty;
+
+    list_iterator(&ui->children, child)
+        __ui_update(gui, child);
+}
+
+void __gui_update(gui_t *gui)
+{
+    ui_t *root = gui->root;
+    __ui_update(gui, root);
 }
 
 
@@ -368,6 +829,7 @@ void __ui_destroy(ui_t *ui)
     list_iterator(&ui->children, ui_elem) {
         __ui_destroy(ui_elem);
     }
+    str_free(&ui->label);
     list_destroy(&ui->children);
     mem_free(ui, sizeof(ui_t));
 }
@@ -379,19 +841,26 @@ void gui_destroy(gui_t *self)
     }
 
     list_destroy(&self->internals.uistack);
-    list_destroy(&self->gfx.vtx);
-    list_destroy(&self->gfx.idx);
+    list_destroy(&self->gfx.vtx[VTX_BUFFER_QUAD_INDEX]);
+    list_destroy(&self->gfx.idx[VTX_BUFFER_QUAD_INDEX]);
+    list_destroy(&self->gfx.vtx[VTX_BUFFER_TEXT_INDEX]);
+    list_destroy(&self->gfx.idx[VTX_BUFFER_TEXT_INDEX]);
+    list_destroy(&self->gfx.vtx[VTX_BUFFER_ICONS_INDEX]);
+    list_destroy(&self->gfx.idx[VTX_BUFFER_ICONS_INDEX]);
     glshader_destroy(&self->gfx.shader);
+    glshader_destroy(&self->font.custom_shader);
+    glfreetypefont_destroy(&self->font.handler);
+    atlasmanager_destroy(&self->atlas);
     mem_free(self, sizeof(gui_t));
 }
 
-ui_t *__ui_already_exist(const ui_t *ui, const str_t label) 
+const ui_t *__ui_already_exist(const ui_t *ui, const str_t label) 
 {
     if (ui == NULL)                     return NULL;
     if (str_cmp(&ui->label, &label))    return ui;
 
     list_iterator(&ui->children, child) {
-        ui_t *ui_child = __ui_already_exist(child, label);
+        const ui_t *ui_child = __ui_already_exist(child, label);
         if (ui_child != NULL) {
             return ui_child;
         }
@@ -400,7 +869,7 @@ ui_t *__ui_already_exist(const ui_t *ui, const str_t label)
 }
 
 
-ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const style_t style, list_t *gui_stack) 
+const ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const ui_config_t config, const style_t style, list_t *gui_stack) 
 {
     ASSERT(gui);
     if(gui->root == NULL && type != UI_TYPE_PANEL) {
@@ -411,16 +880,13 @@ ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const styl
         ? (ui_t *)list_get_value(gui_stack, gui_stack->len - 1) 
         : NULL;
 
-    ui_t *ui = __ui_already_exist(gui->root, label);
+    const ui_t *ui = __ui_already_exist(gui->root, label);
     if (!ui) {
-        ui = __ui_init(parent, label, type, &style);
+        ui = __ui_init(parent, label, type, &config, &style, gui);
         if (!gui->root) {
             gui->root = ui;
         }
 
-        if (parent && type != UI_TYPE_PANEL) {
-            list_append_ptr(&parent->children, ui);
-        }
     }
     list_append_ptr(gui_stack, ui); 
 
@@ -430,17 +896,19 @@ ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const styl
 
 #define WRAPPED_PLEX(TYPE, ...) (((struct { TYPE wrapped; }){ .wrapped = (__VA_ARGS__) }).wrapped)
 
-#define __GEN_UI(UI_TYPE, LABEL, STYLE)\
-    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
+#define __GEN_UI(UI_TYPE, LABEL, CONFIG, STYLE)\
+    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE, CONFIG, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
         LABEL;\
-        __ui_update(PGUI, LABEL), list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
+        list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
 
 #define GUI(PHANDLER)\
     for(bool __1 = true; __1;)\
         for(gui_t *PGUI = PHANDLER; __1; __gui_render(PHANDLER))\
-            for(list_t *__gui_stack = &PGUI->internals.uistack; __1; __1 = false, list_clear(__gui_stack))
+            for(list_t *__gui_stack = &PGUI->internals.uistack; __1; __gui_update(PGUI), __1 = false, list_clear(__gui_stack))
 
-#define UI_PANEL(LABEL, STYLE)  __GEN_UI(UI_TYPE_PANEL, LABEL, STYLE)
-#define UI_BUTTON(LABEL, STYLE) __GEN_UI(UI_TYPE_BUTTON, LABEL, STYLE)
-#define UI_LABEL(LABEL, STYLE)  __GEN_UI(UI_TYPE_LABEL, LABEL, STYLE)
+#define UI_PANEL(LABEL, STYLE)              __GEN_UI(UI_TYPE_PANEL, LABEL, ((ui_config_t){0}), STYLE)
+#define UI_BUTTON(LABEL, STYLE)             __GEN_UI(UI_TYPE_BUTTON, LABEL, ((ui_config_t){0}), STYLE)
+#define UI_LABEL(LABEL, STYLE)              __GEN_UI(UI_TYPE_LABEL, LABEL, ((ui_config_t){0}), STYLE)
+#define UI_CHECKBOX(LABEL, STYLE)           __GEN_UI(UI_TYPE_CHECKBOX, LABEL, ((ui_config_t){0}), STYLE)
+#define UI_SLIDER(LABEL, CONFIG, STYLE)     __GEN_UI(UI_TYPE_SLIDER, LABEL, CONFIG, STYLE)
 
