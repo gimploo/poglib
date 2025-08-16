@@ -64,14 +64,13 @@ typedef struct ui_t {
     str_t label;
     style_t style;
     ui_type type;
+    ui_config_t config;
 
     struct {
         bool is_hot;
         bool is_clicked;
         f32 value;
     } state;
-
-    ui_config_t config;
 
     struct {
         vec2f_t pos;
@@ -886,9 +885,9 @@ const ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, cons
         for(gui_t *PGUI = PHANDLER; __1; __gui_render(PHANDLER))\
             for(list_t *__gui_stack = &PGUI->internals.uistack; __1; __1 = false, list_clear(__gui_stack))
 
-#define UI_PANEL(LABEL, STYLE)      __GEN_UI(UI_TYPE_PANEL, LABEL, (ui_config_t){0}, STYLE)
-#define UI_BUTTON(LABEL, STYLE)     __GEN_UI(UI_TYPE_BUTTON, LABEL, (ui_config_t){0}, STYLE)
-#define UI_LABEL(LABEL, STYLE)      __GEN_UI(UI_TYPE_LABEL, LABEL, (ui_config_t){0}, STYLE)
-#define UI_CHECKBOX(LABEL, STYLE)   __GEN_UI(UI_TYPE_CHECKBOX, LABEL, (ui_config_t){0}, STYLE)
+#define UI_PANEL(LABEL, STYLE)              __GEN_UI(UI_TYPE_PANEL, LABEL, ((ui_config_t){0}), STYLE)
+#define UI_BUTTON(LABEL, STYLE)             __GEN_UI(UI_TYPE_BUTTON, LABEL, ((ui_config_t){0}), STYLE)
+#define UI_LABEL(LABEL, STYLE)              __GEN_UI(UI_TYPE_LABEL, LABEL, ((ui_config_t){0}), STYLE)
+#define UI_CHECKBOX(LABEL, STYLE)           __GEN_UI(UI_TYPE_CHECKBOX, LABEL, ((ui_config_t){0}), STYLE)
 #define UI_SLIDER(LABEL, CONFIG, STYLE)     __GEN_UI(UI_TYPE_SLIDER, LABEL, CONFIG, STYLE)
 
