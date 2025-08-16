@@ -327,7 +327,7 @@ ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, cons
 
                 ui_t *slider = __ui_init(container, str(""), UI_TYPE_BUTTON, NULL, &(style_t){
                     .color = COLOR_GREEN,
-                    .dim = {10, 20}
+                    .dim = {5, 20}
                 }, gui);
                 slider->computed.is_movable = true;
                 slider->owner = ui;
@@ -569,6 +569,8 @@ void __gui_render(gui_t *gui)
         &gui->atlas.texture
     };
 
+    const matrix4f_t ortho_ndc = glms_ortho(0.0f, 1080.f, 920.f, 0.0f, -2.0f, 2.0f);
+
     glrenderer3d_draw((glrendererconfig_t){
         .calls = {
             .count = 3,
@@ -613,7 +615,7 @@ void __gui_render(gui_t *gui)
                                 [0] = {
                                     .name = "projection",
                                     .type = "matrix4f_t",
-                                    .value.mat4 = glms_ortho(0.0f, 1080.f, 920.f, 0.0f, -2.0f, 2.0f)
+                                    .value.mat4 = ortho_ndc
                                 }
                             }
                         }
@@ -640,7 +642,7 @@ void __gui_render(gui_t *gui)
                                 [0] = {
                                     .name = "projection",
                                     .type = "matrix4f_t",
-                                    .value.mat4 = glms_ortho(0.0f, 1080.f, 920.f, 0.0f, -2.0f, 2.0f)
+                                    .value.mat4 = ortho_ndc
                                 }
                             }
                         },
@@ -698,7 +700,7 @@ void __gui_render(gui_t *gui)
                                 [0] = {
                                     .name = "projection",
                                     .type = "matrix4f_t",
-                                    .value.mat4 = glms_ortho(0.0f, 1080.f, 920.f, 0.0f, -2.0f, 2.0f)
+                                    .value.mat4 = ortho_ndc
                                 }
                             }
                         },
@@ -746,7 +748,9 @@ void __update_owner_data(ui_t *ui)
     {
         case UI_TYPE_BUTTON:
             if (ui->owner->type & UI_TYPE_SLIDER) {
-                //TODO: Update value 
+                const f32 value = (ui->owner->config.range.max - ui->owner->config.range.min);
+                const f32 offset = ui->computed.pos.x - ui->parent->computed.pos.x;
+                ui->owner->state.value = value * (offset / ui->parent->style.dim.width) + ui->owner->config.range.min;
             } 
         break;
         case UI_TYPE_ICON:
