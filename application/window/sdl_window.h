@@ -73,6 +73,8 @@ typedef struct window_t {
             sdl_mousewheelstate state;
         } wheel;
 
+        bool is_consumed;
+
     } mouse;
 
     struct {
@@ -120,7 +122,7 @@ bool                window_keyboard_is_key_held(window_t *window, SDL_Keycode ke
 bool                window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key);
 
 bool                window_mouse_button_just_pressed(window_t *window, sdl_mousebuttontype button);
-bool                window_mouse_button_is_pressed(const window_t *window, sdl_mousebuttontype button);
+bool                window_mouse_button_is_pressed(window_t *window, sdl_mousebuttontype button);
 bool                window_mouse_button_is_held(window_t *window, sdl_mousebuttontype button);
 
 bool                window_mouse_wheel_is_scroll_up(window_t *w);
@@ -162,22 +164,24 @@ bool window_mouse_button_just_pressed(
         window_t *window, 
         sdl_mousebuttontype button)
 {
-    bool is_active = window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED 
+    const bool is_active = window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED 
         && window->mouse.button == button;
-    if (is_active) {
-        window->mouse.state = SDL_MOUSESTATE_NONE;
+    if (is_active && !window->mouse.is_consumed) {
+        window->mouse.is_consumed = true;
         return is_active;
     }
-    return false;
+    return is_active;
 }
 
 bool window_mouse_button_is_pressed(
-        const window_t *window,
+        window_t *window,
         sdl_mousebuttontype button)
 {
-  return window->mouse.button == button 
-         && (window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED 
-             || window->mouse.state == SDL_MOUSESTATE_HELD);
+    const bool is_active = window->mouse.button == button 
+        && (window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED 
+        || window->mouse.state == SDL_MOUSESTATE_HELD);
+
+    return is_active;
 }
 
 bool window_mouse_button_is_held(
@@ -414,6 +418,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 
     __mouse_update_position(&win);
     win.mouse.state = SDL_MOUSESTATE_NONE;
+    win.mouse.is_consumed = false;
 
     win.subwindow.window = NULL;
     win.subwindow.is_active = false;
@@ -770,12 +775,7 @@ void window_update_user_input(window_t *window)
 {
     SDL_Event *event = &window->__sdl_event;
 
-    if (window->mouse.state == SDL_MOUSESTATE_RELEASED) {
-        window->mouse.state = SDL_MOUSESTATE_NONE;
-    }
-
-    memset(&window->mouse.rel, 0, sizeof(window->mouse.rel));
-
+    window->mouse.rel = (vec2i_t){0};
     window->thisframe.key = SDLK_UNKNOWN;
     window->thisframe.kstate = SDL_KEYSTATE_UNKNOWN;
 
@@ -802,12 +802,12 @@ void window_update_user_input(window_t *window)
                 switch(window->mouse.state)
                 {
                     case SDL_MOUSESTATE_RELEASED:
-                    case SDL_MOUSESTATE_NONE:
+                        window->mouse.is_consumed = false;
                         window->mouse.state = SDL_MOUSESTATE_NONE;
                     break;
 
                     case SDL_MOUSESTATE_JUST_PRESSED:
-                    case SDL_MOUSESTATE_HELD:
+                        window->mouse.is_consumed = false;
                         window->mouse.state = SDL_MOUSESTATE_HELD;
                     break;
                 }
@@ -818,12 +818,13 @@ void window_update_user_input(window_t *window)
                 switch(window->mouse.state)
                 {
                     case SDL_MOUSESTATE_RELEASED:
-                    case SDL_MOUSESTATE_NONE:
+                        window->mouse.is_consumed = false;
                         window->mouse.state = SDL_MOUSESTATE_NONE;
                     break;
 
                     case SDL_MOUSESTATE_JUST_PRESSED:
                     case SDL_MOUSESTATE_HELD:
+                        window->mouse.is_consumed = false;
                         window->mouse.state = SDL_MOUSESTATE_RELEASED;
                     break;
                 }
@@ -836,6 +837,7 @@ void window_update_user_input(window_t *window)
                 {
                     case SDL_MOUSESTATE_RELEASED:
                     case SDL_MOUSESTATE_NONE:
+                        window->mouse.is_consumed = false;
                         window->mouse.state = SDL_MOUSESTATE_JUST_PRESSED;
                         window->mouse.button =
                             (sdl_mousebuttontype)event->button.button;

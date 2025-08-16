@@ -119,10 +119,11 @@ void __workbench_render_ui(workbench_t *self)
             UI_BUTTON(button3, 
                 ((style_t ){
                     .color = COLOR_GREEN, 
-                }))
-            if (button3->state.is_clicked) {
-                printf("Button3 is clicked\n");
-            }
+                })) {
+                if (button3->state.is_clicked) {
+                    printf("Button3 is clicked\n");
+                }
+            };
             UI_CHECKBOX(
                 checkbox, 
                 ((style_t){0})
