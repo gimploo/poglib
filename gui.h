@@ -80,6 +80,7 @@ typedef struct ui_t {
         str_t *display_text;
         struct { f32 width; f32 height; } dim;
         bool is_movable;
+        bool toggle_click_state;
         //TODO: cache the vertices
     } computed;
 
@@ -301,7 +302,8 @@ ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, cons
                 }
             };
 
-            const ui_t *icon = __ui_init(ui, str("__icon"), UI_TYPE_ICON, NULL, &icon_style, gui);
+            ui_t *icon = __ui_init(ui, str("__icon"), UI_TYPE_ICON, NULL, &icon_style, gui);
+            icon->computed.toggle_click_state = true;
             const ui_t *label_item = __ui_init(ui, str("__label"), UI_TYPE_LABEL, NULL, &label_style, gui);
 
             ui->computed.dim.height = max(icon->computed.dim.height, label_item->computed.dim.height);
@@ -423,9 +425,9 @@ void __recache_ui_text(gui_t *gui, const ui_t *ui)
     list_t *idxs = &gui->gfx.idx[VTX_BUFFER_TEXT_INDEX];
 
     const vec3f_t containerpos = __get_applied_styled_pos_outter(ui);
-    vec3f_t textpos = { 
-        containerpos.x, 
-        containerpos.y, 
+    vec3f_t textpos = {
+        containerpos.x,
+        containerpos.y,
         ui->computed.zorder + 0.2f
     };
 
@@ -441,9 +443,9 @@ void __recache_ui_text(gui_t *gui, const ui_t *ui)
             label->data[str_index], 
             __get_applied_padding_on_all_sides(
                 glms_vec3_add(textpos, (vec3f_t){ 
-                    0.f, 
-                    adjusted_text_pos_y, 
-                    0.f 
+                    0.f,
+                    adjusted_text_pos_y,
+                    0.f
                 }), 
                 ui->style.padding
             ),
@@ -461,13 +463,15 @@ void __recache_ui_text(gui_t *gui, const ui_t *ui)
 
 quadf_t __get_ui_icon_uvs(const ui_t *ui, const gui_t *gui)
 {
+    if (!ui->owner) return (quadf_t){0};
+
     switch(ui->type)
     {
         case UI_TYPE_ICON:
-            if (ui->parent && ui->parent->type == UI_TYPE_CHECKBOX) {
+            if (ui->owner->type & UI_TYPE_CHECKBOX) {
                 return quadf_cast(atlasmanager_get_sprite(
-                    &gui->atlas, 
-                    ui->parent->state.is_clicked ? UI_SPRITE_CHECKBOX_ROUNDED_SELECTED : UI_SPRITE_CHECKBOX_ROUNDED_UNSELECTED
+                    &gui->atlas,
+                    ui->owner->state.is_clicked ? UI_SPRITE_CHECKBOX_ROUNDED_SELECTED : UI_SPRITE_CHECKBOX_ROUNDED_UNSELECTED
                 ));
             }
         break;
@@ -745,6 +749,11 @@ void __update_owner_data(ui_t *ui)
                 //TODO: Update value 
             } 
         break;
+        case UI_TYPE_ICON:
+            if (ui->owner->type & UI_TYPE_CHECKBOX) {
+                ui->owner->state.is_clicked = ui->state.is_clicked;
+            }
+        break;
     }
 
 }
@@ -754,7 +763,7 @@ void __ui_update(gui_t *gui, ui_t *ui)
     ASSERT(gui);
     ASSERT(ui);
 
-    if (ui->type == UI_TYPE_LABEL) return;
+    if (ui->type & (UI_TYPE_LABEL)) return;
 
     const window_t *win = window_get_current_active_window();
     const vec2i_t mouse_pos = window_mouse_get_position(win);
@@ -784,14 +793,16 @@ void __ui_update(gui_t *gui, ui_t *ui)
         ui->computed.pos.x = min(max(ui->computed.pos.x, min_width), max_width);
     }
 
-    switch(ui->type)
-    {
-        case UI_TYPE_BUTTON:
+    if (clicked_on_ui) {
+        if (ui->computed.toggle_click_state) {
+            ui->state.is_clicked = !ui->state.is_clicked;
+        } else {
             ui->state.is_clicked = clicked_on_ui;
-        break;
-        case UI_TYPE_CHECKBOX: 
-            if(clicked_on_ui) ui->state.is_clicked = !ui->state.is_clicked;
-        break;
+        }
+    } else {
+        if (!ui->computed.toggle_click_state) {
+            ui->state.is_clicked = false;
+        }
     }
 
     __update_owner_data(ui);
@@ -800,6 +811,12 @@ void __ui_update(gui_t *gui, ui_t *ui)
 
     list_iterator(&ui->children, child)
         __ui_update(gui, child);
+}
+
+void __gui_update(gui_t *gui)
+{
+    ui_t *root = gui->root;
+    __ui_update(gui, root);
 }
 
 
@@ -878,12 +895,12 @@ const ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, cons
 #define __GEN_UI(UI_TYPE, LABEL, CONFIG, STYLE)\
     for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE, CONFIG, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
         LABEL;\
-        __ui_update(PGUI, LABEL), list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
+        list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
 
 #define GUI(PHANDLER)\
     for(bool __1 = true; __1;)\
         for(gui_t *PGUI = PHANDLER; __1; __gui_render(PHANDLER))\
-            for(list_t *__gui_stack = &PGUI->internals.uistack; __1; __1 = false, list_clear(__gui_stack))
+            for(list_t *__gui_stack = &PGUI->internals.uistack; __1; __gui_update(PGUI), __1 = false, list_clear(__gui_stack))
 
 #define UI_PANEL(LABEL, STYLE)              __GEN_UI(UI_TYPE_PANEL, LABEL, ((ui_config_t){0}), STYLE)
 #define UI_BUTTON(LABEL, STYLE)             __GEN_UI(UI_TYPE_BUTTON, LABEL, ((ui_config_t){0}), STYLE)

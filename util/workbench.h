@@ -127,7 +127,11 @@ void __workbench_render_ui(workbench_t *self)
             UI_CHECKBOX(
                 checkbox, 
                 ((style_t){0})
-            );
+            ) {
+                if (checkbox->state.is_clicked) {
+                    //printf("true\n");
+                }
+            }
             UI_SLIDER(
                 slider,
                 ((ui_config_t){.range={.min = 10, .max = 100}}),
