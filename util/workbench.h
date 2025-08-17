@@ -139,7 +139,6 @@ void __workbench_render_ui(workbench_t *self)
                     .dim = {10, 10},
                 })
             ) {
-               printf("value %f\n", slider->state.value);
             }
             UI_BUTTON(button4, 
                 ((style_t){
