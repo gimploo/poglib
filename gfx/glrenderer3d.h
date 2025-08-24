@@ -97,7 +97,7 @@ typedef struct {
     // Textures
     struct {
         u8 count;
-        gltexture2d_t **textures;
+        const gltexture2d_t **textures;
     } textures;
 
     // Shader Config { uniform and shader }
@@ -219,7 +219,7 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
             .is_wireframe = in_wireframe,
             .textures = {
                 .count = model->textures.len,
-                .textures = (gltexture2d_t **)list_get_buffer(&model->textures)
+                .textures = (const gltexture2d_t **)list_get_buffer(&model->textures)
             },
 
             .attrs = {
