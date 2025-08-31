@@ -327,7 +327,7 @@ ui_t * __ui_init(ui_t *parent, const str_t label, const ui_type type, const ui_c
 
                 ui_t *slider = __ui_init(container, str(""), UI_TYPE_BUTTON, NULL, &(style_t){
                     .color = COLOR_GREEN,
-                    .dim = {5, 20}
+                    .dim = {10, 20}
                 }, gui);
                 slider->computed.is_movable = true;
                 slider->owner = ui;
@@ -749,7 +749,9 @@ void __update_owner_data(ui_t *ui)
         case UI_TYPE_BUTTON:
             if (ui->owner->type & UI_TYPE_SLIDER) {
                 const f32 value = (ui->owner->config.range.max - ui->owner->config.range.min);
-                const f32 offset = ui->computed.pos.x - ui->parent->computed.pos.x;
+                const f32 offset = ((ui->parent->style.dim.width - (ui->computed.pos.x - ui->parent->computed.pos.x)) == ui->style.dim.width )
+                    ? (ui->computed.pos.x - ui->parent->computed.pos.x) + ui->computed.dim.width
+                    : ui->computed.pos.x - ui->parent->computed.pos.x;
                 ui->owner->state.value = value * (offset / ui->parent->style.dim.width) + ui->owner->config.range.min;
             } 
         break;
