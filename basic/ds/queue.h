@@ -24,8 +24,7 @@ typedef struct queue_t {
 
 #define             queue_put(PQUEUE, ELEM)                                     __impl_queue_put((PQUEUE), &(ELEM), sizeof(ELEM))
 #define             queue_get(PQUEUE)                                           __impl_queue_get((PQUEUE)) 
-#define             queue_get_in_buffer(PQUEUE, BUFFER)                         __impl_queue_get_in_buffer((PQUEUE), &BUFFER, sizeof(BUFFER))
-
+void                queue_get_in_buffer(queue_t *queue, void *buffer, u64 buffer_size);
 #define             queue_is_empty(PQUEUE)                                      ((PQUEUE)->__start == (PQUEUE)->__end)
 #define             queue_is_full(PQUEUE)                                       ((PQUEUE)->len == (PQUEUE)->__capacity) ? true : false
 
@@ -179,7 +178,7 @@ void * __impl_queue_get(queue_t *queue)
     return elem_pos;
 }
 
-void __impl_queue_get_in_buffer(queue_t *queue, void *buffer, u64 buffer_size)
+void queue_get_in_buffer(queue_t *queue, void *buffer, u64 buffer_size)
 {
     if (queue == NULL)                   eprint("queue_get: queue argument is null");
     if (queue_is_empty(queue))           eprint("underflow");
