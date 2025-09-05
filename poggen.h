@@ -12,6 +12,7 @@ typedef struct poggen_t {
     assetmanager_t      assets;
     hashtable_t         scenes;
     scene_t             *current_scene;
+    bg_task_manager_t   bg_task_manager;
 
     struct {
         const application_t *const app;
@@ -55,6 +56,7 @@ poggen_t * poggen_init(const application_t * const app)
         .assets         = assetmanager_init(),
         .scenes         = hashtable_init(MAX_SCENES_ALLOWED, scene_t ),
         .current_scene  = NULL,
+        .bg_task_manager = bg_task_manager_init(),
         .handle = {
             .app          = app
         }
@@ -115,6 +117,8 @@ void poggen_update(poggen_t *self, const f32 dt)
 
     window_update_user_input(self->handle.app->handle.window);
 
+    bg_task_manager_run_all_tasks(&self->bg_task_manager);
+
     current_scene->__input(current_scene, dt);
     current_scene->__update(current_scene, dt);
 }
@@ -130,6 +134,8 @@ void poggen_destroy(poggen_t *self)
         mem_free((void *)hashtable_get_entry_value(&self->scenes, entry), sizeof(scene_t));
     }
     hashtable_destroy(&self->scenes);
+
+    bg_task_manager_destroy(&self->bg_task_manager);
 
     self->current_scene = NULL;
 
