@@ -8,14 +8,14 @@
 ================================================================================*/
 
 struct free_chunks_t {
-    void *memory;
+    u8 *memory;
     u32 size;
     struct free_chunks_t *next;
 };
 typedef struct free_chunks_t free_chunks_t;
 
 struct arena_t {
-    void *memory;
+    u8 *memory;
     u32 capacity;
     u32 size;
     struct {
@@ -87,6 +87,7 @@ void * __check_in_freelist(arena_t *self, u32 memory_size)
 
 void * arena_reserve(arena_t *self, u32 memory_size)
 {
+    void *mem = NULL;
     mtx_lock(&self->meta.lock);
     {
         if ((self->size + memory_size) > self->capacity)
@@ -100,10 +101,11 @@ void * arena_reserve(arena_t *self, u32 memory_size)
             return res_memory;
         }
 
-        void *mem = &self->memory[self->size];
+        mem = (void *)((u8 *)self->memory + self->size);
         self->size += memory_size;
     }
     mtx_unlock(&self->meta.lock);
+    ASSERT(mem);
     return mem;
 }
 
