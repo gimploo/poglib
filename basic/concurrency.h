@@ -4,7 +4,6 @@
 #include "./dbg.h"
 #include "./ds.h"
 #include "./common.h"
-#include <poglib/gfx/model/assimp.h>
 
 #define __ASYNC_META_HEADER__\
     atomic_bool is_done;\
