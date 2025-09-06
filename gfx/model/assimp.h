@@ -47,11 +47,12 @@ boneinfo_t boneinfo(matrix4f_t offset) {
    │ → Transform back to world space (if needed).
 */
 
-#define MAX_MESHES_PER_MODEL 3
+#define MAX_MESHES_PER_MODEL WORD
 
 typedef struct glmodel_t {
 
-    const char *filepath[64];
+    str_t directory_path;
+    char *filepath[1024];
     list_t meshes;
     list_t textures;
     list_t colors;
@@ -125,8 +126,7 @@ void __glmesh_processMaterials(glmodel_t *self, const struct aiMaterial *materia
         if (loaded_textures[textureTypes[textype_count].type])
             continue;
 
-        const u32 total_textures_for_single_type =
-            aiGetMaterialTextureCount(material, textureTypes[textype_count].type);
+        const u32 total_textures_for_single_type = aiGetMaterialTextureCount(material, textureTypes[textype_count].type);
         if (!total_textures_for_single_type)
             continue;
 
@@ -138,8 +138,13 @@ void __glmesh_processMaterials(glmodel_t *self, const struct aiMaterial *materia
         aiGetMaterialTexture(material, textureTypes[textype_count].type, 0,
                              &texture_filepath, NULL, NULL, NULL, NULL, NULL, NULL);
 
-        gltexture2d_t texture = gltexture2d_init(texture_filepath.data);
-        list_append(&self->textures, texture);
+        if (texture_filepath.data[0] == '*') {
+            //FIXME: account for embedded textures also
+        } else {
+            str_t absolute_texture_path = str_join(&self->directory_path, texture_filepath.data);
+            gltexture2d_t texture = gltexture2d_init(absolute_texture_path.data);
+            list_append(&self->textures, texture);
+        }
 
         loaded_textures[textureTypes[textype_count].type] = true;
     }
@@ -322,9 +327,12 @@ void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene)
     //in a buffer, we need to translate vertex ids to bone ids - since its the reverse assimp gives us
 
     //Map all bones to an index for easy lookup
-    self->bone_name_to_index = hashtable_init(__get_total_bones(scene), i32);
+    const u32 total_bones = __get_total_bones(scene);
+    if(total_bones) {
+        self->bone_name_to_index = hashtable_init(total_bones, i32);
+    }
 
-    ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL && "Updated the transforms list in glmodel_t");
+    ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL && "Update the transforms list in glmodel_t");
     for (u32 mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
         struct aiMesh *mesh = scene->mMeshes[mesh_index];
@@ -353,10 +361,10 @@ void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene)
 
 glmodel_t glmodel_init(const char *filepath) 
 {
-    ASSERT(strlen(filepath) < 64);
-
     glmodel_t o = {0};
+    ASSERT(strlen(filepath) < ARRAY_LEN(o.filepath));
     memcpy(o.filepath, filepath, strlen(filepath));
+    o.directory_path = str_get_directory_path(filepath);
     o.meshes = list_init(glmesh_t);
     o.textures = list_init(gltexture2d_t);
     o.colors = list_init(vec4f_t);
