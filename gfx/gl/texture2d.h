@@ -11,8 +11,8 @@
 typedef struct gltexture2d_t {
     
     GLuint          id; 
-    const char      filepath[64];
-    const char      type[32];
+    char      filepath[1024];
+    char      type[32];
     unsigned char   *buf;
     int             width;
     int             height;
@@ -136,7 +136,7 @@ gltexture2d_t gltexture2d_init(const char *filepath)
     };
 
     const u64 len = strlen(filepath);
-    if (len > sizeof(o.filepath)) eprint("filepath too long");
+    if (len > ARRAY_LEN(o.filepath)) eprint("filepath too long");
     memcpy((char *)o.filepath, filepath, len);
 
     return o;

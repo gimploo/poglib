@@ -200,7 +200,7 @@ str_t str_get_directory_path(const char *string)
     for (u32 i = len; i >= 0; i--)
     {
         if (string[i] == delimiter) {
-            o.len = i;
+            o.len = i+1; //NOTE: to include the delimiter also
             break;
         }
     }
@@ -239,7 +239,7 @@ str_t str_join(const str_t *part1, const char *part2)
 
     char *buffer = calloc(sizeof(char), (part1->len + part2_len + 1));
     ASSERT(buffer);
-    sprintf(buffer, "%s%s", part1->data, part2);
+    sprintf(buffer, "%.*s%s", part1->len, part1->data, part2);
     return (str_t) {
         .len = part1->len + part2_len,
         .data = buffer,
