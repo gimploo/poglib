@@ -50,6 +50,7 @@ typedef struct application_t {
         stopwatch_t         *timer;
         glfreetypefont_t    *fontrenderer;
         void                *content;
+        arena_t             arena;
     } handle;
 
     void (*init)(struct application_t *);
@@ -163,6 +164,7 @@ void application_run(application_t *app)
     app->handle.window= win;
     app->handle.timer = &timer;
     app->handle.fontrenderer = NULL;
+    app->handle.arena = arena_init(NULL, 32 * MB);
 
     // Initialize the content in the application
     printf("[!] APPLICATION INIT!\n");
@@ -211,6 +213,7 @@ void application_run(application_t *app)
     SDL_free((char *)app->context.base_dir);
 
     window_destroy();
+    arena_destroy(&app->handle.arena);
 
     free(app->handle.content);
     app->handle.content = NULL;
