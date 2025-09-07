@@ -9,11 +9,11 @@ typedef struct str_t {
 
     size_t    len;
     char      *data;
-    bool      __is_heap_allocated;
+    bool      __is_manually_heap_allocated;
 
 } str_t ;
 
-#define         str(STRING)              (str_t ) { .data = STRING, .len = strlen(STRING), .__is_heap_allocated = false }
+#define         str(STRING)              (str_t ) { .data = STRING, .len = strlen(STRING), .__is_manually_heap_allocated = false }
 str_t           str_init(arena_t *arena, const char * const __buffer);
 void            str_free(str_t *x);
 void            str_print(str_t *str);
@@ -24,7 +24,7 @@ str_t           str_cpy_delimiter(str_t *__buffer, char ch);
 bool            str_cmp(const str_t *a, const str_t *b);
 void            str_cpy(str_t *dest, str_t *source);
 str_t           str_get_directory_path(const char *string);
-str_t           str_join(const str_t *part1, const char *part2);
+str_t           str_join(arena_t *arena, const str_t *part1, const char *part2);
 
 void            cstr_combine_path(const char *path1, const char *path2, char *output, const u32 output_size);
 void            cstr_copy(char *dest, const char *source);
@@ -43,7 +43,7 @@ str_t str_init(arena_t *arena, const char * const __buffer)
         .data = arena 
             ? arena_reserve(arena, sizeof(char) * (strlen(__buffer) + 1)) 
             : mem_init(NULL, sizeof(char) * strlen(__buffer) + 1),
-        .__is_heap_allocated = arena ? false : true
+        .__is_manually_heap_allocated = arena ? false : true
     };
 
     memcpy(s.data, __buffer, strlen(__buffer));
@@ -53,7 +53,7 @@ str_t str_init(arena_t *arena, const char * const __buffer)
 
 void str_free(str_t *x)
 {
-    if (!x->__is_heap_allocated) 
+    if (!x->__is_manually_heap_allocated) 
         return;
 
     free(x->data);
@@ -163,7 +163,7 @@ u32 str_where_is_string_in_buffer(str_t *word, str_t *__buffer)
 u32 str_is_word_in___buffer(str_t *word, str_t *__buffer)
 {
     //TODO: account for null characters
-    
+
     assert(word);
     assert(__buffer);
     if (__buffer->len < word->len) return false;
@@ -234,20 +234,20 @@ void str_get_data(const str_t *data, char *output)
     memcpy(output, data->data, data->len);
 }
 
-str_t str_join(const str_t *part1, const char *part2)
+str_t str_join(arena_t *arena, const str_t *part1, const char *part2)
 {
     ASSERT(part1);
     ASSERT(part2);
 
     const u32 part2_len = strlen(part2);
 
-    char *buffer = calloc(sizeof(char), (part1->len + part2_len + 1));
+    char *buffer = arena_reserve(arena, sizeof(char) * (part1->len + part2_len + 1));
     ASSERT(buffer);
     sprintf(buffer, "%.*s%s", part1->len, part1->data, part2);
     return (str_t) {
         .len = part1->len + part2_len,
         .data = buffer,
-        .__is_heap_allocated = true
+        .__is_manually_heap_allocated = false
     };
 }
 
