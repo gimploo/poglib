@@ -9,6 +9,7 @@
 
 //NOTE: Attributes are only handelled for GL_FLOAT (default) and GL_INT
 
+
 /*=============================================================================
                         - OPENGL 2D RENDERER -
 =============================================================================*/
@@ -96,8 +97,9 @@ typedef struct {
 
     // Textures
     struct {
+        bool common_across_calls;
         u8 count;
-        const gltexture2d_t **textures;
+        const gltexture2d_t *data;
     } textures;
 
     // Shader Config { uniform and shader }
@@ -229,10 +231,9 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
         renderconfig.calls.call[(u64)list_index] = (glrendercall_t ){
             .is_wireframe = in_wireframe,
             .textures = {
-                .count = 0,//model->textures.len,
-                .textures = (const gltexture2d_t **)list_get_buffer(&model->textures)
+                .count = model->textures.len,
+                .data = model->textures.len ? (const gltexture2d_t *)list_get_value(&model->textures, list_index) : NULL
             },
-
             .attrs = {
                 .count = 7,
                 .attr = {
@@ -447,7 +448,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         for (u8 txt_idx = 0; txt_idx < config.calls.call[call_idx].textures.count; ++txt_idx)
         {
             gltexture2d_bind(
-                    config.calls.call[call_idx].textures.textures[txt_idx],
+                    config.calls.call[call_idx].textures.data + txt_idx,
                     txt_idx
             );
         }

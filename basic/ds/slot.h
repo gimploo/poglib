@@ -26,6 +26,7 @@ typedef struct slot_t {
 void *              slot_insert(slot_t *, const u64 index, const void *value, const u64 value_size);
 void *              slot_update(slot_t *, const u64 index, const void *value, const u64 value_size);
 void                slot_insert_multiple(slot_t *self, const u8 *arraybuffer, const u32 arraylen, const u32 elem_size);
+bool                slot_is_index_occupied(slot_t *self, const u32 index);
 #define             slot_append(PSLOTARRAY, VALUE)                         slot_insert((PSLOTARRAY), (PSLOTARRAY)->len, &(VALUE), sizeof(VALUE))
 #define             slot_delete(PSLOTARRAY, INDEX)                         __impl_slot_delete((PSLOTARRAY), (INDEX))
 slot_t              slot_clone(const slot_t *slot);
@@ -289,4 +290,10 @@ void slot_insert_multiple(
                 elem_size);
     }
 }
+
+inline bool slot_is_index_occupied(slot_t *self, const u32 index)
+{
+    return __check_if_empty(self, index);
+}
+
 #endif

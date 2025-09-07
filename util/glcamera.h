@@ -7,7 +7,7 @@
 #define GL_CAMERA_DIRECTION_FRONT    (vec3f_t ){0.0f, 0.0f, -1.0f}
 #define GL_CAMERA_DIRECTION_UP       (vec3f_t ){0.0f, 1.0f, 0.0f }
 
-const f32 GL_CAMERA_SPEED           =  500.0f;
+const f32 GL_CAMERA_SPEED           =  1500.0f;
 const f32 GL_CAMERA_SENSITIVITY     =  1.f;
 
 typedef struct glcamera_t {
