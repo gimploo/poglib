@@ -109,21 +109,9 @@ typedef struct glmesh_t {
 
     slot_t vtx;
     slot_t idx;
+    u8 material_index;
 
 } glmesh_t;
-
-glmesh_t glmesh_init(const glvertex3d_t *vtxArray, const u32 vtxArrayLen, const u32 *idxArray, const u32 idxArrayLen)
-{
-    glmesh_t o = {
-        .vtx      = slot_init(vtxArrayLen, glvertex3d_t),
-        .idx      = slot_init(idxArrayLen, u32),
-    };
-
-    slot_insert_multiple(&o.vtx, (u8 *)vtxArray, vtxArrayLen, sizeof(glvertex3d_t));
-    slot_insert_multiple(&o.idx, (u8 *)idxArray, idxArrayLen, sizeof(u32));
-
-    return o;
-}
 
 void glmesh_destroy(glmesh_t *self)
 {

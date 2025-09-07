@@ -563,14 +563,6 @@ void __gui_render(gui_t *gui)
         __recache_gui_vtx(gui, recache_text, recache_icons);
     }
 
-    const gltexture2d_t *fonttexture[1] = {
-        &gui->font.handler.texture
-    };
-
-    const gltexture2d_t *spritetexture[1] = {
-        &gui->atlas.texture
-    };
-
     const matrix4f_t ortho_ndc = glms_ortho(0.0f, 1080.f, 920.f, 0.0f, -2.0f, 2.0f);
 
     glrenderer3d_draw((glrendererconfig_t){
@@ -634,7 +626,7 @@ void __gui_render(gui_t *gui)
                     },
                     .textures = {
                         .count = 1,
-                        .textures = fonttexture,
+                        .data = &gui->font.handler.texture,
                     },
                     .shader_config = {
                         .shader = &gui->font.custom_shader,
@@ -692,7 +684,7 @@ void __gui_render(gui_t *gui)
                     },
                     .textures = {
                         .count = 1,
-                        .textures = spritetexture,
+                        .data = &gui->atlas.texture
                     },
                     .shader_config = {
                         .shader = &gui->font.custom_shader,
