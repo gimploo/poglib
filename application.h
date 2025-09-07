@@ -72,7 +72,7 @@ void            application_run(application_t *app);
 #define         application_get_dt(PAPP)                    (PAPP)->handle.timer->dt
 #define         application_get_fps(PAPP)                   (PAPP)->handle.timer->fps
 f32             application_get_tick(const application_t *);
-str_t           application_get_absolute_filepath(const application_t *app, const char *filepath);
+str_t           application_get_absolute_filepath(application_t *app, const char *filepath);
 #define         application_update_state(PAPP, STATE)       (PAPP)->state = STATE
 
 
@@ -223,13 +223,13 @@ void application_run(application_t *app)
 #endif
 }
 
-str_t application_get_absolute_filepath(const application_t *app, const char *filepath)
+str_t application_get_absolute_filepath(application_t *app, const char *filepath)
 {
     char scratch[KB] = {0};
     ASSERT((strlen(app->context.base_dir) + strlen(filepath) + 1) <= ARRAY_LEN(scratch));
     const char *base_dir = app->context.base_dir;
     cstr_combine_path(base_dir, filepath, scratch, ARRAY_LEN(scratch));
-    return str_init(scratch);
+    return str_init(&app->handle.arena, scratch);
 }
 
 #endif 

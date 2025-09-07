@@ -16,7 +16,7 @@ typedef struct poggen_t {
     arena_t             arena;
 
     struct {
-        const application_t *const app;
+        application_t *const app;
     } handle;
 
 } poggen_t ;

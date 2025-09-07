@@ -6,6 +6,8 @@
 #include <poglib/font/glfreetypefont.h>
 #include <poglib/util/atlasmanager.h>
 
+//TODO: Integerate Arenas
+
 /*
  * LAYOUT - origin is at the top left of the screen
  * Uses pixel units as measurements
@@ -319,7 +321,7 @@ ui_t * __ui_init(ui_t *parent, const str_t label, const ui_type type, const ui_c
             char buffer[KB] = {0};
             snprintf(buffer, sizeof(buffer), "%zi", (u64)ui->config.range.min);
 
-            __ui_init(ui, str_init(buffer), UI_TYPE_LABEL, NULL, NULL, gui);
+            __ui_init(ui, str_init(NULL, buffer), UI_TYPE_LABEL, NULL, NULL, gui);
             ui_t *container = __ui_init(ui, str("__container"), UI_TYPE_PANEL, NULL, &(style_t){
                 .color = COLOR_WHITE,
                 .dim = {60, 20}
@@ -333,7 +335,7 @@ ui_t * __ui_init(ui_t *parent, const str_t label, const ui_type type, const ui_c
                 slider->owner = ui;
             }
             snprintf(buffer, sizeof(buffer), "%zi", (u64)ui->config.range.max);
-            __ui_init(ui, str_init(buffer), UI_TYPE_LABEL, NULL, NULL, gui);
+            __ui_init(ui, str_init(NULL, buffer), UI_TYPE_LABEL, NULL, NULL, gui);
 
             ui->computed.dim.height = 20;
             ui->computed.dim.width = 60;
