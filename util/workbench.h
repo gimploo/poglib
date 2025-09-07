@@ -20,7 +20,10 @@ typedef struct {
         bool wireframe_mode;
     } render_config;
 
-    gui_t *gui;
+    struct {
+        gui_t *handle;
+        bool enable;
+    } gui;
 
     glshader_t shader;
     glcamera_t world_camera;
@@ -65,7 +68,10 @@ workbench_t workbench_init(const application_t *app)
         .render_config = {
             .wireframe_mode = false
         },
-        .gui = gui_init()
+        .gui = {
+            .handle = gui_init(),
+            .enable = true
+        }
     };
 
     return o;
@@ -89,14 +95,19 @@ void workbench_track_lightsource(workbench_t *self, const gllight_t *light)
 void workbench_toggle_wireframe_mode(workbench_t *self)
 {
     self->render_config.wireframe_mode = !self->render_config.wireframe_mode;
-    gui_set_wireframe_mode(self->gui, self->render_config.wireframe_mode);
+    gui_set_wireframe_mode(self->gui.handle, self->render_config.wireframe_mode);
+}
+
+void workbench_toggle_gui(workbench_t *self)
+{
+    self->gui.enable = !self->gui.enable;
 }
 
 void __workbench_render_ui(workbench_t *self)
 {
-    GUI(self->gui) {
+    GUI(self->gui.handle) {
         UI_PANEL(panel, ((style_t){
-            .color = COLOR_RED,
+            .color = COLOR_GRAY,
             .margin = {10.f, 10.f, 0.f, 0.f},
             .padding = {10, 10}, 
             .dim = {
@@ -105,12 +116,11 @@ void __workbench_render_ui(workbench_t *self)
             },
             .layout = UI_LAYOUT_VERTICAL
         })) {
-            UI_BUTTON(button1, 
+            UI_BUTTON(texture, 
                 ((style_t){
                     .color = COLOR_WHITE, 
                 }))
-            if (button1->state.is_clicked) {
-                printf("Button1 is clicked\n");
+            if (texture->state.is_clicked) {
             }
             UI_LABEL(label1, 
                 ((style_t){
@@ -139,7 +149,6 @@ void __workbench_render_ui(workbench_t *self)
                     .dim = {10, 10},
                 })
             ) {
-               printf("value %f\n", slider->state.value);
             }
             UI_BUTTON(button4, 
                 ((style_t){
@@ -197,7 +206,7 @@ void __workbench_render_lightsources(workbench_t *self)
                                         .name = "projection",
                                         .type = "matrix4f_t",
                                         .value = glms_perspective(
-                                            radians(45), global_poggen->handle.app->window.aspect_ratio, 1.0f, 1000.0f)
+                                            radians(45), global_poggen->handle.app->window.aspect_ratio, 1.0f, 10000.0f)
                                     },
                                     [2] = {
                                         .name = "color",
@@ -399,7 +408,10 @@ void workbench_render(workbench_t *self)
     });
 
     __workbench_render_lightsources(self);
-    __workbench_render_ui(self);
+
+    if (self->gui.enable) {
+        __workbench_render_ui(self);
+    }
 
     list_clear(&self->draw_lines);
 }
@@ -411,7 +423,7 @@ void workbench_destroy(workbench_t *self)
     glshader_destroy(&self->shader);
     list_destroy(&self->draw_lines);
     list_destroy(&self->lightsources);
-    gui_destroy(self->gui);
+    gui_destroy(self->gui.handle);
 }
 
 

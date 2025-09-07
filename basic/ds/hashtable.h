@@ -5,6 +5,8 @@
 #include "./slot.h"
 #include "../util.h"
 
+//TODO: Integrate arenas
+
 //NOTE: hashtable inlines data that are of 8 bytes less and pointers of 8 bytes more
 
 typedef struct table_entry_t {
@@ -90,7 +92,7 @@ table_entry_t * hashtable_insert_raw(hashtable_t *table, const char *key, void *
     const u32 entries_capacity = slot_get_capacity(&table->entries);
     u32 index = hash_cstr(key) % entries_capacity;
     u32 probe_distance = 0;
-    str_t str_key = str_init(key);
+    str_t str_key = str_init(NULL, key);
 
     while(true) {
         table_entry_t *entry = slot_get_value(&table->entries,index);

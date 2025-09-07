@@ -4,42 +4,42 @@
 f32 CAMERA_VERTICES [] = {
        // Main camera body (trapezoid shape - wider at back)
     // Front face (smaller)
-    -0.3, -0.2, 0.2,    // 0: front bottom-left
-     0.3, -0.2, 0.2,    // 1: front bottom-right
-     0.3,  0.2, 0.2,    // 2: front top-right
-    -0.3,  0.2, 0.2,    // 3: front top-left
+    -0.3f, -0.2f, 0.2f,    // 0: front bottom-left
+     0.3f, -0.2f, 0.2f,    // 1: front bottom-right
+     0.3f,  0.2f, 0.2f,    // 2: front top-right
+    -0.3f,  0.2f, 0.2f,    // 3: front top-left
     
     // Back face (larger - creates trapezoid)
-    -0.4, -0.3, -0.3,   // 4: back bottom-left
-     0.4, -0.3, -0.3,   // 5: back bottom-right
-     0.4,  0.3, -0.3,   // 6: back top-right
-    -0.4,  0.3, -0.3,   // 7: back top-left
+    -0.4f, -0.3f, -0.3f,   // 4: back bottom-left
+     0.4f, -0.3f, -0.3f,   // 5: back bottom-right
+     0.4f,  0.3f, -0.3f,   // 6: back top-right
+    -0.4f,  0.3f, -0.3f,   // 7: back top-left
     
     // Lens cylinder (8 sides for smooth look)
-     0.0,  0.0, 0.2,    // 8: lens center back
-     0.0,  0.0, 0.4,    // 9: lens center front
-     0.15, 0.0, 0.2,    // 10: lens right back
-     0.15, 0.0, 0.4,    // 11: lens right front
-     0.11, 0.11, 0.2,   // 12: lens top-right back
-     0.11, 0.11, 0.4,   // 13: lens top-right front
-     0.0,  0.15, 0.2,   // 14: lens top back
-     0.0,  0.15, 0.4,   // 15: lens top front
-    -0.11, 0.11, 0.2,   // 16: lens top-left back
-    -0.11, 0.11, 0.4,   // 17: lens top-left front
-    -0.15, 0.0, 0.2,    // 18: lens left back
-    -0.15, 0.0, 0.4,    // 19: lens left front
-    -0.11,-0.11, 0.2,   // 20: lens bottom-left back
-    -0.11,-0.11, 0.4,   // 21: lens bottom-left front
-     0.0, -0.15, 0.2,   // 22: lens bottom back
-     0.0, -0.15, 0.4,   // 23: lens bottom front
-     0.11,-0.11, 0.2,   // 24: lens bottom-right back
-     0.11,-0.11, 0.4,   // 25: lens bottom-right front
+     0.0f,  0.0f, 0.2f,    // 8: lens center back
+     0.0f,  0.0f, 0.4f,    // 9: lens center front
+     0.15f, 0.0f, 0.2f,    // 10: lens right back
+     0.15f, 0.0f, 0.4f,    // 11: lens right front
+     0.11f, 0.11f, 0.2f,   // 12: lens top-right back
+     0.11f, 0.11f, 0.4f,   // 13: lens top-right front
+     0.0f,  0.15f, 0.2f,   // 14: lens top back
+     0.0f,  0.15f, 0.4f,   // 15: lens top front
+    -0.11f, 0.11f, 0.2f,   // 16: lens top-left back
+    -0.11f, 0.11f, 0.4f,   // 17: lens top-left front
+    -0.15f, 0.0f, 0.2f,    // 18: lens left back
+    -0.15f, 0.0f, 0.4f,    // 19: lens left front
+    -0.11f,-0.11f, 0.2f,   // 20: lens bottom-left back
+    -0.11f,-0.11f, 0.4f,   // 21: lens bottom-left front
+     0.0f, -0.15f, 0.2f,   // 22: lens bottom back
+     0.0f, -0.15f, 0.4f,   // 23: lens bottom front
+     0.11f,-0.11f, 0.2f,   // 24: lens bottom-right back
+     0.11f,-0.11f, 0.4f,   // 25: lens bottom-right front
     
     // Viewfinder on top
-    -0.1,  0.3, 0.0,    // 26: viewfinder bottom-left
-     0.1,  0.3, 0.0,    // 27: viewfinder bottom-right
-     0.1,  0.4, 0.0,    // 28: viewfinder top-right
-    -0.1,  0.4, 0.0,    // 29: viewfinder top-left
+    -0.1f,  0.3f, 0.0f,    // 26: viewfinder bottom-left
+     0.1f,  0.3f, 0.0f,    // 27: viewfinder bottom-right
+     0.1f,  0.4f, 0.0f,    // 28: viewfinder top-right
+    -0.1f,  0.4f, 0.0f,    // 29: viewfinder top-left
 };
 
 // Indices for rendering triangles

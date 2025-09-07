@@ -7,6 +7,7 @@
     #include <imagehlp.h>
 #endif
 #include "./ds/linkedlist.h"
+#include <threads.h>
 
 #define DEFAULT_DBG_MEM_LOG_PATH "bin/dbg_mem_log.txt"
 const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h" };
@@ -14,7 +15,7 @@ const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h" };
 // Eprint for for both linux and windows
 #define eprint(fmt, ...) do {\
 \
-     fprintf(stderr, "\n\033[0;37m" "[(%s:%d): %s] " "\033[0;31m\n\t" fmt "\033[0m\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
+    fprintf(stderr, "\n\033[0;37m" "[(%s:%d): %s] " "\033[0;31m\n\t" fmt "\033[0m\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
     stacktrace_print();\
     exit(-1);\
 \
@@ -29,6 +30,7 @@ const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h" };
 
 typedef struct dbg_t {
 
+    mtx_t       lock;
     FILE        *fp;
     const char  *fname;
     llist_t     list;
@@ -206,11 +208,12 @@ void dbg_init(void)
     global_debug.fp = fp;
     global_debug.fname = DEFAULT_DBG_MEM_LOG_PATH;
     global_debug.list = llist_init();
+    mtx_init(&global_debug.lock, mtx_plain);
 
     fprintf(stdout, "[*] DBG: INITALIZED\n");
 }
 
-void debugprint(void *arg)
+void __debugprint(void *arg)
 {
     assert(arg);
     dbg_node_info_t info = *(dbg_node_info_t *)arg;
@@ -243,7 +246,7 @@ void debug_mem_dump(void)
     node_t *track = list->tail;
     while (track != NULL && count != MAX_MEM_DUMP_STDOUT_COUNT) {
 
-        debugprint(track->value);
+        __debugprint(track->value);
         track = track->prev;
         count++;
     }
@@ -254,6 +257,7 @@ static void * _debug_malloc(const size_t size, const char *file_path, const size
 {
 #undef malloc
 
+    mtx_lock(&global_debug.lock);
     FILE *fp = global_debug.fp;            // global variable
     llist_t *list = &global_debug.list;
 
@@ -269,6 +273,7 @@ static void * _debug_malloc(const size_t size, const char *file_path, const size
 
     if (__is_file_in_ignore_files(file_path)) {
         fprintf(fp, "%s file ignored\n", file_path);   
+        mtx_unlock(&global_debug.lock);
         return malloc_mem;
     }
 
@@ -292,6 +297,7 @@ static void * _debug_malloc(const size_t size, const char *file_path, const size
     
 #define malloc(n) _debug_malloc((n), __FILE__, __LINE__, __func__)
 
+    mtx_unlock(&global_debug.lock);
     return malloc_mem;
 }
 
@@ -307,6 +313,7 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
 #undef realloc
 #undef free
 
+    mtx_lock(&global_debug.lock);
     FILE *fp = global_debug.fp; // global variable
     llist_t *list = &global_debug.list;
 
@@ -320,6 +327,7 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
 
     if (__is_file_in_ignore_files(file_path)) {
         fprintf(fp, "%s file ignored\n", file_path);
+        mtx_unlock(&global_debug.lock);
         return realloc_mem;
     }
 
@@ -372,6 +380,7 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
 #define free(P) _debug_free((P), (#P), __FILE__, __LINE__, __func__) 
 #define realloc(p, n) _debug_realloc((p), (#p), (n), __FILE__, __LINE__, __func__)
 
+    mtx_unlock(&global_debug.lock);
     return realloc_mem;
 }
 
@@ -379,6 +388,7 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
 void _debug_free(void *pointer, const char *pointer_name , const char *file_path, const size_t line_num, const char *func_name)
 {
 #undef free
+    mtx_lock(&global_debug.lock);
     FILE *fp = global_debug.fp;
     if(!fp) {
         fprintf(stderr, "You forgot to add dbg_init() in your code"); 
@@ -391,6 +401,7 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
     if (__is_file_in_ignore_files(file_path)) {
             fprintf(fp,"%s file ignored\n", file_path);
             free(pointer);
+            mtx_unlock(&global_debug.lock);
 #define free(P) _debug_free((P), (#P), __FILE__, __LINE__, __func__) 
             return;
     }
@@ -443,6 +454,7 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
 
     free(pointer);
     pointer = NULL;
+    mtx_unlock(&global_debug.lock);
 
 #define free(P) _debug_free((P), (#P), __FILE__, __LINE__, __func__) 
 
@@ -452,6 +464,7 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
 // Close function required to end the debugger
 void dbg_destroy(void)
 {
+    mtx_lock(&global_debug.lock);
     fprintf(stdout, "[!] DBG: CONCLUDED\n");
 
     if (global_debug.list.count == 0) {
@@ -471,8 +484,10 @@ void dbg_destroy(void)
 
     }
     llist_destroy(&global_debug.list);
-
     fclose(global_debug.fp);
+    mtx_unlock(&global_debug.lock);
+    mtx_destroy(&global_debug.lock);
+
 }
 #endif //IGNORE_MYDBG_IMPLEMENTATION
 

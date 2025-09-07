@@ -9,9 +9,12 @@
 
 //NOTE: Attributes are only handelled for GL_FLOAT (default) and GL_INT
 
+
 /*=============================================================================
                         - OPENGL 2D RENDERER -
 =============================================================================*/
+
+#define MAX_DRAW_CALLS_PER_FRAME_COUNT 100
 
 typedef struct glrenderer3d_t {
 
@@ -52,10 +55,8 @@ typedef struct {
 } glshaderconfig_t;
 
 typedef struct {
-  
     u32 count;
     glshaderconfig_t configs[3];
-
 } glshaderconfiglist_t;
 
 typedef struct {
@@ -96,8 +97,9 @@ typedef struct {
 
     // Textures
     struct {
+        bool common_across_calls;
         u8 count;
-        gltexture2d_t **textures;
+        const gltexture2d_t *data;
     } textures;
 
     // Shader Config { uniform and shader }
@@ -112,8 +114,8 @@ typedef struct {
 
     // Draw Call
     struct {
-        const u8 count;
-        const glrendercall_t call[10];
+        u8 count;
+        glrendercall_t call[MAX_DRAW_CALLS_PER_FRAME_COUNT];
     } calls;
 
 } glrendererconfig_t;
@@ -206,22 +208,32 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
 void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t config, bool in_wireframe)
 {
     ASSERT(model->meshes.len > 0);
-    if(model->meshes.len > 3) 
-        eprint("FIXME: Kept a hard limit on how many meshes (3) can be rendered per model");
-    ASSERT(config.count == model->meshes.len);
+    if(model->meshes.len > MAX_DRAW_CALLS_PER_FRAME_COUNT) 
+        eprint("FIXME: Kept a hard limit on how many meshes (100) can be rendered per model");
 
-    glrendercall_t calls[3] = {0};
+    bool common_shader = false;
+    if (config.count == 1) {
+        common_shader = true;
+    } else {
+        ASSERT(config.count == model->meshes.len);
+    }
+
+    glrendererconfig_t renderconfig = {
+        .calls = {
+            .count = model->meshes.len,
+            .call = {0}
+        }
+    };
 
     list_iterator(&model->meshes, iter) 
     {
         glmesh_t *mesh = iter;
-        calls[(u64)list_index] = (glrendercall_t ){
+        renderconfig.calls.call[(u64)list_index] = (glrendercall_t ){
             .is_wireframe = in_wireframe,
             .textures = {
                 .count = model->textures.len,
-                .textures = (gltexture2d_t **)list_get_buffer(&model->textures)
+                .data = model->textures.len ? (const gltexture2d_t *)list_get_value(&model->textures, list_index) : NULL
             },
-
             .attrs = {
                 .count = 7,
                 .attr = {
@@ -284,7 +296,7 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
                     }
                 }
             },
-            .shader_config = config.configs[(u64)list_index],
+            .shader_config = common_shader ? config.configs[0] : config.configs[(u64)list_index],
             .vtx = {
                 .data = slot_get_buffer(&mesh->vtx),
                 .size = slot_get_size(&mesh->vtx)
@@ -296,16 +308,7 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
         };
     }
 
-    glrenderer3d_draw((glrendererconfig_t) {
-        .calls = {
-            .count = model->meshes.len, 
-            .call = {
-                [0] = calls[0],
-                [1] = calls[1],
-                [2] = calls[2]
-            }
-        }
-    });
+    glrenderer3d_draw(renderconfig);
 }
 
 
@@ -445,7 +448,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         for (u8 txt_idx = 0; txt_idx < config.calls.call[call_idx].textures.count; ++txt_idx)
         {
             gltexture2d_bind(
-                    config.calls.call[call_idx].textures.textures[txt_idx],
+                    config.calls.call[call_idx].textures.data + txt_idx,
                     txt_idx
             );
         }

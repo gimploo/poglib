@@ -5,9 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
-#include <errno.h> 
 #include <time.h>
-#include <ctype.h>
 
 #define MAX_TYPE_CHARACTER_LENGTH 32
 

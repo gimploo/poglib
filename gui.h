@@ -6,6 +6,8 @@
 #include <poglib/font/glfreetypefont.h>
 #include <poglib/util/atlasmanager.h>
 
+//TODO: Integerate Arenas
+
 /*
  * LAYOUT - origin is at the top left of the screen
  * Uses pixel units as measurements
@@ -77,7 +79,7 @@ typedef struct ui_t {
         vec4f_t color;
         f32 zorder;
         bool is_dirty;
-        str_t *display_text;
+        const str_t *display_text;
         struct { f32 width; f32 height; } dim;
         bool is_movable;
         bool toggle_click_state;
@@ -226,7 +228,7 @@ f32 __get_ui_width(const ui_t *ui, const gui_t *gui)
 {
     if (ui->style.dim.width) 
         return ui->style.dim.width;
-    const f32 final_padding_x  = max(__get_ui_padding(ui).left - __get_ui_padding(ui).right, 0);
+    const f32 final_padding_x  = MAX(__get_ui_padding(ui).left - __get_ui_padding(ui).right, 0);
     return ui->type & (UI_TYPE_BUTTON | UI_TYPE_LABEL) 
         ? __get_text_total_glyph_width(ui, gui) + final_padding_x
         : 0;
@@ -236,13 +238,13 @@ f32 __get_ui_height(const ui_t *ui, const gui_t *gui)
 {
     if (ui->style.dim.height) 
         return ui->style.dim.height;
-    const f32 final_padding_y  = max(__get_ui_padding(ui).top - __get_ui_padding(ui).bottom, 0);
+    const f32 final_padding_y  = MAX(__get_ui_padding(ui).top - __get_ui_padding(ui).bottom, 0);
     return ui->type & (UI_TYPE_BUTTON | UI_TYPE_LABEL)
         ? final_padding_y + gui->font.handler.fontsize
         : 0;
 }
 
-str_t * __get_ui_display_text(const ui_t *ui)
+const str_t * __get_ui_display_text(const ui_t *ui)
 {
     if (ui->type & (UI_TYPE_LABEL | UI_TYPE_BUTTON)) {
         if (ui->parent->type & (UI_TYPE_CHECKBOX)) {
@@ -262,13 +264,13 @@ void __apply_parent_styles_on_child(const ui_t *parent, ui_t *child)
     );
 }
 
-ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, const ui_config_t *config, const style_t *style, gui_t *gui) 
+ui_t * __ui_init(ui_t *parent, const str_t label, const ui_type type, const ui_config_t *config, const style_t *style, gui_t *gui) 
 {
     ui_t * ui = mem_init(&(ui_t) {
         .label = label,
         .type = type,
         .parent = parent,
-        .owner = parent,
+        .owner = (ui_t *)parent,
         .children = list_init(ui_t *),
         .computed = {0},
         .style = style ? *style : (style_t){0},
@@ -306,8 +308,8 @@ ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, cons
             icon->computed.toggle_click_state = true;
             const ui_t *label_item = __ui_init(ui, str("__label"), UI_TYPE_LABEL, NULL, &label_style, gui);
 
-            ui->computed.dim.height = max(icon->computed.dim.height, label_item->computed.dim.height);
-            ui->computed.dim.width = max(icon->computed.dim.width, label_item->computed.dim.width);
+            ui->computed.dim.height = MAX(icon->computed.dim.height, label_item->computed.dim.height);
+            ui->computed.dim.width = MAX(icon->computed.dim.width, label_item->computed.dim.width);
 
         }
         break;
@@ -319,7 +321,7 @@ ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, cons
             char buffer[KB] = {0};
             snprintf(buffer, sizeof(buffer), "%zi", (u64)ui->config.range.min);
 
-            __ui_init(ui, str_init(buffer), UI_TYPE_LABEL, NULL, NULL, gui);
+            __ui_init(ui, str_init(NULL, buffer), UI_TYPE_LABEL, NULL, NULL, gui);
             ui_t *container = __ui_init(ui, str("__container"), UI_TYPE_PANEL, NULL, &(style_t){
                 .color = COLOR_WHITE,
                 .dim = {60, 20}
@@ -327,13 +329,13 @@ ui_t * __ui_init(const ui_t *parent, const str_t label, const ui_type type, cons
 
                 ui_t *slider = __ui_init(container, str(""), UI_TYPE_BUTTON, NULL, &(style_t){
                     .color = COLOR_GREEN,
-                    .dim = {5, 20}
+                    .dim = {10, 20}
                 }, gui);
                 slider->computed.is_movable = true;
                 slider->owner = ui;
             }
             snprintf(buffer, sizeof(buffer), "%zi", (u64)ui->config.range.max);
-            __ui_init(ui, str_init(buffer), UI_TYPE_LABEL, NULL, NULL, gui);
+            __ui_init(ui, str_init(NULL, buffer), UI_TYPE_LABEL, NULL, NULL, gui);
 
             ui->computed.dim.height = 20;
             ui->computed.dim.width = 60;
@@ -409,7 +411,7 @@ f32 __get_max_text_height(const gui_t *gui, const str_t *label)
     f32 max_height = 0;
     for(u8 i = 0; i < label->len; i++)
     {
-        max_height = max(
+        max_height = MAX(
             max_height, 
             gui->font.handler.fontatlas[(u8)label->data[i]].bh
         );
@@ -561,14 +563,6 @@ void __gui_render(gui_t *gui)
         __recache_gui_vtx(gui, recache_text, recache_icons);
     }
 
-    const gltexture2d_t *fonttexture[1] = {
-        &gui->font.handler.texture
-    };
-
-    const gltexture2d_t *spritetexture[1] = {
-        &gui->atlas.texture
-    };
-
     const matrix4f_t ortho_ndc = glms_ortho(0.0f, 1080.f, 920.f, 0.0f, -2.0f, 2.0f);
 
     glrenderer3d_draw((glrendererconfig_t){
@@ -632,7 +626,7 @@ void __gui_render(gui_t *gui)
                     },
                     .textures = {
                         .count = 1,
-                        .textures = fonttexture,
+                        .data = &gui->font.handler.texture,
                     },
                     .shader_config = {
                         .shader = &gui->font.custom_shader,
@@ -690,7 +684,7 @@ void __gui_render(gui_t *gui)
                     },
                     .textures = {
                         .count = 1,
-                        .textures = spritetexture,
+                        .data = &gui->atlas.texture
                     },
                     .shader_config = {
                         .shader = &gui->font.custom_shader,
@@ -749,7 +743,9 @@ void __update_owner_data(ui_t *ui)
         case UI_TYPE_BUTTON:
             if (ui->owner->type & UI_TYPE_SLIDER) {
                 const f32 value = (ui->owner->config.range.max - ui->owner->config.range.min);
-                const f32 offset = ui->computed.pos.x - ui->parent->computed.pos.x;
+                const f32 offset = ((ui->parent->style.dim.width - (ui->computed.pos.x - ui->parent->computed.pos.x)) == ui->style.dim.width )
+                    ? (ui->computed.pos.x - ui->parent->computed.pos.x) + ui->computed.dim.width
+                    : ui->computed.pos.x - ui->parent->computed.pos.x;
                 ui->owner->state.value = value * (offset / ui->parent->style.dim.width) + ui->owner->config.range.min;
             } 
         break;
@@ -769,7 +765,7 @@ void __ui_update(gui_t *gui, ui_t *ui)
 
     if (ui->type & (UI_TYPE_LABEL)) return;
 
-    const window_t *win = window_get_current_active_window();
+    window_t *win = window_get_current_active_window();
     const vec2i_t mouse_pos = window_mouse_get_position(win);
 
     const bool is_cursor_on_ui = (f32)mouse_pos.x > ui->computed.pos.x
@@ -794,7 +790,7 @@ void __ui_update(gui_t *gui, ui_t *ui)
         const f32 min_width = ui->parent->computed.pos.x;
         const f32 max_width = ui->parent->computed.pos.x + (ui->parent->style.dim.width - ui->computed.dim.width);
         ui->computed.pos.x = mouse_pos.x - (ui->computed.dim.width / 2);
-        ui->computed.pos.x = min(max(ui->computed.pos.x, min_width), max_width);
+        ui->computed.pos.x = MIN(MAX(ui->computed.pos.x, min_width), max_width);
     }
 
     if (clicked_on_ui) {
@@ -884,7 +880,7 @@ const ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, cons
     if (!ui) {
         ui = __ui_init(parent, label, type, &config, &style, gui);
         if (!gui->root) {
-            gui->root = ui;
+            gui->root = (ui_t *)ui;
         }
 
     }
@@ -897,7 +893,7 @@ const ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, cons
 #define WRAPPED_PLEX(TYPE, ...) (((struct { TYPE wrapped; }){ .wrapped = (__VA_ARGS__) }).wrapped)
 
 #define __GEN_UI(UI_TYPE, LABEL, CONFIG, STYLE)\
-    for(ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE, CONFIG, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
+    for(const ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE, CONFIG, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
         LABEL;\
         list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
 

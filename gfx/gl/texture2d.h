@@ -5,14 +5,16 @@
  // OpenGL texture handling library
 ==================================================== */
 
+//TODO: To integrate arenas here will need to #define malloc, 
+// free and calloc for stb image to circumvent them from using sys calls
+
 #include "common.h"
 #include <poglib/image.h>
 
 typedef struct gltexture2d_t {
     
     GLuint          id; 
-    const char      filepath[64];
-    const char      type[32];
+    char      filepath[1024];
     unsigned char   *buf;
     int             width;
     int             height;
@@ -27,6 +29,7 @@ typedef struct gltexture2d_t {
 
 
 gltexture2d_t        gltexture2d_init(const char * filepath);
+gltexture2d_t        gltexture2d_embedded_init(u8 *buffer, u32 buffer_size);
 gltexture2d_t        gltexture2d_empty_init(u32 width, u32 height);
 void                 gltexture2d_destroy(const gltexture2d_t *texture);
 //NOTE:(macro)       gltexture2d_bind(gltexture2d_t *, u32 slot) --> void
@@ -128,7 +131,6 @@ gltexture2d_t gltexture2d_init(const char *filepath)
     gltexture2d_t o = {
         .id         = id,
         .filepath   = {0},
-        .type       = {0},
         .buf        = buf,
         .width      = width,
         .height     = height,
@@ -136,7 +138,7 @@ gltexture2d_t gltexture2d_init(const char *filepath)
     };
 
     const u64 len = strlen(filepath);
-    if (len > sizeof(o.filepath)) eprint("filepath too long");
+    if (len > ARRAY_LEN(o.filepath)) eprint("filepath too long");
     memcpy((char *)o.filepath, filepath, len);
 
     return o;
@@ -171,6 +173,55 @@ void gltexture2d_dump(const gltexture2d_t *texture)
             texture->width, 
             texture->height, 
             texture->bpp);
+}
+
+gltexture2d_t gltexture2d_embedded_init(u8 *buffer, u32 buffer_size)
+{
+    GLuint id;
+    i32 width, height, bpp;
+    const u8 *pixels = (u8 *)stbi_load_from_memory(
+        buffer, buffer_size, &width, &height, &bpp, STBI_default
+    );
+    if (!pixels) {
+        eprint("Failed to load pixels from memory");
+    }
+
+    GLenum format;
+    if (bpp == 1)       format = GL_RED;
+    else if (bpp == 3)  format = GL_RGB;
+    else if (bpp == 4)  format = GL_RGBA;
+
+    GL_CHECK(glGenTextures(1, &id));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, id));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));	
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+    GL_CHECK(glTexImage2D(
+        GL_TEXTURE_2D, 
+        0, 
+        format,
+        width,
+        height,
+        0,
+        format, // The format the buf variable is in
+        GL_UNSIGNED_BYTE,
+        pixels
+     ));
+    GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+    GL_LOG("Texture `%i` successfully created", id);
+
+    gltexture2d_t o = {
+        .id         = id,
+        .filepath   = NULL,
+        .buf        = pixels,
+        .width      = width,
+        .height     = height,
+        .bpp        = bpp,
+    };
+
+    return o;
 }
 
 #endif //__TEXTURE_H__

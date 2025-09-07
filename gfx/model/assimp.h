@@ -13,6 +13,8 @@
 #include <poglib/external/assimp/include/assimp/postprocess.h>
 #include <poglib/external/assimp/include/assimp/scene.h>
 
+//TODO: materials implementation is fucked - need to learn how do this 
+
 #define MAX_BONES 128
 
 typedef struct {
@@ -47,15 +49,17 @@ boneinfo_t boneinfo(matrix4f_t offset) {
    │ → Transform back to world space (if needed).
 */
 
-#define MAX_MESHES_PER_MODEL 3
+#define MAX_MESHES_PER_MODEL WORD
 
 typedef struct glmodel_t {
 
-    const char *filepath[64];
+    str_t directory_path;
+    char *filepath[1024];
     list_t meshes;
     list_t textures;
     list_t colors;
     list_t bone_infos;
+    //TODO: Implement materials;
 
     list_t transforms[MAX_MESHES_PER_MODEL];
     animator_t animator;
@@ -65,6 +69,7 @@ typedef struct glmodel_t {
     f32 current_time;
 
     matrix4f_t global_inverse_transform;
+    arena_t arena;
 
 } glmodel_t;
 
@@ -74,77 +79,55 @@ void            glmodel_destroy(glmodel_t *self);
 
 #ifndef IGNORE_ASSIMP_IMPLEMENTATION
 
+const struct {
+    enum aiTextureType type;
+    char *name;
+} ASSIMP_TEXTURE_TYPES[AI_TEXTURE_TYPE_MAX] = {
+    //{ aiTextureType_NONE, "texture_none" },
+    //{ aiTextureType_UNKNOWN, "texture_unknown" },
+    {aiTextureType_DIFFUSE, "texture_diffuse"},
+    {aiTextureType_SPECULAR, "texture_specular"},
+    {aiTextureType_AMBIENT, "texture_ambient"},
+    {aiTextureType_HEIGHT, "texture_height"},
+    {aiTextureType_NORMALS, "texture_normal"},
+    {aiTextureType_EMISSIVE, "texture_emissive"},
+    {aiTextureType_SHININESS, "texture_shininess"},
+    {aiTextureType_OPACITY, "texture_opacity"},
+    {aiTextureType_DISPLACEMENT, "texture_displacement"},
+    {aiTextureType_LIGHTMAP, "texture_lightmap"},
+    {aiTextureType_REFLECTION, "texture_reflection"},
+    {aiTextureType_BASE_COLOR, "texture_base_color"},
+    {aiTextureType_NORMAL_CAMERA, "texture_normal_camera"},
+    {aiTextureType_EMISSION_COLOR, "texture_emission_color"},
+    {aiTextureType_METALNESS, "texture_metalness"},
+    {aiTextureType_DIFFUSE_ROUGHNESS, "texture_diffuse_roughness"},
+    {aiTextureType_AMBIENT_OCCLUSION, "texture_occlusion"},
+#ifdef _WIN64
+    {aiTextureType_CLEARCOAT, "texture_clearcoat"},
+    {aiTextureType_TRANSMISSION, "texture_transmission"},
+    {aiTextureType_SHEEN, "texture_sheen"},
+    {aiTextureType_MAYA_BASE, "texture_maya_base"},
+    {aiTextureType_MAYA_SPECULAR, "texture_maya_specular"},
+    {aiTextureType_MAYA_SPECULAR_COLOR, "texture_maya_specular_color"},
+    {aiTextureType_MAYA_SPECULAR_ROUGHNESS, "texture_maya_specular_roughness"},
+    {aiTextureType_ANISOTROPY, "texture_anisotropy"},
+    {aiTextureType_GLTF_METALLIC_ROUGHNESS, "texture_gltf_metallic_roughness"},
+#endif
+};
+
 void debug_assimp_vertex_bones(const struct aiScene *scene);
 
-void __glmesh_processMaterials(glmodel_t *self, const struct aiMaterial *material) {
-    struct {
-        enum aiTextureType type;
-        char *name;
-    } textureTypes[] = {
-        //{ aiTextureType_NONE, "texture_none" },
-        //{ aiTextureType_UNKNOWN, "texture_unknown" },
-        {aiTextureType_DIFFUSE, "texture_diffuse"},
-        {aiTextureType_SPECULAR, "texture_specular"},
-        {aiTextureType_AMBIENT, "texture_ambient"},
-        {aiTextureType_HEIGHT, "texture_height"},
-        {aiTextureType_NORMALS, "texture_normal"},
-        {aiTextureType_EMISSIVE, "texture_emissive"},
-        {aiTextureType_SHININESS, "texture_shininess"},
-        {aiTextureType_OPACITY, "texture_opacity"},
-        {aiTextureType_DISPLACEMENT, "texture_displacement"},
-        {aiTextureType_LIGHTMAP, "texture_lightmap"},
-        {aiTextureType_REFLECTION, "texture_reflection"},
-        {aiTextureType_BASE_COLOR, "texture_base_color"},
-        {aiTextureType_NORMAL_CAMERA, "texture_normal_camera"},
-        {aiTextureType_EMISSION_COLOR, "texture_emission_color"},
-        {aiTextureType_METALNESS, "texture_metalness"},
-        {aiTextureType_DIFFUSE_ROUGHNESS, "texture_diffuse_roughness"},
-        {aiTextureType_AMBIENT_OCCLUSION, "texture_occlusion"},
-        {aiTextureType_SHEEN, "texture_sheen"},
-        {aiTextureType_CLEARCOAT, "texture_clearcoat"},
-        {aiTextureType_TRANSMISSION, "texture_transmission"},
-#ifdef _WIN64
-            {aiTextureType_MAYA_BASE, "texture_maya_base"},
-        {aiTextureType_MAYA_SPECULAR, "texture_maya_specular"},
-        {aiTextureType_MAYA_SPECULAR_COLOR, "texture_maya_specular_color"},
-        {aiTextureType_MAYA_SPECULAR_ROUGHNESS,
-            "texture_maya_specular_roughness"},
-        {aiTextureType_ANISOTROPY, "texture_anisotropy"},
-        {aiTextureType_GLTF_METALLIC_ROUGHNESS,
-            "texture_gltf_metallic_roughness"},
-#endif
-    };
+void __glmesh_processMaterial(glmodel_t *self, const struct aiScene *scene, const u32 material_index) 
+{
+    const struct aiMaterial *material = scene->mMaterials[material_index];
+    ASSERT(material);
 
     struct aiColor4D color;
     if (aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &color) == AI_SUCCESS) {
         list_append(&self->colors, color);
     }
 
-    bool loaded_textures[AI_TEXTURE_TYPE_MAX] = {0};
-
-    for (u32 textype_count = 0; textype_count < ARRAY_LEN(textureTypes); textype_count++) {
-
-        if (loaded_textures[textureTypes[textype_count].type])
-            continue;
-
-        const u32 total_textures_for_single_type =
-            aiGetMaterialTextureCount(material, textureTypes[textype_count].type);
-        if (!total_textures_for_single_type)
-            continue;
-
-        ASSERT(total_textures_for_single_type == 1 &&
-               "We assumed that only a single texture is loaded per type at all "
-               "times");
-
-        struct aiString texture_filepath;
-        aiGetMaterialTexture(material, textureTypes[textype_count].type, 0,
-                             &texture_filepath, NULL, NULL, NULL, NULL, NULL, NULL);
-
-        gltexture2d_t texture = gltexture2d_init(texture_filepath.data);
-        list_append(&self->textures, texture);
-
-        loaded_textures[textureTypes[textype_count].type] = true;
-    }
+    //TODO: setup materials
 }
 
 glmesh_t __glmesh_processMesh(const struct aiMesh *mesh) {
@@ -178,10 +161,11 @@ glmesh_t __glmesh_processMesh(const struct aiMesh *mesh) {
             mesh->mVertices[i].z,
         };
 
-        if (i < AI_MAX_NUMBER_OF_TEXTURECOORDS && mesh->mTextureCoords[i]) {
+        if (mesh->mTextureCoords[0]) {
+            //NOTE: this only loads primary uv texture 
             vt.uv = (vec2f_t){
-                mesh->mTextureCoords[i]->x,
-                mesh->mTextureCoords[i]->y,
+                mesh->mTextureCoords[0][i].x,
+                mesh->mTextureCoords[0][i].y,
             };
             vt.tangents = (vec3f_t){
                 .x = mesh->mTangents[i].x,
@@ -211,7 +195,8 @@ glmesh_t __glmesh_processMesh(const struct aiMesh *mesh) {
 
     return (glmesh_t){
         .vtx = vtx, 
-        .idx = ind
+        .idx = ind,
+        .material_index = mesh->mMaterialIndex
     };
 }
 
@@ -324,9 +309,12 @@ void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene)
     //in a buffer, we need to translate vertex ids to bone ids - since its the reverse assimp gives us
 
     //Map all bones to an index for easy lookup
-    self->bone_name_to_index = hashtable_init(__get_total_bones(scene), i32);
+    const u32 total_bones = __get_total_bones(scene);
+    if(total_bones) {
+        self->bone_name_to_index = hashtable_init(total_bones, i32);
+    }
 
-    ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL && "Updated the transforms list in glmodel_t");
+    ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL && "Update the transforms list in glmodel_t");
     for (u32 mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
         struct aiMesh *mesh = scene->mMeshes[mesh_index];
@@ -337,7 +325,11 @@ void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene)
         glmesh_t m = __glmesh_processMesh(mesh);
 
         // Process materials
-        __glmesh_processMaterials(self, scene->mMaterials[mesh->mMaterialIndex]);
+        __glmesh_processMaterial(
+            self, 
+            scene, 
+            mesh->mMaterialIndex
+        );
 
         if (mesh->mNumBones) {
             __glmesh_process_bones(mesh, &m.vtx, &self->bone_name_to_index, &self->bone_infos);
@@ -353,25 +345,44 @@ void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene)
     }
 }
 
+void __glmodel_load_alltextures(glmodel_t *self, const struct aiScene *scene)
+{
+    for(u32 texture_index = 0; texture_index < scene->mNumTextures; texture_index++)
+    {
+        gltexture2d_t texture = {0};
+        struct aiTexture *aitexture = scene->mTextures[texture_index];
+
+        if (aitexture->mFilename.length == 0 && aitexture->mHeight == 0) {
+            texture = gltexture2d_embedded_init((u8 *)aitexture->pcData, aitexture->mWidth);
+        } else {
+            str_t absolute_texture_path = str_join(&self->arena, &self->directory_path, aitexture->mFilename.data);
+            texture = gltexture2d_init(absolute_texture_path.data);
+        }
+        list_append(&self->textures, texture);
+    }
+}
+
+
 glmodel_t glmodel_init(const char *filepath) 
 {
-    ASSERT(strlen(filepath) < 64);
-
     glmodel_t o = {0};
+    ASSERT(strlen(filepath) < ARRAY_LEN(o.filepath));
     memcpy(o.filepath, filepath, strlen(filepath));
+    o.directory_path = str_get_directory_path(filepath);
     o.meshes = list_init(glmesh_t);
     o.textures = list_init(gltexture2d_t);
     o.colors = list_init(vec4f_t);
     o.bone_infos = list_init(boneinfo_t);
     o.animator = animator_init();
     o.current_time = 0.0f;
+    o.arena = arena_init(NULL, 2 * MB);
 
     logging("Loading model %s ...", filepath);
 
     // Assimp: import model
     const struct aiScene *scene = aiImportFile(
         filepath,
-        aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs |
+        aiProcess_Triangulate | aiProcess_GenSmoothNormals |
         aiProcess_CalcTangentSpace |
         aiProcess_JoinIdenticalVertices); // http://assimp.sourceforge.net/lib_html/structai_scene.html
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
@@ -388,6 +399,8 @@ glmodel_t glmodel_init(const char *filepath)
         )
     );
 
+    __glmodel_load_alltextures(&o, scene);
+
     //debug_assimp_vertex_bones(scene);
     __glmesh_processScene(&o, scene);
 
@@ -399,8 +412,8 @@ glmodel_t glmodel_init(const char *filepath)
     return o;
 }
 
-void glmodel_destroy(glmodel_t *self) {
-
+void glmodel_destroy(glmodel_t *self) 
+{
     for (u32 i = 0; i < self->meshes.len; i++) 
         list_destroy(&self->transforms[i]);
 
@@ -421,6 +434,7 @@ void glmodel_destroy(glmodel_t *self) {
     hashtable_destroy(&self->bone_name_to_index);
 
     aiReleaseImport(self->scene);
+    arena_destroy(&self->arena);
 
     memset(self->filepath, 0, sizeof(self->filepath));
 }

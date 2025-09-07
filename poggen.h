@@ -12,16 +12,18 @@ typedef struct poggen_t {
     assetmanager_t      assets;
     hashtable_t         scenes;
     scene_t             *current_scene;
+    bg_task_manager_t   bg_task_manager;
+    arena_t             arena;
 
     struct {
-        const application_t *const app;
+        application_t *const app;
     } handle;
 
 } poggen_t ;
 
 global poggen_t     *global_poggen = NULL;
 
-poggen_t *          poggen_init(const application_t * const app);
+poggen_t *          poggen_init(application_t * const app);
 #define             poggen_add_scene(PGEN, SCENE_NAME)                          __impl_poggen_add_scene((PGEN), __impl_scene_init(SCENE_NAME))
 void                poggen_remove_scene(poggen_t *self, const char *label);
 void                poggen_change_scene(poggen_t *self, const char *scene_label);
@@ -46,7 +48,7 @@ window_t * poggen_get_window(const poggen_t *self)
     return application_get_window(self->handle.app);
 }
 
-poggen_t * poggen_init(const application_t * const app)
+poggen_t * poggen_init(application_t * const app)
 {
     if (!global_window)     eprint("A window is required to run poggen\n");
     if (global_poggen)      eprint("Trying to initialize a second `poggen` in the same instance");
@@ -55,6 +57,8 @@ poggen_t * poggen_init(const application_t * const app)
         .assets         = assetmanager_init(),
         .scenes         = hashtable_init(MAX_SCENES_ALLOWED, scene_t ),
         .current_scene  = NULL,
+        .arena          = arena_init(&app->handle.arena, 2 * MB),
+        .bg_task_manager = bg_task_manager_init(),
         .handle = {
             .app          = app
         }
@@ -115,6 +119,8 @@ void poggen_update(poggen_t *self, const f32 dt)
 
     window_update_user_input(self->handle.app->handle.window);
 
+    bg_task_manager_run_all_tasks(&self->bg_task_manager);
+
     current_scene->__input(current_scene, dt);
     current_scene->__update(current_scene, dt);
 }
@@ -130,6 +136,8 @@ void poggen_destroy(poggen_t *self)
         mem_free((void *)hashtable_get_entry_value(&self->scenes, entry), sizeof(scene_t));
     }
     hashtable_destroy(&self->scenes);
+
+    bg_task_manager_destroy(&self->bg_task_manager);
 
     self->current_scene = NULL;
 
