@@ -2,6 +2,8 @@
 #include "dbg.h"
 #include "./common.h"
 #include "./file.h"
+#include "./arena.h"
+#include "./util.h"
 
 typedef struct str_t {
 
@@ -12,12 +14,12 @@ typedef struct str_t {
 } str_t ;
 
 #define         str(STRING)              (str_t ) { .data = STRING, .len = strlen(STRING), .__is_heap_allocated = false }
-str_t           str_init(const char *__buffer);
+str_t           str_init(arena_t *arena, const char * const __buffer);
 void            str_free(str_t *x);
 void            str_print(str_t *str);
 void            str_get_data(const str_t *data, char *output);
 u32             str_where_is_string_in_buffer(str_t *word, str_t *__buffer);
-str_t           str_read_file_to_str(const char *file_path);
+str_t           str_read_file_to_str(arena_t *arena, const char *file_path);
 str_t           str_cpy_delimiter(str_t *__buffer, char ch);
 bool            str_cmp(const str_t *a, const str_t *b);
 void            str_cpy(str_t *dest, str_t *source);
@@ -33,13 +35,15 @@ void            cstr_get_file_extension(const char *filepath, char output[32]);
 
 #ifndef IGNORE_STR_IMPLEMENTATION
 
-str_t str_init(const char * const __buffer) 
+str_t str_init(arena_t *arena, const char * const __buffer) 
 {
     assert(__buffer);
     str_t s = {
         .len = strlen(__buffer),
-        .data = (char *)calloc(sizeof(char), strlen(__buffer) + 1),
-        .__is_heap_allocated = true
+        .data = arena 
+            ? arena_reserve(arena, sizeof(char) * (strlen(__buffer) + 1)) 
+            : mem_init(NULL, sizeof(char) * strlen(__buffer) + 1),
+        .__is_heap_allocated = arena ? false : true
     };
 
     memcpy(s.data, __buffer, strlen(__buffer));
@@ -100,7 +104,7 @@ str_t str_cpy_delimiter(str_t *__buffer, char ch)
     return word;
 }
 
-str_t str_read_file_to_str(const char *file_path)
+str_t str_read_file_to_str(arena_t *arena, const char *file_path)
 {
     //NOTE: this code works dont tinker
     
@@ -128,7 +132,7 @@ str_t str_read_file_to_str(const char *file_path)
     __buffer[size] = '\0';
     fclose(fp);
 
-    return str_init(__buffer);
+    return str_init(arena, __buffer);
 }
 
 // Returns the pos of the word in __buffer

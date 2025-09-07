@@ -102,6 +102,7 @@ void * arena_reserve(arena_t *self, u32 memory_size)
         }
 
         mem = (void *)((u8 *)self->memory + self->size);
+        memset(mem, 0, memory_size);
         self->size += memory_size;
     }
     mtx_unlock(&self->meta.lock);
