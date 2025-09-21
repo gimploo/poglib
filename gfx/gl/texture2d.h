@@ -12,13 +12,13 @@
 #include <poglib/image.h>
 
 typedef struct gltexture2d_t {
-    
-    GLuint          id; 
-    char      filepath[1024];
-    unsigned char   *buf;
-    int             width;
-    int             height;
-    int             bpp;        //BytesPerPixel
+
+    GLuint  id; 
+    char    filepath[1024];
+    u8      *buf;
+    int     width;
+    int     height;
+    int     bpp;        //BytesPerPixel
 
 } gltexture2d_t;
 
@@ -179,7 +179,7 @@ gltexture2d_t gltexture2d_embedded_init(u8 *buffer, u32 buffer_size)
 {
     GLuint id;
     i32 width, height, bpp;
-    const u8 *pixels = (u8 *)stbi_load_from_memory(
+    u8 *pixels = (u8 *)stbi_load_from_memory(
         buffer, buffer_size, &width, &height, &bpp, STBI_default
     );
     if (!pixels) {

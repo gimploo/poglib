@@ -45,7 +45,7 @@ typedef struct {
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){-125.f, 40.0f, 200.0f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){-0.3f, -0.9f}
 
-workbench_t workbench_init(const application_t *app)
+workbench_t workbench_init(application_t *app)
 {
     str_t vshader = application_get_absolute_filepath(app, "lib/poglib/util/workbench/workbench-shader.vs");
     str_t fshader = application_get_absolute_filepath(app, "lib/poglib/util/workbench/workbench-shader.fs");
