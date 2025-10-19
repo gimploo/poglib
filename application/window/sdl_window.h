@@ -323,6 +323,10 @@ INTERNAL void __mouse_update_position(window_t *window)
     window->mouse.position = (vec2i_t ){ x, y };
     window->mouse.norm_position = pos;
 
+    //NOTE: calculates relative mouse position from last frame
+    i32 dx = 0.f, dy = 0.f;
+    SDL_GetRelativeMouseState(&dx, &dy);
+    window->mouse.rel = (vec2i_t){ dx, dy };
 }
 
 
@@ -767,9 +771,11 @@ void window_update_user_input(window_t *window)
 {
     SDL_Event *event = &window->__sdl_event;
 
-    window->mouse.rel = (vec2i_t){0};
     window->thisframe.key = SDLK_UNKNOWN;
     window->thisframe.kstate = SDL_KEYSTATE_UNKNOWN;
+
+    //NOTE: resets the relative mouse pos every frame
+    window->mouse.rel = (vec2i_t ){0};
 
     //MOUSE
     {
@@ -796,8 +802,6 @@ void window_update_user_input(window_t *window)
             //NOTE: Here a mouse held down state is triggered if its just pressed and the mouse moved after.
             case SDL_MOUSEMOTION:
                 __mouse_update_position(window);
-                const vec2i_t rel = { -1 * event->motion.xrel, -1 * event->motion.yrel };
-                window->mouse.rel = rel;
                 switch(window->mouse.state)
                 {
                     case SDL_MOUSESTATE_RELEASED:
