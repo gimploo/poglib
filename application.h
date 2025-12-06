@@ -27,9 +27,16 @@ typedef struct application_t {
 
     struct {
         char                *title;
-        u32                 width;
-        u32                 height;
-        f32                 aspect_ratio;
+        struct {
+            bool resizable;
+            union {
+                struct {
+                    u32 width;
+                    u32 height;
+                } resolution;
+                f32 aspect_ratio;
+            };
+        } screen;
         u32                 fps_limit;
         vec4f_t             background_color;
     } window;
@@ -83,6 +90,9 @@ str_t           application_get_absolute_filepath(application_t *app, const char
 
 #ifndef IGNORE_APPLICATION_IMPLEMENTATION
 
+#define DEFAULT_APPLICATION_WIDTH   1080
+#define DEFAULT_APPLICATION_HEIGHT  920
+
 const char *__get_base_dir()
 {
     char *exe_dir = SDL_GetBasePath();
@@ -133,8 +143,14 @@ void application_run(application_t *app)
 
     if (app == NULL)                eprint("application argument is null");
     if (!app->window.title)         eprint("application title is missing ");
-    if (app->window.width <= 0)     eprint("provide a proper width to the application");
-    if (app->window.height <= 0)    eprint("provide a proper height to the application");
+    if (!app->window.screen.resizable) {
+        if (app->window.screen.resolution.width <= 0)     eprint("provide a proper width to the application (non resizable is set)");
+        if (app->window.screen.resolution.height <= 0)    eprint("provide a proper height to the application (non resizable is set)");
+        app->window.screen.aspect_ratio = app->window.screen.resolution.width / app->window.screen.resolution.height;
+    } else {
+        if (app->window.screen.aspect_ratio <= 0.f)
+            eprint("provide a proper aspect ratio to the application (resizable is set)");
+    }
     if (!app->init)                 eprint("application init funciton is missing");
     if (!app->update)               eprint("application update function is missing");
     if (!app->render)               eprint("application render function is missing");
@@ -145,14 +161,17 @@ void application_run(application_t *app)
     flags = SDL_INIT_EVERYTHING;
 #endif
 
-    app->window.aspect_ratio = (f32)app->window.width / (f32)app->window.height;
     app->context.base_dir = __get_base_dir();
 
+    const bool is_resizable = app->window.screen.resizable;
+
     window_t * win = window_init(
-            app->window.title, 
-            app->window.width, 
-            app->window.height, 
-            flags);
+        app->window.title,
+        !is_resizable ? app->window.screen.resolution.width : DEFAULT_APPLICATION_WIDTH,
+        !is_resizable ? app->window.screen.resolution.height : DEFAULT_APPLICATION_HEIGHT,
+        app->window.screen.aspect_ratio,
+        flags
+    );
     assert(win);
 
     win->background_color = app->window.background_color;

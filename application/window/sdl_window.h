@@ -1,7 +1,9 @@
 #pragma once
+#include "SDL_video.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <SDL2/SDL.h>
+#include "./viewport.h"
 #ifdef __gl_h_
     #include <SDL2/SDL_opengl.h>
 #else 
@@ -59,7 +61,9 @@ typedef struct window_t {
     const char          *title;
     u64                 width; 
     u64                 height;
+    f32                 aspect_ratio;
     vec4f_t             background_color;
+    viewport_t          viewport;
 
     struct {
 
@@ -104,7 +108,7 @@ typedef struct window_t {
 
 global window_t     *global_window = NULL;
 
-window_t *          window_init(const char *title, u64 width, u64 height, const u32 SDL_flags);
+window_t *          window_init(const char *title, u64 width, u64 height, const f32 aspect_ratio, const u32 SDL_flags);
 #define             window_get_current_active_window() global_window
 
 void                window_update_user_input(window_t *window);
@@ -273,7 +277,7 @@ bool window_mouse_wheel_is_scroll_left(window_t *w)
 
 #define __impl_window_gl_render_begin(PWINDOW) do {\
 \
-    GL_CHECK(glViewport(0, 0, (PWINDOW)->width, (PWINDOW)->height));\
+    GL_CHECK(glViewport((PWINDOW)->viewport.centerpos.x, (PWINDOW)->viewport.centerpos.y, (PWINDOW)->viewport.resolution.width, (PWINDOW)->viewport.resolution.height));\
     GL_CHECK(glClearColor(\
             (PWINDOW)->background_color.raw[0],\
             (PWINDOW)->background_color.raw[1],\
@@ -397,7 +401,7 @@ window_t * window_subwindow_init(window_t *parent, const char *title, u64 width,
 }
 
 
-window_t * window_init(const char *title, u64 width, u64 height, const u32 flags)
+window_t * window_init(const char *title, u64 width, u64 height, const f32 aspect_ratio, const u32 flags)
 {
     if (global_window) eprint("Window already exist, trying to create a second window");
 
@@ -406,6 +410,8 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     win.is_open          = true;
     win.width            = width;
     win.height           = height;
+    win.aspect_ratio     = aspect_ratio;
+    win.viewport         = viewport(aspect_ratio, width, height);
 
     win.background_color = DEFAULT_BACKGROUND_COLOR;
 
@@ -415,9 +421,9 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     win.subwindow.window = NULL;
     win.subwindow.is_active = false;
 
-    u32 WinFlags = 0;
+    u32 WinFlags = SDL_WINDOW_RESIZABLE;
 #ifdef __gl_h_
-    WinFlags = SDL_WINDOW_OPENGL;
+    WinFlags |= SDL_WINDOW_OPENGL;
 #endif
 
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
@@ -518,6 +524,9 @@ INTERNAL void __window_handle_sdlwindow_event(window_t *window, SDL_Event *event
             case SDL_WINDOWEVENT_RESIZED:
                 SDL_Log("Window (%s) resized to %dx%d", window->title,
                       event->window.data1, event->window.data2);
+                window->width = event->window.data1;
+                window->height = event->window.data2;
+                window->viewport = viewport(window->aspect_ratio, window->width, window->height);
             break;
 
             case SDL_WINDOWEVENT_SIZE_CHANGED:

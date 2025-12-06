@@ -206,7 +206,7 @@ void __workbench_render_lightsources(workbench_t *self)
                                         .name = "projection",
                                         .type = "matrix4f_t",
                                         .value = glms_perspective(
-                                            radians(45), global_poggen->handle.app->window.aspect_ratio, 1.0f, 10000.0f)
+                                            radians(45), global_poggen->handle.app->window.screen.aspect_ratio, 1.0f, 10000.0f)
                                     },
                                     [2] = {
                                         .name = "color",
@@ -276,7 +276,7 @@ void workbench_render(workbench_t *self)
                                     .name = "projection",
                                     .type = "matrix4f_t",
                                     .value = glms_perspective(
-                                        radians(45), global_poggen->handle.app->window.aspect_ratio, 1.0f, 1000.0f)
+                                        radians(45), global_poggen->handle.app->window.screen.aspect_ratio, 1.0f, 1000.0f)
                                 },
                                 [2] = {
                                     .name = "color",
@@ -332,7 +332,7 @@ void workbench_render(workbench_t *self)
                                     .type = "matrix4f_t",
                                     .value = glms_perspective(
                                         radians(45), 
-                                        global_poggen->handle.app->window.aspect_ratio, 
+                                        global_poggen->handle.app->window.screen.aspect_ratio, 
                                         1.0f, 1000.0f
                                     )
                                 },
@@ -370,7 +370,7 @@ void workbench_render(workbench_t *self)
                                     .type = "matrix4f_t",
                                     .value = glms_perspective(
                                         radians(45), 
-                                        global_poggen->handle.app->window.aspect_ratio, 
+                                        global_poggen->handle.app->window.screen.aspect_ratio, 
                                         1.0f, 1000.0f
                                     )
                                 },
