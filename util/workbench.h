@@ -34,12 +34,6 @@ typedef struct {
 
     list_t lightsources;
 
-    //FIXME: Need to get rid of this maybe with introducing arenas here will be able to
-    struct {
-        str_t vshader;
-        str_t fshader;
-    } filepaths;
-
 } workbench_t;
 
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){-125.f, 40.0f, 200.0f}
@@ -61,10 +55,6 @@ workbench_t workbench_init(application_t *app)
         .player_camera_position = vec3f(0.f),
         .draw_lines = list_init(line_t),
         .lightsources = list_init(gllight_t *),
-        .filepaths = {
-            .vshader = vshader,
-            .fshader = fshader
-        },
         .render_config = {
             .wireframe_mode = false
         },
@@ -418,8 +408,6 @@ void workbench_render(workbench_t *self)
 
 void workbench_destroy(workbench_t *self)
 {
-    str_free(&self->filepaths.fshader);
-    str_free(&self->filepaths.vshader);
     glshader_destroy(&self->shader);
     list_destroy(&self->draw_lines);
     list_destroy(&self->lightsources);
