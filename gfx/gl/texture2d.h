@@ -12,13 +12,13 @@
 #include <poglib/image.h>
 
 typedef struct gltexture2d_t {
-
-    GLuint  id; 
-    char    filepath[1024];
-    u8      *buf;
-    int     width;
-    int     height;
-    int     bpp;        //BytesPerPixel
+    
+    GLuint          id; 
+    char      filepath[1024];
+    const u8        *buf;
+    int             width;
+    int             height;
+    int             bpp;        //BytesPerPixel
 
 } gltexture2d_t;
 
@@ -151,7 +151,7 @@ void gltexture2d_destroy(const gltexture2d_t *texture)
     GL_LOG("Texture `%i` successfully deleted", texture->id);
     GL_CHECK(glDeleteTextures(1, &texture->id)); 
 
-    if (texture->buf) stbi_image_free(texture->buf);
+    if (texture->buf) stbi_image_free((void *)texture->buf);
 }
 
 void gltexture2d_dump(const gltexture2d_t *texture)
