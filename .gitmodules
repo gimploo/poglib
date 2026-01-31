@@ -1,0 +1,3 @@
+[submodule "external/joltc"]
+	path = external/joltc
+	url = https://github.com/amerkoleci/joltc
