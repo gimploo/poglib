@@ -135,10 +135,7 @@ void bg_task_manager_run_all_tasks(bg_task_manager_t *self)
             .task = task
         };
 
-        if (thrd_create(
-            &payload->task.meta.async_obj->thrd.id, 
-            __task_thread_wrapper, 
-            payload) != thrd_success) {
+        if (thrd_create(&payload->task.meta.async_obj->thrd.id, __task_thread_wrapper, payload) != thrd_success) {
             eprint("Failed to generate thread");
         }
     }
@@ -149,6 +146,12 @@ void bg_task_manager_destroy(bg_task_manager_t *self)
     queue_destroy(&self->tasks);
     arena_destroy(&self->arena);
     memset(self, 0, sizeof(bg_task_manager_t));
+}
+
+void async_destroy(void *self) 
+{
+    const async_object_t *obj = self;
+    thrd_exit(obj->thrd.id);
 }
 
 

@@ -222,10 +222,19 @@ void __workbench_render_lightsources(workbench_t *self)
     }
 }
 
-void workbench_render(workbench_t *self)
+void workbench_destroy(workbench_t *self)
 {
-    if(self->draw_lines.len == 0) eprint("No lines to render!");
+    glshader_destroy(&self->shader);
+    list_destroy(&self->draw_lines);
+    list_destroy(&self->lightsources);
+    gui_destroy(self->gui.handle);
+}
 
+void __workbench_render_batch_lines(workbench_t *self)
+{
+    if(!self->draw_lines.len) {
+        return;
+    }
     glrenderer3d_draw((glrendererconfig_t){
         .calls = {
             .count = 3,
@@ -246,11 +255,11 @@ void workbench_render(workbench_t *self)
                     .attrs = {
                         .count = 1,
                         .attr = {
-                            [0] = {
-                                .ncmp = 3, 
-                                .interleaved = {0}
-                            }
-                        },
+                        [0] = {
+                            .ncmp = 3, 
+                            .interleaved = {0}
+                        }
+                    },
                     },
                     .shader_config = {
                         .shader = &self->shader,
@@ -266,7 +275,7 @@ void workbench_render(workbench_t *self)
                                     .name = "projection",
                                     .type = "matrix4f_t",
                                     .value = glms_perspective(
-                                        radians(45), global_poggen->handle.app->window.aspect_ratio, 1.0f, 1000.0f)
+                                            radians(45), global_poggen->handle.app->window.aspect_ratio, 1.0f, 1000.0f)
                                 },
                                 [2] = {
                                     .name = "color",
@@ -277,9 +286,9 @@ void workbench_render(workbench_t *self)
                                     .name = "transform",
                                     .type = "matrix4f_t",
                                     .value = glms_mat4_mul(
-                                        glms_translate_make(self->player_camera_position),
-                                        glms_scale_make((vec3f_t){10.f, 10.f, 10.f})
-                                    ),
+                                            glms_translate_make(self->player_camera_position),
+                                            glms_scale_make((vec3f_t){10.f, 10.f, 10.f})
+                                            ),
                                 },
                             }
                         },
@@ -321,10 +330,10 @@ void workbench_render(workbench_t *self)
                                     .name = "projection",
                                     .type = "matrix4f_t",
                                     .value = glms_perspective(
-                                        radians(45), 
-                                        global_poggen->handle.app->window.aspect_ratio, 
-                                        1.0f, 1000.0f
-                                    )
+                                            radians(45), 
+                                            global_poggen->handle.app->window.aspect_ratio, 
+                                            1.0f, 1000.0f
+                                            )
                                 },
                                 [2] = {
                                     .name = "transform",
@@ -359,10 +368,10 @@ void workbench_render(workbench_t *self)
                                     .name = "projection",
                                     .type = "matrix4f_t",
                                     .value = glms_perspective(
-                                        radians(45), 
-                                        global_poggen->handle.app->window.aspect_ratio, 
-                                        1.0f, 1000.0f
-                                    )
+                                            radians(45), 
+                                            global_poggen->handle.app->window.aspect_ratio, 
+                                            1.0f, 1000.0f
+                                            )
                                 },
                                 [2] = {
                                     .name = "transform",
@@ -396,6 +405,11 @@ void workbench_render(workbench_t *self)
             },
         },
     });
+}
+
+void workbench_render(workbench_t *self)
+{
+    __workbench_render_batch_lines(self);
 
     __workbench_render_lightsources(self);
 
@@ -405,14 +419,4 @@ void workbench_render(workbench_t *self)
 
     list_clear(&self->draw_lines);
 }
-
-void workbench_destroy(workbench_t *self)
-{
-    glshader_destroy(&self->shader);
-    list_destroy(&self->draw_lines);
-    list_destroy(&self->lightsources);
-    gui_destroy(self->gui.handle);
-}
-
-
 
