@@ -1,4 +1,7 @@
 #pragma once
+#include "SDL_hints.h"
+#include "SDL_video.h"
+#include "poglib/basic/common.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <SDL2/SDL.h>
@@ -273,7 +276,9 @@ bool window_mouse_wheel_is_scroll_left(window_t *w)
 
 #define __impl_window_gl_render_begin(PWINDOW) do {\
 \
-    GL_CHECK(glViewport(0, 0, (PWINDOW)->width, (PWINDOW)->height));\
+    u32 dw, dh; \
+    SDL_GL_GetDrawableSize((PWINDOW)->__sdl_window, &dw, &dh); \
+    GL_CHECK(glViewport(0, 0, dw, dh));\
     GL_CHECK(glClearColor(\
             (PWINDOW)->background_color.raw[0],\
             (PWINDOW)->background_color.raw[1],\
@@ -305,23 +310,19 @@ void window_set_background(window_t *window, vec4f_t color)
 
 INTERNAL void __mouse_update_position(window_t *window)
 {
-    int x, y;
-    vec2f_t pos;
-
-    // This function dosent produce an error -> Returns a 32-bit button bitmask of the current button state.
+    i32 x, y;
     SDL_GetMouseState(&x, &y);
-
-    //SDL_Log("Window (%s) Mouse pos := (%d, %d)\n", window->title, x, y);
-
-    f32 normalizedX = 2.f *  ((f32) x / window->width) - 1.f;
-    f32 normalizedY = 1.f - 2.f * ((f32) y / window->height);
-    pos.x = normalizedX;
-    pos.y = normalizedY;
-
-    SDL_Log("Mouse pos := (%f, %f)\n", normalizedX, normalizedY);
-
     window->mouse.position = (vec2i_t ){ x, y };
-    window->mouse.norm_position = pos;
+
+    const f32 gl_mouse_x = (2.0f * x / window->width) - 1.0f;
+    const f32 gl_mouse_y = 1.0f - (2.0f * y / window->height);
+    window->mouse.norm_position = (vec2f_t){ 
+        .x = gl_mouse_x, 
+        .y = gl_mouse_y 
+    };
+
+    SDL_Log("Mouse pos := (%i, %i)\n", x, y);
+    SDL_Log("Mouse pos (norm) := (%f, %f)\n", gl_mouse_x, gl_mouse_y);
 
     //NOTE: calculates relative mouse position from last frame
     i32 dx = 0.f, dy = 0.f;
@@ -421,7 +422,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 
     u32 WinFlags = 0;
 #ifdef __gl_h_
-    WinFlags = SDL_WINDOW_OPENGL;
+    WinFlags = SDL_WINDOW_OPENGL ;
 #endif
 
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
@@ -434,6 +435,9 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     if (!win.__sdl_window) eprint("SDL Error: %s\n", SDL_GetError());
 
     if (!SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1"))
+        eprint("SDL Error: %s", SDL_GetError());
+
+    if (!SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "0"))
         eprint("SDL Error: %s", SDL_GetError());
 
 #ifdef __gl_h_
@@ -479,6 +483,20 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 
     printf("[OUTPUT] Using standard sdl2 renderer\n");
 #endif
+
+    //NOTE: the provided width and height might not actually match the window generated due to resolution
+    //scaling done by OS - expecially hyprland on linux
+    struct {
+        u32 width;
+        u32 height;
+    } actual_window_dimensions = {0};
+    SDL_GL_GetDrawableSize(win.__sdl_window, &actual_window_dimensions.width, &actual_window_dimensions.height);
+
+    if (actual_window_dimensions.width != width || actual_window_dimensions.height != height) {
+        logging("Mismatch in window dimenions provided and drawable region created by SDL2, window dimenions (%i, %i) != drawable area (%i, %i)",
+            width, height, actual_window_dimensions.width, actual_window_dimensions.height
+        );
+    }
 
     win.__sdl_window_id = SDL_GetWindowID(win.__sdl_window);
 

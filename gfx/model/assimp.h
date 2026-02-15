@@ -4,6 +4,8 @@
 #include "../gl/types.h"
 #include <poglib/basic.h>
 #include "./animation.h"
+#include "poglib/basic/ds/hashtable.h"
+#include "poglib/basic/util.h"
 
 #include <poglib/external/assimp/include/assimp/cimport.h>
 #include <poglib/external/assimp/include/assimp/defs.h>
@@ -63,7 +65,7 @@ typedef struct glmodel_t {
 
     list_t transforms[MAX_MESHES_PER_MODEL];
     animator_t animator;
-    hashtable_t bone_name_to_index;
+    hashtable_t *bone_name_to_index;
 
     const struct aiScene *scene;
     f32 current_time;
@@ -311,7 +313,8 @@ void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene)
     //Map all bones to an index for easy lookup
     const u32 total_bones = __get_total_bones(scene);
     if(total_bones) {
-        self->bone_name_to_index = hashtable_init(total_bones, i32);
+        hashtable_t table = hashtable_init(total_bones, i32);
+        self->bone_name_to_index = mem_init(&table, sizeof(table));
     }
 
     ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL && "Update the transforms list in glmodel_t");
@@ -332,10 +335,10 @@ void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene)
         );
 
         if (mesh->mNumBones) {
-            __glmesh_process_bones(mesh, &m.vtx, &self->bone_name_to_index, &self->bone_infos);
+            __glmesh_process_bones(mesh, &m.vtx, self->bone_name_to_index, &self->bone_infos);
             __glmodel_set_bone_transforms(
                 self, 
-                &self->bone_name_to_index, 
+                self->bone_name_to_index, 
                 scene->mRootNode,
                 mesh_index
             );
@@ -431,7 +434,10 @@ void glmodel_destroy(glmodel_t *self)
 
     animator_destroy(&self->animator);
 
-    hashtable_destroy(&self->bone_name_to_index);
+    if (self->bone_name_to_index) {
+        hashtable_destroy(self->bone_name_to_index);
+        mem_free(self->bone_name_to_index, sizeof(hashtable_t));
+    }
 
     aiReleaseImport(self->scene);
     arena_destroy(&self->arena);
@@ -529,8 +535,8 @@ static void __process_node_anim(glmodel_t *self, struct aiNode *node, const matr
     matrix4f_t global_transform = matrix4f_multiply(parent_transform, node_transform);
 
     // Update bone transform if this node is a bone
-    if (hashtable_has_key(&self->bone_name_to_index, node_name)) {
-        u32 bone_index = *(u32 *)hashtable_get_value(&self->bone_name_to_index, node_name);
+    if (hashtable_has_key(self->bone_name_to_index, node_name)) {
+        u32 bone_index = *(u32 *)hashtable_get_value(self->bone_name_to_index, node_name);
         boneinfo_t *bone_info = (boneinfo_t *)list_get_value(&self->bone_infos, bone_index);
         bone_info->transform = 
             matrix4f_multiply(

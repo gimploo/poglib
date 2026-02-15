@@ -1,4 +1,5 @@
 #pragma once
+#include "poglib/application/window/sdl_window.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <poglib/gfx/glrenderer3d.h>
@@ -557,13 +558,16 @@ void __recache_gui_vtx(gui_t *self, bool recache_text, bool recache_icons)
 
 void __gui_render(gui_t *gui)
 {
+    const window_t *win = global_window;
+    ASSERT(win);
+
     if (gui->internals.is_dirty) {
         const bool recache_text = !gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX].len;
         const bool recache_icons = !gui->gfx.vtx[VTX_BUFFER_ICONS_INDEX].len;
         __recache_gui_vtx(gui, recache_text, recache_icons);
     }
 
-    const matrix4f_t ortho_ndc = glms_ortho(0.0f, 1080.f, 920.f, 0.0f, -2.0f, 2.0f);
+    const matrix4f_t ortho_ndc = glms_ortho(0.0f, win->width, win->height, 0.0f, -2.0f, 2.0f);
 
     glrenderer3d_draw((glrendererconfig_t){
         .calls = {
