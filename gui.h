@@ -40,12 +40,6 @@ typedef enum {
     UI_LAYOUT_COUNT
 } ui_layout_type;
 
-typedef union {
-    struct {
-        f32 min;
-        f32 max;
-    } range;
-} ui_config_t;
 
 typedef struct {
     vec4f_t padding;
@@ -60,6 +54,13 @@ typedef struct {
         u32 height;
     } dim;
 
+    union {
+        struct {
+            f32 min;
+            f32 max;
+        } range;
+    } config;
+
 } style_t;
 
 typedef struct ui_t {
@@ -67,7 +68,6 @@ typedef struct ui_t {
     str_t label;
     style_t style;
     ui_type type;
-    ui_config_t config;
 
     struct {
         bool is_hot;
@@ -118,7 +118,7 @@ typedef struct {
     atlasmanager_t atlas;
 
     struct {
-        list_t uistack;
+        ui_t *current_parent_context; //NOTE: is used to know which parent ui is a child ui is currently under
         bool is_wireframe;
         bool is_dirty;
     } internals;
@@ -132,6 +132,15 @@ typedef struct {
 
 gui_t *     gui_init(void);
 void        gui_set_wireframe_mode(gui_t *self, bool toggle);
+
+//NOTE: these are used to design the UI seen on screen
+void            gui_design_begin(gui_t *self);
+void            gui_container_begin(gui_t *self, str_t label, const ui_type type, const style_t style) ; 
+const ui_t *    gui_element(gui_t *self, str_t label, const ui_type type, const style_t style) ;
+void            gui_container_end(gui_t *self) ;
+void            gui_design_end(gui_t *self) ;
+
+void        gui_render(gui_t *gui);
 void        gui_destroy(gui_t *self);
 
 /*======================================================
@@ -265,7 +274,7 @@ void __apply_parent_styles_on_child(const ui_t *parent, ui_t *child)
     );
 }
 
-ui_t * __ui_init(ui_t *parent, const str_t label, const ui_type type, const ui_config_t *config, const style_t *style, gui_t *gui) 
+ui_t * __ui_init(ui_t *parent, const str_t label, const ui_type type, const style_t *style, gui_t *gui) 
 {
     ui_t * ui = mem_init(&(ui_t) {
         .label = label,
@@ -276,7 +285,6 @@ ui_t * __ui_init(ui_t *parent, const str_t label, const ui_type type, const ui_c
         .computed = {0},
         .style = style ? *style : (style_t){0},
         .state = {0},
-        .config = config ? *config : (ui_config_t){0},
     }, sizeof(ui_t));
 
     ui->computed.zorder = parent ? parent->computed.zorder + 0.2f : -1.0f;
@@ -305,9 +313,9 @@ ui_t * __ui_init(ui_t *parent, const str_t label, const ui_type type, const ui_c
                 }
             };
 
-            ui_t *icon = __ui_init(ui, str("__icon"), UI_TYPE_ICON, NULL, &icon_style, gui);
+            ui_t *icon = __ui_init(ui, str("__icon"), UI_TYPE_ICON, &icon_style, gui);
             icon->computed.toggle_click_state = true;
-            const ui_t *label_item = __ui_init(ui, str("__label"), UI_TYPE_LABEL, NULL, &label_style, gui);
+            const ui_t *label_item = __ui_init(ui, str("__label"), UI_TYPE_LABEL, &label_style, gui);
 
             ui->computed.dim.height = MAX(icon->computed.dim.height, label_item->computed.dim.height);
             ui->computed.dim.width = MAX(icon->computed.dim.width, label_item->computed.dim.width);
@@ -320,23 +328,23 @@ ui_t * __ui_init(ui_t *parent, const str_t label, const ui_type type, const ui_c
             ui->style.layout = UI_LAYOUT_HORIZONTAL;
 
             char buffer[KB] = {0};
-            snprintf(buffer, sizeof(buffer), "%zi", (u64)ui->config.range.min);
+            snprintf(buffer, sizeof(buffer), "%zi", (u64)ui->style.config.range.min);
 
-            __ui_init(ui, str_init(NULL, buffer), UI_TYPE_LABEL, NULL, NULL, gui);
-            ui_t *container = __ui_init(ui, str("__container"), UI_TYPE_PANEL, NULL, &(style_t){
+            __ui_init(ui, str_init(NULL, buffer), UI_TYPE_LABEL, NULL, gui);
+            ui_t *container = __ui_init(ui, str("__container"), UI_TYPE_PANEL, &(style_t){
                 .color = COLOR_WHITE,
                 .dim = {60, 20}
             }, gui); {
 
-                ui_t *slider = __ui_init(container, str(""), UI_TYPE_BUTTON, NULL, &(style_t){
+                ui_t *slider = __ui_init(container, str(""), UI_TYPE_BUTTON, &(style_t){
                     .color = COLOR_GREEN,
                     .dim = {10, 20}
                 }, gui);
                 slider->computed.is_movable = true;
                 slider->owner = ui;
             }
-            snprintf(buffer, sizeof(buffer), "%zi", (u64)ui->config.range.max);
-            __ui_init(ui, str_init(NULL, buffer), UI_TYPE_LABEL, NULL, NULL, gui);
+            snprintf(buffer, sizeof(buffer), "%zi", (u64)ui->style.config.range.max);
+            __ui_init(ui, str_init(NULL, buffer), UI_TYPE_LABEL, NULL, gui);
 
             ui->computed.dim.height = 20;
             ui->computed.dim.width = 60;
@@ -377,7 +385,7 @@ gui_t * gui_init(void)
             )
         },
         .internals = {
-            .uistack = list_init(ui_t *),
+            .current_parent_context = NULL,
             .is_wireframe = false,
             .is_dirty = true
         },
@@ -556,7 +564,7 @@ void __recache_gui_vtx(gui_t *self, bool recache_text, bool recache_icons)
     self->internals.is_dirty = false;
 }
 
-void __gui_render(gui_t *gui)
+void gui_render(gui_t *gui)
 {
     const window_t *win = global_window;
     ASSERT(win);
@@ -620,6 +628,7 @@ void __gui_render(gui_t *gui)
                     }
                 },
                 [1] = {
+                    .allow_empty_vtx_buffer = true,
                     .vtx = {
                         .data = list_get_buffer(&gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX]),
                         .size = list_get_size(&gui->gfx.vtx[VTX_BUFFER_TEXT_INDEX])
@@ -746,11 +755,11 @@ void __update_owner_data(ui_t *ui)
     {
         case UI_TYPE_BUTTON:
             if (ui->owner->type & UI_TYPE_SLIDER) {
-                const f32 value = (ui->owner->config.range.max - ui->owner->config.range.min);
+                const f32 value = (ui->owner->style.config.range.max - ui->owner->style.config.range.min);
                 const f32 offset = ((ui->parent->style.dim.width - (ui->computed.pos.x - ui->parent->computed.pos.x)) == ui->style.dim.width )
                     ? (ui->computed.pos.x - ui->parent->computed.pos.x) + ui->computed.dim.width
                     : ui->computed.pos.x - ui->parent->computed.pos.x;
-                ui->owner->state.value = value * (offset / ui->parent->style.dim.width) + ui->owner->config.range.min;
+                ui->owner->state.value = value * (offset / ui->parent->style.dim.width) + ui->owner->style.config.range.min;
             } 
         break;
         case UI_TYPE_ICON:
@@ -840,7 +849,6 @@ void gui_destroy(gui_t *self)
         __ui_destroy(self->root);
     }
 
-    list_destroy(&self->internals.uistack);
     list_destroy(&self->gfx.vtx[VTX_BUFFER_QUAD_INDEX]);
     list_destroy(&self->gfx.idx[VTX_BUFFER_QUAD_INDEX]);
     list_destroy(&self->gfx.vtx[VTX_BUFFER_TEXT_INDEX]);
@@ -869,46 +877,60 @@ const ui_t *__ui_already_exist(const ui_t *ui, const str_t label)
 }
 
 
-const ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const ui_config_t config, const style_t style, list_t *gui_stack) 
+const ui_t *__gui_add_ui(gui_t *gui, const str_t label, const ui_type type, const style_t style, ui_t *parent) 
 {
     ASSERT(gui);
     if(gui->root == NULL && type != UI_TYPE_PANEL) {
         eprint("UI Panel is missing");
     }
 
-    ui_t *parent = gui_stack->len 
-        ? (ui_t *)list_get_value(gui_stack, gui_stack->len - 1) 
-        : NULL;
-
     const ui_t *ui = __ui_already_exist(gui->root, label);
     if (!ui) {
-        ui = __ui_init(parent, label, type, &config, &style, gui);
+        ui = __ui_init(parent, label, type, &style, gui);
         if (!gui->root) {
             gui->root = (ui_t *)ui;
         }
-
     }
-    list_append_ptr(gui_stack, ui); 
+    return ui;
+}
 
+void gui_design_begin(gui_t *self)
+{
+    ASSERT(self);
+}
+
+void gui_container_begin(gui_t *self, str_t label, const ui_type type, const style_t style)  
+{
+    const ui_t *ui = __gui_add_ui(
+        self, 
+        label, 
+        type,
+        style, 
+        NULL);
+
+    self->internals.current_parent_context = (ui_t *)ui;
+}
+
+const ui_t *gui_element(gui_t *self, str_t label, const ui_type type, const style_t style) 
+{
+    const ui_t *ui = __gui_add_ui(
+        self, 
+        label, 
+        type,
+        style, 
+        self->internals.current_parent_context);
 
     return ui;
 }
 
-#define WRAPPED_PLEX(TYPE, ...) (((struct { TYPE wrapped; }){ .wrapped = (__VA_ARGS__) }).wrapped)
+void gui_container_end(gui_t *self) 
+{
+    self->internals.current_parent_context = NULL;
+}
 
-#define __GEN_UI(UI_TYPE, LABEL, CONFIG, STYLE)\
-    for(const ui_t *LABEL = __gui_add_ui(PGUI, str(#LABEL), UI_TYPE, CONFIG, WRAPPED_PLEX(style_t, (STYLE)), __gui_stack);\
-        LABEL;\
-        list_delete(__gui_stack, __gui_stack->len - 1), LABEL = NULL)
-
-#define GUI(PHANDLER)\
-    for(bool __1 = true; __1;)\
-        for(gui_t *PGUI = PHANDLER; __1; __gui_render(PHANDLER))\
-            for(list_t *__gui_stack = &PGUI->internals.uistack; __1; __gui_update(PGUI), __1 = false, list_clear(__gui_stack))
-
-#define UI_PANEL(LABEL, STYLE)              __GEN_UI(UI_TYPE_PANEL, LABEL, ((ui_config_t){0}), STYLE)
-#define UI_BUTTON(LABEL, STYLE)             __GEN_UI(UI_TYPE_BUTTON, LABEL, ((ui_config_t){0}), STYLE)
-#define UI_LABEL(LABEL, STYLE)              __GEN_UI(UI_TYPE_LABEL, LABEL, ((ui_config_t){0}), STYLE)
-#define UI_CHECKBOX(LABEL, STYLE)           __GEN_UI(UI_TYPE_CHECKBOX, LABEL, ((ui_config_t){0}), STYLE)
-#define UI_SLIDER(LABEL, CONFIG, STYLE)     __GEN_UI(UI_TYPE_SLIDER, LABEL, CONFIG, STYLE)
+void gui_design_end(gui_t *self) 
+{
+    ASSERT(self);
+    __gui_update(self);
+}
 

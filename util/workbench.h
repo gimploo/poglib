@@ -38,6 +38,20 @@ typedef struct {
 
 } workbench_t;
 
+workbench_t workbench_init(application_t *app);
+
+//TODO: better design this
+void        workbench_compose_ui(gui_t *gui);
+
+void        workbench_update_player_camera_position(workbench_t *self, const vec3f_t pos);
+void        workbench_pass_line(workbench_t *self, const line_t line);
+void        workbench_track_lightsource(workbench_t *self, const gllight_t *light);
+void        workbench_toggle_wireframe_mode(workbench_t *self);
+void        workbench_toggle_gui(workbench_t *self);
+void        workbench_render(workbench_t *self);
+void        workbench_destroy(workbench_t *self);
+
+
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){-125.f, 40.0f, 200.0f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){-0.3f, -0.9f}
 
@@ -97,60 +111,7 @@ void workbench_toggle_gui(workbench_t *self)
 
 void __workbench_render_ui(workbench_t *self)
 {
-    GUI(self->gui.handle) {
-        UI_PANEL(panel, ((style_t){
-            .color = COLOR_GRAY,
-            .margin = {10.f, 10.f, 0.f, 0.f},
-            .padding = {10, 10}, 
-            .dim = {
-                .width = 200,
-                .height = 300
-            },
-            .layout = UI_LAYOUT_VERTICAL
-        })) {
-            UI_BUTTON(texture, 
-                ((style_t){
-                    .color = COLOR_WHITE, 
-                }))
-            if (texture->state.is_clicked) {
-            }
-            UI_LABEL(label1, 
-                ((style_t){
-                    .color = COLOR_BLUE, 
-                }));
-            UI_BUTTON(button3, 
-                ((style_t ){
-                    .color = COLOR_GREEN, 
-                })) {
-                if (button3->state.is_clicked) {
-                    printf("Button3 is clicked\n");
-                }
-            };
-            UI_CHECKBOX(
-                checkbox, 
-                ((style_t){0})
-            ) {
-                if (checkbox->state.is_clicked) {
-                    //printf("true\n");
-                }
-            }
-            UI_SLIDER(
-                slider,
-                ((ui_config_t){.range={.min = 10, .max = 100}}),
-                ((style_t){
-                    .dim = {10, 10},
-                })
-            ) {
-            }
-            UI_BUTTON(button4, 
-                ((style_t){
-                    .color = COLOR_GREEN, 
-                }))
-            if (button4->state.is_clicked) {
-                printf("Button4 is clicked\n");
-            }
-        }
-    }
+    gui_render(self->gui.handle);
 }
 
 void __workbench_render_lightsources(workbench_t *self)
