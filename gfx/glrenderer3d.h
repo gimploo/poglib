@@ -6,6 +6,7 @@
 #include "gl/framebuffer.h"
 #include "gl/types.h"
 #include "model/assimp.h"
+#include "poglib/gfx/gl/vtx_attribute.h"
 
 //NOTE: Attributes are only handelled for GL_FLOAT (default) and GL_INT
 
@@ -55,6 +56,15 @@ typedef struct {
 } glshaderconfig_t;
 
 typedef struct {
+    u8 ncmp;
+    u32 type; // GL_FLOAT (default) | GL_INT
+    struct {
+        u32 offset;
+        u32 stride;
+    } interleaved;
+} glvtx_attribute_t;
+
+typedef struct {
     u32 count;
     glshaderconfig_t configs[3];
 } glshaderconfiglist_t;
@@ -85,14 +95,7 @@ typedef struct {
     // Attributes
     struct {
         u8 count;
-        struct {
-            u8 ncmp;
-            u32 type; // GL_FLOAT (default) | GL_INT
-            struct {
-                u32 offset;
-                u32 stride;
-            } interleaved;
-        } attr[10];
+        glvtx_attribute_t attr[GL_VTX_ATTRIBUTE_TYPE_COUNT];
     } attrs;
 
     // Textures
