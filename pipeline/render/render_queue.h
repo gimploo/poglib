@@ -3,6 +3,7 @@
 #include "poglib/basic/arena.h"
 #include "poglib/basic/dbg.h"
 #include "poglib/basic/ds/list.h"
+#include "poglib/gfx/gl/vbo_stream_types.h"
 #include "poglib/pipeline/render/render_command.h"
 
 //FIXME: 
@@ -76,13 +77,27 @@ void __render_queue_validate_command(render_command_t command)
     switch(command.type)
     {
         case RENDER_COMMAND_TYPE_CUBE:
-            ASSERT(command.handles.vtx.data == NULL);
+            ASSERT(command.handles.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data == NULL);
             ASSERT(command.handles.idx.data == NULL);
+            if(!command.handles.vtx[VBO_STREAM_TYPE_INSTANCE].raw_data) 
+                eprint("Cube render types are instanced always, expecting instance buffer but found uninitialized!");
         break;
         case RENDER_COMMAND_TYPE_CUSTOM: 
+            ASSERT(command.handles.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data == NULL);
+        break;
+        case RENDER_COMMAND_TYPE_CUSTOM_WITH_INSTANCING: 
+            if(command.handles.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data)
+                eprint("Instancing uses a common geometry, avoid initializing geometry data");
+            if(!command.handles.vtx[VBO_STREAM_TYPE_INSTANCE].raw_data) 
+                eprint("Custom render types are configured to be instanced, expecting instance buffer but found uninitialized!");
         break;
         default: eprint("unknown type");
     }
+}
+
+void __render_queue_add_to_batch(list_t * const render_commands, const render_command_t command)
+{
+    list_append(render_commands, command);
 }
 
 bool __render_queue_check_for_batchable_commands(render_queue_t *const queue, render_command_t command)
@@ -95,7 +110,7 @@ bool __render_queue_check_for_batchable_commands(render_queue_t *const queue, re
 
         const render_command_t *render_command = list_get_value(commands, 0);
         if (command.type == render_command->type) {
-            list_append(commands, command);
+            __render_queue_add_to_batch(commands, command);
             return true;
         }
 
@@ -110,7 +125,7 @@ bool __render_queue_check_for_batchable_commands(render_queue_t *const queue, re
         const bool has_same_attributes = render_command_are_all_attrs_the_same(render_command, &command);
 
         if (has_same_shader && has_same_texture && has_same_attributes) {
-            list_append(commands, command);
+            __render_queue_add_to_batch(commands, command);
             return true;
         }
     }
@@ -134,14 +149,14 @@ void render_queue_dispatch(render_queue_t *const self)
 
         const buffer_t vtx_buffer = render_command_get_vtx_buffer(command_list, &self->arena);
         const buffer_t idx_buffer = render_command_get_idx_buffer(command_list, &self->arena);
+
+        const bool enable_instancing = command->type & (RENDER_COMMAND_TYPE_CUSTOM_WITH_INSTANCING | RENDER_COMMAND_TYPE_CUBE);
+        const u32 instancing_count = enable_instancing ? command_list->len : 1;
         calls[total_render_command] = (glrendercall_t ) {
             .draw_mode = command->draw_mode,
             .allow_empty_vtx_buffer = false,
             .is_wireframe = false,
-            .vtx = {
-                .data = vtx_buffer.data,
-                .size = vtx_buffer.size
-            },
+            .vtx = command->handles.vtx,
             .attrs = command->handles.attrs.data,
             .idx = {
                 .nmemb = command->handles.idx.nmemb,
@@ -153,6 +168,10 @@ void render_queue_dispatch(render_queue_t *const self)
                 .count = command->handles.textures.count,
                 .data = command->handles.textures.data
             },
+            .instancing = {
+                .enable = enable_instancing,
+                .count = instancing_count
+            }
         };
         total_render_command++;
     }

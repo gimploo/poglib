@@ -8,6 +8,7 @@
 typedef enum {
     RENDER_COMMAND_TYPE_CUSTOM = 0,
     RENDER_COMMAND_TYPE_CUBE = 1,
+    RENDER_COMMAND_TYPE_CUSTOM_WITH_INSTANCING = 3,
     RENDER_COMMAND_TYPE_COUNT,
 } render_command_types;
 
@@ -21,10 +22,7 @@ typedef struct {
     render_command_types        type;
     render_command_draw_mode    draw_mode;
     struct {
-        struct {
-            u8 size;
-            u8 *data;
-        }                       vtx;
+        buffer_t                vtx[VBO_STREAM_TYPE_COUNT];
         struct {
             u8 nmemb;
             u8 *data;
@@ -103,7 +101,7 @@ buffer_t render_command_get_idx_buffer(const list_t * const commands, arena_t * 
     {
         case RENDER_COMMAND_TYPE_CUBE: 
             buffer = (buffer_t){
-                .data = (u8 *)&DEFAULT_CUBE_INDICES_8,
+                .raw_data = (u8 *)&DEFAULT_CUBE_INDICES_8,
                 .size = sizeof(DEFAULT_CUBE_INDICES_8)
             };
         break;
@@ -130,7 +128,7 @@ buffer_t render_command_get_vtx_buffer(const list_t * const commands, arena_t * 
     {
         case RENDER_COMMAND_TYPE_CUBE: 
             buffer = (buffer_t){
-                .data = (u8 *)&DEFAULT_CUBE_VERTICES_8,
+                .raw_data = (u8 *)&DEFAULT_CUBE_VERTICES_8,
                 .size = sizeof(DEFAULT_CUBE_VERTICES_8)
             };
         break;
@@ -149,7 +147,7 @@ buffer_t __render_command_merge_all_vtx_together(const list_t * const commands, 
     list_iterator(commands, iter) 
     {
         const render_command_t *command = iter;
-        maximum_size += command->handles.vtx.size;
+        maximum_size += command->handles.vtx[VBO_STREAM_TYPE_GEOMETRY].size;
     }
 
     u8 *buffer = arena_reserve(arena, maximum_size);
@@ -157,11 +155,11 @@ buffer_t __render_command_merge_all_vtx_together(const list_t * const commands, 
     list_iterator(commands, iter) 
     {
         const render_command_t *command = iter;
-        memcpy(buffer + top, command->handles.vtx.data, command->handles.vtx.size);
-        top += command->handles.vtx.size;
+        memcpy(buffer + top, command->handles.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data, command->handles.vtx[VBO_STREAM_TYPE_GEOMETRY].size);
+        top += command->handles.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data;
     }
     return (buffer_t) {
-        .data = buffer,
+        .raw_data = buffer,
         .size = maximum_size
     };
 }
