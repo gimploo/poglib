@@ -6,6 +6,8 @@
 #include <poglib/gfx/glrenderer3d.h>
 #include "./workbench/workbench-constants.h"
 #include "./gllight.h"
+#include "./workbench/ui/workbench-ui.h"
+#include "./workbench/workbench-grid.h"
 
 typedef struct {
 
@@ -409,6 +411,8 @@ void __workbench_render_batch_lines(workbench_t *self)
 
 void workbench_render(workbench_t *self)
 {
+    workbench_render_grid(self->shader);
+
     __workbench_render_batch_lines(self);
 
     __workbench_render_lightsources(self);
