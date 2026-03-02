@@ -73,6 +73,6 @@ f32 randf32(const f32 min, const f32 max)
 
 typedef struct {
     u32 size;
-    u8 *data;
+    u8 *raw_data;
 } buffer_t;
 
