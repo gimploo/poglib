@@ -71,3 +71,8 @@ f32 randf32(const f32 min, const f32 max)
     return min + scale * ( max - min );      /* [min, max] */
 }
 
+typedef struct {
+    u32 size;
+    u8 *raw_data;
+} buffer_t;
+
