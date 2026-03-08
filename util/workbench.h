@@ -48,6 +48,7 @@ void        workbench_pass_line(workbench_t *self, const line_t line);
 void        workbench_track_lightsource(workbench_t *self, const gllight_t *light);
 void        workbench_toggle_wireframe_mode(workbench_t *self);
 void        workbench_toggle_gui(workbench_t *self);
+void        workbench_update_world_camera(workbench_t * const self, const f32 dt);
 void        workbench_render(workbench_t *self);
 void        workbench_destroy(workbench_t *self);
 
@@ -79,6 +80,8 @@ workbench_t workbench_init(application_t *app)
             .enable = true
         }
     };
+
+    workbench_compose_ui(o.gui.handle);
 
     return o;
 }
@@ -372,7 +375,14 @@ void __workbench_render_batch_lines(workbench_t *self)
 
 void workbench_render(workbench_t *self)
 {
-    workbench_render_grid(self->shader);
+    workbench_render_grid(
+        &self->shader,
+        glcamera_getview(&self->world_camera),
+        glms_perspective(
+            radians(45), 
+            global_poggen->handle.app->window.aspect_ratio, 
+            1.0f, 1000.0f)
+    );
 
     __workbench_render_batch_lines(self);
 
@@ -383,5 +393,11 @@ void workbench_render(workbench_t *self)
     }
 
     list_clear(&self->draw_lines);
+}
+
+void workbench_update_world_camera(workbench_t * const self, const f32 dt)
+{
+    ASSERT(self);
+    glcamera_process_input(&self->world_camera, dt);
 }
 

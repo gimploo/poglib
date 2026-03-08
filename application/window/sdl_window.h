@@ -1,6 +1,11 @@
 #pragma once
+#ifdef _WIN64
+#include <SDL2/SDL_hints.h>
+#include <SDL2/SDL_video.h>
+#else
 #include "SDL_hints.h"
 #include "SDL_video.h"
+#endif
 #include "poglib/basic/common.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
