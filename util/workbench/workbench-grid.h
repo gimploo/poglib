@@ -38,8 +38,11 @@ const f32 GRID_VERTICES_3D[] = {
 };
 
 
-void workbench_render_grid(const glshader_t *shader)
-{
+void workbench_render_grid(
+    const glshader_t *shader,
+    const matrix4f_t camera_view,
+    const matrix4f_t perspective_projection
+){
     glrenderer3d_draw((glrendererconfig_t) { .calls = { .count = 1, .call = {
         [0] = {
             .draw_mode = GL_LINES,
@@ -48,35 +51,32 @@ void workbench_render_grid(const glshader_t *shader)
                 .data = (u8 *)GRID_VERTICES_3D,
             },
             .shader_config = {
-            .shader = &self->shader,
-            .uniforms = {
-            .count = 4,
-            .uniform = {
-                [0] = {
-                    .name = "view",
-                    .type = "matrix4f_t",
-                    .value = glcamera_getview(&self->world_camera)
-                },
-            [1] = {
-                .name = "projection",
-                .type = "matrix4f_t",
-                .value = glms_perspective(
-                        radians(45), 
-                        global_poggen->handle.app->window.aspect_ratio, 
-                        1.0f, 1000.0f)
-            },
-            [2] = {
-                .name = "transform",
-                .type = "matrix4f_t",
-                .value = MATRIX4F_IDENTITY
-            },
-            [3] = {
-                .name = "color",
-                .type = "vec4f_t",
-                .value.vec4 = COLOR_BLUE
-            },
-            }
-            }
+                .shader = shader,
+                .uniforms = {
+                    .count = 4,
+                    .uniform = {
+                        [0] = {
+                            .name = "view",
+                            .type = "matrix4f_t",
+                            .value = camera_view
+                        },
+                        [1] = {
+                            .name = "projection",
+                            .type = "matrix4f_t",
+                            .value = perspective_projection,
+                        },
+                        [2] = {
+                            .name = "transform",
+                            .type = "matrix4f_t",
+                            .value = MATRIX4F_IDENTITY
+                        },
+                        [3] = {
+                            .name = "color",
+                            .type = "vec4f_t",
+                            .value.vec4 = COLOR_BLUE
+                        },
+                    }
+                }
             },
             .attrs = {
                 .count = 1,

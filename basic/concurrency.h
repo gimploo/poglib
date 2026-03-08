@@ -150,8 +150,8 @@ void bg_task_manager_destroy(bg_task_manager_t *self)
 
 void async_destroy(void *self) 
 {
-    const async_object_t *obj = self;
-    thrd_exit(obj->thrd.id);
+    async_object_t *obj = self;
+    thrd_exit(obj->thrd.id._Tid);
 }
 
 

@@ -17,7 +17,8 @@ const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h" };
 \
     fprintf(stderr, "\n\033[0;37m" "[(%s:%d): %s] " "\033[0;31m\n\t" fmt "\033[0m\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
     stacktrace_print();\
-    exit(-1);\
+    const void **i = NULL;\
+    *i;\
 \
 } while (0)
 

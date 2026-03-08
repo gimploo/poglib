@@ -30,7 +30,7 @@ typedef struct glcamera_t {
 } glcamera_t ;
 
 glcamera_t      glcamera_perspective(const vec3f_t pos, const vec2f_t theta);
-void            glcamera_process_input(glcamera_t *self, const f32 dt);
+void            glcamera_process_input(glcamera_t * const self, const f32 dt);
 matrix4f_t      glcamera_getview(glcamera_t *self);
 
 
@@ -74,7 +74,7 @@ void __glcamera_update_directions(glcamera_t *self, const vec2f_t rot)
 }
 
 
-void glcamera_process_input(glcamera_t *self, const f32 dt)
+void glcamera_process_input(glcamera_t * const self, const f32 dt)
 {
     window_t *win = window_get_current_active_window();
     static vec2f_t last_mouse_position = {0};
