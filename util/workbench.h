@@ -53,8 +53,8 @@ void        workbench_render(workbench_t *self);
 void        workbench_destroy(workbench_t *self);
 
 
-#define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){-125.f, 40.0f, 200.0f}
-#define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){-0.3f, -0.9f}
+#define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0}
+#define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
 
 workbench_t workbench_init(application_t *app)
 {
@@ -381,7 +381,8 @@ void workbench_render(workbench_t *self)
         glms_perspective(
             radians(45), 
             global_poggen->handle.app->window.aspect_ratio, 
-            1.0f, 1000.0f)
+            1.0f, 1000.0f),
+        self->world_camera.position
     );
 
     __workbench_render_batch_lines(self);
