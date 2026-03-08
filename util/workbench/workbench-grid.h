@@ -3,45 +3,59 @@
 #include <poglib/gfx/glrenderer3d.h>
 
 const f32 GRID_VERTICES_3D[] = {
-    // --- Lines parallel to X-axis ---
-    -1.0f, -1.0f, -1.0f,  1.0f, -1.0f, -1.0f,
-    -1.0f, -1.0f,  0.0f,  1.0f, -1.0f,  0.0f,
-    -1.0f, -1.0f,  1.0f,  1.0f, -1.0f,  1.0f,
-    -1.0f,  0.0f, -1.0f,  1.0f,  0.0f, -1.0f,
-    -1.0f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
-    -1.0f,  0.0f,  1.0f,  1.0f,  0.0f,  1.0f,
-    -1.0f,  1.0f, -1.0f,  1.0f,  1.0f, -1.0f,
-    -1.0f,  1.0f,  0.0f,  1.0f,  1.0f,  0.0f,
-    -1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  1.0f,
+    // Lines parallel to Z-axis (Verticals in XZ space)
+    -10.0f, 0.0f, -10.0f, -10.0f, 0.0f,  10.0f,
+    -9.0f,  0.0f, -10.0f, -9.0f,  0.0f,  10.0f,
+    -8.0f,  0.0f, -10.0f, -8.0f,  0.0f,  10.0f,
+    -7.0f,  0.0f, -10.0f, -7.0f,  0.0f,  10.0f,
+    -6.0f,  0.0f, -10.0f, -6.0f,  0.0f,  10.0f,
+    -5.0f,  0.0f, -10.0f, -5.0f,  0.0f,  10.0f,
+    -4.0f,  0.0f, -10.0f, -4.0f,  0.0f,  10.0f,
+    -3.0f,  0.0f, -10.0f, -3.0f,  0.0f,  10.0f,
+    -2.0f,  0.0f, -10.0f, -2.0f,  0.0f,  10.0f,
+    -1.0f,  0.0f, -10.0f, -1.0f,  0.0f,  10.0f,
+    0.0f,  0.0f, -10.0f,  0.0f,  0.0f,  10.0f,
+    1.0f,  0.0f, -10.0f,  1.0f,  0.0f,  10.0f,
+    2.0f,  0.0f, -10.0f,  2.0f,  0.0f,  10.0f,
+    3.0f,  0.0f, -10.0f,  3.0f,  0.0f,  10.0f,
+    4.0f,  0.0f, -10.0f,  4.0f,  0.0f,  10.0f,
+    5.0f,  0.0f, -10.0f,  5.0f,  0.0f,  10.0f,
+    6.0f,  0.0f, -10.0f,  6.0f,  0.0f,  10.0f,
+    7.0f,  0.0f, -10.0f,  7.0f,  0.0f,  10.0f,
+    8.0f,  0.0f, -10.0f,  8.0f,  0.0f,  10.0f,
+    9.0f,  0.0f, -10.0f,  9.0f,  0.0f,  10.0f,
+    10.0f,  0.0f, -10.0f, 10.0f,  0.0f,  10.0f,
 
-    // --- Lines parallel to Y-axis ---
-    -1.0f, -1.0f, -1.0f, -1.0f,  1.0f, -1.0f,
-    -1.0f, -1.0f,  0.0f, -1.0f,  1.0f,  0.0f,
-    -1.0f, -1.0f,  1.0f, -1.0f,  1.0f,  1.0f,
-     0.0f, -1.0f, -1.0f,  0.0f,  1.0f, -1.0f,
-     0.0f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
-     0.0f, -1.0f,  1.0f,  0.0f,  1.0f,  1.0f,
-     1.0f, -1.0f, -1.0f,  1.0f,  1.0f, -1.0f,
-     1.0f, -1.0f,  0.0f,  1.0f,  1.0f,  0.0f,
-     1.0f, -1.0f,  1.0f,  1.0f,  1.0f,  1.0f,
-
-    // --- Lines parallel to Z-axis ---
-    -1.0f, -1.0f, -1.0f, -1.0f, -1.0f,  1.0f,
-    -1.0f,  0.0f, -1.0f, -1.0f,  0.0f,  1.0f,
-    -1.0f,  1.0f, -1.0f, -1.0f,  1.0f,  1.0f,
-     0.0f, -1.0f, -1.0f,  0.0f, -1.0f,  1.0f,
-     0.0f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f,
-     0.0f,  1.0f, -1.0f,  0.0f,  1.0f,  1.0f,
-     1.0f, -1.0f, -1.0f,  1.0f, -1.0f,  1.0f,
-     1.0f,  0.0f, -1.0f,  1.0f,  0.0f,  1.0f,
-     1.0f,  1.0f, -1.0f,  1.0f,  1.0f,  1.0f
+    // Lines parallel to X-axis (Horizontals in XZ space)
+    -10.0f, 0.0f, -10.0f,  10.0f, 0.0f, -10.0f,
+    -10.0f, 0.0f,  -9.0f,  10.0f, 0.0f,  -9.0f,
+    -10.0f, 0.0f,  -8.0f,  10.0f, 0.0f,  -8.0f,
+    -10.0f, 0.0f,  -7.0f,  10.0f, 0.0f,  -7.0f,
+    -10.0f, 0.0f,  -6.0f,  10.0f, 0.0f,  -6.0f,
+    -10.0f, 0.0f,  -5.0f,  10.0f, 0.0f,  -5.0f,
+    -10.0f, 0.0f,  -4.0f,  10.0f, 0.0f,  -4.0f,
+    -10.0f, 0.0f,  -3.0f,  10.0f, 0.0f,  -3.0f,
+    -10.0f, 0.0f,  -2.0f,  10.0f, 0.0f,  -2.0f,
+    -10.0f, 0.0f,  -1.0f,  10.0f, 0.0f,  -1.0f,
+    -10.0f, 0.0f,   0.0f,  10.0f, 0.0f,   0.0f,
+    -10.0f, 0.0f,   1.0f,  10.0f, 0.0f,   1.0f,
+    -10.0f, 0.0f,   2.0f,  10.0f, 0.0f,   2.0f,
+    -10.0f, 0.0f,   3.0f,  10.0f, 0.0f,   3.0f,
+    -10.0f, 0.0f,   4.0f,  10.0f, 0.0f,   4.0f,
+    -10.0f, 0.0f,   5.0f,  10.0f, 0.0f,   5.0f,
+    -10.0f, 0.0f,   6.0f,  10.0f, 0.0f,   6.0f,
+    -10.0f, 0.0f,   7.0f,  10.0f, 0.0f,   7.0f,
+    -10.0f, 0.0f,   8.0f,  10.0f, 0.0f,   8.0f,
+    -10.0f, 0.0f,   9.0f,  10.0f, 0.0f,   9.0f,
+    -10.0f, 0.0f,  10.0f,  10.0f, 0.0f,  10.0f
 };
 
 
 void workbench_render_grid(
     const glshader_t *shader,
     const matrix4f_t camera_view,
-    const matrix4f_t perspective_projection
+    const matrix4f_t perspective_projection,
+    const vec3f_t camera_pos
 ){
     glrenderer3d_draw((glrendererconfig_t) { .calls = { .count = 1, .call = {
         [0] = {
@@ -53,7 +67,7 @@ void workbench_render_grid(
             .shader_config = {
                 .shader = shader,
                 .uniforms = {
-                    .count = 4,
+                    .count = 5,
                     .uniform = {
                         [0] = {
                             .name = "view",
@@ -74,6 +88,11 @@ void workbench_render_grid(
                             .name = "color",
                             .type = "vec4f_t",
                             .value.vec4 = COLOR_BLUE
+                        },
+                        [4] = {
+                            .name = "cameraPos",
+                            .type = "vec3f_t",
+                            .value.vec3 = camera_pos
                         },
                     }
                 }
