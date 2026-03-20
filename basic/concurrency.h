@@ -151,7 +151,11 @@ void bg_task_manager_destroy(bg_task_manager_t *self)
 void async_destroy(void *self) 
 {
     async_object_t *obj = self;
+#ifdef _WIN32
     thrd_exit(obj->thrd.id._Tid);
+#else
+    thrd_exit(obj->thrd.id);
+#endif
 }
 
 
