@@ -22,7 +22,6 @@ typedef struct glrenderer3d_t {
     const glshader_t    *shader;
     struct {
         gltexture2d_t   *data;
-
         int             top;
     } textures;
 
@@ -48,7 +47,7 @@ typedef struct {
 } uniform_t;
 
 typedef struct {
-    glshader_t *shader;
+    const glshader_t *shader;
     struct {
         u8 count;
         uniform_t uniform[10];

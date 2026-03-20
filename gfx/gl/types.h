@@ -135,13 +135,14 @@ const f32 DEFAULT_CUBE_VERTICES_8[] = {
 typedef enum {
 
     FRONT  = 0,
-    BACK   = 12,
-    LEFT   = 24,
-    RIGHT  = 36,
-    TOP    = 48,
-    BOTTOM = 70
+    BACK   = 1,
+    LEFT   = 2,
+    RIGHT  = 3,
+    TOP    = 4,
+    BOTTOM = 5,
+    TOTAL_CUBE_FACES = 6
 
-} DEFAULT_CUBE_VERTICES_ARRAY_INDEX_24 ;
+} CUBE_FACES ;
 
 const f32 DEFAULT_CUBE_VERTICES_WITH_NORMALS_24[] = {
     // front face (+Z)
