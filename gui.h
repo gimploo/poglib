@@ -639,7 +639,12 @@ void gui_render(gui_t *gui)
                     },
                     .textures = {
                         .count = 1,
-                        .data = &gui->font.handler.texture,
+                        .items = {
+                            [0] = {
+                                .type = GL_TEXTURE_TYPE_NORMAL,
+                                .source = &gui->font.handler.texture,
+                            }
+                        },
                     },
                     .shader_config = {
                         .shader = &gui->font.custom_shader,
@@ -697,7 +702,12 @@ void gui_render(gui_t *gui)
                     },
                     .textures = {
                         .count = 1,
-                        .data = &gui->atlas.texture
+                        .items = {
+                            [0] = {
+                                .type = GL_TEXTURE_TYPE_NORMAL,
+                                .source = &gui->atlas.texture
+                            }
+                        }
                     },
                     .shader_config = {
                         .shader = &gui->font.custom_shader,

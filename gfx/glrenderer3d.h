@@ -1,18 +1,14 @@
 #pragma once
-#include <GL/glew.h>
-#include "gl/shader.h"
-#include "gl/texture2d.h"
-#include "gl/objects.h"
 #include "gl/framebuffer.h"
 #include "gl/types.h"
 #include "model/assimp.h"
+#include "poglib/gfx/gl/common.h"
+#include "poglib/gfx/gl/material.h"
 #include "poglib/gfx/gl/vtx_attribute.h"
-
-//NOTE: Attributes are only handelled for GL_FLOAT (default) and GL_INT
-
+#include "poglib/gfx/gl/renderconfig.h"
 
 /*=============================================================================
-                        - OPENGL 2D RENDERER -
+                        - OPENGL 3D RENDERER -
 =============================================================================*/
 
 #define MAX_DRAW_CALLS_PER_FRAME_COUNT 100
@@ -26,47 +22,6 @@ typedef struct glrenderer3d_t {
     } textures;
 
 } glrenderer3d_t ;
-
-typedef struct {
-    const char *name;
-    const char *type;
-    union {
-        matrix4f_t  mat4;
-        vec4f_t     vec4;
-        vec3f_t     vec3;
-        vec2f_t     vec2;
-        f32         f32;
-        i32         i32;
-        u32         u32;
-        bool        boolean;
-        struct {
-            matrix4f_t *data;
-            u32 count;
-        } mat4s;
-    } value;
-} uniform_t;
-
-typedef struct {
-    const glshader_t *shader;
-    struct {
-        u8 count;
-        uniform_t uniform[10];
-    } uniforms;
-} glshaderconfig_t;
-
-typedef struct {
-    u8 ncmp;
-    u32 type; // GL_FLOAT (default) | GL_INT
-    struct {
-        u32 offset;
-        u32 stride;
-    } interleaved;
-} glvtx_attribute_t;
-
-typedef struct {
-    u32 count;
-    glshaderconfig_t configs[3];
-} glshaderconfiglist_t;
 
 typedef struct {
 
@@ -98,11 +53,7 @@ typedef struct {
     } attrs;
 
     // Textures
-    struct {
-        bool common_across_calls;
-        u8 count;
-        const gltexture2d_t *data;
-    } textures;
+    gltexturelist_t textures;
 
     // Shader Config { uniform and shader }
     glshaderconfig_t shader_config;
@@ -123,9 +74,9 @@ typedef struct {
 } glrendererconfig_t;
 
 
-
 void                glrenderer3d_draw_cube(const glrenderer3d_t *renderer);
 void                glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t config, bool in_wireframe);
+void                glrenderer3d_drawcall(const glrendercall_t call);
 void                glrenderer3d_draw(const glrendererconfig_t config);
 
 
@@ -232,10 +183,15 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
         glmesh_t *mesh = iter;
         renderconfig.calls.call[(u64)list_index] = (glrendercall_t ){
             .is_wireframe = in_wireframe,
-            .textures = {
-                .count = model->textures.len,
-                .data = model->textures.len ? (const gltexture2d_t *)list_get_value(&model->textures, list_index) : NULL
-            },
+            .textures = model->meshes.len ? (gltexturelist_t ){
+                .count = 1,
+                .items = {
+                    [0] = {
+                        .type = GL_TEXTURE_TYPE_NORMAL,
+                        .source = list_get_value(&model->textures, list_index),
+                    },
+                }
+            } : (gltexturelist_t){0},
             .attrs = {
                 .count = 7,
                 .attr = {
@@ -311,6 +267,18 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
     }
 
     glrenderer3d_draw(renderconfig);
+}
+
+void glrenderer3d_drawcall(const glrendercall_t call)
+{
+    glrenderer3d_draw((glrendererconfig_t){
+       .calls = {
+            .count = 1,
+            .call = {
+                [0] = call
+            }
+       }
+    });
 }
 
 
@@ -449,10 +417,23 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         //Textures
         for (u8 txt_idx = 0; txt_idx < config.calls.call[call_idx].textures.count; ++txt_idx)
         {
-            gltexture2d_bind(
-                    config.calls.call[call_idx].textures.data + txt_idx,
-                    txt_idx
-            );
+            switch(config.calls.call[call_idx].textures.items[txt_idx].type)
+            {
+                case GL_TEXTURE_TYPE_NORMAL:
+                    gltexture2d_bind(
+                        config.calls.call[call_idx].textures.items[txt_idx].source.normal_texture,
+                        txt_idx
+                    );
+                break;
+                case GL_TEXTURE_TYPE_CUBEMAP:
+                    GL_CHECK(glDepthMask(false));
+                    GL_CHECK(glDepthFunc(GL_LEQUAL));
+                    glcubemap_bind(
+                        config.calls.call[call_idx].textures.items[txt_idx].source.cubemap
+                    );
+                break;
+                default: eprint("Not implemented");
+            }
         }
 
         if (config.calls.call[call_idx].is_wireframe) {
@@ -464,11 +445,14 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         if (!is_idx_null)   vao_draw_with_ebo(&vao, &ebo);
         else                vao_draw_with_vbo_in_mode(&vao, &vbo, draw_mode);
 
+        GL_CHECK(glDepthMask(true));
         gltexture2d_unbind();
 
         if (!is_idx_null) ebo_destroy(&ebo);
         vao_destroy(&vao);
         vbo_destroy(&vbo);
+
+        GL_CHECK(glDepthFunc(GL_LESS));
 
     }
 

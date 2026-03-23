@@ -134,12 +134,12 @@ const f32 DEFAULT_CUBE_VERTICES_8[] = {
 
 typedef enum {
 
-    FRONT  = 0,
-    BACK   = 1,
-    LEFT   = 2,
-    RIGHT  = 3,
-    TOP    = 4,
-    BOTTOM = 5,
+    RIGHT  = 0,
+    LEFT   = 1,
+    TOP    = 2,
+    BOTTOM = 3,
+    BACK   = 4,
+    FRONT  = 5,
     TOTAL_CUBE_FACES = 6
 
 } CUBE_FACES ;
@@ -186,40 +186,40 @@ const f32 DEFAULT_CUBE_VERTICES_WITH_NORMALS_24[] = {
 // NOTE: for 3d textured cubes
 const f32 DEFAULT_CUBE_VERTICES_24[] = {
      // front
-    -0.5f, -0.5f,  0.5f,
-     0.5f, -0.5f,  0.5f,
-     0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f,  0.5f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
 
     // back
-    -0.5f, -0.5f, -0.5f,
-     0.5f, -0.5f, -0.5f,
-     0.5f,  0.5f, -0.5f,
-    -0.5f,  0.5f, -0.5f,
+    -1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
 
     //left
-    -0.5f, -0.5f, 0.5f,
-    -0.5f, -0.5f, -0.5f, 
-    -0.5f, 0.5f, -0.5f,
-    -0.5f, 0.5f, 0.5f,
+    -1.0f, -1.0f, 1.0f,
+    -1.0f, -1.0f, -1.0f, 
+    -1.0f, 1.0f, -1.0f,
+    -1.0f, 1.0f, 1.0f,
 
     //right
-    0.5f, -0.5f, 0.5f,
-    +0.5f, -0.5f, -0.5f, 
-    +0.5f, 0.5f, -0.5f,
-    +0.5f, 0.5f, 0.5f,
+    1.0f, -1.0f, 1.0f,
+    +1.0f, -1.0f, -1.0f, 
+    +1.0f, 1.0f, -1.0f,
+    +1.0f, 1.0f, 1.0f,
 
     //top
-    0.5f, 0.5f, 0.5f, 
-    0.5f, 0.5f, -0.5f,
-    -0.5f, 0.5f, -0.5f, 
-    -0.5f, 0.5f, 0.5f,
+    1.0f, 1.0f, 1.0f, 
+    1.0f, 1.0f, -1.0f,
+    -1.0f, 1.0f, -1.0f, 
+    -1.0f, 1.0f, 1.0f,
 
     //bottom
-    0.5f, -0.5f, 0.5f, 
-    0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f, 
-    -0.5f, -0.5f, 0.5f,
+    1.0f, -1.0f, 1.0f, 
+    1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f, 
+    -1.0f, -1.0f, 1.0f,
 };
 
 const u32 DEFAULT_CUBE_INDICES_24[] = {

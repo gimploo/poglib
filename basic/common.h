@@ -20,6 +20,10 @@
 #define local       static 
 #define INTERNAL    static inline
 
+//NOTE: this should be truncated along the start of all file paths 
+//TODO: possible to inject string path here via the forge build script ?
+#define POGLIB_ROOT_DIR     "lib/poglib"
+
 typedef unsigned char   u8;
 typedef char            i8;
 typedef uint16_t        u16;
