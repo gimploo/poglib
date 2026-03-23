@@ -1,9 +1,10 @@
 #pragma once
 #include "../ecs/entitymanager.h"
 #include "../util/assetmanager.h"
-// #include "./action.h"
+#include "poglib/basic/arena.h"
 
-//NOTE: the action map is a list, i dont like it this way, i might need to make 
+// #include "./action.h"
+//TODO: the action map is a list, i dont like it this way, i might need to make 
 //an static list ds of some sort, cuz the extra cycles the input function takes
 //is just dumb, it needs to be at O(1). The reason i choose list over map, is 
 //that map takes a string as key and not number. 
@@ -17,6 +18,7 @@
 typedef struct scene_t {
 
     const char           *label;
+    arena_t              arena;
     assetmanager_t       *assets;
     entitymanager_t      manager;
     void                 *content;
@@ -56,6 +58,7 @@ void scene_pass_content(scene_t *self, const void *content, const u64 content_si
     (scene_t ){\
         .label          = #SCENE_NAME,\
         .assets         = NULL,\
+        .arena          = arena_init(NULL, 2 * MB),\
         .manager        = entitymanager_init(10),\
         .content        = NULL,\
         .__is_paused    = false,\
@@ -75,6 +78,8 @@ void __scene_destroy(scene_t *scene)
 
     entitymanager_destroy(&scene->manager);
     scene->__destroy(scene);
+
+    arena_destroy(&scene->arena)    ;
 
     scene->assets = NULL;
     scene->label = NULL;

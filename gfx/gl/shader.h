@@ -2,6 +2,9 @@
 #include "common.h"
 #include "material.h"
 #include "maps.h"
+#include "poglib/basic/arena.h"
+#include "poglib/basic/str.h"
+#include <string.h>
 
 /*==============================================================================
                     - OPENGL SHADER HANDLING LIBRARY -
@@ -12,11 +15,13 @@
 
 typedef struct glshader_t {
 
-    GLuint      id;
-    const char  *vs_file_path;
-    const char  *fg_file_path;
+    u32 id;
+    str_t vs;
+    str_t fg;
 
 } glshader_t;
+
+static_assert(sizeof(u32) == sizeof(GLuint), "shader.h - Gluint and u32 size doesnot match");
 
 const char * const DEFAULT_VSHADER = 
     "#version 330 core\n"
@@ -68,6 +73,8 @@ const char * const DEFAULT_SIMPLE_SHAPES_VSHADER =
 
 #define         glshader_default_init(...)                                      glshader_from_cstr_init(DEFAULT_VSHADER, DEFAULT_FSHADER)
 
+glshader_t      glshader__file_init(const str_t vtxpath, const str_t fgpath, arena_t * const arena);
+
 glshader_t      glshader_from_file_init(const char *file_vs, const char *file_fs);
 glshader_t      glshader_from_cstr_init(const char *vs_code, const char *fs_code);
 
@@ -116,7 +123,7 @@ static inline void __shader_load_code(glshader_t *shader, const char *vs_code, c
     GL_CHECK(glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status));
     if (!status) {
         GL_CHECK(glGetShaderInfoLog(vertexShader, KB, NULL, error_log));
-        eprint("FILE: %s\n\tVertex Error:\n\t%s\n", shader->vs_file_path, error_log);
+        eprint("FILE: %s\n\tVertex Error:\n\t%s\n", shader->vs.data, error_log);
     }
     GL_LOG("Vertex Shader successfully compiled");
 
@@ -127,11 +134,11 @@ static inline void __shader_load_code(glshader_t *shader, const char *vs_code, c
     GL_CHECK(glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status));
     if (!status) {
         GL_CHECK(glGetShaderInfoLog(fragmentShader, KB, NULL, error_log));
-        eprint("FILE: %s\n\tFragment Error:\n\t%s\n", shader->fg_file_path, error_log);
+        eprint("FILE: %s\n\tFragment Error:\n\t%s\n", shader->fg.data, error_log);
     }
     GL_LOG("Fragment Shader successfully compiled");
 
-    GLuint shaderProgram; 
+    u32 shaderProgram; 
     GL_CHECK(shaderProgram = glCreateProgram());
     GL_CHECK(glAttachShader(shaderProgram, vertexShader));
     GL_CHECK(glAttachShader(shaderProgram, fragmentShader));
@@ -151,24 +158,30 @@ static inline void __shader_load_code(glshader_t *shader, const char *vs_code, c
 }
 
 
-static inline void __shader_load_from_file(glshader_t *shader, const char *vertex_source_path, const char *fragment_source_path)
+static inline void __shader_load_from_file(glshader_t *shader, const char *vertex_source_path, const char *fragment_source_path, arena_t * const arena)
 {
     if (shader == NULL) eprint("shader argument is null");
 
-
     file_t vs_file = file_init(vertex_source_path, "r");
-        char *vs_code = (char *)calloc(1, vs_file.size + 1);
+        char *vs_code = arena 
+            ? arena_reserve(arena, vs_file.size + 1) 
+            : (char *)calloc(1, vs_file.size + 1);
         file_readall(&vs_file, vs_code, vs_file.size);
     file_destroy(&vs_file);
 
     file_t fg_file = file_init(fragment_source_path, "r");
-        char *fs_code = (char *)calloc(1, fg_file.size + 1);
+        char *fs_code = arena 
+            ? arena_reserve(arena, fg_file.size + 1)
+            : (char *)calloc(1, fg_file.size + 1);
         file_readall(&fg_file, fs_code, fg_file.size);
     file_destroy(&fg_file);
 
     __shader_load_code(shader, vs_code, fs_code);
-    free(vs_code);
-    free(fs_code);
+
+    if (!arena) {
+        free(vs_code);
+        free(fs_code);
+    }
 }
 
 glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
@@ -176,23 +189,24 @@ glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
     if (file_vs == NULL) eprint("file_vs argument is null");
     if (file_fs == NULL) eprint("file_fs arguemnt is null");
 
-    glshader_t shader;
-    shader.fg_file_path = file_fs;
-    shader.vs_file_path = file_vs;
-
-    __shader_load_from_file(&shader, file_vs, file_fs);
+    glshader_t shader = {
+        .vs = str__from_cstr(file_vs, strlen(file_vs)),
+        .fg = str__from_cstr(file_fs, strlen(file_vs)),
+    };
+    __shader_load_from_file(&shader, file_vs, file_fs, NULL);
 
     return shader;
 }
 
-glshader_t  glshader_from_cstr_init(const char *vs_code, const char *fs_code)
+glshader_t glshader_from_cstr_init(const char *vs_code, const char *fs_code)
 {
     if (vs_code == NULL) eprint("vs_code argument is null");
     if (fs_code == NULL) eprint("fs_code arguemnt is null");
 
-    glshader_t shader;
-    shader.fg_file_path = NULL;
-    shader.vs_file_path = NULL;
+    glshader_t shader = {
+        .vs = {0},
+        .fg = {0}
+    };
 
     __shader_load_code(&shader, vs_code, fs_code);
 
@@ -331,5 +345,23 @@ void glshader_destroy(glshader_t *shader)
     GL_CHECK(glDeleteProgram(shader->id));
 
     GL_LOG("Shader `%i` successfully deleted", shader->id);
+}
+
+glshader_t glshader__file_init(const str_t vtxpath, const str_t fgpath, arena_t * const arena)
+{
+    ASSERT(arena);
+
+    glshader_t shader = {
+        .fg = fgpath,
+        .vs = fgpath,
+    };
+
+    __shader_load_from_file(
+            &shader, 
+            vtxpath.data, 
+            fgpath.data, 
+            arena);
+
+    return shader;
 }
 #endif

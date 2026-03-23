@@ -15,6 +15,7 @@ typedef struct str_t {
 
 #define         str(STRING)              (str_t ) { .data = STRING, .len = strlen(STRING), .__is_manually_heap_allocated = false }
 str_t           str_init(arena_t *arena, const char * const __buffer);
+str_t           str__from_cstr(const char *data, const u32 len);
 void            str_free(str_t *x);
 void            str_print(str_t *str);
 void            str_get_data(const str_t *data, char *output);
@@ -272,6 +273,15 @@ void cstr_get_file_extension(const char *filepath, char output[32])
         }
         output[i] = '\0';
     }
+}
+
+str_t str__from_cstr(const char *data, const u32 len)
+{
+    return (str_t) {
+        .data = (char *)data,
+        .len = len,
+        .__is_manually_heap_allocated = false
+    };
 }
 
 #endif

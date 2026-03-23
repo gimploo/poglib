@@ -14,6 +14,7 @@ typedef struct glcamera_t {
 
     vec3f_t         position;
     vec2f_t         theta;
+    f32             scroll_speed;
     struct {
         vec3f_t         front;
         vec3f_t         up;
@@ -30,6 +31,7 @@ typedef struct glcamera_t {
 } glcamera_t ;
 
 glcamera_t      glcamera_perspective(const vec3f_t pos, const vec2f_t theta);
+void            glcamera__set_scroll_speed(glcamera_t * const self, const f32 speed);
 void            glcamera_process_input(glcamera_t * const self, const f32 dt);
 matrix4f_t      glcamera_getview(glcamera_t *self);
 
@@ -84,7 +86,7 @@ void glcamera_process_input(glcamera_t * const self, const f32 dt)
                             self->position, 
                             glms_vec3_scale(
                                 self->direction.front, 
-                                GL_CAMERA_SPEED * dt
+                                self->scroll_speed * dt
                             )
                         );
 
@@ -93,7 +95,7 @@ void glcamera_process_input(glcamera_t * const self, const f32 dt)
                             self->position, 
                             glms_vec3_scale(
                                 self->direction.front, 
-                                GL_CAMERA_SPEED *dt
+                                self->scroll_speed *dt
                             )
                         );
     }
@@ -166,6 +168,7 @@ glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t radians)
     glcamera_t o = {
         .position   = pos,
         .theta      = radians,
+        .scroll_speed = GL_CAMERA_SPEED,
         .direction = {
             .front      = GL_CAMERA_DIRECTION_FRONT,
             .up         = {0},
@@ -183,6 +186,11 @@ glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t radians)
 
     logging("[CAMERA] left click look around and wasd to move the camera\n");
     return o;
+}
+
+void glcamera__set_scroll_speed(glcamera_t * const self, const f32 speed)
+{
+    self->scroll_speed = speed;
 }
 
 #endif

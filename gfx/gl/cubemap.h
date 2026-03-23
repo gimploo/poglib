@@ -1,31 +1,32 @@
 #pragma once
 #include "poglib/gfx/gl/common.h"
+#include "poglib/gfx/gl/shader.h"
 #include "poglib/gfx/gl/texture2d.h"
 #include "poglib/gfx/gl/types.h"
-#include "poglib/gfx/glrenderer3d.h"
 
 typedef struct glcubemap_t {
-    u32 glTextureId;
+    const u32 texture_id;
 } glcubemap_t;
 
-glcubemap_t glcubemap_init(str_t filepaths[TOTAL_CUBE_FACES]);
-void        glcubemap_destroy(glcubemap_t *self);
+glcubemap_t     glcubemap__init(const str_t filepaths[TOTAL_CUBE_FACES]);
+void            glcubemap__destroy(glcubemap_t *self);
 
-glcubemap_t glcubemap_init(str_t filepaths[TOTAL_CUBE_FACES])
+glcubemap_t glcubemap__init(const str_t filepaths[TOTAL_CUBE_FACES])
 {
     u32 textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+    GL_CHECK(glGenTextures(1, &textureID));
+    GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, textureID));
 
     i32 width, height, nrChannels;
     for (u32 face_index = 0; face_index < TOTAL_CUBE_FACES; face_index++)
     {
+        stbi_set_flip_vertically_on_load(false);
         u8 *data = stbi_load(
             filepaths[face_index].data, 
             &width, 
             &height, 
             &nrChannels, 
-            0
+            4
         );
 
         if(!data) eprint("failed to load file `%s`", filepaths[face_index].data);
@@ -34,11 +35,11 @@ glcubemap_t glcubemap_init(str_t filepaths[TOTAL_CUBE_FACES])
             glTexImage2D(
                 GL_TEXTURE_CUBE_MAP_POSITIVE_X + face_index, 
                 0, 
-                GL_RGB, 
+                GL_RGBA, 
                 width, 
                 height, 
                 0, 
-                GL_RGB, 
+                GL_RGBA, 
                 GL_UNSIGNED_BYTE, 
                 data)
         );
@@ -51,44 +52,20 @@ glcubemap_t glcubemap_init(str_t filepaths[TOTAL_CUBE_FACES])
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
     return (glcubemap_t) {
-        .glTextureId = textureID
+        .texture_id = textureID,
     };
 }
 
-gltexture2d_t glcubemap_get_texture_handle(glcubemap_t *self)
+void glcubemap_bind(glcubemap_t *self)
 {
-    return (gltexture2d_t) {
-        .id = self->glTextureId
-    };
+    GL_CHECK(
+        glBindTexture(GL_TEXTURE_CUBE_MAP, self->texture_id)
+    );
 }
 
-void glcubemap_destroy(glcubemap_t *self)
+void glcubemap__destroy(glcubemap_t *self)
 {
-    GL_CHECK(glDeleteTextures(1, &self->glTextureId)); 
+    GL_CHECK(glDeleteTextures(1, &self->texture_id)); 
 }
 
 
-glrendercall_t glcubemap_get_render_config(glcubemap_t *self)
-{
-    return (glrendercall_t) {
-        .draw_mode = GL_TRIANGLES,
-        .vtx = {
-            .size = sizeof(DEFAULT_CUBE_VERTICES_24),
-            .data = DEFAULT_CUBE_VERTICES_24,
-        },
-        .idx = {0},
-        .attrs = {
-            .count = 1,
-            .attr[GL_VTX_ATTRIBUTE_TYPE_COUNT] = {
-                [GL_VTX_ATTRIBUTE_TYPE_VTX] = {
-                }
-            }
-        },
-        .textures = {
-            .count = 1,
-            .data = glcubemap_get_texture_handle(self),
-        }, 
-        .shader_config = {
-        }
-    }
-}
