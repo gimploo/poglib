@@ -81,6 +81,7 @@ workbench_t workbench_init(application_t *app)
         }
     };
 
+    glcamera__set_scroll_speed(&o.world_camera, 100.0f);
     workbench_compose_ui(o.gui.handle);
 
     return o;

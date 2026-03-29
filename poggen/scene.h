@@ -33,10 +33,12 @@ typedef struct scene_t {
 } scene_t ;
 
 
-void                scene_pass_content(scene_t *self, const void *content, const u64 content_size);
+void * scene_alloc_content(scene_t * const self, const u64 content_size);
 
 #define             scene_get_type(PSCENE)                                     (PSCENE)->__enum_id
 #define             scene_get_engine(...)                                      global_poggen
+#define             scene_alloc_content(PSCENE, CONTENT_TYPE)\
+                    (CONTENT_TYPE *)__impl_scene_alloc_content((PSCENE), sizeof(CONTENT_TYPE), _Alignof(CONTENT_TYPE))
 
 
 
@@ -44,13 +46,10 @@ void                scene_pass_content(scene_t *self, const void *content, const
 
 #ifndef IGNORE_POGGEN_SCENE_IMPLEMENTATION
 
-void scene_pass_content(scene_t *self, const void *content, const u64 content_size)
+void * __impl_scene_alloc_content(scene_t * const self, const u64 content_size, const u8 memory_alignment)
 {
-    assert(content);
-
-    self->content = calloc(1, content_size);
-    assert(self->content);
-    memcpy(self->content, content, content_size);
+    self->content = arena_reserve_aligned(&self->arena, content_size, memory_alignment);
+    return self->content;
 }
 
 
@@ -58,7 +57,7 @@ void scene_pass_content(scene_t *self, const void *content, const u64 content_si
     (scene_t ){\
         .label          = #SCENE_NAME,\
         .assets         = NULL,\
-        .arena          = arena_init(NULL, 2 * MB),\
+        .arena          = arena_init(NULL, 5 * MB),\
         .manager        = entitymanager_init(10),\
         .content        = NULL,\
         .__is_paused    = false,\
@@ -88,12 +87,6 @@ void __scene_destroy(scene_t *scene)
     scene->__render = NULL;
     scene->__destroy = NULL;
     scene->__input = NULL;
-
-    if (scene->content) {
-        free(scene->content);
-        scene->content = NULL;
-    }
-
 }
 
 #endif

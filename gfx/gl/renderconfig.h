@@ -6,17 +6,19 @@
 #include <poglib/gfx/gl/texture_types.h>
 #include <poglib/gfx/gl/cubemap.h>
 
+#define MAX_SUPPORTED_TEXTURE_COUNT_PER_DRAW_CALL 64
+
 typedef struct {
     union {
         gltexture2d_t *normal_texture;
         glcubemap_t *cubemap;
     } source;
-    const gltexturetype type; 
+    gltexturetype type; 
 } gltextureitem_t;
 
 typedef struct {
     u8 count;
-    gltextureitem_t items[32];
+    gltextureitem_t items[MAX_SUPPORTED_TEXTURE_COUNT_PER_DRAW_CALL];
 } gltexturelist_t;
 
 

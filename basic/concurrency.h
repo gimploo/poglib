@@ -73,10 +73,11 @@ bg_task_manager_t bg_task_manager_init(void)
 }
 
 void bg_task_manager_pass_task(
-    bg_task_manager_t *self, 
-    task_config_t config,
-    async_object_t *async_obj
+    bg_task_manager_t * const self, 
+    const task_config_t config,
+    void * const async_object_obj
 ) {
+    async_object_t * const async_obj = async_object_obj;
     ASSERT(async_obj);
 
     async_obj->thrd.id = (thrd_t){0};
@@ -112,7 +113,7 @@ i32 __task_thread_wrapper(void *data)
         );
     }
     atomic_store_explicit(&payload->task.meta.async_obj->is_done, true, memory_order_release);
-    arena_giveback(&payload->arenas.scratch, payload, sizeof(thread_payload_t));
+    arena_giveback(&payload->arenas.scratch, payload, sizeof(thread_payload_t), 0);
     return 0;
 }
 
@@ -125,7 +126,7 @@ void bg_task_manager_run_all_tasks(bg_task_manager_t *self)
         queue_get_in_buffer(&self->tasks, &task, sizeof(task));
 
         arena_t scratch = arena_init(&self->arena, KB);
-        thread_payload_t *payload = arena_reserve(&scratch, sizeof(thread_payload_t));
+        thread_payload_t *payload = arena_reserve_raw(&scratch, sizeof(thread_payload_t));
 
         *payload = (thread_payload_t){
             .arenas = {

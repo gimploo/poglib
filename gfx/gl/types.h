@@ -138,8 +138,8 @@ typedef enum {
     LEFT   = 1,
     TOP    = 2,
     BOTTOM = 3,
-    BACK   = 4,
-    FRONT  = 5,
+    FRONT   = 4,
+    BACK  = 5,
     TOTAL_CUBE_FACES = 6
 
 } CUBE_FACES ;

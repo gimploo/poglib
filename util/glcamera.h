@@ -13,7 +13,7 @@ const f32 GL_CAMERA_SENSITIVITY     =  1.f;
 typedef struct glcamera_t {
 
     vec3f_t         position;
-    vec2f_t         theta;
+    vec2f_t         delta_theta;
     f32             scroll_speed;
     struct {
         vec3f_t         front;
@@ -72,7 +72,7 @@ void __glcamera_update_directions(glcamera_t *self, const vec2f_t rot)
 
     self->direction.up    = glms_cross(self->direction.right, self->direction.front);
 
-    self->theta = rot;
+    self->delta_theta = rot;
 }
 
 
@@ -126,12 +126,12 @@ void glcamera_process_input(glcamera_t * const self, const f32 dt)
     if (window_keyboard_is_key_pressed(win, SDLK_r)) {
 
         self->position        = self->__reset.position;
-        self->theta           = self->__reset.theta;
+        self->delta_theta           = self->__reset.theta;
         self->direction.front = GL_CAMERA_DIRECTION_FRONT,
         self->direction.up    = glms_normalize(glms_cross(glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)), GL_CAMERA_DIRECTION_FRONT)),
         self->direction.right = glms_normalize(glms_cross(GL_CAMERA_DIRECTION_FRONT, GL_CAMERA_DIRECTION_UP)),
 
-        __glcamera_update_directions(self, self->theta);
+        __glcamera_update_directions(self, self->delta_theta);
     }
 
     vec2f_t theta = (vec2f_t ){
@@ -145,8 +145,8 @@ void glcamera_process_input(glcamera_t * const self, const f32 dt)
     last_mouse_position = win->mouse.norm_position;
 
 #ifndef DISABLE_CAMERA_LOGGING
-    logging("Camera Pos: "VEC3F_FMT " | " "Angle: " VEC2F_FMT, 
-            VEC3F_ARG(self->position), VEC2F_ARG(self->theta));
+    logging("Camera Pos: "VEC3F_FMT " | " "Delta Angle: " VEC2F_FMT, 
+            VEC3F_ARG(self->position), VEC2F_ARG(self->delta_theta));
 #endif
 }
 
@@ -167,7 +167,7 @@ glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t radians)
 {
     glcamera_t o = {
         .position   = pos,
-        .theta      = radians,
+        .delta_theta      = radians,
         .scroll_speed = GL_CAMERA_SPEED,
         .direction = {
             .front      = GL_CAMERA_DIRECTION_FRONT,

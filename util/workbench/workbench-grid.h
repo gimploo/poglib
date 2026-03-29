@@ -1,4 +1,5 @@
 #pragma once
+#include "poglib/basic/color.h"
 #include "poglib/gfx/gl/common.h"
 #include <poglib/gfx/glrenderer3d.h>
 
@@ -87,7 +88,7 @@ void workbench_render_grid(
                         [3] = {
                             .name = "color",
                             .type = "vec4f_t",
-                            .value.vec4 = COLOR_BLUE
+                            .value.vec4 = COLOR_NOT_AS_BRIGHT_AS_WHITE
                         },
                         [4] = {
                             .name = "cameraPos",
