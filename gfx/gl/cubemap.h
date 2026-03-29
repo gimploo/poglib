@@ -5,7 +5,7 @@
 #include "poglib/gfx/gl/types.h"
 
 typedef struct glcubemap_t {
-    const u32 texture_id;
+    u32 texture_id;
 } glcubemap_t;
 
 glcubemap_t     glcubemap__init(const str_t filepaths[TOTAL_CUBE_FACES]);

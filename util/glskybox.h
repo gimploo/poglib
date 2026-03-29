@@ -1,7 +1,9 @@
 #pragma once
 #include "poglib/basic/common.h"
+#include "poglib/external/cglm/struct/affine.h"
 #include "poglib/gfx/gl/cubemap.h"
 #include "poglib/gfx/gl/types.h"
+#include "poglib/math/la.h"
 #include <poglib/basic.h>
 #include <poglib/gfx/glrenderer3d.h>
 
@@ -22,9 +24,9 @@ const str_t AVAILABLE_SKYBOXES[SKYBOX_TYPE_COUNT][TOTAL_CUBE_FACES] = {
 };
 
 typedef struct {
-    const SKYBOX_TYPE type;
-    const glcubemap_t cubemap;
-    const glshader_t shader;
+    SKYBOX_TYPE type;
+    glcubemap_t cubemap;
+    glshader_t shader;
 } glskybox_t;
 
 glskybox_t      glskybox__init(const SKYBOX_TYPE type, arena_t * const arena);
@@ -89,7 +91,7 @@ glrendercall_t glskybox__get_render_config(
         .shader_config = {
             .shader = &self->shader,
             .uniforms = {
-                .count = 2,
+                .count = 3,
                 .uniform = {
                     [0] = {
                         .name = "projection",
@@ -100,6 +102,11 @@ glrendercall_t glskybox__get_render_config(
                         .name = "view",
                         .type = "matrix4f_t",
                         .value.mat4 = view
+                    },
+                    [2] = {
+                        .name = "transform",
+                        .type = "matrix4f_t",
+                        .value.mat4 = glms_scale_make(vec3f(10.0f))
                     }
                 }
             }

@@ -2,8 +2,10 @@
 #include "gl/framebuffer.h"
 #include "gl/types.h"
 #include "model/assimp.h"
+#include "poglib/basic/ds/list.h"
 #include "poglib/gfx/gl/common.h"
 #include "poglib/gfx/gl/material.h"
+#include "poglib/gfx/gl/texture2d.h"
 #include "poglib/gfx/gl/vtx_attribute.h"
 #include "poglib/gfx/gl/renderconfig.h"
 
@@ -178,20 +180,14 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
         }
     };
 
+    const gltexturelist_t textures = glmodel_get_texuturelist(model);
+
     list_iterator(&model->meshes, iter) 
     {
         glmesh_t *mesh = iter;
         renderconfig.calls.call[(u64)list_index] = (glrendercall_t ){
             .is_wireframe = in_wireframe,
-            .textures = model->meshes.len ? (gltexturelist_t ){
-                .count = 1,
-                .items = {
-                    [0] = {
-                        .type = GL_TEXTURE_TYPE_NORMAL,
-                        .source = list_get_value(&model->textures, list_index),
-                    },
-                }
-            } : (gltexturelist_t){0},
+            .textures = textures,
             .attrs = {
                 .count = 7,
                 .attr = {

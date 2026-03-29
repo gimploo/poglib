@@ -42,7 +42,7 @@ str_t str_init(arena_t *arena, const char * const __buffer)
     str_t s = {
         .len = strlen(__buffer),
         .data = arena 
-            ? arena_reserve(arena, sizeof(char) * (strlen(__buffer) + 1)) 
+            ? arena_reserve_raw(arena, sizeof(char) * (strlen(__buffer) + 1)) 
             : mem_init(NULL, sizeof(char) * strlen(__buffer) + 1),
         .__is_manually_heap_allocated = arena ? false : true
     };
@@ -242,7 +242,7 @@ str_t str_join(arena_t *arena, const str_t *part1, const char *part2)
 
     const u32 part2_len = strlen(part2);
 
-    char *buffer = arena_reserve(arena, sizeof(char) * (part1->len + part2_len + 1));
+    char *buffer = arena_reserve_raw(arena, sizeof(char) * (part1->len + part2_len + 1));
     ASSERT(buffer);
     sprintf(buffer, "%.*s%s", part1->len, part1->data, part2);
     return (str_t) {

@@ -5,7 +5,10 @@
 #include <poglib/basic.h>
 #include "./animation.h"
 #include "poglib/basic/ds/hashtable.h"
+#include "poglib/basic/ds/list.h"
 #include "poglib/basic/util.h"
+#include "poglib/gfx/gl/renderconfig.h"
+#include "poglib/gfx/gl/texture_types.h"
 
 #include <poglib/external/assimp/include/assimp/cimport.h>
 #include <poglib/external/assimp/include/assimp/defs.h>
@@ -601,6 +604,24 @@ void glmodel_set_animation(glmodel_t *self, const char *animation_label, const f
             list_append(&self->transforms[mesh_idx], MATRIX4F_IDENTITY);
         }
     }
+}
+
+gltexturelist_t glmodel_get_texuturelist(const glmodel_t *self)
+{
+    if (!self->textures.len) return (gltexturelist_t){0};
+    ASSERT(self->textures.len <= MAX_SUPPORTED_TEXTURE_COUNT_PER_DRAW_CALL);
+
+    gltexturelist_t list = {
+        .count = self->textures.len,
+        .items = {0}
+    };
+    list_iterator(&self->textures, iter) {
+        list.items[(u64)list_index] = (gltextureitem_t ){
+            .type = GL_TEXTURE_TYPE_NORMAL,
+            .source = iter
+        };
+    }
+    return list;
 }
 
 #endif
