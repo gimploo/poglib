@@ -8,6 +8,8 @@
 #include "./gllight.h"
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
+#include "poglib/application.h"
+#include "poglib/basic/common.h"
 
 typedef struct {
 
@@ -38,10 +40,10 @@ typedef struct {
 
 } workbench_t;
 
-workbench_t workbench_init(application_t *app);
+workbench_t workbench_init(const application_t * const app);
 
 //TODO: better design this
-void        workbench_compose_ui(gui_t *gui);
+void        workbench_compose_ui(const application_t * const app, gui_t *gui);
 
 void        workbench_update_player_camera_position(workbench_t *self, const vec3f_t pos);
 void        workbench_pass_line(workbench_t *self, const line_t line);
@@ -56,10 +58,10 @@ void        workbench_destroy(workbench_t *self);
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
 
-workbench_t workbench_init(application_t *app)
+workbench_t workbench_init(const application_t * const app)
 {
-    str_t vshader = application_get_absolute_filepath(app, "lib/poglib/util/workbench/workbench-shader.vs");
-    str_t fshader = application_get_absolute_filepath(app, "lib/poglib/util/workbench/workbench-shader.fs");
+    const str_t vshader = str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.vs");
+    const str_t fshader = str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.fs");
 
     workbench_t o = {
         .shader = glshader_from_file_init(
@@ -82,7 +84,7 @@ workbench_t workbench_init(application_t *app)
     };
 
     glcamera__set_scroll_speed(&o.world_camera, 100.0f);
-    workbench_compose_ui(o.gui.handle);
+    workbench_compose_ui(app, o.gui.handle);
 
     return o;
 }
