@@ -1,7 +1,7 @@
 #pragma once
 
 typedef enum {
-    GL_VTX_ATTRIBUTE_TYPE_VTX           = 0,
+    GL_VTX_ATTRIBUTE_TYPE_POSITION      = 0,
     GL_VTX_ATTRIBUTE_TYPE_COLOR         = 1,
     GL_VTX_ATTRIBUTE_TYPE_UV            = 2,
     GL_VTX_ATTRIBUTE_TYPE_INSTANCING    = 3,

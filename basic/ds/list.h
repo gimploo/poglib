@@ -18,7 +18,7 @@ typedef struct list_t {
     char    __elem_type[MAX_TYPE_CHARACTER_LENGTH];
     u64     __original_capacity;
     bool    __are_values_pointers;     // This variable checks if the list is a list of pointers 
-                                       
+
 } list_t ;
 
 #define DEFAULT_LIST_STARTING_CAPACITY 4

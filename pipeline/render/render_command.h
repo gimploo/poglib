@@ -1,6 +1,7 @@
 #pragma once
 #include "poglib/basic/arena.h"
 #include "poglib/basic/ds/list.h"
+#include "poglib/gfx/gl/renderconfig.h"
 #include "poglib/gfx/gl/types.h"
 #include "poglib/gfx/gl/vtx_attribute.h"
 #include <poglib/gfx/glrenderer3d.h>
@@ -31,10 +32,7 @@ typedef struct {
             u8                  len;
             glvtx_attribute_t   *data;
         } attrs;
-        struct {
-            u8 count;
-            const gltexture2d_t *data;
-        } textures;
+        gltexturelist_t         textures;
         glshaderconfig_t        shader_config;
     } handles;
 
@@ -82,7 +80,7 @@ bool render_command_are_all_textures_the_same(const render_command_t *render_com
 
     for (u8 idx = 0; idx < command->handles.textures.count; idx++)
     {
-        if (command->handles.textures.data[idx].id != render_command->handles.textures.data[idx].id)
+        if (command->handles.textures.items[idx].source.normal_texture->id != render_command->handles.textures.items[idx].source.normal_texture->id)
             return false;
     }
     return true;
@@ -150,7 +148,7 @@ buffer_t __render_command_merge_all_vtx_together(const list_t * const commands, 
         maximum_size += command->handles.vtx[VBO_STREAM_TYPE_GEOMETRY].size;
     }
 
-    u8 *buffer = arena_reserve(arena, maximum_size);
+    u8 *buffer = arena_reserve_raw(arena, maximum_size);
     u8 top = 0;
     list_iterator(commands, iter) 
     {
