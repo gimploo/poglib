@@ -1,11 +1,13 @@
 #pragma once
-#include <string.h>
 #ifdef __linux__
+    #define _GNU_SOURCE
+    #include <dlfcn.h>
     #include <execinfo.h>
 #elif _WIN64
     #include <windows.h>
     #include <imagehlp.h>
 #endif
+#include <string.h>
 #include "./ds/linkedlist.h"
 #include <threads.h>
 
@@ -139,23 +141,40 @@ void __dbg_set_stacktraces(dbg_node_info_t *dn)
     free(symbol);
 
 #elif defined(__linux__)
-
     void *array[10];
-
-    int size = backtrace (array, 10);
-    char **strings = backtrace_symbols(array, size);
+    int size = backtrace(array, 10);
     int count = 0;
-    if (strings != NULL)
+
+    // Note: we do not use backtrace_symbols() here because we resolve manually
+    printf("\n[*] Printing stack frames ... \n\n");
+
+    for (int i = 2, j = -1; i < size; i++) 
     {
-        for (int i = 2, j = -1; i < size; i++) 
+        Dl_info info;
+        dn->stacktraces[++j] = (char *)calloc(1024, sizeof(char));
+        
+        /* Attempt to resolve the address to a symbol */
+        if (dladdr(array[i], &info) && info.dli_sname) 
         {
-            dn->stacktraces[++j] = (char *)calloc(1024, sizeof(char));
-            sprintf(dn->stacktraces[j], " %02i |  %s", (size - i), strings[i]);
-            count++;
+            /* Calculate decimal offset: (current address) - (function start address) */
+            long offset = (char *)array[i] - (char *)info.dli_saddr;
+            
+            /* Format: [Count] | [File]([Symbol]+[DecimalOffset]) [Address] */
+            sprintf(dn->stacktraces[j], " %02i |  %s(%s+%ld) [%p]", 
+                    (size - i), 
+                    info.dli_fname, 
+                    info.dli_sname, 
+                    offset, 
+                    array[i]);
+        } 
+        else 
+        {
+            /* Fallback: If symbol resolution fails, print the raw address */
+            sprintf(dn->stacktraces[j], " %02i |  %p", (size - i), array[i]);
         }
+        count++;
     }
     dn->nstacktraces = count;
-    free (strings);
 
 #endif
 
@@ -533,21 +552,37 @@ void window_print_trace(void)
 void linux_print_trace(void)
 {
     void *array[10];
-    char **strings;
     int size, i;
 
-    size = backtrace (array, 10);
-    strings = backtrace_symbols(array, size);
-    if (strings != NULL)
-    {
-        printf("\n[*] Printing stack frames ... \n\n");
-        for (i = 0; i < size; i++)
-            printf (" %02i |  %s\n", (size - i), strings[i]);
-        printf ("\n[!] Obtained %d stack frames.\n", size);
-    }
+    size = backtrace(array, 10);
 
-    free (strings);
+    printf("\n[*] Printing stack frames ... \n\n");
+    for (i = 0; i < size; i++)
+    {
+        Dl_info info = {0};
+        /* dladdr attempts to find the symbol and shared object for an address */
+        if (dladdr(array[i], &info) && info.dli_sname)
+        {
+            /* Calculate the offset: current address minus start address of symbol */
+            long offset = (char *)array[i] - (char *)info.dli_saddr;
+            
+            /* Print using %ld for decimal representation */
+            printf(" %02i |  %s(%s+%ld) [%p]\n", 
+                   (size - i), 
+                   info.dli_fname, 
+                   info.dli_sname, 
+                   offset, 
+                   array[i]);
+        }
+        else
+        {
+            /* Fallback if symbol name cannot be resolved */
+            printf(" %02i |  %p\n", (size - i), array[i]);
+        }
+    }
+    printf("\n[!] Obtained %d stack frames.\n", size);
 }
+
 
 #endif
 
