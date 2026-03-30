@@ -114,8 +114,8 @@ bool __render_queue_check_for_batchable_commands(render_queue_t *const queue, re
             return true;
         }
 
-        const bool has_same_texture = command.handles.textures.data 
-            && render_command->handles.textures.data 
+        const bool has_same_texture = command.handles.textures.count 
+            && render_command->handles.textures.count 
             && render_command_are_all_textures_the_same(&command, render_command);
 
         const bool has_same_shader = command.handles.shader_config.shader 
@@ -163,11 +163,7 @@ void render_queue_dispatch(render_queue_t *const self)
                 .data = command->handles.idx.data
             },
             .shader_config = command->handles.shader_config,
-            .textures = {
-                .common_across_calls = false,
-                .count = command->handles.textures.count,
-                .data = command->handles.textures.data
-            },
+            .textures = command->handles.textures,
             .instancing = {
                 .enable = enable_instancing,
                 .count = instancing_count

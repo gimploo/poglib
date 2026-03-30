@@ -6,7 +6,7 @@
 #include <poglib/gfx/glrenderer3d.h>
 #include "./workbench/workbench-constants.h"
 #include "./gllight.h"
-//#include "./workbench/ui/workbench-ui.h"
+#include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
 #include "poglib/application.h"
 #include "poglib/basic/common.h"
@@ -25,7 +25,7 @@ typedef struct {
     } render_config;
 
     struct {
-        gui_t *handle;
+        gui_t handle;
         bool enable;
     } gui;
 
@@ -40,7 +40,7 @@ typedef struct {
 
 } workbench_t;
 
-workbench_t workbench_init(const application_t * const app);
+workbench_t workbench_init(application_t * const app);
 
 //TODO: better design this
 void        workbench_compose_ui(const application_t * const app, gui_t *gui);
@@ -58,7 +58,7 @@ void        workbench_destroy(workbench_t *self);
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
 
-workbench_t workbench_init(const application_t * const app)
+workbench_t workbench_init(application_t * const app)
 {
     const str_t vshader = str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.vs");
     const str_t fshader = str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.fs");
@@ -78,13 +78,13 @@ workbench_t workbench_init(const application_t * const app)
             .wireframe_mode = false
         },
         .gui = {
-            .handle = gui_init(),
+            .handle = gui_init(&app->handle.arena),
             .enable = true
         }
     };
 
     glcamera__set_scroll_speed(&o.world_camera, 100.0f);
-    //workbench_compose_ui(app, o.gui.handle);
+    workbench_compose_ui(app, &o.gui.handle);
 
     return o;
 }
@@ -107,7 +107,7 @@ void workbench_track_lightsource(workbench_t *self, const gllight_t *light)
 void workbench_toggle_wireframe_mode(workbench_t *self)
 {
     self->render_config.wireframe_mode = !self->render_config.wireframe_mode;
-    gui_set_wireframe_mode(self->gui.handle, self->render_config.wireframe_mode);
+    //gui_set_wireframe_mode(self->gui.handle, self->render_config.wireframe_mode);
 }
 
 void workbench_toggle_gui(workbench_t *self)
@@ -117,7 +117,7 @@ void workbench_toggle_gui(workbench_t *self)
 
 void __workbench_render_ui(workbench_t *self)
 {
-    gui_render(self->gui.handle);
+    gui_render(&self->gui.handle, glcamera_getview(&self->world_camera));
 }
 
 void __workbench_render_lightsources(workbench_t *self)
@@ -196,7 +196,7 @@ void workbench_destroy(workbench_t *self)
     glshader_destroy(&self->shader);
     list_destroy(&self->draw_lines);
     list_destroy(&self->lightsources);
-    gui_destroy(self->gui.handle);
+    gui_destroy(&self->gui.handle);
 }
 
 void __workbench_render_batch_lines(workbench_t *self)
