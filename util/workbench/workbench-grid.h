@@ -61,9 +61,9 @@ void workbench_render_grid(
     glrenderer3d_draw((glrendererconfig_t) { .calls = { .count = 1, .call = {
         [0] = {
             .draw_mode = GL_LINES,
-            .vtx = {
+            .vtx = (buffer_t){
                 .size = sizeof(GRID_VERTICES_3D),
-                .data = (u8 *)GRID_VERTICES_3D,
+                .raw_data = (u8 *)GRID_VERTICES_3D,
             },
             .shader_config = {
                 .shader = shader,

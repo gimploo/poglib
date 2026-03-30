@@ -6,7 +6,7 @@
 #include <poglib/gfx/glrenderer3d.h>
 #include "./workbench/workbench-constants.h"
 #include "./gllight.h"
-#include "./workbench/ui/workbench-ui.h"
+//#include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
 #include "poglib/application.h"
 #include "poglib/basic/common.h"
@@ -84,7 +84,7 @@ workbench_t workbench_init(const application_t * const app)
     };
 
     glcamera__set_scroll_speed(&o.world_camera, 100.0f);
-    workbench_compose_ui(app, o.gui.handle);
+    //workbench_compose_ui(app, o.gui.handle);
 
     return o;
 }
@@ -134,8 +134,8 @@ void __workbench_render_lightsources(workbench_t *self)
                     [0] = {
                         .is_wireframe = self->render_config.wireframe_mode,
                         .textures = {0},
-                        .vtx = {
-                            .data = (u8 *)DEFAULT_CUBE_VERTICES_8,
+                        .vtx = (buffer_t){
+                            .raw_data = (u8 *)DEFAULT_CUBE_VERTICES_8,
                             .size = sizeof(DEFAULT_CUBE_VERTICES_8)
                         },
                         .idx = {
@@ -216,8 +216,8 @@ void __workbench_render_batch_lines(workbench_t *self)
                         .data = (u8 *)&CAMERA_INDICES,
                         .nmemb = ARRAY_LEN(CAMERA_INDICES)
                     },
-                    .vtx = {
-                        .data = (u8 *)&CAMERA_VERTICES,
+                    .vtx = (buffer_t){
+                        .raw_data = (u8 *)&CAMERA_VERTICES,
                         .size = sizeof(CAMERA_VERTICES)
                     },
                     .textures = {0},
@@ -271,8 +271,8 @@ void __workbench_render_batch_lines(workbench_t *self)
                         .data = (u8 *)&DEFAULT_CUBE_INDICES_8,
                         .nmemb = ARRAY_LEN(DEFAULT_CUBE_INDICES_8)
                     },
-                    .vtx = {
-                        .data = (u8 *)&DEFAULT_CUBE_VERTICES_8,
+                    .vtx = (buffer_t){
+                        .raw_data = (u8 *)&DEFAULT_CUBE_VERTICES_8,
                         .size = sizeof(DEFAULT_CUBE_VERTICES_8)
                     },
                     .textures = {0},
@@ -356,8 +356,8 @@ void __workbench_render_batch_lines(workbench_t *self)
                         } 
                     },
                     .idx = {0},
-                    .vtx = {
-                        .data = list_get_buffer(&self->draw_lines),
+                    .vtx = (buffer_t){
+                        .raw_data = list_get_buffer(&self->draw_lines),
                         .size = list_get_size(&self->draw_lines),
                     },
                     .attrs = {

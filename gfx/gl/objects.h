@@ -1,14 +1,28 @@
 #pragma once
 #include "common.h"
+#include "poglib/basic/common.h"
+#include "poglib/gfx/gl/vbo_stream_types.h"
 
-typedef struct vao_t { GLuint  id; } vao_t ;
+typedef struct { 
+    u32 id; 
+} vao_t ;
 
-typedef struct vbo_t {
+typedef struct {
+    u32         count;
+    buffer_t    src;
+} vbo_stream_t;
 
+typedef struct {
+    GLenum usage;
+    vbo_stream_t chunks[VBO_STREAM_TYPE_COUNT];
+} vbo_config_t;
+
+typedef struct {
     GLuint  id; 
-    u64     vertex_count;
-    i64     __attribute_index; 
-
+    struct {
+        vbo_config_t config;
+        i64     attribute_index;  //TODO: move this into internals
+    } internals;
 } vbo_t ;
 
 typedef struct ebo_t {
@@ -19,6 +33,10 @@ typedef struct ebo_t {
 
 } ebo_t ;
 
+
+vbo_t           vbo_init(vbo_config_t config);
+
+//FIXME: @deprecated
 vbo_t           vbo_static_init(const void *vertices, const size_t vsize, const u64 count);
 
 #define         vbo_bind(PVBO)                                  GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, (PVBO)->id))
@@ -33,12 +51,15 @@ void            ebo_destroy(const ebo_t *ebo);
 
 vao_t           vao_init(void);
 #define         vao_bind(PVAO)                                   GL_CHECK(glBindVertexArray((PVAO)->id))
-void            vao_set_attributes( vao_t *vao, vbo_t *vbo, u8 component_count, GLenum type, bool normalized, size_t stride, size_t offset);
+void            vao_set_attributes( vao_t *vao, vbo_t *vbo, u8 component_count, GLenum type, bool normalized, size_t stride, size_t offset, const u8 instance_divisor);
 #define         vao_unbind()                                    GL_CHECK(glBindVertexArray(0))
 #define         vao_draw_with_vbo(PVAO, PVBO)                   __impl_vao_draw_with_vbo(PVAO, PVBO, GL_TRIANGLES)
 #define         vao_draw_with_vbo_in_mode(PVAO, PVBO, MODE)     __impl_vao_draw_with_vbo(PVAO, PVBO, MODE)
+void            vao_draw_with_vbo_in_mode_instanced(const vao_t *vao, const vbo_t *vbo, u64 gldraw_mode);
 #define         vao_draw_with_ebo(PVAO, PEBO)                   __impl_vao_draw_with_ebo(PVAO, PEBO, GL_TRIANGLES)
 #define         vao_draw_with_ebo_in_mode(PVAO, PEBO, MODE)     __impl_vao_draw_with_ebo(PVAO, PEBO, MODE)
+void            vao_draw_with_ebo_in_mode_instanced(const vao_t *vao, const ebo_t *ebo, const u64 gldraw_mode);
+
 void            vao_destroy(const vao_t *vao);
 
 
@@ -58,15 +79,29 @@ void vbo_destroy(const vbo_t *obj)
 
 
 vbo_t vbo_static_init(
-        const void *vertices, 
-        const size_t vsize, 
-        const u64 vertex_count)
+    const void *vertices,
+    const size_t vsize,
+    const u64 vertex_count)
 {
     ASSERT(vsize != 8);
+    vbo_config_t config = {
+        .usage = GL_STATIC_DRAW,
+        .chunks = {
+            [VBO_STREAM_TYPE_GEOMETRY] = {
+                .count = vertex_count,
+                .src = {
+                    .raw_data = (u8 *)vertices,
+                    .size = vsize,
+                }
+            }
+        }
+    };
 
     vbo_t VBO = {
-        .vertex_count        = vertex_count,
-        .__attribute_index   = -1,
+        .internals = {
+            .config = config,
+            .attribute_index = -1,
+        }
     };
 
     GL_CHECK(glGenBuffers(1, &VBO.id)); 
@@ -80,6 +115,42 @@ vbo_t vbo_static_init(
     }
 
     return VBO;
+}
+
+vbo_t vbo_init(vbo_config_t config)
+{
+    u32 vbo_id;
+
+    u32 total_buffer_size = 0, max_instance_count = 0;
+    for(u32 idx = 0; idx < VBO_STREAM_TYPE_COUNT; idx++) {
+        total_buffer_size += config.chunks[idx].src.size;
+        max_instance_count = MAX(max_instance_count, config.chunks[idx].count);
+    }
+    ASSERT(total_buffer_size > 0);
+
+    GL_CHECK(glGenBuffers(1, &vbo_id)); 
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo_id));
+
+    GL_CHECK(glBufferData(GL_ARRAY_BUFFER, total_buffer_size, NULL, config.usage));
+
+    for (u32 idx = 0, offset = 0; idx < VBO_STREAM_TYPE_COUNT; idx++)
+    {
+        GL_CHECK(glBufferSubData(
+            GL_ARRAY_BUFFER, 
+            offset,
+            config.chunks[idx].src.size, 
+            config.chunks[idx].src.raw_data)
+        );
+        offset += config.chunks[idx].src.size;
+    }
+
+    return (vbo_t) {
+        .id = vbo_id,
+        .internals = {
+            .attribute_index = -1,
+            .config = config
+        }
+    };
 }
 
 //ebo
@@ -133,19 +204,20 @@ void vao_set_attributes(
             GLenum type,
             bool normalized,
             size_t stride,
-            size_t offset
+            size_t offset,
+            const u8 instance_divisor //NOTE: Default to zero if the attribute is to be applied for each vertex
 )
 {
     if (vao == NULL) eprint("vao_set_attribute: vao argument is null");
     if (vbo == NULL) eprint("vbo argument is null");
 
-    GL_CHECK(glEnableVertexAttribArray(++vbo->__attribute_index));
+    GL_CHECK(glEnableVertexAttribArray(++vbo->internals.attribute_index));
 
     switch(type)
     {
         case GL_INT:
             GL_CHECK(glVertexAttribIPointer(
-                        vbo->__attribute_index,
+                        vbo->internals.attribute_index,
                         component_count, 
                         GL_INT,
                         stride,
@@ -153,7 +225,7 @@ void vao_set_attributes(
         break;
         case GL_FLOAT:
             GL_CHECK(glVertexAttribPointer(
-                        vbo->__attribute_index,
+                        vbo->internals.attribute_index,
                         component_count, 
                         GL_FLOAT, 
                         normalized == false ? GL_FALSE : GL_TRUE, 
@@ -162,20 +234,37 @@ void vao_set_attributes(
         break;
         default: eprint("Not implemented");
     }
-    GL_CHECK(glVertexAttribDivisor(vbo->__attribute_index, 0));
+    GL_CHECK(glVertexAttribDivisor(vbo->internals.attribute_index, instance_divisor));
+}
+
+void vao_draw_with_vbo_in_mode_instanced(const vao_t *vao, const vbo_t *vbo, u64 gldraw_mode)
+{
+    if (vao == NULL) eprint("vao_draw: vao argument is null");
+
+    const u32 vtx_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].count;
+    const u32 instance_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].count;
+
+    if (!vtx_count) eprint("vao_draw: vbo`s vertex_count is %lu", vtx_count);
+    if (!instance_count) eprint("vao_draw: vbo`s instance_count is %lu", instance_count);
+
+    GL_CHECK(glDrawArraysInstanced(
+                gldraw_mode, 
+                0, 
+                vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].count,
+                vbo->internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].count));
+
+    GL_CHECK(glBindVertexArray(0));
 }
 
 void __impl_vao_draw_with_vbo(const vao_t *vao, const vbo_t *vbo, u64 gldraw_mode)
 {
     if (vao == NULL) eprint("vao_draw: vao argument is null");
 
-    if (vbo->vertex_count == 0) eprint("vao_draw: vbo`s vertex_count is %lu", vbo->vertex_count);
+    const u32 vtx_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].count;
 
-    GL_CHECK(glDrawArrays(
-                gldraw_mode, 
-                0, 
-                vbo->vertex_count));
+    if (!vtx_count) eprint("vao_draw: vbo`s vertex_count is %lu", vtx_count);
 
+    GL_CHECK(glDrawArrays(gldraw_mode, 0, vtx_count));
     GL_CHECK(glBindVertexArray(0));
 }
 
@@ -190,6 +279,24 @@ void __impl_vao_draw_with_ebo(const vao_t *vao, const ebo_t *ebo, const u64 gldr
                 ebo->indices_count, 
                 GL_UNSIGNED_INT, 
                 0));
+    GL_CHECK(glBindVertexArray(0));
+}
+
+void vao_draw_with_ebo_in_mode_instanced(const vao_t *vao, const ebo_t *ebo, const u64 gldraw_mode)
+{
+    if (vao == NULL) eprint("vao_draw: vao argument is null");
+
+    if (ebo->indices_count == 0) eprint("vao_draw: vbo`s indices_count is %i", ebo->indices_count);
+
+    const u32 instance_count = ebo->vbo->internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].count;
+
+    GL_CHECK(glDrawElementsInstanced(
+                gldraw_mode, 
+                ebo->indices_count, 
+                GL_UNSIGNED_INT, 
+                0,
+                instance_count));
+
     GL_CHECK(glBindVertexArray(0));
 }
 

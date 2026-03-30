@@ -61,9 +61,9 @@ glrendercall_t glskybox__get_render_config(
 {
     return (glrendercall_t) {
         .draw_mode = GL_TRIANGLES,
-        .vtx = {
+        .vtx = (buffer_t ){
+            .raw_data = (u8 *)DEFAULT_CUBE_VERTICES_24,
             .size = sizeof(DEFAULT_CUBE_VERTICES_24),
-            .data = (u8 *)DEFAULT_CUBE_VERTICES_24,
         },
         .idx = {
             .data = (u8 *)DEFAULT_CUBE_INDICES_24,

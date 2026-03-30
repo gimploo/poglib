@@ -8,6 +8,10 @@
 #include "poglib/gfx/gl/texture2d.h"
 #include "poglib/gfx/gl/vtx_attribute.h"
 #include "poglib/gfx/gl/renderconfig.h"
+#include "poglib/gfx/gl/vbo_stream_types.h"
+
+//NOTE: Attributes are only handelled for GL_FLOAT (default) and GL_INT
+
 
 /*=============================================================================
                         - OPENGL 3D RENDERER -
@@ -35,12 +39,13 @@ typedef struct {
 
     bool is_wireframe; //default false
     bool allow_empty_vtx_buffer; //default to false
+    struct {
+        bool enable;
+        u32 count;
+    } instancing;
 
     // Vertex data
-    struct {
-        u32 size;
-        u8 *data;
-    } vtx;
+    buffer_t vtx[VBO_STREAM_TYPE_COUNT];
 
     // Index data
     struct {
@@ -252,8 +257,10 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
             },
             .shader_config = common_shader ? config.configs[0] : config.configs[(u64)list_index],
             .vtx = {
-                .data = slot_get_buffer(&mesh->vtx),
-                .size = slot_get_size(&mesh->vtx)
+                [VBO_STREAM_TYPE_GEOMETRY] = {
+                    .raw_data = slot_get_buffer(&mesh->vtx),
+                    .size = slot_get_size(&mesh->vtx)
+                }
             },
             .idx = {
                 .data = slot_get_buffer(&mesh->idx),
@@ -286,6 +293,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
     for (u8 call_idx = 0; call_idx < config.calls.count; call_idx++)
     {
         bool is_idx_null = config.calls.call[call_idx].idx.data ? false : true;
+        const bool enable_instancing = config.calls.call[call_idx].instancing.enable;
 
         //Defaults to GL_TRIANGES if not set else to whatever modes that is available
         u8 draw_mode = GL_TRIANGLES;
@@ -300,19 +308,28 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         ebo_t ebo = {0};
 
         // Vertex and Index buffer init
-        if (config.calls.call[call_idx].allow_empty_vtx_buffer && !config.calls.call[call_idx].vtx.size) 
+        if (config.calls.call[call_idx].allow_empty_vtx_buffer && !config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_GEOMETRY].size) 
             return;
-        else ASSERT(config.calls.call[call_idx].vtx.size > 0);
+        else ASSERT(config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_GEOMETRY].size > 0);
 
-        ASSERT(config.calls.call[call_idx].vtx.data);
+        ASSERT(config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data);
         if (!is_idx_null) {
 
             ASSERT(config.calls.call[call_idx].idx.nmemb > 0); 
 
-            vbo = vbo_static_init(
-                    config.calls.call[call_idx].vtx.data, 
-                    config.calls.call[call_idx].vtx.size, 
-                    config.calls.call[call_idx].idx.nmemb);
+            vbo = vbo_init((vbo_config_t) {
+                .usage = GL_STATIC_DRAW,
+                .chunks = {
+                    [VBO_STREAM_TYPE_GEOMETRY] = {
+                        .count = config.calls.call[call_idx].idx.nmemb, 
+                        .src = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_GEOMETRY]
+                    },
+                    [VBO_STREAM_TYPE_INSTANCE] = enable_instancing ? (vbo_stream_t){ 
+                        .count = config.calls.call[call_idx].instancing.count, 
+                        .src = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_INSTANCE]
+                    } : (vbo_stream_t){0},
+                }
+            });
             vbo_bind(&vbo);
             ebo = ebo_init(
                     &vbo, 
@@ -327,10 +344,22 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                     attr_idx < config.calls.call[call_idx].attrs.count; ++attr_idx)
                 total_ncmp += config.calls.call[call_idx].attrs.attr[attr_idx].ncmp;
 
-            vbo = vbo_static_init(
-                    config.calls.call[call_idx].vtx.data, 
-                    config.calls.call[call_idx].vtx.size, 
-                    config.calls.call[call_idx].vtx.size / (total_ncmp * sizeof(f32)));
+            const u32 total_geometry_count = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_GEOMETRY].size / (total_ncmp * sizeof(f32));
+
+            vbo = vbo_init((vbo_config_t) {
+                .usage = GL_STATIC_DRAW,
+                .chunks = {
+                    [VBO_STREAM_TYPE_GEOMETRY] = {
+                        .count = total_geometry_count, 
+                        .src = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_GEOMETRY]
+                    },
+                    [VBO_STREAM_TYPE_INSTANCE] = enable_instancing ? (vbo_stream_t){ 
+                        .count = config.calls.call[call_idx].instancing.count, 
+                        .src = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_INSTANCE]
+                    } : (vbo_stream_t){0},
+                }
+            });
+
             vbo_bind(&vbo);
         }
 
@@ -340,14 +369,14 @@ void glrenderer3d_draw(const glrendererconfig_t config)
             const u32 data_type = config.calls.call[call_idx].attrs.attr[attr_idx].type;
 
             vao_set_attributes(
-                    &vao, 
-                    &vbo, 
-                    config.calls.call[call_idx].attrs.attr[attr_idx].ncmp, 
-                    data_type == GL_INT ? GL_INT : GL_FLOAT,
-                    false, 
-                    config.calls.call[call_idx].attrs.attr[attr_idx].interleaved.stride, 
-                    config.calls.call[call_idx].attrs.attr[attr_idx].interleaved.offset); 
-
+                &vao,
+                &vbo, 
+                config.calls.call[call_idx].attrs.attr[attr_idx].ncmp, 
+                data_type == GL_INT ? GL_INT : GL_FLOAT,
+                false, 
+                config.calls.call[call_idx].attrs.attr[attr_idx].interleaved.stride, 
+                config.calls.call[call_idx].attrs.attr[attr_idx].interleaved.offset,
+                attr_idx == GL_VTX_ATTRIBUTE_TYPE_INSTANCING); 
         }
 
         // Shader
@@ -438,8 +467,13 @@ void glrenderer3d_draw(const glrendererconfig_t config)
             GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
         }
 
-        if (!is_idx_null)   vao_draw_with_ebo(&vao, &ebo);
-        else                vao_draw_with_vbo_in_mode(&vao, &vbo, draw_mode);
+        if (enable_instancing) {
+            if (!is_idx_null)   vao_draw_with_ebo_in_mode_instanced(&vao, &ebo, draw_mode);
+            else                vao_draw_with_vbo_in_mode_instanced(&vao, &vbo, draw_mode);
+        } else {
+            if (!is_idx_null)   vao_draw_with_ebo(&vao, &ebo);
+            else                vao_draw_with_vbo_in_mode(&vao, &vbo, draw_mode);
+        }
 
         GL_CHECK(glDepthMask(true));
         gltexture2d_unbind();
