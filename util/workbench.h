@@ -42,9 +42,7 @@ typedef struct {
 
 workbench_t workbench_init(application_t * const app);
 
-//TODO: better design this
-void        workbench_compose_ui(const application_t * const app, gui_t *gui);
-
+void        workbench_update_ui(workbench_t * const self, const application_t * const app);
 void        workbench_update_player_camera_position(workbench_t *self, const vec3f_t pos);
 void        workbench_pass_line(workbench_t *self, const line_t line);
 void        workbench_track_lightsource(workbench_t *self, const gllight_t *light);
@@ -84,7 +82,7 @@ workbench_t workbench_init(application_t * const app)
     };
 
     glcamera__set_scroll_speed(&o.world_camera, 100.0f);
-    workbench_compose_ui(app, &o.gui.handle);
+    gui_set_composition(&o.gui.handle, (ui_composition)workbench_compose_ui);
 
     return o;
 }
@@ -403,5 +401,12 @@ void workbench_update_world_camera(workbench_t * const self, const f32 dt)
 {
     ASSERT(self);
     glcamera_process_input(&self->world_camera, dt);
+}
+
+void workbench_update_ui(workbench_t * const self, const application_t *app)
+{
+    if (!self->gui.enable) return;
+
+    gui_update(&self->gui.handle, app);
 }
 

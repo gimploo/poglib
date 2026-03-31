@@ -72,7 +72,7 @@ glrendercall_t glskybox__get_render_config(
         .attrs = {
             .count = 1,
             .attr = {
-                [GL_VTX_ATTRIBUTE_TYPE_POSITION] = {
+                [0] = {
                     .type = GL_FLOAT,
                     .ncmp = 3,
                     .interleaved = {0}

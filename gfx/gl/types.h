@@ -389,6 +389,12 @@ const u32 DEFAULT_TRI_INDICES[] = {
     0, 1, 2
 };
 
+const vec2f_t DEFAULT_QUAD_VTX[4] = {
+    -1.0f, -1.0f, // Bottom Left
+     1.0f, -1.0f, // Bottom Right
+     1.0f,  1.0f, // Top Right
+    -1.0f,  1.0f, // Top Left
+};
 
 const u32 DEFAULT_QUAD_INDICES[] = {
     0, 1, 2,

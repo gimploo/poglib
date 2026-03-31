@@ -1,4 +1,5 @@
 #pragma once
+#include "poglib/gfx/gl/vbo_stream_types.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <poglib/gfx/gl/shader.h>
@@ -24,7 +25,8 @@ typedef struct {
 
 typedef struct {
     u8 ncmp;
-    u32 type; //NOTE: Attributes are only handelled for GL_FLOAT (default) and GL_INT
+    u32 type;                           //NOTE: Attributes are only handelled for GL_FLOAT (default) and GL_INT
+    vbo_stream_type vbo_chunk_index;    //NOTE: Defaults to VBO_GEOMETRY
     struct {
         u32 offset;
         u32 stride;

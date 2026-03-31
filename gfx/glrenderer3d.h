@@ -6,7 +6,6 @@
 #include "poglib/gfx/gl/common.h"
 #include "poglib/gfx/gl/material.h"
 #include "poglib/gfx/gl/texture2d.h"
-#include "poglib/gfx/gl/vtx_attribute.h"
 #include "poglib/gfx/gl/renderconfig.h"
 #include "poglib/gfx/gl/vbo_stream_types.h"
 
@@ -56,7 +55,7 @@ typedef struct {
     // Attributes
     struct {
         u8 count;
-        glvtx_attribute_t attr[GL_VTX_ATTRIBUTE_TYPE_COUNT];
+        glvtx_attribute_t attr[16];
     } attrs;
 
     // Textures
@@ -285,8 +284,9 @@ void glrenderer3d_drawcall(const glrendercall_t call)
 }
 
 
-//NOTE: we have all the buffers combined to one single vbo and this creates a concern
-//of whether can the vbo be big enough to store all of it - needs more testing
+//TODO: here we are reallocating memory inside the GPU every loop - check vbo logic.
+//Explore strategies to pre allocate static memory and a fixed dynamic memory and maybe stream
+//the dyanmic stuff into the pre allocated dynaimc mem
 void glrenderer3d_draw(const glrendererconfig_t config)
 {
     ASSERT(config.calls.count > 0);
@@ -321,12 +321,12 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                 .usage = GL_STATIC_DRAW,
                 .chunks = {
                     [VBO_STREAM_TYPE_GEOMETRY] = {
-                        .count = config.calls.call[call_idx].idx.nmemb, 
-                        .src = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_GEOMETRY]
+                        .vertex_count = config.calls.call[call_idx].idx.nmemb, 
+                        .buffer = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_GEOMETRY]
                     },
                     [VBO_STREAM_TYPE_INSTANCE] = enable_instancing ? (vbo_stream_t){ 
-                        .count = config.calls.call[call_idx].instancing.count, 
-                        .src = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_INSTANCE]
+                        .instance_count = config.calls.call[call_idx].instancing.count, 
+                        .buffer = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_INSTANCE]
                     } : (vbo_stream_t){0},
                 }
             });
@@ -350,12 +350,12 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                 .usage = GL_STATIC_DRAW,
                 .chunks = {
                     [VBO_STREAM_TYPE_GEOMETRY] = {
-                        .count = total_geometry_count, 
-                        .src = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_GEOMETRY]
+                        .vertex_count = total_geometry_count, 
+                        .buffer = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_GEOMETRY]
                     },
                     [VBO_STREAM_TYPE_INSTANCE] = enable_instancing ? (vbo_stream_t){ 
-                        .count = config.calls.call[call_idx].instancing.count, 
-                        .src = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_INSTANCE]
+                        .instance_count = config.calls.call[call_idx].instancing.count, 
+                        .buffer = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_INSTANCE]
                     } : (vbo_stream_t){0},
                 }
             });
@@ -376,7 +376,8 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                 false, 
                 config.calls.call[call_idx].attrs.attr[attr_idx].interleaved.stride, 
                 config.calls.call[call_idx].attrs.attr[attr_idx].interleaved.offset,
-                attr_idx == GL_VTX_ATTRIBUTE_TYPE_INSTANCING); 
+                config.calls.call[call_idx].attrs.attr[attr_idx].vbo_chunk_index == VBO_STREAM_TYPE_INSTANCE,
+                config.calls.call[call_idx].attrs.attr[attr_idx].vbo_chunk_index); 
         }
 
         // Shader
