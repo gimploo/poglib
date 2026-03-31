@@ -9,6 +9,7 @@
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
 #include "poglib/application.h"
+#include "poglib/application/window/sdl_window.h"
 #include "poglib/basic/common.h"
 
 typedef struct {
@@ -76,7 +77,14 @@ workbench_t workbench_init(application_t * const app)
             .wireframe_mode = false
         },
         .gui = {
-            .handle = gui_init(&app->handle.arena),
+            .handle = gui_init(
+                &app->handle.arena, 
+                (ui_region_t) {
+                    .x = 0, 
+                    .y = 0, 
+                    .max_width = global_window->width, 
+                    .max_height = global_window->height
+            }),
             .enable = true
         }
     };
@@ -115,7 +123,7 @@ void workbench_toggle_gui(workbench_t *self)
 
 void __workbench_render_ui(workbench_t *self)
 {
-    gui_render(&self->gui.handle, glcamera_getview(&self->world_camera));
+    gui_render(&self->gui.handle);
 }
 
 void __workbench_render_lightsources(workbench_t *self)
