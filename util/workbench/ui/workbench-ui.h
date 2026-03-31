@@ -24,15 +24,10 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui)
             .highlight = COLOR_RED,
         },
         .dim = {
-            .height = 40,
-            .width = 40
+            .height = 50,
+            .width = 50
         },
-        .padding = {
-            .left = 1,
-            .bottom = 1,
-            .right = 1,
-            .top = 1
-        },
+        .padding = {0},
         .margin = {
             .left = 10, 
             .right = 10,
@@ -46,6 +41,12 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui)
         .dim = {
             .height = 50,
             .width = 50
+        },
+        .margin = {
+            .left = 10, 
+            .right = 10,
+            .top = 10,
+            .bottom = 10 
         },
         .color = {
             .base = COLOR_WHITE, 
