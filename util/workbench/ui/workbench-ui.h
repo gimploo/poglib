@@ -24,8 +24,8 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui)
             .highlight = COLOR_RED,
         },
         .dim = {
-            .height = 20,
-            .width = 20
+            .height = 40,
+            .width = 40
         },
         .padding = {
             .left = 1,
@@ -34,23 +34,25 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui)
             .top = 1
         },
         .margin = {
-            .left = 5, 
-            .right = 5,
-            .top = 5,
-            .bottom = 5
+            .left = 10, 
+            .right = 10,
+            .top = 10,
+            .bottom = 10 
         }
     });
-    /*
-        ui_compose_begin(gui, (ui_config_t) {
-            .composition = {0},
-            .color = {
-                .base = COLOR_WHITE, 
-                .highlight = COLOR_BLACK
-            },
-            .label = str("Hello world")
-        });
-        ui_compose_end(gui);
-        */
+    ui_compose_end(gui);
+    ui_compose_begin(gui, (ui_config_t) {
+        .composition = {0},
+        .dim = {
+            .height = 50,
+            .width = 50
+        },
+        .color = {
+            .base = COLOR_WHITE, 
+            .highlight = COLOR_BLACK
+        },
+        //.label = str("Hello world")
+    });
     ui_compose_end(gui);
 }
 

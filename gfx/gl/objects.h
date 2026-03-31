@@ -8,12 +8,16 @@ typedef struct {
 } vao_t ;
 
 typedef struct {
-    u32         count;
-    buffer_t    src;
+    union {
+        u32  vertex_count;
+        u32  instance_count;
+    };
+    buffer_t    buffer;
 } vbo_stream_t;
 
 typedef struct {
     GLenum usage;
+    //TODO: Revist the fixed 2 chunk implementation - can be improved, i think?
     vbo_stream_t chunks[VBO_STREAM_TYPE_COUNT];
 } vbo_config_t;
 
@@ -51,7 +55,7 @@ void            ebo_destroy(const ebo_t *ebo);
 
 vao_t           vao_init(void);
 #define         vao_bind(PVAO)                                   GL_CHECK(glBindVertexArray((PVAO)->id))
-void            vao_set_attributes( vao_t *vao, vbo_t *vbo, u8 component_count, GLenum type, bool normalized, size_t stride, size_t offset, const u8 instance_divisor);
+void            vao_set_attributes( vao_t *vao, vbo_t *vbo, u8 component_count, GLenum type, bool normalized, size_t stride, size_t offset, const u8 instance_divisor, const vbo_stream_type chunk_type);
 #define         vao_unbind()                                    GL_CHECK(glBindVertexArray(0))
 #define         vao_draw_with_vbo(PVAO, PVBO)                   __impl_vao_draw_with_vbo(PVAO, PVBO, GL_TRIANGLES)
 #define         vao_draw_with_vbo_in_mode(PVAO, PVBO, MODE)     __impl_vao_draw_with_vbo(PVAO, PVBO, MODE)
@@ -88,8 +92,8 @@ vbo_t vbo_static_init(
         .usage = GL_STATIC_DRAW,
         .chunks = {
             [VBO_STREAM_TYPE_GEOMETRY] = {
-                .count = vertex_count,
-                .src = {
+                .vertex_count = vertex_count,
+                .buffer = {
                     .raw_data = (u8 *)vertices,
                     .size = vsize,
                 }
@@ -121,10 +125,9 @@ vbo_t vbo_init(vbo_config_t config)
 {
     u32 vbo_id;
 
-    u32 total_buffer_size = 0, max_instance_count = 0;
+    u32 total_buffer_size = 0;
     for(u32 idx = 0; idx < VBO_STREAM_TYPE_COUNT; idx++) {
-        total_buffer_size += config.chunks[idx].src.size;
-        max_instance_count = MAX(max_instance_count, config.chunks[idx].count);
+        total_buffer_size += config.chunks[idx].buffer.size;
     }
     ASSERT(total_buffer_size > 0);
 
@@ -138,10 +141,10 @@ vbo_t vbo_init(vbo_config_t config)
         GL_CHECK(glBufferSubData(
             GL_ARRAY_BUFFER, 
             offset,
-            config.chunks[idx].src.size, 
-            config.chunks[idx].src.raw_data)
+            config.chunks[idx].buffer.size, 
+            config.chunks[idx].buffer.raw_data)
         );
-        offset += config.chunks[idx].src.size;
+        offset += config.chunks[idx].buffer.size;
     }
 
     return (vbo_t) {
@@ -205,13 +208,17 @@ void vao_set_attributes(
             bool normalized,
             size_t stride,
             size_t offset,
-            const u8 instance_divisor //NOTE: Default to zero if the attribute is to be applied for each vertex
-)
-{
+            const u8 instance_divisor, //NOTE: Default to zero if the attribute is to be applied for each vertex,
+            const vbo_stream_type chunk_type //NOTE: Default is VBO_STREAM_TYPE_GEOMETRY
+) {
     if (vao == NULL) eprint("vao_set_attribute: vao argument is null");
     if (vbo == NULL) eprint("vbo argument is null");
 
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo->id));
     GL_CHECK(glEnableVertexAttribArray(++vbo->internals.attribute_index));
+
+    const u64 geometry_chunk_size = vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].buffer.size;
+    const u64 buffer_offset = chunk_type == VBO_STREAM_TYPE_INSTANCE ? geometry_chunk_size + offset : offset;
 
     switch(type)
     {
@@ -221,7 +228,7 @@ void vao_set_attributes(
                         component_count, 
                         GL_INT,
                         stride,
-                        (const void *)offset));
+                        (const void *)buffer_offset));
         break;
         case GL_FLOAT:
             GL_CHECK(glVertexAttribPointer(
@@ -230,7 +237,7 @@ void vao_set_attributes(
                         GL_FLOAT, 
                         normalized == false ? GL_FALSE : GL_TRUE, 
                         stride, 
-                        (const void *)offset));
+                        (const void *)buffer_offset));
         break;
         default: eprint("Not implemented");
     }
@@ -241,8 +248,8 @@ void vao_draw_with_vbo_in_mode_instanced(const vao_t *vao, const vbo_t *vbo, u64
 {
     if (vao == NULL) eprint("vao_draw: vao argument is null");
 
-    const u32 vtx_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].count;
-    const u32 instance_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].count;
+    const u32 vtx_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].vertex_count;
+    const u32 instance_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].instance_count;
 
     if (!vtx_count) eprint("vao_draw: vbo`s vertex_count is %lu", vtx_count);
     if (!instance_count) eprint("vao_draw: vbo`s instance_count is %lu", instance_count);
@@ -250,8 +257,8 @@ void vao_draw_with_vbo_in_mode_instanced(const vao_t *vao, const vbo_t *vbo, u64
     GL_CHECK(glDrawArraysInstanced(
                 gldraw_mode, 
                 0, 
-                vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].count,
-                vbo->internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].count));
+                vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].vertex_count,
+                vbo->internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].vertex_count));
 
     GL_CHECK(glBindVertexArray(0));
 }
@@ -260,7 +267,7 @@ void __impl_vao_draw_with_vbo(const vao_t *vao, const vbo_t *vbo, u64 gldraw_mod
 {
     if (vao == NULL) eprint("vao_draw: vao argument is null");
 
-    const u32 vtx_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].count;
+    const u32 vtx_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].vertex_count;
 
     if (!vtx_count) eprint("vao_draw: vbo`s vertex_count is %lu", vtx_count);
 
@@ -288,7 +295,7 @@ void vao_draw_with_ebo_in_mode_instanced(const vao_t *vao, const ebo_t *ebo, con
 
     if (ebo->indices_count == 0) eprint("vao_draw: vbo`s indices_count is %i", ebo->indices_count);
 
-    const u32 instance_count = ebo->vbo->internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].count;
+    const u32 instance_count = ebo->vbo->internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].instance_count;
 
     GL_CHECK(glDrawElementsInstanced(
                 gldraw_mode, 

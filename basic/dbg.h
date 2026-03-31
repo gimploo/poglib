@@ -145,20 +145,17 @@ void __dbg_set_stacktraces(dbg_node_info_t *dn)
     int size = backtrace(array, 10);
     int count = 0;
 
-    // Note: we do not use backtrace_symbols() here because we resolve manually
-    printf("\n[*] Printing stack frames ... \n\n");
-
     for (int i = 2, j = -1; i < size; i++) 
     {
         Dl_info info;
         dn->stacktraces[++j] = (char *)calloc(1024, sizeof(char));
-        
+
         /* Attempt to resolve the address to a symbol */
         if (dladdr(array[i], &info) && info.dli_sname) 
         {
             /* Calculate decimal offset: (current address) - (function start address) */
             long offset = (char *)array[i] - (char *)info.dli_saddr;
-            
+
             /* Format: [Count] | [File]([Symbol]+[DecimalOffset]) [Address] */
             sprintf(dn->stacktraces[j], " %02i |  %s(%s+%ld) [%p]", 
                     (size - i), 

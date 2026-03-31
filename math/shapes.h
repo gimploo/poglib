@@ -7,6 +7,13 @@
 #define BOTTOM_RIGHT 2
 #define BOTTOM_LEFT  3
 
+typedef struct {
+    f32 x;
+    f32 y;
+    f32 width;
+    f32 height;
+} region_t;
+
 // Triangle
 typedef struct trif_t {
     vec3f_t vertex[3]; 
