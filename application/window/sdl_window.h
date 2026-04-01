@@ -292,7 +292,8 @@ bool window_mouse_wheel_is_scroll_left(window_t *w)
     ));\
     GL_CHECK(glEnable(GL_BLEND));\
     GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));\
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));\
+    GL_CHECK(glEnable(GL_DEPTH_TEST));\
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));\
 \
 } while(0)
 

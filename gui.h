@@ -13,6 +13,9 @@
 #include <poglib/basic.h>
 #include <poglib/math.h>
 
+//TODO:
+//1. Scroll
+
 typedef enum {
     UI_BEHAVIOR_NONE        = 0 << 1,
     UI_BEHAVIOR_HOVERABLE   = 1 << 1,
@@ -25,10 +28,9 @@ typedef enum {
 } ui_style_config;
 
 typedef struct {
-    f32 x;
-    f32 y;
-    f32 max_width;
-    f32 max_height;
+    vec2f_t cursor;
+    f32 width;
+    f32 height;
 }  ui_region_t;
 
 typedef struct {
@@ -62,10 +64,11 @@ typedef struct {
 typedef ui_config_t ui_t;
 
 typedef struct {
-    ui_region_t    position;
-    ui_region_t    uv;
-    vec4f_t     color;
-    f32         corner_radius;
+    ui_region_t     position;
+    ui_region_t     uv;
+    vec4f_t         color;
+    f32             corner_radius;
+    u32             zorder;
 } ui_attr_t;
 
 typedef enum {
@@ -76,12 +79,6 @@ typedef enum {
 
 #define MAX_UI_NESTING_ALLOWED 5
 
-typedef enum {
-    UI_LAYOUT_CURSOR_CHILD = 0,
-    UI_LAYOUT_CURSOR_PARENT = 1,
-    UI_LAYOUT_CURSOR_COUNT
-} ui_layout_cursor_type;
-
 typedef struct gui_t gui_t;
 
 typedef void (*ui_composition)(const application_t * const app, gui_t *gui);
@@ -89,6 +86,7 @@ typedef void (*ui_composition)(const application_t * const app, gui_t *gui);
 typedef struct {
     ui_region_t region;
     u32 max_row_height;
+    ui_region_t starting_region; 
 } layout_ctx_t;
 
 struct gui_t {
@@ -104,10 +102,8 @@ struct gui_t {
     struct {
         struct {
             i8 top;
-            layout_ctx_t buffer[MAX_UI_NESTING_ALLOWED][UI_LAYOUT_CURSOR_COUNT];
+            layout_ctx_t buffer[MAX_UI_NESTING_ALLOWED];
         } layout_cursor_stack;
-        ui_region_t starting_region;
-
     } internal;
 
     ui_composition callback;
@@ -127,8 +123,8 @@ gui_t gui_init(arena_t * const arena, const ui_region_t starting_region)
     return (gui_t){
         .shaders = {
             [UI_SHADER_DEFAULT] = glshader__file_init(
-                    str(POGLIB_ROOT_DIR"/gui/uishader.vs"), 
-                    str(POGLIB_ROOT_DIR"/gui/uishader.fs"), 
+                    str(POGLIB_ROOT_DIR"/gui/uishader-vtx.glsl"), 
+                    str(POGLIB_ROOT_DIR"/gui/uishader-frag.glsl"), 
                     arena),
             [UI_SHADER_FONT] = glshader__file_init(
                     str(POGLIB_ROOT_DIR  "/gui/ui-text-shader.vs"),
@@ -141,17 +137,15 @@ gui_t gui_init(arena_t * const arena, const ui_region_t starting_region)
         },
         .internal = {
             .layout_cursor_stack = {
-                //NOTE: start of with the entire window as the region
                 .top = 0,
                 .buffer = {
-                    [UI_LAYOUT_CURSOR_PARENT] = (layout_ctx_t){ 
+                    [0] = (layout_ctx_t){
+                        .max_row_height = 0,
                         .region = starting_region,
-                        .max_row_height = 0
-                    },
-                    [UI_LAYOUT_CURSOR_CHILD] = (layout_ctx_t){ 0 }
-                }
+                        .starting_region = starting_region
+                    }
+                },
             },
-            .starting_region = starting_region
         }
     };
 }
@@ -173,13 +167,13 @@ vec4f_t __ui_get_color(gui_t *gui, ui_config_t config)
 
     const ui_region_t region = gui->internal
         .layout_cursor_stack
-        .buffer[gui->internal.layout_cursor_stack.top][UI_LAYOUT_CURSOR_CHILD]
+        .buffer[gui->internal.layout_cursor_stack.top]
         .region;
 
-    const bool is_cursor_on_ui = (f32)mouse_pos.x > region.x
-        && (f32)mouse_pos.x < region.x + region.max_width
-        && (f32)mouse_pos.y > region.y
-        && (f32)mouse_pos.y < region.y + region.max_height;
+    const bool is_cursor_on_ui = (f32)mouse_pos.x > region.cursor.x
+        && (f32)mouse_pos.x < region.cursor.x + region.width
+        && (f32)mouse_pos.y > region.cursor.y
+        && (f32)mouse_pos.y < region.cursor.y + region.height;
 
     if ((config.composition.traits & UI_BEHAVIOR_HOVERABLE) && is_cursor_on_ui) {
         return config.color.highlight;
@@ -192,8 +186,8 @@ void __ui_push_cursor_layout(gui_t *gui, const layout_ctx_t old_parent_layout, c
 {
     const u8 new_top = ++gui->internal.layout_cursor_stack.top;
     ASSERT(new_top < MAX_UI_NESTING_ALLOWED);
-    gui->internal.layout_cursor_stack.buffer[new_top][UI_LAYOUT_CURSOR_PARENT] = old_parent_layout; 
-    gui->internal.layout_cursor_stack.buffer[new_top][UI_LAYOUT_CURSOR_CHILD] = new_parent_layout; 
+    gui->internal.layout_cursor_stack.buffer[new_top] = new_parent_layout; 
+    gui->internal.layout_cursor_stack.buffer[new_top - 1] = old_parent_layout; 
 }
 
 void __ui_pop_cursor_layout(gui_t *gui)
@@ -202,76 +196,91 @@ void __ui_pop_cursor_layout(gui_t *gui)
     --gui->internal.layout_cursor_stack.top;
 }
 
-void __ui_update_row_height_of_parent(gui_t *gui)
+vec2f_t __get_active_cursor(gui_t *gui)
 {
-    const u32 latest_row_height = gui->internal
+    return gui->internal
         .layout_cursor_stack
-        .buffer[gui->internal.layout_cursor_stack.top + 1][UI_LAYOUT_CURSOR_PARENT].max_row_height;
-
-    const u32 old_row_height = gui->internal
-        .layout_cursor_stack
-        .buffer[gui->internal.layout_cursor_stack.top][UI_LAYOUT_CURSOR_CHILD].max_row_height; 
-
-    gui->internal
-        .layout_cursor_stack
-        .buffer[gui->internal.layout_cursor_stack.top][UI_LAYOUT_CURSOR_CHILD].max_row_height = MAX(latest_row_height, old_row_height);
-}
-
-void __ui_update_parent_cursor(gui_t *gui)
-{
-    const u32 x_offset = gui->internal
-        .layout_cursor_stack
-        .buffer[gui->internal.layout_cursor_stack.top + 1][UI_LAYOUT_CURSOR_PARENT].region.x;
-
-    const u32 y_offset = gui->internal
-        .layout_cursor_stack
-        .buffer[gui->internal.layout_cursor_stack.top + 1][UI_LAYOUT_CURSOR_PARENT].region.max_height;
-
-    gui->internal
-        .layout_cursor_stack
-        .buffer[gui->internal.layout_cursor_stack.top][UI_LAYOUT_CURSOR_CHILD].region.x = x_offset;
+        .buffer[gui->internal.layout_cursor_stack.top].region.cursor;
 }
 
 void ui_compose_end(gui_t *gui)
 {
     __ui_pop_cursor_layout(gui);
-    __ui_update_row_height_of_parent(gui);
-    __ui_update_parent_cursor(gui);
 }
 
-void ui_compose_begin(gui_t *gui, const ui_config_t config)
+void __validate_ui_config(ui_config_t config)
+{
+    ASSERT(config.dim.height > 0);
+    ASSERT(config.dim.width > 0);
+}
+
+ui_region_t __ui_add_child(gui_t *gui, const ui_config_t config )
 {
     const layout_ctx_t parent_layout = gui->internal
         .layout_cursor_stack
-        .buffer[gui->internal.layout_cursor_stack.top][UI_LAYOUT_CURSOR_CHILD];
+        .buffer[gui->internal.layout_cursor_stack.top];
 
     const ui_region_t parent_region = parent_layout.region;
 
-    const ui_region_t child_region = {
-        .x      = parent_region.x + config.margin.left,
-        .y      = parent_region.y + config.margin.top,
-        .max_width  = config.dim.width,
-        .max_height = config.dim.height
+    const vec2f_t current_cursor = __get_active_cursor(gui);
+
+    ui_region_t child_region = {
+        .cursor.x = current_cursor.x + config.margin.left,
+        .cursor.y = current_cursor.y + config.margin.top,
+        .width  = config.dim.width,
+        .height = config.dim.height
     };
 
-    f32 total_step_x = config.margin.left + config.dim.width + config.margin.right;
+    const u32 width_enclosed_by_child_region = config.margin.left + config.dim.width + config.margin.right;
+    const u32 next_active_cursor_x = current_cursor.x + width_enclosed_by_child_region;
+
+    const bool is_child_region_at_end_parent_layout_width = next_active_cursor_x > 
+        ((u32)parent_layout.starting_region.cursor.x + parent_region.width);
+
+    if (is_child_region_at_end_parent_layout_width) {
+        child_region.cursor = (vec2f_t){
+            .x = parent_layout.starting_region.cursor.x + config.margin.left,
+            .y = current_cursor.y + parent_layout.max_row_height + config.margin.top,
+        };
+    }
+
+    const u32 row_height_inclosed_by_child_region = config.margin.top + config.margin.bottom + config.dim.height;
 
     __ui_push_cursor_layout(
         gui, 
         (layout_ctx_t) {
             .region = (ui_region_t) {
-                .x = parent_region.x + total_step_x,
-                .y = parent_region.y,
-                .max_width = parent_region.max_width,
-                .max_height = parent_region.max_height
+                .cursor = is_child_region_at_end_parent_layout_width 
+                    ? (vec2f_t){
+                        parent_layout.starting_region.cursor.x + width_enclosed_by_child_region,
+                        current_cursor.y + parent_layout.max_row_height 
+                    }
+                    : (vec2f_t){
+                        next_active_cursor_x,
+                        current_cursor.y 
+                    },
+                .width = parent_region.width,
+                .height = parent_region.height
             },
-            .max_row_height = MAX(parent_layout.max_row_height, child_region.max_height)
+            .max_row_height = !is_child_region_at_end_parent_layout_width 
+                ? MAX(parent_layout.max_row_height, row_height_inclosed_by_child_region)
+                : 0,
+            .starting_region = parent_layout.starting_region
         },
         (layout_ctx_t) {
             .region = child_region,
-            .max_row_height = child_region.max_height
+            .max_row_height = child_region.height,
+            .starting_region = child_region
         }
     );
+    return child_region;
+}
+
+void ui_compose_begin(gui_t *gui, const ui_config_t config)
+{
+    __validate_ui_config(config);
+
+    const ui_region_t child_region = __ui_add_child(gui, config);
 
     const vec4f_t quad_color = __ui_get_color(gui, config);
 
@@ -281,6 +290,7 @@ void ui_compose_begin(gui_t *gui, const ui_config_t config)
         const ui_attr_t attr = {
             .position = child_region,
             .color = quad_color,
+            .zorder = gui->internal.layout_cursor_stack.top
         };
         list_append(&gui->gfx.instanced_attrs, attr);
     }
@@ -298,12 +308,13 @@ void gui_update(gui_t *self, const application_t * const app)
 
 void __reset_gui_internals(gui_t *self)
 {
+    const ui_region_t starting_region = self->internal.layout_cursor_stack.buffer[0].starting_region;
     self->internal.layout_cursor_stack.top = 0;
-    self->internal.layout_cursor_stack.buffer[0][UI_LAYOUT_CURSOR_PARENT] = (layout_ctx_t){ 
-        .region = self->internal.starting_region,
-        .max_row_height = 0
+    self->internal.layout_cursor_stack.buffer[0] = (layout_ctx_t){ 
+        .region = starting_region,
+        .max_row_height = 0,
+        .starting_region = starting_region
     };
-    self->internal.layout_cursor_stack.buffer[0][UI_LAYOUT_CURSOR_CHILD] = (layout_ctx_t){0};
 }
 
 void gui_render(gui_t *self)
@@ -354,7 +365,7 @@ void gui_render(gui_t *self)
                         }
                     },
                     .attrs = {
-                        .count = 3,
+                        .count = 4,
                         .attr = {
                             [0] = {
                                 .ncmp = 2,
@@ -377,6 +388,15 @@ void gui_render(gui_t *self)
                                 .vbo_chunk_index = VBO_STREAM_TYPE_INSTANCE,
                                 .interleaved = {
                                     .offset = offsetof(ui_attr_t, color),
+                                    .stride = sizeof(ui_attr_t)
+                                },
+                            },
+                            [3] = {
+                                .ncmp = 1,
+                                .type = GL_INT,
+                                .vbo_chunk_index = VBO_STREAM_TYPE_INSTANCE,
+                                .interleaved = {
+                                    .offset = offsetof(ui_attr_t, zorder),
                                     .stride = sizeof(ui_attr_t)
                                 },
                             }

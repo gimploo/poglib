@@ -6,6 +6,7 @@ layout (location = 0) in vec2 quad_vtx;
 // 2. Instance Buffer: Per-element data (Divisor = 1)
 layout (location = 1) in vec4 region_instance;   // [x, y, w, h] in pixels
 layout (location = 2) in vec4 region_color;  // [r, g, b, a]
+layout (location = 3) in int zorder;  // [r, g, b, a]
 
 uniform mat4 projection;
 
@@ -20,5 +21,5 @@ void main()
     vec2 pixel_pos = region_instance.xy + (quad_vtx * region_instance.zw);
 
     // We set Z to 0.0 or a specific layer if you use a depth buffer
-    gl_Position = projection * vec4(pixel_pos, 0.0, 1.0);
+    gl_Position = projection * vec4(pixel_pos, zorder, 1.0);
 }
