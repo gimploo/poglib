@@ -54,7 +54,7 @@ void        workbench_render(workbench_t *self);
 void        workbench_destroy(workbench_t *self);
 
 
-#define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0}
+#define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0.f, 0.f, 10.f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
 
 workbench_t workbench_init(application_t * const app)
@@ -80,10 +80,9 @@ workbench_t workbench_init(application_t * const app)
             .handle = gui_init(
                 &app->handle.arena, 
                 (ui_region_t) {
-                    .x = 0, 
-                    .y = 0, 
-                    .max_width = global_window->width, 
-                    .max_height = global_window->height
+                    .cursor = {0},
+                    .width = global_window->width, 
+                    .height = global_window->height
             }),
             .enable = true
         }

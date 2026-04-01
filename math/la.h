@@ -17,6 +17,11 @@
 #define Z 2
 #define W 3
 
+typedef struct {
+    u32 x;
+    u32 y;
+} vec2ui_t;
+
 typedef ivec2s vec2i_t ;
 typedef ivec3s vec3i_t ;
 typedef ivec4s vec4i_t ;

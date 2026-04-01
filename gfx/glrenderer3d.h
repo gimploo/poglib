@@ -469,10 +469,6 @@ void glrenderer3d_draw(const glrendererconfig_t config)
             GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
         }
 
-        if (!config.calls.call[call_idx].disable_depth_buffer) {
-            GL_CHECK(glEnable(GL_DEPTH_TEST));
-        }
-
         if (enable_instancing) {
             if (!is_idx_null)   vao_draw_with_ebo_in_mode_instanced(&vao, &ebo, draw_mode);
             else                vao_draw_with_vbo_in_mode_instanced(&vao, &vbo, draw_mode);
@@ -489,10 +485,6 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         vbo_destroy(&vbo);
 
         GL_CHECK(glDepthFunc(GL_LESS));
-
-        if (!config.calls.call[call_idx].disable_depth_buffer) {
-            GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
-        }
 
     }
 
