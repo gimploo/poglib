@@ -24,6 +24,11 @@
 //3. Rounded corners
 //4. Way to have composition ui placed at the right end of the screen from the start
 //5. Way for enclosed text to take up the entire parent dimension instead
+//6. Toggle 
+//7. Text truncate
+
+//BUG:
+//1. WDC coordinates text are not wrapping around to next line of NDC coordinates text while enclosed in the same composition
 
 typedef enum {
     UI_BEHAVIOR_NONE        = 0 << 1,
