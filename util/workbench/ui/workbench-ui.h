@@ -5,6 +5,7 @@
 #include "poglib/basic/str.h"
 #include <poglib/gui.h>
 #include <stdio.h>
+#include <string.h>
 
 void    workbench_render_ui(gui_t *self);
 
@@ -26,7 +27,7 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
         },
         .dim = {
             .height = 30,
-            .width = 100 
+            .width = 80 
         },
         .padding = {4,4,4,4},
         .margin = {
@@ -46,7 +47,7 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
             },
             .dim = {
                 .height = 40,
-                .width = 80 
+                .width = 40 
             },
             .padding = {0},
             .margin = {0},
@@ -66,7 +67,7 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
         },
         .dim = {
             .height = 30,
-            .width = 200 
+            .width = 140 
         },
         .padding = {8,4,4,4},
         .margin = {
@@ -78,15 +79,34 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
     }); 
     {
         const vec2f_t mouse_pos = window_mouse_get_norm_position(global_window);
-        snprintf(tempbuffer, sizeof(tempbuffer), "mouse pos [ %.2f, %.2f ]", mouse_pos.x, mouse_pos.y);
+        memset(tempbuffer, 0, sizeof(tempbuffer));
+        snprintf(tempbuffer, sizeof(tempbuffer), "NDC [ %.2f, %.2f ]", mouse_pos.x, mouse_pos.y);
         gui_ui_compose_begin(gui, (ui_config_t){ 
             .composition = {0},
             .color = {
                 .base = COLOR_GRAY,
             },
             .dim = {
-                .height = 40,
-                .width = 80 
+                .height = 20,
+                .width = 100 
+            },
+            .padding = {0},
+            .margin = {2,2,2,2},
+            .label = str__from_cstr(tempbuffer, sizeof(tempbuffer))
+        });
+        gui_ui_compose_end(gui);
+
+        memset(tempbuffer, 0, sizeof(tempbuffer));
+        const vec2i_t mouse_pos_wc = window_mouse_get_position(global_window);
+        snprintf(tempbuffer, sizeof(tempbuffer), "WDC [ %i, %i ]", mouse_pos_wc.x, mouse_pos_wc.y);
+        gui_ui_compose_begin(gui, (ui_config_t){ 
+            .composition = {0},
+            .color = {
+                .base = COLOR_GRAY,
+            },
+            .dim = {
+                .height = 20,
+                .width = 100 
             },
             .padding = {0},
             .margin = {0},
@@ -118,6 +138,7 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
     }); 
     {
         const vec2f_t mouse_pos = window_mouse_get_norm_position(global_window);
+        memset(tempbuffer, 0, sizeof(tempbuffer));
         snprintf(tempbuffer, sizeof(tempbuffer), "cam pos [ %.2f, %.2f, %.2f ]", camera_pos.x, camera_pos.y, camera_pos.z);
         gui_ui_compose_begin(gui, (ui_config_t){ 
             .composition = {0},

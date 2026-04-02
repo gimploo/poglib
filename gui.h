@@ -14,13 +14,16 @@
 #include <poglib/basic.h>
 #include <poglib/math.h>
 
-//NOTE: This uses a stack based layout system -
+//INFO: This uses a stack based layout system -
 //Cursor starts from top left with (vec2ui_t){0}
 //Each cursor update is pushed to the stack
 
 //TODO:
 //1. Scroll
 //2. Text wrapping 
+//3. Rounded corners
+//4. Way to have composition ui placed at the right end of the screen from the start
+//5. Way for enclosed text to take up the entire parent dimension instead
 
 typedef enum {
     UI_BEHAVIOR_NONE        = 0 << 1,
@@ -113,15 +116,19 @@ struct gui_t {
 
 gui_t   gui_init(arena_t * const arena, const ui_region_t starting_region);
 
-//USAGE: define this in a function
+//INFO: define this in a function
 void    gui_ui_compose_begin(gui_t * const gui, const ui_config_t config);
 void    gui_ui_compose_end(gui_t *gui);
 
-//USAGE: pass above declared function that includes the gui compisition into here
+//INFO: pass above declared function that includes the gui compisition into here
 void    gui_set_composition(gui_t * const self, ui_composition callback);
+
+#define gui_update(self, app, ...) \
+    ((self)->callback((app), (self), __VA_ARGS__))
 
 void    gui_render(gui_t *self);
 void    gui_destroy(gui_t *self);
+
 
 
 #ifndef IGNORE_GUI_IMPLEMENTATION
@@ -348,8 +355,6 @@ bool ui_is_clicked(const ui_t * const ui)
 }
 
 
-#define gui_update(self, app, ...) \
-    ((self)->callback((app), (self), __VA_ARGS__))
 
 void gui__internal_ui_reset(gui_t *self)
 {
