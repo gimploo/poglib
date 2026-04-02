@@ -414,6 +414,6 @@ void workbench_update_ui(workbench_t * const self, const application_t *app)
 {
     if (!self->gui.enable) return;
 
-    gui_update(&self->gui.handle, app);
+    gui_update(&self->gui.handle, app, self->world_camera.position);
 }
 

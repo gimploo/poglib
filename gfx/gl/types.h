@@ -280,7 +280,7 @@ typedef struct {
 
 
 gltri_t         gltri(trif_t tri, vec4f_t color, quadf_t tex_coord);
-glquad_t        glquad(const quadf_t pos, const vec4f_t rgba, const quadf_t uv);
+glquad_t        glquad(const quadf_t positions, const vec4f_t color, const rect_t tex_coord);
 glcircle_t      glcircle(circle_t circle, vec4f_t color, quadf_t uv);
 glpolygon_t     glpolygon(polygon_t polygon, vec4f_t color, quadf_t uv);
 
@@ -419,7 +419,7 @@ const u32 DEFAULT_QUAD_INDICES[] = {
     }
 
 // Creates a quad suited for OpenGL
-glquad_t glquad(const quadf_t positions, const vec4f_t color, const quadf_t tex_coord)
+glquad_t glquad(const quadf_t positions, const vec4f_t color, const rect_t tex_coord)
 {
     return (glquad_t) { 
 

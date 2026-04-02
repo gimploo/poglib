@@ -99,7 +99,7 @@ const char * freetype_fs =
     "\n"
     "void main()\n"
     "{\n"
-        "FragColor = ourColor * texture(texture1, TexCoord).a;\n"
+        "FragColor = ourColor * texture(texture1, TexCoord).r;\n"
     "}";
 
 
@@ -138,13 +138,14 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize, b
     u32 roww = 0;
     u32 rowh = 0;
     FT_GlyphSlot g = face->glyph;
+    u32 atlas_fixed_width = 512;
 
-    for(u32 i = 0; i < 128; i++) 
+    for(u32 i = 32; i < 128; i++) 
     {
         if(FT_Load_Char(face, i, FT_LOAD_RENDER)) 
             eprint("Loading character %c failed!", i);
 
-        if (roww + g->bitmap.width + 1 >= tex.width) {
+        if (roww + g->bitmap.width + 1 >= atlas_fixed_width) {
             o.width = MAX(o.width, roww);
             o.height += rowh;
             roww = 0;
@@ -154,7 +155,7 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize, b
         rowh = MAX(rowh, g->bitmap.rows);
     }
 
-    tex.width  = o.width   = MAX(o.width, roww); 
+    tex.width  = o.width   = atlas_fixed_width; 
     tex.height = o.height += rowh; 
 
     // generate texture
@@ -164,11 +165,11 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize, b
     GL_CHECK(glTexImage2D(
         GL_TEXTURE_2D,
         0,
-        GL_ALPHA,
+        GL_R8,
         tex.width,
         tex.height,
         0,
-        GL_ALPHA,
+        GL_RED,
         GL_UNSIGNED_BYTE,
         0
     ));
@@ -196,7 +197,7 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize, b
             ox = 0;
         }
 
-        glTexSubImage2D(GL_TEXTURE_2D, 0, ox, oy, g->bitmap.width, g->bitmap.rows, GL_ALPHA, GL_UNSIGNED_BYTE, g->bitmap.buffer);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, ox, oy, g->bitmap.width, g->bitmap.rows, GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
         o.fontatlas[c].ax = g->advance.x >> 6;
         o.fontatlas[c].ay = g->advance.y >> 6;
 
@@ -234,24 +235,59 @@ glquad_t glfreetypefont_generate_glquad_for_char(const glfreetypefont_t *self, c
 
     const f32 glyph_width = self->fontatlas[(u8)c].bw;
     const f32 glyph_height = self->fontatlas[(u8)c].bh;
-    const f32 x2 = pos.x + self->fontatlas[(u8)c].bl;
-    const f32 y2 = pos.y + self->fontatlas[(u8)c].bt - glyph_height;
+    const f32 x = pos.x + self->fontatlas[(u8)c].bl;
+    const f32 y = pos.y + self->fontatlas[(u8)c].bt - glyph_height;
 
     if(!glyph_width || !glyph_height) eprint("Glyph has no pixels");
 
-    const quadf_t uv = {
+    const rect_t uv = {
         self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty, 0.0f,
         self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty, 0.0f,
         self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height, 0.0f,
         self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height, 0.0f,
     };
     return glquad(
-        quadf_for_window_coordinates((vec3f_t ){ x2, y2, pos.z }, glyph_width, glyph_height),
+        quadf_for_window_coordinates((vec3f_t ){ x, y, pos.z }, glyph_width, glyph_height),
         color, 
         uv
     );
 }
 
+rect_t glfreetypefont_generate_uv_for_char__old(const glfreetypefont_t *self, const char c, const vec3f_t pos, const vec4f_t color)
+{
+    ASSERT(self);
+
+    const f32 glyph_width = self->fontatlas[(u8)c].bw;
+    const f32 glyph_height = self->fontatlas[(u8)c].bh;
+
+    if(!glyph_width || !glyph_height) eprint("Glyph has no pixels");
+
+    const rect_t uv = {
+        self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty, 0.0f,
+        self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty, 0.0f,
+        self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height, 0.0f,
+        self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height, 0.0f,
+    };
+    return uv;
+}
+
+typedef struct {
+    box_t uv;
+    u32 xoffset;
+    u32 yoffset;
+} font_character_t;
+
+box_t glfreetypefont_generate_uv_for_char(const glfreetypefont_t *self, const char c)
+{
+    ASSERT(self);
+    // Directly return the pre-calculated normalized values from the struct
+    return (box_t){ 
+        .x = self->fontatlas[(u8)c].tx, 
+        .y = self->fontatlas[(u8)c].ty, 
+        .width = self->fontatlas[(u8)c].bw / (f32)self->width, 
+        .height = self->fontatlas[(u8)c].bh / (f32)self->height 
+    };
+}
 void glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *batch, const char *text, vec2f_t pos, vec4f_t color)
 {
     assert(self);
@@ -283,7 +319,7 @@ void glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *b
 
         const quadf_t quad = quadf((vec3f_t ){x2, -y2, -1.0f}, w, h);
 
-        const quadf_t uv = {
+        const rect_t uv = {
           self->fontatlas[c].tx, self->fontatlas[c].ty, 0.0f,
           self->fontatlas[c].tx + self->fontatlas[c].bw / self->width, self->fontatlas[c].ty, 0.0f,
           self->fontatlas[c].tx + self->fontatlas[c].bw / self->width, self->fontatlas[c].ty + self->fontatlas[c].bh / self->height, 0.0f,
@@ -312,6 +348,52 @@ void glfreetypefont_destroy(glfreetypefont_t *self)
         glshader_destroy(&self->shader);
     }
     gltexture2d_destroy(&self->texture);
+}
+
+glrendercall_t glfreetypefont_get_renderconfig(glfreetypefont_t *self, buffer_t geomerty_vtx_buffer, buffer_t geometry_idx_buffer)
+{
+    return (glrendercall_t) {
+        .draw_mode = GL_TRIANGLES,
+        .vtx = {
+            [VBO_STREAM_TYPE_GEOMETRY] = geomerty_vtx_buffer
+        },
+        .idx = {
+            .data = geometry_idx_buffer.raw_data,
+            .nmemb = geometry_idx_buffer.size / sizeof(u32)
+        },
+        .attrs = {
+            .count = 3,
+            .attr = {
+                [0] = {
+                    .type = GL_FLOAT,
+                    .ncmp = 3,
+                    .interleaved = {0}
+                },
+                [1] = {
+                    .type = GL_FLOAT,
+                    .ncmp = 4,
+                    .interleaved = {0},
+                },
+                [2] = {
+                    .type = GL_FLOAT,
+                    .ncmp = 2,
+                    .interleaved = {0},
+                }
+            }
+        },
+        .textures = {
+            .count = 1,
+            .items = {
+                [0] = {
+                    .type = GL_TEXTURE_TYPE_NORMAL,
+                    .source.normal_texture = &self->texture 
+                },
+            }
+        }, 
+        .shader_config = {
+            .shader = &self->shader,
+        },
+    };
 }
 
 #endif
