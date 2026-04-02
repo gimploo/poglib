@@ -18,6 +18,10 @@ trif_t          trif(vec3f_t pos, f32 side);
 #define         TRI_FMT         VEC3F_FMT ",\n" VEC3F_FMT ",\n" VEC3F_FMT ",\n"
 #define         TRI_ARG(TRI)    VEC3F_ARG(&(TRI.vertex[0])), VEC3F_ARG(&(TRI.vertex[1])), VEC3F_ARG(&(TRI.vertex[3]))
 
+typedef struct { 
+    f32 x,y,width,height;
+} box_t ;
+
 typedef struct rect_t { 
     vec2f_t vertex[4]; 
 } rect_t ;

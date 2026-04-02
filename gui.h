@@ -2,19 +2,25 @@
 #include "poglib/application.h"
 #include "poglib/application/window/sdl_window.h"
 #include "poglib/basic/arena.h"
+#include "poglib/basic/color.h"
 #include "poglib/basic/common.h"
 #include "poglib/basic/ds/list.h"
 #include "poglib/font/glfreetypefont.h"
+#include "poglib/gfx/gl/common.h"
 #include "poglib/gfx/gl/shader.h"
 #include "poglib/gfx/gl/types.h"
 #include "poglib/gfx/gl/vbo_stream_types.h"
 #include "poglib/gfx/glrenderer3d.h"
-#include "poglib/math/shapes.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
 
+//NOTE: This uses a stack based layout system -
+//Cursor starts from top left with (vec2ui_t){0}
+//Each cursor update is pushed to the stack
+
 //TODO:
 //1. Scroll
+//2. Text wrapping 
 
 typedef enum {
     UI_BEHAVIOR_NONE        = 0 << 1,
@@ -64,24 +70,19 @@ typedef struct {
 typedef ui_config_t ui_t;
 
 typedef struct {
-    ui_region_t     position;
-    ui_region_t     uv;
-    vec4f_t         color;
-    f32             corner_radius;
-    u32             zorder;
+    ui_region_t    position;
+    box_t          uv;
+    vec4f_t        color;
+    f32            corner_radius;
+    f32            zorder;
+    f32            is_text;
 } ui_attr_t;
 
-typedef enum {
-    UI_SHADER_DEFAULT = 0,
-    UI_SHADER_FONT = 1,
-    UI_SHADER_COUNT
-} ui_shader_type;
-
-#define MAX_UI_NESTING_ALLOWED 5
+#define MAX_UI_NESTING_ALLOWED 4
 
 typedef struct gui_t gui_t;
 
-typedef void (*ui_composition)(const application_t * const app, gui_t *gui);
+typedef void (*ui_composition)(const application_t * const app, gui_t *gui, ...);
 
 typedef struct {
     ui_region_t region;
@@ -93,7 +94,7 @@ struct gui_t {
     arena_t arena;
 
     glfreetypefont_t freetypefont;
-    glshader_t shaders[UI_SHADER_COUNT];
+    glshader_t shader;
 
     struct {
         list_t instanced_attrs;
@@ -111,7 +112,14 @@ struct gui_t {
 
 
 gui_t   gui_init(arena_t * const arena, const ui_region_t starting_region);
+
+//USAGE: define this in a function
+void    gui_ui_compose_begin(gui_t * const gui, const ui_config_t config);
+void    gui_ui_compose_end(gui_t *gui);
+
+//USAGE: pass above declared function that includes the gui compisition into here
 void    gui_set_composition(gui_t * const self, ui_composition callback);
+
 void    gui_render(gui_t *self);
 void    gui_destroy(gui_t *self);
 
@@ -121,16 +129,11 @@ void    gui_destroy(gui_t *self);
 gui_t gui_init(arena_t * const arena, const ui_region_t starting_region)
 {
     return (gui_t){
-        .shaders = {
-            [UI_SHADER_DEFAULT] = glshader__file_init(
-                    str(POGLIB_ROOT_DIR"/gui/uishader-vtx.glsl"), 
-                    str(POGLIB_ROOT_DIR"/gui/uishader-frag.glsl"), 
-                    arena),
-            [UI_SHADER_FONT] = glshader__file_init(
-                    str(POGLIB_ROOT_DIR  "/gui/ui-text-shader.vs"),
-                    str(POGLIB_ROOT_DIR  "/gui/ui-text-shader.fs"),
-                    arena),
-        },
+        .shader =  glshader__file_init(
+            str(POGLIB_ROOT_DIR"/gui/uishader-vtx.glsl"), 
+            str(POGLIB_ROOT_DIR"/gui/uishader-frag.glsl"), 
+            arena),
+        .freetypefont = glfreetypefont_init(DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH, 14, true),
         .arena = arena_init(arena, 1 * MB),
         .gfx = {
             .instanced_attrs = list_init(ui_attr_t),
@@ -153,14 +156,13 @@ gui_t gui_init(arena_t * const arena, const ui_region_t starting_region)
 
 void gui_destroy(gui_t *self)
 {
-    glshader_destroy(&self->shaders[UI_SHADER_DEFAULT]);
-    glshader_destroy(&self->shaders[UI_SHADER_FONT]);
+    glshader_destroy(&self->shader);
     list_destroy(&self->gfx.instanced_attrs);
 }
 
-ui_region_t __get_current_region(gui_t *gui,const ui_config_t config);
+ui_region_t gui__internal_get_current_region(gui_t *gui,const ui_config_t config);
 
-vec4f_t __ui_get_color(gui_t *gui, ui_config_t config)
+vec4f_t gui__internal_get_color(gui_t *gui, ui_config_t config)
 {
     window_t *win = window_get_current_active_window();
     const vec2i_t mouse_pos = window_mouse_get_position(win);
@@ -182,15 +184,15 @@ vec4f_t __ui_get_color(gui_t *gui, ui_config_t config)
     return config.color.base;
 }
 
-void __ui_push_cursor_layout(gui_t *gui, const layout_ctx_t old_parent_layout, const layout_ctx_t new_parent_layout)
+void gui__internal_ui_push_cursor_layout(gui_t *gui, const layout_ctx_t old_cursor__updated, const layout_ctx_t new_cursor)
 {
     const u8 new_top = ++gui->internal.layout_cursor_stack.top;
     ASSERT(new_top < MAX_UI_NESTING_ALLOWED);
-    gui->internal.layout_cursor_stack.buffer[new_top] = new_parent_layout; 
-    gui->internal.layout_cursor_stack.buffer[new_top - 1] = old_parent_layout; 
+    gui->internal.layout_cursor_stack.buffer[new_top] = new_cursor; 
+    gui->internal.layout_cursor_stack.buffer[new_top - 1] = old_cursor__updated; 
 }
 
-void __ui_pop_cursor_layout(gui_t *gui)
+void gui__internal_ui_pop_cursor_layout(gui_t *gui)
 {
     ASSERT(gui->internal.layout_cursor_stack.top > -1);
     --gui->internal.layout_cursor_stack.top;
@@ -203,18 +205,18 @@ vec2f_t __get_active_cursor(gui_t *gui)
         .buffer[gui->internal.layout_cursor_stack.top].region.cursor;
 }
 
-void ui_compose_end(gui_t *gui)
+void gui_ui_compose_end(gui_t *gui)
 {
-    __ui_pop_cursor_layout(gui);
+    gui__internal_ui_pop_cursor_layout(gui);
 }
 
-void __validate_ui_config(ui_config_t config)
+void gui__internal_ui_validate_config(ui_config_t config)
 {
     ASSERT(config.dim.height > 0);
     ASSERT(config.dim.width > 0);
 }
 
-ui_region_t __ui_add_child(gui_t *gui, const ui_config_t config )
+ui_region_t gui__internal_ui_add_child(gui_t *gui, const ui_config_t config)
 {
     const layout_ctx_t parent_layout = gui->internal
         .layout_cursor_stack
@@ -246,7 +248,7 @@ ui_region_t __ui_add_child(gui_t *gui, const ui_config_t config )
 
     const u32 row_height_inclosed_by_child_region = config.margin.top + config.margin.bottom + config.dim.height;
 
-    __ui_push_cursor_layout(
+    gui__internal_ui_push_cursor_layout(
         gui, 
         (layout_ctx_t) {
             .region = (ui_region_t) {
@@ -268,7 +270,14 @@ ui_region_t __ui_add_child(gui_t *gui, const ui_config_t config )
             .starting_region = parent_layout.starting_region
         },
         (layout_ctx_t) {
-            .region = child_region,
+            .region = {
+                .cursor = (vec2f_t){ 
+                    .x = child_region.cursor.x + config.padding.left,
+                    .y = child_region.cursor.y + config.padding.top
+                },
+                .height = child_region.height,
+                .width = child_region.width
+            },
             .max_row_height = child_region.height,
             .starting_region = child_region
         }
@@ -276,24 +285,62 @@ ui_region_t __ui_add_child(gui_t *gui, const ui_config_t config )
     return child_region;
 }
 
-void ui_compose_begin(gui_t *gui, const ui_config_t config)
+void gui__internal_ui_create_text_internal(gui_t * const gui, const ui_region_t child_region, const ui_config_t config)
 {
-    __validate_ui_config(config);
+    vec2f_t starting_pos = child_region.cursor;
+    const f32 offset = config.dim.width / config.label.len;
+    for (u32 i = 0; i < config.label.len; i++)
+    {
+        const box_t quad = glfreetypefont_generate_uv_for_char(
+                &gui->freetypefont, 
+                config.label.data[i]);
 
-    const ui_region_t child_region = __ui_add_child(gui, config);
+        const u8 character = config.label.data[i];
+        const f32 glyph_w = gui->freetypefont.fontatlas[character].bw;
+        const f32 glyph_h = gui->freetypefont.fontatlas[character].bh;
+        const f32 bearing_x = gui->freetypefont.fontatlas[character].bl;
+        const f32 bearing_y = gui->freetypefont.fontatlas[character].bt;
+        const f32 advance_x = gui->freetypefont.fontatlas[character].ax;
 
-    const vec4f_t quad_color = __ui_get_color(gui, config);
+        const ui_attr_t attr = {
+            .position = {
+                .cursor = { 
+                    floorf(starting_pos.x + bearing_x + bearing_x), 
+                    floorf(starting_pos.y + (gui->freetypefont.fontsize - bearing_y))
+                },
+                .height = glyph_h,
+                .width = glyph_w,
+            },
+            .color = COLOR_WHITE,
+            .zorder = gui->internal.layout_cursor_stack.top,
+            .uv = quad,
+            .is_text = true,
+        };
+
+        list_append(&gui->gfx.instanced_attrs, attr);
+        starting_pos.x += advance_x;
+    }
+}
+
+void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
+{
+    gui__internal_ui_validate_config(config);
+    const ui_region_t child_region = gui__internal_ui_add_child(gui, config);
+    const vec4f_t quad_color = gui__internal_get_color(gui, config);
 
     if (config.label.len) {
-       eprint("Not implemented - use stb truetype");
-    } else {
-        const ui_attr_t attr = {
-            .position = child_region,
-            .color = quad_color,
-            .zorder = gui->internal.layout_cursor_stack.top
-        };
-        list_append(&gui->gfx.instanced_attrs, attr);
+        gui__internal_ui_create_text_internal(gui, child_region, config);
+        return;
     }
+
+    const ui_attr_t attr = {
+        .position = child_region,
+        .color = quad_color,
+        .zorder = gui->internal.layout_cursor_stack.top,
+        .uv = {0},
+        .is_text = false,
+    };
+    list_append(&gui->gfx.instanced_attrs, attr);
 }
 
 bool ui_is_clicked(const ui_t * const ui)
@@ -301,12 +348,10 @@ bool ui_is_clicked(const ui_t * const ui)
 }
 
 
-void gui_update(gui_t *self, const application_t * const app)
-{
-    self->callback(app, self);
-}
+#define gui_update(self, app, ...) \
+    ((self)->callback((app), (self), __VA_ARGS__))
 
-void __reset_gui_internals(gui_t *self)
+void gui__internal_ui_reset(gui_t *self)
 {
     const ui_region_t starting_region = self->internal.layout_cursor_stack.buffer[0].starting_region;
     self->internal.layout_cursor_stack.top = 0;
@@ -323,7 +368,7 @@ void gui_render(gui_t *self)
         eprint("No ui composition provided!");
     }
 
-    __reset_gui_internals(self);
+    gui__internal_ui_reset(self);
 
     const matrix4f_t ortho_ndc = glms_ortho(0.0f, global_window->width, global_window->height, 0.0f, -2.0f, 2.0f);
 
@@ -352,7 +397,7 @@ void gui_render(gui_t *self)
                         .nmemb = ARRAY_LEN(DEFAULT_QUAD_INDICES)
                     },
                     .shader_config = {
-                        .shader = &self->shaders[UI_SHADER_DEFAULT],
+                        .shader = &self->shader,
                         .uniforms = {
                             .count = 1,
                             .uniform = {
@@ -364,8 +409,17 @@ void gui_render(gui_t *self)
                             }
                         }
                     },
+                    .textures = {
+                        .count = 1,
+                        .items = {
+                            [0] = {
+                                .type = GL_TEXTURE_TYPE_NORMAL,
+                                .source = &self->freetypefont.texture
+                            }
+                        }
+                    },
                     .attrs = {
-                        .count = 4,
+                        .count = 6,
                         .attr = {
                             [0] = {
                                 .ncmp = 2,
@@ -393,12 +447,30 @@ void gui_render(gui_t *self)
                             },
                             [3] = {
                                 .ncmp = 1,
-                                .type = GL_INT,
+                                .type = GL_FLOAT,
                                 .vbo_chunk_index = VBO_STREAM_TYPE_INSTANCE,
                                 .interleaved = {
                                     .offset = offsetof(ui_attr_t, zorder),
                                     .stride = sizeof(ui_attr_t)
                                 },
+                            },
+                            [4] = {
+                                .ncmp = 4,
+                                .type = GL_FLOAT,
+                                .vbo_chunk_index = VBO_STREAM_TYPE_INSTANCE,
+                                .interleaved = {
+                                    .offset = offsetof(ui_attr_t, uv),
+                                    .stride = sizeof(ui_attr_t)
+                                },
+                            },
+                            [5] = {
+                                .ncmp = 1,
+                                .type = GL_FLOAT,
+                                .vbo_chunk_index = VBO_STREAM_TYPE_INSTANCE,
+                                .interleaved = {
+                                    .offset = offsetof(ui_attr_t, is_text),
+                                    .stride = sizeof(ui_attr_t)
+                                }
                             }
                         }
                     }

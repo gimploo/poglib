@@ -373,7 +373,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                 &vao,
                 &vbo, 
                 config.calls.call[call_idx].attrs.attr[attr_idx].ncmp, 
-                data_type == GL_INT ? GL_INT : GL_FLOAT,
+                data_type != GL_FLOAT ? data_type : GL_FLOAT,
                 false, 
                 config.calls.call[call_idx].attrs.attr[attr_idx].interleaved.stride, 
                 config.calls.call[call_idx].attrs.attr[attr_idx].interleaved.offset,
@@ -491,3 +491,5 @@ void glrenderer3d_draw(const glrendererconfig_t config)
 }
 #endif
 
+
+//TODO: disable_depth_buffer introducing this broke the rendering - removed it for now.
