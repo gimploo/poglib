@@ -197,6 +197,11 @@ void poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt
 
 physics_sys_jolt_event_queue_t * poggen_get_collision_events(const poggen_t * const self)
 {
+    if (!self->config.enable_physics) {
+        eprint("Enable physics first, to use this");
+    }
+
+    ASSERT(self->physics_sys.instance);
     return physics_sys_get_collision_event_queue(self->physics_sys.instance);
 }
 
