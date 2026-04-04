@@ -34,6 +34,8 @@ typedef struct arena_t arena_t;
 arena_t     arena_init(arena_t *, u32 capacity);
 #define     arena_reserve(PARENA, TYPE)\
             (TYPE *)arena_reserve_aligned((PARENA), sizeof(TYPE), _Alignof(TYPE))
+#define     arena_reserve_array(PARENA, TYPE, COUNT)\
+            (TYPE *)arena_reserve_aligned((PARENA), sizeof(TYPE) * (COUNT), _Alignof(TYPE))
 void *      arena_reserve_raw(arena_t *self, u32 memory_size);
 void *      arena_reserve_aligned(arena_t *self, const u32 memory_size, const u8 memory_alignment);
 void        arena_clear(arena_t *self);

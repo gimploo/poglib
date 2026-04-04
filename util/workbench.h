@@ -120,12 +120,12 @@ void workbench_toggle_gui(workbench_t *self)
     self->gui.enable = !self->gui.enable;
 }
 
-void __workbench_render_ui(workbench_t *self)
+void workbench__internal_render_ui(workbench_t *self)
 {
     gui_render(&self->gui.handle);
 }
 
-void __workbench_render_lightsources(workbench_t *self)
+void workbench__internal_render_lightsources(workbench_t *self)
 {
     if (self->lightsources.len == 0) 
         return;
@@ -204,7 +204,7 @@ void workbench_destroy(workbench_t *self)
     gui_destroy(&self->gui.handle);
 }
 
-void __workbench_render_batch_lines(workbench_t *self)
+void workbench__internal_render_batch_lines(workbench_t *self)
 {
     if(!self->draw_lines.len) {
         return;
@@ -249,7 +249,8 @@ void __workbench_render_batch_lines(workbench_t *self)
                                     .name = "projection",
                                     .type = "matrix4f_t",
                                     .value = glms_perspective(
-                                            radians(45), global_poggen->handle.app->window.aspect_ratio, 1.0f, 1000.0f)
+                                            radians(45), global_poggen->handle.app->window.aspect_ratio, 1.0f, 1000.0f
+                                    )
                                 },
                                 [2] = {
                                     .name = "color",
@@ -262,7 +263,7 @@ void __workbench_render_batch_lines(workbench_t *self)
                                     .value = glms_mat4_mul(
                                             glms_translate_make(self->player_camera_position),
                                             glms_scale_make((vec3f_t){10.f, 10.f, 10.f})
-                                            ),
+                                    ),
                                 },
                             }
                         },
@@ -304,10 +305,10 @@ void __workbench_render_batch_lines(workbench_t *self)
                                     .name = "projection",
                                     .type = "matrix4f_t",
                                     .value = glms_perspective(
-                                            radians(45), 
-                                            global_poggen->handle.app->window.aspect_ratio, 
-                                            1.0f, 1000.0f
-                                            )
+                                        radians(45), 
+                                        global_poggen->handle.app->window.aspect_ratio, 
+                                        1.0f, 1000.0f
+                                    )
                                 },
                                 [2] = {
                                     .name = "transform",
@@ -383,7 +384,7 @@ void __workbench_render_batch_lines(workbench_t *self)
 
 void workbench_render(workbench_t *self)
 {
-    workbench_render_grid(
+    workbench__internal_render_grid(
         &self->shader,
         glcamera_getview(&self->world_camera),
         glms_perspective(
@@ -393,12 +394,12 @@ void workbench_render(workbench_t *self)
         self->world_camera.position
     );
 
-    __workbench_render_batch_lines(self);
+    workbench__internal_render_batch_lines(self);
 
-    __workbench_render_lightsources(self);
+    workbench__internal_render_lightsources(self);
 
     if (self->gui.enable) {
-        __workbench_render_ui(self);
+        workbench__internal_render_ui(self);
     }
 
     list_clear(&self->draw_lines);
