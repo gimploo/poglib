@@ -54,10 +54,7 @@ typedef struct {
     } idx;
 
     // Attributes
-    struct {
-        u8 count;
-        glvtx_attribute_t attr[16];
-    } attrs;
+    glvtx_attributelist_t attrs;
 
     // Textures
     gltexturelist_t textures;
