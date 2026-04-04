@@ -40,20 +40,19 @@ typedef struct poggen_t {
 
 global poggen_t     *global_poggen = NULL;
 
-poggen_t *          poggen_init(application_t * const app, const poggen_config_t config);
-#define             poggen_add_scene(PGEN, SCENE_NAME)                          __impl_poggen_add_scene((PGEN), __impl_scene_init(SCENE_NAME))
-void                poggen_remove_scene(poggen_t *self, const char *label);
-void                poggen_change_scene(poggen_t *self, const char *scene_label);
+poggen_t *                          poggen_init(application_t * const app, const poggen_config_t config);
+#define                             poggen_add_scene(PGEN, SCENE_NAME)                          __impl_poggen_add_scene((PGEN), __impl_scene_init(SCENE_NAME))
+void                                poggen_remove_scene(poggen_t *self, const char *label);
+void                                poggen_change_scene(poggen_t *self, const char *scene_label);
 
-void                poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt_rules_config_t config);
-window_t *          poggen_get_window(const poggen_t *self);
+void                                poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt_rules_config_t config);
+window_t *                          poggen_get_window(const poggen_t *self);
+physics_sys_jolt_event_queue_t *    poggen_get_physics_collision_events(const poggen_t * const self);
 
-physics_sys_jolt_event_queue_t * poggen_get_collision_events(const poggen_t * const self);
+void                                poggen_update(poggen_t *self, const f32 dt);
+#define                             poggen_render(PGEN, DT)                                         (PGEN)->current_scene->__render((PGEN)->current_scene, DT)
 
-void                poggen_update(poggen_t *self, const f32 dt);
-#define             poggen_render(PGEN, DT)                                         (PGEN)->current_scene->__render((PGEN)->current_scene, DT)
-
-void                poggen_destroy(poggen_t *self);
+void                                poggen_destroy(poggen_t *self);
 
 
 /*----------------------------------------------------------------------------*/
@@ -195,7 +194,7 @@ void poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt
     physics_sys_jolt_start_simulation(self->physics_sys.instance);
 }
 
-physics_sys_jolt_event_queue_t * poggen_get_collision_events(const poggen_t * const self)
+physics_sys_jolt_event_queue_t * poggen_get_physics_collision_events(const poggen_t * const self)
 {
     if (!self->config.enable_physics) {
         eprint("Enable physics first, to use this");

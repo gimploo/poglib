@@ -14,3 +14,7 @@ test/application/test
 test/ds/hashtable/.cache/clangd/index
 external/joltc/samples
 external/joltc/src
+external/joltc/build
+external/joltc/build_debug
+external/joltc/.github
+external/joltc/JoltPhysics

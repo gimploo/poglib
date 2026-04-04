@@ -157,7 +157,6 @@ physics_sys_jolt_t * physics_sys_jolt_init(arena_t * const arena)
 
 void physics_sys_jolt_set_interaction_rules(physics_sys_jolt_t * const self, const physics_sys_jolt_rules_config_t config)
 {
-    ASSERT(config.count);
     ASSERT(config.count < MAX_COLLISION_INTERACTABILITY_ENTRIES);
 
 	JPH_ObjectLayerPairFilter* objectLayerPairFilterTable = JPH_ObjectLayerPairFilterTable_Create(config.count);
