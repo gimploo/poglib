@@ -61,8 +61,8 @@ typedef struct application_t {
 } application_t ;
 
 
-void            application_pass_content(application_t *app, const void *content);
-void            application_run(application_t *app);
+void            application_pass_content(application_t * const app, const void *content);
+void            application_run(application_t * const app);
 
 #define         application_set_font(PAPP, FONT)            (PAPP)->handle->fontrenderer = FONT
 
@@ -113,7 +113,7 @@ f32 application_get_tick(const application_t *app)
     return app->handle.timer->__now;
 }
 
-void application_pass_content(application_t *app, const void *content)
+void application_pass_content(application_t * const app, const void *content)
 {
     assert(content);
 
@@ -122,7 +122,7 @@ void application_pass_content(application_t *app, const void *content)
     memcpy(app->handle.content, content, app->content.size);
 }
 
-void application_run(application_t *app)
+void application_run(application_t * const app)
 {
 #ifdef DEBUG
     #if defined(_WIN64)

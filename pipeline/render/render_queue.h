@@ -1,27 +1,14 @@
 #pragma once
 #include <poglib/gfx/glrenderer3d.h>
 #include "poglib/basic/arena.h"
+#include "poglib/basic/common.h"
 #include "poglib/basic/dbg.h"
 #include "poglib/basic/ds/list.h"
+#include "poglib/gfx/gl/renderconfig.h"
+#include "poglib/gfx/gl/shader.h"
 #include "poglib/gfx/gl/vbo_stream_types.h"
+#include "poglib/pipeline/render/common.h"
 #include "poglib/pipeline/render/render_command.h"
-
-//FIXME: 
-//1. VTX is not being generated for common types
-//2. VTX buffers are not merged during draw call (use arenas)
-//3. O(n**2) problem with `render_queue_pass_command`
-
-#define MAX_RENDER_BUCKETS_ALLOWED 255
-
-//NOTE: this is bucket will sort the commands in order always
-typedef struct {
-    u8 len;
-    struct {
-        bool is_ready; //to know whether the list is initialized
-        list_t render_commands;
-    } buckets[MAX_RENDER_BUCKETS_ALLOWED];
-    arena_t arena;
-} render_queue_t;
 
 render_queue_t      render_queue_init(void);
 void                render_queue_pass_command(render_queue_t * const self, const render_command_t command);
@@ -30,16 +17,25 @@ void                render_queue_destroy(render_queue_t *self);
 
 #ifndef IGNORE_RENDER_QUEUE_IMPLEMENTATION
 
-void __render_queue_validate_command(render_command_t);
-bool __render_queue_check_for_batchable_commands(render_queue_t * const queue, render_command_t command);
-void __render_queue_flush(render_queue_t *const self);
+void render_queue__internal_validate_command(render_command_t);
+bool render_queue__internal_check_for_batchable_commands(render_queue_t * const queue, render_command_t command);
+void render_queue__internal_flush(render_queue_t *const self);
+bool renderqueue__internal_is_instanced_only(render_command_types type);
 
 render_queue_t render_queue_init(void)
 {
+    arena_t arena = arena_init(NULL, 3 * MB);
     return (render_queue_t) {
-        .len = 0,
+        .bucket_ready_count = 0,
         .buckets = {0},
-        .arena = arena_init(NULL, 3 * MB)
+        .arena = arena, 
+        .internal = {
+            .instance_shader = glshader__file_init(
+                str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-vtx.glsl"),
+                str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-frag.glsl"),
+                &arena
+            ),
+        }
     };
 }
 
@@ -47,19 +43,23 @@ void render_queue_pass_command(render_queue_t *const self, const render_command_
 {
     ASSERT(self);
 
-    __render_queue_validate_command(command);
-    if (__render_queue_check_for_batchable_commands(self, command)) {
+    render_queue__internal_validate_command(command);
+
+    if (render_queue__internal_check_for_batchable_commands(self, command)) {
         return;
     }
 
-    const bool is_bucket_ready = self->buckets[self->len].is_ready;
+    const bool is_bucket_ready = self->buckets[self->bucket_ready_count].is_ready;
     if (!is_bucket_ready) {
-        self->buckets[self->len].render_commands = list_init(render_command_t);
-        self->buckets[self->len].is_ready = true;
+        self->buckets[self->bucket_ready_count].render_commands = list_init(render_command_t);
+        self->buckets[self->bucket_ready_count].is_ready = true;
+        self->buckets[self->bucket_ready_count].type = command.type;
+        list_append(&self->buckets[self->bucket_ready_count].render_commands, command);
+        self->bucket_ready_count++;
+        return;
     }
 
-    list_append(&self->buckets[self->len].render_commands, command);
-    self->len++;
+    list_append(&self->buckets[self->bucket_ready_count].render_commands, command);
 }
 
 void render_queue_destroy(render_queue_t *self)
@@ -69,63 +69,68 @@ void render_queue_destroy(render_queue_t *self)
         if (!self->buckets[idx].is_ready) continue;
         list_destroy(&self->buckets[idx].render_commands);
     }
+    glshader_destroy(&self->internal.instance_shader);
     arena_destroy(&self->arena);
 }
 
-void __render_queue_validate_command(render_command_t command)
+void render_queue__internal_validate_command(render_command_t command)
 {
     switch(command.type)
     {
+        case RENDER_COMMAND_TYPE_CAPSULE:
         case RENDER_COMMAND_TYPE_CUBE:
-            ASSERT(command.handles.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data == NULL);
-            ASSERT(command.handles.idx.data == NULL);
-            if(!command.handles.vtx[VBO_STREAM_TYPE_INSTANCE].raw_data) 
-                eprint("Cube render types are instanced always, expecting instance buffer but found uninitialized!");
+            //NOTE: this geometrys are instanced - currently only transforms are passed to it
         break;
         case RENDER_COMMAND_TYPE_CUSTOM: 
-            ASSERT(command.handles.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data == NULL);
+            ASSERT(command.call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data == NULL);
         break;
         case RENDER_COMMAND_TYPE_CUSTOM_WITH_INSTANCING: 
-            if(command.handles.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data)
+            if(command.call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data)
                 eprint("Instancing uses a common geometry, avoid initializing geometry data");
-            if(!command.handles.vtx[VBO_STREAM_TYPE_INSTANCE].raw_data) 
+            if(!command.call_config.vtx[VBO_STREAM_TYPE_INSTANCE].raw_data) 
                 eprint("Custom render types are configured to be instanced, expecting instance buffer but found uninitialized!");
         break;
         default: eprint("unknown type");
     }
 }
 
-void __render_queue_add_to_batch(list_t * const render_commands, const render_command_t command)
+void render_queue__internal_add_to_batch(list_t * const render_commands, const render_command_t command)
 {
     list_append(render_commands, command);
 }
 
-bool __render_queue_check_for_batchable_commands(render_queue_t *const queue, render_command_t command)
+bool render_queue__internal_check_for_batchable_commands(render_queue_t *const queue, render_command_t command)
 {
-    for (u8 idx = 0; idx < queue->len; idx++)
+    const bool is_instanced_only = renderqueue__internal_is_instanced_only(command.type);
+
+    for (u8 idx = 0; idx < queue->bucket_ready_count; idx++)
     {
         list_t *const commands = &queue->buckets[idx].render_commands;
         if (!queue->buckets[idx].is_ready)  continue;
-        if (!commands->len)                 continue;
 
-        const render_command_t *render_command = list_get_value(commands, 0);
-        if (command.type == render_command->type) {
-            __render_queue_add_to_batch(commands, command);
+        if (command.type == queue->buckets[idx].type) {
+            render_queue__internal_add_to_batch(commands, command);
             return true;
         }
 
-        const bool has_same_texture = command.handles.textures.count 
-            && render_command->handles.textures.count 
-            && render_command_are_all_textures_the_same(&command, render_command);
+        if (is_instanced_only) 
+            continue;
 
-        const bool has_same_shader = command.handles.shader_config.shader 
-            && render_command->handles.shader_config.shader
-            && command.handles.shader_config.shader->id == render_command->handles.shader_config.shader->id;
+        //FIXME: this will fail for custom meshes!!
+        const render_command_t * const existing_render_command_in_bucket = list_get_value(commands, 0);
 
-        const bool has_same_attributes = render_command_are_all_attrs_the_same(render_command, &command);
+        const bool has_same_texture = command.call_config.textures.count 
+            && existing_render_command_in_bucket->call_config.textures.count 
+            && render_command_are_all_textures_the_same(&command, existing_render_command_in_bucket);
+
+        const bool has_same_shader = command.call_config.shader_config.shader 
+            && existing_render_command_in_bucket->call_config.shader_config.shader
+            && command.call_config.shader_config.shader->id == existing_render_command_in_bucket->call_config.shader_config.shader->id;
+
+        const bool has_same_attributes = render_command_are_all_attrs_the_same(existing_render_command_in_bucket, &command);
 
         if (has_same_shader && has_same_texture && has_same_attributes) {
-            __render_queue_add_to_batch(commands, command);
+            render_queue__internal_add_to_batch(commands, command);
             return true;
         }
     }
@@ -134,59 +139,71 @@ bool __render_queue_check_for_batchable_commands(render_queue_t *const queue, re
 
 void render_queue_dispatch(render_queue_t *const self)
 {
-    if (!self->len) return;
-    ASSERT(self->len < MAX_DRAW_CALLS_PER_FRAME_COUNT);
+    if (!self->bucket_ready_count) return;
+    ASSERT(self->bucket_ready_count < MAX_DRAW_CALLS_PER_FRAME_COUNT);
 
     u8 total_render_command = 0;
     glrendercall_t calls[MAX_DRAW_CALLS_PER_FRAME_COUNT] = {0};
 
-    for (u8 idx = 0; idx < self->len; idx++)
+    for (u8 idx = 0; idx < self->bucket_ready_count; idx++)
     {
-        const list_t *command_list = &self->buckets[idx].render_commands;
-        if (!command_list->len) continue;
+        const list_t *bucket_commands = &self->buckets[idx].render_commands;
+        if (!bucket_commands->len) continue;
 
-        const render_command_t *command = list_get_value(command_list, 0);
+        const render_command_t *command = list_get_value(bucket_commands, 0);
 
-        const buffer_t vtx_buffer = render_command_get_vtx_buffer(command_list, &self->arena);
-        const buffer_t idx_buffer = render_command_get_idx_buffer(command_list, &self->arena);
+        const buffer_t vtx_buffer               = render_command_get_vtx_buffer(bucket_commands, &self->arena);
+        const buffer_t instance_buffer          = render_command_get_instance_buffer(bucket_commands, &self->arena);
+        const buffer_t idx_buffer               = render_command_get_idx_buffer(bucket_commands, &self->arena);
+        const glvtx_attributelist_t attr_list   = render_command_get_attrs(bucket_commands);
+        const glshaderconfig_t shader_config    = render_command_get_shaderconfig(bucket_commands, self);
+        const bool enable_instancing            = renderqueue__internal_is_instanced_only(command->type);
 
-        const bool enable_instancing = command->type & (RENDER_COMMAND_TYPE_CUSTOM_WITH_INSTANCING | RENDER_COMMAND_TYPE_CUBE);
-        const u32 instancing_count = enable_instancing ? command_list->len : 1;
+        const u32 instancing_count = enable_instancing ? bucket_commands->len : 0;
         calls[total_render_command] = (glrendercall_t ) {
             .draw_mode = command->draw_mode,
             .allow_empty_vtx_buffer = false,
             .is_wireframe = false,
-            .vtx = command->handles.vtx,
-            .attrs = command->handles.attrs.data,
-            .idx = {
-                .nmemb = command->handles.idx.nmemb,
-                .data = command->handles.idx.data
+            .vtx = {
+                [VBO_STREAM_TYPE_GEOMETRY] = vtx_buffer,
+                [VBO_STREAM_TYPE_INSTANCE] = instance_buffer
             },
-            .shader_config = command->handles.shader_config,
-            .textures = command->handles.textures,
+            .attrs = attr_list,
+            .idx = {
+                .data = idx_buffer.raw_data,
+                .nmemb = idx_buffer.size / sizeof(u32),
+            },
+            .shader_config = shader_config,
+            .textures = !enable_instancing ? command->call_config.textures : (gltexturelist_t){0},
             .instancing = {
                 .enable = enable_instancing,
                 .count = instancing_count
             }
         };
+
+        glrenderer3d_drawcall(calls[total_render_command]);
         total_render_command++;
     }
-    glrenderer3d_draw((glrendererconfig_t) {
-        .calls = {
-            .count = total_render_command,
-            .call = calls
-        }
-    });
-
-    __render_queue_flush(self);
+    render_queue__internal_flush(self);
 }
 
-void __render_queue_flush(render_queue_t * const self)
+void render_queue__internal_flush(render_queue_t * const self)
 {
-    for (u8 idx = 0; idx < self->len; idx++)
+    for (u8 idx = 0; idx < self->bucket_ready_count; idx++)
     {
         list_clear(&self->buckets[idx].render_commands);
     }
+    arena_clear(&self->arena);
 }
 
+bool renderqueue__internal_is_instanced_only(render_command_types type)
+{
+    return type & (RENDER_COMMAND_TYPE_CUBE | RENDER_COMMAND_TYPE_CAPSULE);
+}
+
+//FIXME: 
+//1. O(n**2) problem with `render_queue_pass_command`, fix - State Sorting 
+
+//TODO:
+//1. Have texture support for instancing
 #endif

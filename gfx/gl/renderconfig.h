@@ -8,6 +8,7 @@
 #include <poglib/gfx/gl/cubemap.h>
 
 #define MAX_SUPPORTED_TEXTURE_COUNT_PER_DRAW_CALL 64
+#define MAX_ATTRIBUTES_COUNT_PER_CALL 16
 
 typedef struct {
     union {
@@ -32,6 +33,12 @@ typedef struct {
         u32 stride;
     } interleaved;
 } glvtx_attribute_t;
+
+
+typedef struct {
+    u8 count;
+    glvtx_attribute_t attr[MAX_ATTRIBUTES_COUNT_PER_CALL];
+} glvtx_attributelist_t;
 
 
 typedef struct {
