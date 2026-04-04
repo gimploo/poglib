@@ -12,4 +12,4 @@ test/application/test
 **/bin/*
 **/test/**/lib/
 test/ds/hashtable/.cache/clangd/index
-external/joltc
+external/joltc/*
