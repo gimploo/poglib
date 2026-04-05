@@ -21,8 +21,9 @@ typedef struct stopwatch_t {
     f32 __last;
     f32 accumulator;
 
-    f32 dt; // delta time in seconds
+    f32 raw_dt; // delta time in seconds
     f32 fps;
+    f32 fixed_dt;
 
 } stopwatch_t ;
 
@@ -65,59 +66,26 @@ stopwatch_t stopwatch(void)
 {
     stopwatch_t output = {0};
     output.__now = stopwatch_get_tick();
-    output.dt = 0.01f;
+    output.raw_dt = 0.01f;
     return output;
 }
 
-/*
-     double t = 0.0;
-    double dt = 0.01;
-
-    double currentTime = hires_time_in_seconds();
-    double accumulator = 0.0;
-
-    State previous;
-    State current;
-
-    while ( !quit )
-    {
-        double newTime = time();
-        double dt = newTime - currentTime;
-        if ( dt > 0.25 )
-            dt = 0.25;
-        currentTime = newTime;
-
-        accumulator += dt;
-
-        while ( accumulator >= dt )
-        {
-            previousState = currentState;
-            integrate( currentState, t, dt );
-            t += dt;
-            accumulator -= dt;
-        }
-
-        const double alpha = accumulator / dt;
-
-        State state = currentState * alpha + 
-            previousState * ( 1.0 - alpha );
-
-        render( state );
-    } 
- */ 
-
 void stopwatch_update(stopwatch_t *timer)
 {
-    if (timer == NULL) eprint("dt argument is null");
+    if (timer == NULL) eprint("timer argument is null");
 
-    timer->__last   = timer->__now;
-    timer->__now    = stopwatch_get_tick();
-    timer->dt = (timer->__now - timer->__last) / 1000.0f;
+    timer->__last = timer->__now;
+    timer->__now  = stopwatch_get_tick();
 
-    if (timer->dt > 0.25f) timer->dt = 0.25f;
+    // Calculate raw delta in seconds
+    f32 delta = (timer->__now - timer->__last) / 1000.0f;
 
-    timer->accumulator += timer->dt;
+    //INFO: The 'MAX_ACCUMULATOR' (0.25s) caps the amount of "catch-up" work the CPU 
+    //does if a frame takes too long. This prevents the engine from freezing 
+    //under heavy load by slowing down the game clock instead of hanging.
+    if (delta > 0.25f) delta = 0.25f;
 
+    timer->raw_dt = delta;
+    timer->accumulator += delta;
 }
-
 #endif

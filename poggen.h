@@ -154,7 +154,6 @@ void poggen_update(poggen_t *self, const f32 dt)
     scene_t *current_scene = self->current_scene;
     if (current_scene == NULL) eprint("Current scene is null");
 
-    window_update_user_input(self->handle.app->handle.window);
     current_scene->__input(current_scene, dt);
 
     if (self->physics_sys.phy_simulation_started)

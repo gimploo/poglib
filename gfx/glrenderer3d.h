@@ -475,14 +475,12 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         }
 
         GL_CHECK(glDepthMask(true));
+        GL_CHECK(glDepthFunc(GL_LESS));
         gltexture2d_unbind();
 
         if (!is_idx_null) ebo_destroy(&ebo);
         vao_destroy(&vao);
         vbo_destroy(&vbo);
-
-        GL_CHECK(glDepthFunc(GL_LESS));
-
     }
 
 }
