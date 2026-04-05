@@ -43,14 +43,13 @@ typedef struct {
 
 workbench_t workbench_init(application_t * const app);
 
-void        workbench_update_ui(workbench_t * const self, const application_t * const app);
 void        workbench_update_player_camera_position(workbench_t *self, const vec3f_t pos);
 void        workbench_pass_line(workbench_t *self, const line_t line);
 void        workbench_track_lightsource(workbench_t *self, const gllight_t *light);
 void        workbench_toggle_wireframe_mode(workbench_t *self);
 void        workbench_toggle_gui(workbench_t *self);
 void        workbench_update_world_camera(workbench_t * const self, const f32 dt);
-void        workbench_render(workbench_t *self);
+void        workbench_render(workbench_t *self, const application_t * const app);
 void        workbench_destroy(workbench_t *self);
 
 
@@ -382,8 +381,12 @@ void workbench__internal_render_batch_lines(workbench_t *self)
     });
 }
 
-void workbench_render(workbench_t *self)
+void workbench__internal_update_ui(workbench_t * const self, const application_t *app);
+
+void workbench_render(workbench_t *self, const application_t * const app)
 {
+    workbench__internal_update_ui(self, app);
+
     workbench__internal_render_grid(
         &self->shader,
         glcamera_getview(&self->world_camera),
@@ -411,7 +414,7 @@ void workbench_update_world_camera(workbench_t * const self, const f32 dt)
     glcamera_process_input(&self->world_camera, dt);
 }
 
-void workbench_update_ui(workbench_t * const self, const application_t *app)
+void workbench__internal_update_ui(workbench_t * const self, const application_t *app)
 {
     if (!self->gui.enable) return;
 

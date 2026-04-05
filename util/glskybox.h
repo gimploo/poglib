@@ -106,7 +106,7 @@ glrendercall_t glskybox__get_render_config(
                     [2] = {
                         .name = "transform",
                         .type = "matrix4f_t",
-                        .value.mat4 = glms_scale_make(vec3f(10.0f))
+                        .value.mat4 = glms_scale_make(vec3f(50.0f))
                     }
                 }
             }
