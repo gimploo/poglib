@@ -2,6 +2,8 @@
 #include "basic.h"
 #include "gfx/glrenderer3d.h"
 #include "gfx/glrenderer2d.h"
+#include "poglib/basic/arena.h"
+#include "poglib/basic/common.h"
 #if defined(WINDOW_GLFW)
 #   pragma message("GLFW NOT FULLY IMPLEMENTED, REQUIRES ADDITIONAL WORK")
 #   include "application/window/glfw_window.h"
@@ -35,16 +37,13 @@ typedef struct application_t {
         const char *base_dir;
     } context;
 
-    struct {
-        //NOTE: Add content related stuff in here
-        const u64           size;
-    } content;
+    //NOTE: this holds data is shared bw all callbacks
+    buffer_t                content;
 
     struct {
         window_t            *window;
         stopwatch_t         *timer;
         glfreetypefont_t    *fontrenderer;
-        void                *content;
         arena_t             arena;
     } handle;
 
@@ -56,17 +55,17 @@ typedef struct application_t {
 } application_t ;
 
 
-void            application_pass_content(application_t * const app, const void *content);
 void            application_run(application_t * const app);
 
-#define         application_set_font(PAPP, FONT)            (PAPP)->handle->fontrenderer = FONT
+#define         application_alloc_content(PAPP, TYPE)\
+                    (TYPE *)application__internal_alloc_content((PAPP), sizeof(TYPE), _Alignof(TYPE))
 
-#define         application_get_game(PAPP)                  (PAPP)->handle.content
-#define         application_get_content(PAPP)               (PAPP)->handle.content
+#define         application_get_content(PAPP)               (void *)(PAPP)->content.raw_data
 #define         application_get_window(PAPP)                (PAPP)->handle.window
 #define         application_get_fps(PAPP)                   (PAPP)->handle.timer->fps
 f32             application_get_tick(const application_t *);
 str_t           application_get_absolute_filepath(application_t *app, const char *filepath);
+
 
 
 
@@ -104,15 +103,6 @@ const char *__get_base_dir()
 f32 application_get_tick(const application_t *app)
 {
     return app->handle.timer->__now;
-}
-
-void application_pass_content(application_t * const app, const void *content)
-{
-    assert(content);
-
-    app->handle.content = calloc(1, app->content.size);
-    assert(app->handle.content);
-    memcpy(app->handle.content, content, app->content.size);
 }
 
 void application_run(application_t * const app)
@@ -198,9 +188,6 @@ void application_run(application_t * const app)
     window_destroy();
     arena_destroy(&app->handle.arena);
 
-    free(app->handle.content);
-    app->handle.content = NULL;
-
 #ifdef DEBUG
     dbg_destroy();
 #endif
@@ -215,6 +202,20 @@ str_t application_get_absolute_filepath(application_t *app, const char *filepath
     const char *base_dir = app->context.base_dir;
     cstr_combine_path(base_dir, filepath, scratch, ARRAY_LEN(scratch));
     return str_init(&app->handle.arena, scratch);
+}
+
+
+void * application__internal_alloc_content(application_t * const app, const u64 content_size, const u32 memory_alignment)
+{
+    void * const content = arena_reserve_aligned(
+            &app->handle.arena,
+            content_size,
+            memory_alignment);
+    app->content = (buffer_t) {
+        .raw_data = content,
+        .size = content_size
+    };
+    return content;
 }
 
 #endif 
