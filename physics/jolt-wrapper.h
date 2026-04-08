@@ -20,8 +20,8 @@ typedef struct {
 
 typedef struct {
     physics_sys_jolt_collision_event_t *events;
-    uint32_t count;
-    uint32_t capacity;
+    u32 count;
+    u32 capacity;
 } physics_sys_jolt_event_queue_t;
 
 typedef struct {

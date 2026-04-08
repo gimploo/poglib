@@ -12,13 +12,13 @@ typedef enum {
     RENDER_COMMAND_TYPE_CAPSULE = 2,
     RENDER_COMMAND_TYPE_CUSTOM_WITH_INSTANCING = 3,
     RENDER_COMMAND_TYPE_COUNT,
-} render_command_types;
+} rendercommand_types;
 
 typedef struct {
     u8 bucket_ready_count;
     struct {
         bool is_ready;                  //NOTE: to know whether the list is initialized
-        render_command_types type;
+        rendercommand_types type;
         list_t render_commands;
     } buckets[MAX_RENDER_BUCKETS_ALLOWED];
     arena_t arena;
@@ -26,5 +26,5 @@ typedef struct {
     struct {
         glshader_t instance_shader;
     } internal;
-} render_queue_t;
+} renderqueue_t;
 
