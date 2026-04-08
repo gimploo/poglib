@@ -10,22 +10,22 @@
 #include "poglib/pipeline/render/common.h"
 #include "poglib/pipeline/render/render_command.h"
 
-render_queue_t      render_queue_init(void);
-void                render_queue_pass_command(render_queue_t * const self, const render_command_t command);
-void                render_queue_dispatch(render_queue_t * const self);
-void                render_queue_destroy(render_queue_t *self);
+renderqueue_t       renderqueue_init(void);
+void                renderqueue_pass_command(renderqueue_t * const self, const rendercommand_t command);
+void                renderqueue_dispatch(renderqueue_t * const self);
+void                renderqueue_destroy(renderqueue_t *self);
 
 #ifndef IGNORE_RENDER_QUEUE_IMPLEMENTATION
 
-void render_queue__internal_validate_command(render_command_t);
-bool render_queue__internal_check_for_batchable_commands(render_queue_t * const queue, render_command_t command);
-void render_queue__internal_flush(render_queue_t *const self);
-bool renderqueue__internal_is_instanced_only(render_command_types type);
+void renderqueue__internal_validate_command(rendercommand_t);
+bool renderqueue__internal_check_for_batchable_commands(renderqueue_t * const queue, rendercommand_t command);
+void renderqueue__internal_flush(renderqueue_t *const self);
+bool renderqueue__internal_is_instanced_only(rendercommand_types type);
 
-render_queue_t render_queue_init(void)
+renderqueue_t renderqueue_init(void)
 {
     arena_t arena = arena_init(NULL, 3 * MB);
-    return (render_queue_t) {
+    return (renderqueue_t) {
         .bucket_ready_count = 0,
         .buckets = {0},
         .arena = arena, 
@@ -39,19 +39,19 @@ render_queue_t render_queue_init(void)
     };
 }
 
-void render_queue_pass_command(render_queue_t *const self, const render_command_t command)
+void renderqueue_pass_command(renderqueue_t *const self, const rendercommand_t command)
 {
     ASSERT(self);
 
-    render_queue__internal_validate_command(command);
+    renderqueue__internal_validate_command(command);
 
-    if (render_queue__internal_check_for_batchable_commands(self, command)) {
+    if (renderqueue__internal_check_for_batchable_commands(self, command)) {
         return;
     }
 
     const bool is_bucket_ready = self->buckets[self->bucket_ready_count].is_ready;
     if (!is_bucket_ready) {
-        self->buckets[self->bucket_ready_count].render_commands = list_init(render_command_t);
+        self->buckets[self->bucket_ready_count].render_commands = list_init(rendercommand_t);
         self->buckets[self->bucket_ready_count].is_ready = true;
         self->buckets[self->bucket_ready_count].type = command.type;
         list_append(&self->buckets[self->bucket_ready_count].render_commands, command);
@@ -62,7 +62,7 @@ void render_queue_pass_command(render_queue_t *const self, const render_command_
     list_append(&self->buckets[self->bucket_ready_count].render_commands, command);
 }
 
-void render_queue_destroy(render_queue_t *self)
+void renderqueue_destroy(renderqueue_t *self)
 {
     for (u8 idx = 0; idx < MAX_RENDER_BUCKETS_ALLOWED; idx++)
     {
@@ -73,7 +73,7 @@ void render_queue_destroy(render_queue_t *self)
     arena_destroy(&self->arena);
 }
 
-void render_queue__internal_validate_command(render_command_t command)
+void renderqueue__internal_validate_command(rendercommand_t command)
 {
     switch(command.type)
     {
@@ -94,12 +94,12 @@ void render_queue__internal_validate_command(render_command_t command)
     }
 }
 
-void render_queue__internal_add_to_batch(list_t * const render_commands, const render_command_t command)
+void renderqueue__internal_add_to_batch(list_t * const render_commands, const rendercommand_t command)
 {
     list_append(render_commands, command);
 }
 
-bool render_queue__internal_check_for_batchable_commands(render_queue_t *const queue, render_command_t command)
+bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const queue, rendercommand_t command)
 {
     const bool is_instanced_only = renderqueue__internal_is_instanced_only(command.type);
 
@@ -109,7 +109,7 @@ bool render_queue__internal_check_for_batchable_commands(render_queue_t *const q
         if (!queue->buckets[idx].is_ready)  continue;
 
         if (command.type == queue->buckets[idx].type) {
-            render_queue__internal_add_to_batch(commands, command);
+            renderqueue__internal_add_to_batch(commands, command);
             return true;
         }
 
@@ -117,27 +117,27 @@ bool render_queue__internal_check_for_batchable_commands(render_queue_t *const q
             continue;
 
         //FIXME: this will fail for custom meshes!!
-        const render_command_t * const existing_render_command_in_bucket = list_get_value(commands, 0);
+        const rendercommand_t * const existing_render_command_in_bucket = list_get_value(commands, 0);
 
         const bool has_same_texture = command.call_config.textures.count 
             && existing_render_command_in_bucket->call_config.textures.count 
-            && render_command_are_all_textures_the_same(&command, existing_render_command_in_bucket);
+            && rendercommand_are_all_textures_the_same(&command, existing_render_command_in_bucket);
 
         const bool has_same_shader = command.call_config.shader_config.shader 
             && existing_render_command_in_bucket->call_config.shader_config.shader
             && command.call_config.shader_config.shader->id == existing_render_command_in_bucket->call_config.shader_config.shader->id;
 
-        const bool has_same_attributes = render_command_are_all_attrs_the_same(existing_render_command_in_bucket, &command);
+        const bool has_same_attributes = rendercommand_are_all_attrs_the_same(existing_render_command_in_bucket, &command);
 
         if (has_same_shader && has_same_texture && has_same_attributes) {
-            render_queue__internal_add_to_batch(commands, command);
+            renderqueue__internal_add_to_batch(commands, command);
             return true;
         }
     }
     return false;
 }
 
-void render_queue_dispatch(render_queue_t *const self)
+void renderqueue_dispatch(renderqueue_t *const self)
 {
     if (!self->bucket_ready_count) return;
     ASSERT(self->bucket_ready_count < MAX_DRAW_CALLS_PER_FRAME_COUNT);
@@ -150,13 +150,13 @@ void render_queue_dispatch(render_queue_t *const self)
         const list_t *bucket_commands = &self->buckets[idx].render_commands;
         if (!bucket_commands->len) continue;
 
-        const render_command_t *command = list_get_value(bucket_commands, 0);
+        const rendercommand_t *command = list_get_value(bucket_commands, 0);
 
-        const buffer_t vtx_buffer               = render_command_get_vtx_buffer(bucket_commands, &self->arena);
-        const buffer_t instance_buffer          = render_command_get_instance_buffer(bucket_commands, &self->arena);
-        const buffer_t idx_buffer               = render_command_get_idx_buffer(bucket_commands, &self->arena);
-        const glvtx_attributelist_t attr_list   = render_command_get_attrs(bucket_commands);
-        const glshaderconfig_t shader_config    = render_command_get_shaderconfig(bucket_commands, self);
+        const buffer_t vtx_buffer               = rendercommand_get_vtx_buffer(bucket_commands, &self->arena);
+        const buffer_t instance_buffer          = rendercommand_get_instance_buffer(bucket_commands, &self->arena);
+        const buffer_t idx_buffer               = rendercommand_get_idx_buffer(bucket_commands, &self->arena);
+        const glvtx_attributelist_t attr_list   = rendercommand_get_attrs(bucket_commands);
+        const glshaderconfig_t shader_config    = rendercommand_get_shaderconfig(bucket_commands, self);
         const bool enable_instancing            = renderqueue__internal_is_instanced_only(command->type);
 
         const u32 instancing_count = enable_instancing ? bucket_commands->len : 0;
@@ -184,10 +184,10 @@ void render_queue_dispatch(render_queue_t *const self)
         glrenderer3d_drawcall(calls[total_render_command]);
         total_render_command++;
     }
-    render_queue__internal_flush(self);
+    renderqueue__internal_flush(self);
 }
 
-void render_queue__internal_flush(render_queue_t * const self)
+void renderqueue__internal_flush(renderqueue_t * const self)
 {
     for (u8 idx = 0; idx < self->bucket_ready_count; idx++)
     {
@@ -196,7 +196,7 @@ void render_queue__internal_flush(render_queue_t * const self)
     arena_clear(&self->arena);
 }
 
-bool renderqueue__internal_is_instanced_only(render_command_types type)
+bool renderqueue__internal_is_instanced_only(rendercommand_types type)
 {
     return type & (RENDER_COMMAND_TYPE_CUBE | RENDER_COMMAND_TYPE_CAPSULE);
 }

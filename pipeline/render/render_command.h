@@ -6,22 +6,29 @@
 #include "poglib/gfx/gl/types.h"
 #include "poglib/pipeline/render/common.h"
 #include <poglib/gfx/glrenderer3d.h>
+#include <stddef.h>
 
 typedef enum {
     RENDER_COMMAND_DRAW_MODE_TRIANGLE = GL_TRIANGLES,
     RENDER_COMMAND_DRAW_MODE_LINES = GL_LINES,
     RENDER_COMMAND_DRAW_MODE_COUNT,
-} render_command_draw_mode;
+} rendercommand_draw_mode;
 
 typedef struct {
-    render_command_types        type;
-    render_command_draw_mode    draw_mode;
+    vec3f_t translation;
+    vec3f_t scale;
+    vec4f_t color;
+} rendercommand_instance_data_t;
+
+typedef struct {
+    rendercommand_types        type;
+    rendercommand_draw_mode    draw_mode;
     union {
 
         struct {
             matrix4f_t camera_view;
             matrix4f_t projection;
-            vec3f_t translation;
+            rendercommand_instance_data_t instance_data;
         } instance_config;
 
         struct {
@@ -39,17 +46,17 @@ typedef struct {
         } call_config;
     };
 
-} render_command_t;
+} rendercommand_t;
 
-bool            render_command_are_all_attrs_the_same(const render_command_t *render_command, const render_command_t *command);
-bool            render_command_are_all_textures_the_same(const render_command_t *render_command, const render_command_t *command);
-buffer_t        render_command_get_vtx_buffer(const list_t *const commands, arena_t * const arena);
+bool            rendercommand_are_all_attrs_the_same(const rendercommand_t *render_command, const rendercommand_t *command);
+bool            rendercommand_are_all_textures_the_same(const rendercommand_t *render_command, const rendercommand_t *command);
+buffer_t        rendercommand_get_vtx_buffer(const list_t *const commands, arena_t * const arena);
 
 #ifndef IGNORE_RENDER_COMMAND_IMPLEMENTATION
 
-buffer_t __render_command_merge_all_vtx_together(const list_t * const commands, arena_t * const arena);
+buffer_t rendercommand__internal_merge_all_vtx_together(const list_t * const commands, arena_t * const arena);
 
-bool render_command_are_all_attrs_the_same(const render_command_t *render_command, const render_command_t *command)
+bool rendercommand_are_all_attrs_the_same(const rendercommand_t *render_command, const rendercommand_t *command)
 {
     ASSERT(render_command);
     ASSERT(command);
@@ -71,7 +78,7 @@ bool render_command_are_all_attrs_the_same(const render_command_t *render_comman
     return true;
 }
 
-bool render_command_are_all_textures_the_same(const render_command_t *render_command, const render_command_t *command)
+bool rendercommand_are_all_textures_the_same(const rendercommand_t *render_command, const rendercommand_t *command)
 {
     ASSERT(render_command);
     ASSERT(command);
@@ -87,11 +94,11 @@ bool render_command_are_all_textures_the_same(const render_command_t *render_com
     return true;
 }
 
-glshaderconfig_t render_command_get_shaderconfig(const list_t * const commands, const render_queue_t * const queue)
+glshaderconfig_t rendercommand_get_shaderconfig(const list_t * const commands, const renderqueue_t * const queue)
 {
     ASSERT(commands);
     ASSERT(commands->len);
-    render_command_t *bucket_type = list_get_value(commands, 0);
+    rendercommand_t *bucket_type = list_get_value(commands, 0);
 
     const bool is_instanced = bucket_type->type & (RENDER_COMMAND_TYPE_CAPSULE | RENDER_COMMAND_TYPE_CUBE);
     if (!is_instanced) {
@@ -119,19 +126,19 @@ glshaderconfig_t render_command_get_shaderconfig(const list_t * const commands, 
 
 }
 
-glvtx_attributelist_t render_command_get_attrs(const list_t * const commands)
+glvtx_attributelist_t rendercommand_get_attrs(const list_t * const commands)
 {
     ASSERT(commands);
     ASSERT(commands->len);
 
     glvtx_attributelist_t list = {0};
-    render_command_t *bucket_type = list_get_value(commands, 0);
+    rendercommand_t *bucket_type = list_get_value(commands, 0);
 
     switch(bucket_type->type)
     {
         case RENDER_COMMAND_TYPE_CUBE: 
         case RENDER_COMMAND_TYPE_CAPSULE: 
-            list.count = 3;
+            list.count = 5;
             //POSITION
             list.attr[0] = (glvtx_attribute_t){
                 .vbo_chunk_index = VBO_STREAM_TYPE_GEOMETRY,
@@ -157,8 +164,28 @@ glvtx_attributelist_t render_command_get_attrs(const list_t * const commands)
                 .ncmp = 3,
                 .vbo_chunk_index = VBO_STREAM_TYPE_INSTANCE,
                 .interleaved = {
-                    .offset = 0,
-                    .stride = sizeof(f32) * 3
+                    .offset = offsetof(rendercommand_instance_data_t, translation),
+                    .stride = sizeof(rendercommand_instance_data_t)
+                },
+                .type = GL_FLOAT
+            };
+            //Scale
+            list.attr[3] = (glvtx_attribute_t){
+                .ncmp = 3,
+                .vbo_chunk_index = VBO_STREAM_TYPE_INSTANCE,
+                .interleaved = {
+                    .offset = offsetof(rendercommand_instance_data_t, scale),
+                    .stride = sizeof(rendercommand_instance_data_t)
+                },
+                .type = GL_FLOAT
+            };
+            //Color
+            list.attr[4] = (glvtx_attribute_t){
+                .ncmp = 4,
+                .vbo_chunk_index = VBO_STREAM_TYPE_INSTANCE,
+                .interleaved = {
+                    .offset = offsetof(rendercommand_instance_data_t, color),
+                    .stride = sizeof(rendercommand_instance_data_t)
                 },
                 .type = GL_FLOAT
             };
@@ -171,13 +198,13 @@ glvtx_attributelist_t render_command_get_attrs(const list_t * const commands)
     return list;
 }
 
-buffer_t render_command_get_idx_buffer(const list_t * const commands, arena_t * const arena)
+buffer_t rendercommand_get_idx_buffer(const list_t * const commands, arena_t * const arena)
 {
     ASSERT(commands);
     ASSERT(commands->len);
     ASSERT(arena);
 
-    const render_command_t *command = list_get_value(commands, 0);
+    const rendercommand_t *command = list_get_value(commands, 0);
 
     buffer_t buffer = {0};
     switch(command->type)
@@ -203,17 +230,17 @@ buffer_t render_command_get_idx_buffer(const list_t * const commands, arena_t * 
     return buffer;
 }
 
-buffer_t render_command_get_instance_buffer(const list_t * const commands, arena_t * const arena)
+buffer_t rendercommand_get_instance_buffer(const list_t * const commands, arena_t * const arena)
 {
     ASSERT(commands);
     ASSERT(commands->len);
     ASSERT(arena);
 
-    const render_command_t *command = list_get_value(commands, 0);
+    const rendercommand_t *command = list_get_value(commands, 0);
 
     buffer_t buffer = {
-        .raw_data = (u8 *)arena_reserve_array(arena, vec3f_t, commands->len),
-        .size = sizeof(vec3f_t) * commands->len
+        .raw_data = (u8 *)arena_reserve_array(arena, rendercommand_instance_data_t, commands->len),
+        .size = sizeof(rendercommand_instance_data_t) * commands->len
     };
 
     switch(command->type)
@@ -221,8 +248,7 @@ buffer_t render_command_get_instance_buffer(const list_t * const commands, arena
         case RENDER_COMMAND_TYPE_CUBE: 
         case RENDER_COMMAND_TYPE_CAPSULE:
             list_iterator(commands, iter) {
-                const vec3f_t translation = ((render_command_t *)iter)->instance_config.translation;
-                ((vec3f_t *)buffer.raw_data)[(u64)list_index] = translation;
+                ((rendercommand_instance_data_t *)buffer.raw_data)[(u64)list_index] = ((rendercommand_t *)iter)->instance_config.instance_data;
             }
         break;
         case RENDER_COMMAND_TYPE_CUSTOM_WITH_INSTANCING: 
@@ -235,13 +261,13 @@ buffer_t render_command_get_instance_buffer(const list_t * const commands, arena
 }
 
 
-buffer_t render_command_get_vtx_buffer(const list_t * const commands, arena_t * const arena)
+buffer_t rendercommand_get_vtx_buffer(const list_t * const commands, arena_t * const arena)
 {
     ASSERT(commands);
     ASSERT(commands->len);
     ASSERT(arena);
 
-    const render_command_t *command = list_get_value(commands, 0);
+    const rendercommand_t *command = list_get_value(commands, 0);
 
     buffer_t buffer = {0};
     switch(command->type)
@@ -259,7 +285,7 @@ buffer_t render_command_get_vtx_buffer(const list_t * const commands, arena_t * 
             };
         break;
         case RENDER_COMMAND_TYPE_CUSTOM: 
-            buffer = __render_command_merge_all_vtx_together(commands, arena);
+            buffer = rendercommand__internal_merge_all_vtx_together(commands, arena);
         break;
         default: eprint("unknown render type");
     }
@@ -267,12 +293,12 @@ buffer_t render_command_get_vtx_buffer(const list_t * const commands, arena_t * 
     return buffer;
 }
 
-buffer_t __render_command_merge_all_vtx_together(const list_t * const commands, arena_t * const arena)
+buffer_t rendercommand__internal_merge_all_vtx_together(const list_t * const commands, arena_t * const arena)
 {
     u8 maximum_size = 0;
     list_iterator(commands, iter) 
     {
-        const render_command_t *command = iter;
+        const rendercommand_t *command = iter;
         maximum_size += command->call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].size;
     }
 
@@ -280,7 +306,7 @@ buffer_t __render_command_merge_all_vtx_together(const list_t * const commands, 
     u8 top = 0;
     list_iterator(commands, iter) 
     {
-        const render_command_t *command = iter;
+        const rendercommand_t *command = iter;
         memcpy(buffer + top, command->call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data, command->call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].size);
         top += command->call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data;
     }

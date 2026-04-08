@@ -84,7 +84,7 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
         gui_ui_compose_begin(gui, (ui_config_t){ 
             .composition = {0},
             .color = {
-                .base = COLOR_GRAY,
+                .base = COLOR_SOFT_WHITE,
             },
             .dim = {
                 .height = 20,
@@ -102,7 +102,7 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
         gui_ui_compose_begin(gui, (ui_config_t){ 
             .composition = {0},
             .color = {
-                .base = COLOR_GRAY,
+                .base = COLOR_SOFT_WHITE,
             },
             .dim = {
                 .height = 20,
@@ -143,7 +143,7 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
         gui_ui_compose_begin(gui, (ui_config_t){ 
             .composition = {0},
             .color = {
-                .base = COLOR_GRAY,
+                .base = COLOR_SOFT_WHITE,
             },
             .dim = {
                 .height = 40,
