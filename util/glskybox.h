@@ -14,12 +14,12 @@ typedef enum SKYBOX_TYPE {
 
 const str_t AVAILABLE_SKYBOXES[SKYBOX_TYPE_COUNT][TOTAL_CUBE_FACES] = {
     [SKYBOX_TYPE_BLOOD] = {
-        [FRONT]     = str(POGLIB_ROOT_DIR "/res/skybox/blood/front.png"),
-        [BACK]      = str(POGLIB_ROOT_DIR "/res/skybox/blood/back.png"),
-        [TOP]       = str(POGLIB_ROOT_DIR "/res/skybox/blood/top.png"),
-        [BOTTOM]    = str(POGLIB_ROOT_DIR "/res/skybox/blood/bottom.png"),
-        [LEFT]      = str(POGLIB_ROOT_DIR "/res/skybox/blood/left.png"),
-        [RIGHT]     = str(POGLIB_ROOT_DIR "/res/skybox/blood/right.png")
+        [FRONT]     = str_lit(POGLIB_ROOT_DIR "/res/skybox/blood/front.png"),
+        [BACK]      = str_lit(POGLIB_ROOT_DIR "/res/skybox/blood/back.png"),
+        [TOP]       = str_lit(POGLIB_ROOT_DIR "/res/skybox/blood/top.png"),
+        [BOTTOM]    = str_lit(POGLIB_ROOT_DIR "/res/skybox/blood/bottom.png"),
+        [LEFT]      = str_lit(POGLIB_ROOT_DIR "/res/skybox/blood/left.png"),
+        [RIGHT]     = str_lit(POGLIB_ROOT_DIR "/res/skybox/blood/right.png")
     }
 };
 
