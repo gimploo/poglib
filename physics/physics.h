@@ -1,10 +1,7 @@
 #pragma once
-
 #include "./jolt-wrapper.h"
 
 //TODO: better to move this into an ECS system.
-//
-
 
 typedef enum {
     PHYS_COLLIDER_TYPE_CAPSULE = 1,
@@ -32,11 +29,11 @@ typedef union {
 
 
 collider_t collider_init(
-        const vec3f_t position,
-        const collider_dimension_t cd_dim,
-        JPH_MotionType jph_motion_type, //TODO: think of way to abstract this away 
-        collider_type type,
-        bool activate_only_on_impact)
+    const vec3f_t position,
+    const collider_dimension_t cd_dim,
+    const JPH_MotionType jph_motion_type,         //TODO: think of way to abstract this away 
+    const collider_type type,
+    const bool activate_only_on_impact)
 {
     ASSERT(global_physics_sys_jolt_instance);
 
