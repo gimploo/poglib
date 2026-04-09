@@ -303,12 +303,12 @@ buffer_t rendercommand__internal_merge_all_vtx_together(const list_t * const com
     }
 
     u8 *buffer = arena_reserve_raw(arena, maximum_size);
-    u8 top = 0;
+    u64 top = 0;
     list_iterator(commands, iter) 
     {
         const rendercommand_t *command = iter;
         memcpy(buffer + top, command->call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data, command->call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].size);
-        top += command->call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data;
+        top += (u64)command->call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data;
     }
     return (buffer_t) {
         .raw_data = buffer,

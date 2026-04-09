@@ -241,10 +241,10 @@ glquad_t glfreetypefont_generate_glquad_for_char(const glfreetypefont_t *self, c
     if(!glyph_width || !glyph_height) eprint("Glyph has no pixels");
 
     const rect_t uv = {
-        self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty, 0.0f,
-        self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty, 0.0f,
-        self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height, 0.0f,
-        self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height, 0.0f,
+        self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty,
+        self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty,
+        self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height,
+        self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height,
     };
     return glquad(
         quadf_for_window_coordinates((vec3f_t ){ x, y, pos.z }, glyph_width, glyph_height),
@@ -263,10 +263,10 @@ rect_t glfreetypefont_generate_uv_for_char__old(const glfreetypefont_t *self, co
     if(!glyph_width || !glyph_height) eprint("Glyph has no pixels");
 
     const rect_t uv = {
-        self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty, 0.0f,
-        self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty, 0.0f,
-        self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height, 0.0f,
-        self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height, 0.0f,
+        self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty,
+        self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty,
+        self->fontatlas[(u8)c].tx + self->fontatlas[(u8)c].bw / self->width, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height,
+        self->fontatlas[(u8)c].tx, self->fontatlas[(u8)c].ty + self->fontatlas[(u8)c].bh / self->height,
     };
     return uv;
 }
@@ -320,10 +320,10 @@ void glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *b
         const quadf_t quad = quadf((vec3f_t ){x2, -y2, -1.0f}, w, h);
 
         const rect_t uv = {
-          self->fontatlas[c].tx, self->fontatlas[c].ty, 0.0f,
-          self->fontatlas[c].tx + self->fontatlas[c].bw / self->width, self->fontatlas[c].ty, 0.0f,
-          self->fontatlas[c].tx + self->fontatlas[c].bw / self->width, self->fontatlas[c].ty + self->fontatlas[c].bh / self->height, 0.0f,
-          self->fontatlas[c].tx, self->fontatlas[c].ty + self->fontatlas[c].bh / self->height, 0.0f,
+          self->fontatlas[c].tx, self->fontatlas[c].ty,
+          self->fontatlas[c].tx + self->fontatlas[c].bw / self->width, self->fontatlas[c].ty,
+          self->fontatlas[c].tx + self->fontatlas[c].bw / self->width, self->fontatlas[c].ty + self->fontatlas[c].bh / self->height,
+          self->fontatlas[c].tx, self->fontatlas[c].ty + self->fontatlas[c].bh / self->height,
         };
 
         const glquad_t stuff = glquad(quad, color, uv);

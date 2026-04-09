@@ -13,7 +13,8 @@ typedef struct str_t {
 
 } str_t ;
 
-#define         str(STRING)              (str_t ) { .data = STRING, .len = strlen(STRING), .__is_manually_heap_allocated = false }
+#define         str(STRING)              (str_t ) { .data = STRING, .len = sizeof(STRING) - 1, .__is_manually_heap_allocated = false }
+#define         str_lit(STRING)          { .data = STRING, .len = sizeof(STRING) - 1, .__is_manually_heap_allocated = false }
 str_t           str_init(arena_t *arena, const char * const __buffer);
 str_t           str__from_cstr(const char *data, const u32 len);
 void            str_free(str_t *x);
