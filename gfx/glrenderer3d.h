@@ -1,10 +1,8 @@
 #pragma once
-#include "gl/framebuffer.h"
 #include "gl/types.h"
 #include "model/assimp.h"
 #include "poglib/basic/ds/list.h"
 #include "poglib/gfx/gl/common.h"
-#include "poglib/gfx/gl/material.h"
 #include "poglib/gfx/gl/texture2d.h"
 #include "poglib/gfx/gl/renderconfig.h"
 #include "poglib/gfx/gl/vbo_stream_types.h"

@@ -191,21 +191,16 @@ str_t str_get_directory_path(const char *string)
 {
     assert(string);
     const u32 len = strlen(string);
+    const char delimiters[2] = { '/', '\\'};
 
     str_t o = {
         .len = 0,
         .data = (char *)string,
     };
 
-#if defined(_WIN64)
-    const char delimiter = '\\';
-#else
-    const char delimiter = '/';
-#endif
-
     for (u32 i = len; i >= 0; i--)
     {
-        if (string[i] == delimiter) {
+        if (string[i] == delimiters[0] || string[i] == delimiters[1]) {
             o.len = i+1; //NOTE: to include the delimiter also
             break;
         }
