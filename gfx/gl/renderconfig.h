@@ -23,7 +23,6 @@ typedef struct {
     gltextureitem_t items[MAX_SUPPORTED_TEXTURE_COUNT_PER_DRAW_CALL];
 } gltexturelist_t;
 
-
 typedef struct {
     u8 ncmp;
     u32 type;                           //NOTE: Attributes are only handelled for GL_FLOAT (default) and GL_INT

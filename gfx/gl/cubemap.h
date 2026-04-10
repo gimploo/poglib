@@ -8,10 +8,10 @@ typedef struct glcubemap_t {
     u32 texture_id;
 } glcubemap_t;
 
-glcubemap_t     glcubemap__init(const str_t filepaths[TOTAL_CUBE_FACES]);
-void            glcubemap__destroy(glcubemap_t *self);
+glcubemap_t     glcubemap_init(const str_t filepaths[TOTAL_CUBE_FACES]);
+void            glcubemap_destroy(glcubemap_t *self);
 
-glcubemap_t glcubemap__init(const str_t filepaths[TOTAL_CUBE_FACES])
+glcubemap_t glcubemap_init(const str_t filepaths[TOTAL_CUBE_FACES])
 {
     u32 textureID;
     GL_CHECK(glGenTextures(1, &textureID));
@@ -63,7 +63,7 @@ void glcubemap_bind(glcubemap_t *self)
     );
 }
 
-void glcubemap__destroy(glcubemap_t *self)
+void glcubemap_destroy(glcubemap_t *self)
 {
     GL_CHECK(glDeleteTextures(1, &self->texture_id)); 
 }

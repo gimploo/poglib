@@ -2,9 +2,9 @@
 #include <threads.h>
 #include <stdatomic.h>
 #include "./dbg.h"
-#include "./ds.h"
 #include "./common.h"
 #include "./arena.h"
+#include "./ds/queue.h"
 
 #define __ASYNC_META_HEADER__\
     atomic_bool is_done;\
@@ -45,11 +45,11 @@ typedef struct {
         async_object_t *async_obj;
         const void **res_addr;
     } meta;
-} bg_task_t;
+} bgtask_t;
 
 typedef struct {
 
-    bg_task_t task;
+    bgtask_t task;
     struct {
         arena_t *persitent;
         arena_t scratch;
@@ -62,18 +62,18 @@ typedef struct {
     queue_t tasks;
     arena_t arena;
 
-} bg_task_manager_t;
+} bgtask_manager_t;
 
-bg_task_manager_t bg_task_manager_init(void)
+bgtask_manager_t bgtask_manager_init(void)
 {
-    return (bg_task_manager_t) {
-        .tasks = queue_init(10, bg_task_t),
+    return (bgtask_manager_t) {
+        .tasks = queue_init(10, bgtask_t),
         .arena = arena_init(NULL, 2 * MB)
     };
 }
 
-void bg_task_manager_pass_task(
-    bg_task_manager_t * const self, 
+void bgtask_manager_pass_task(
+    bgtask_manager_t * const self, 
     const task_config_t config,
     void * const async_object_obj
 ) {
@@ -87,7 +87,7 @@ void bg_task_manager_pass_task(
         eprint("Pass an arena when func_ptr_ret is set");
     }
 
-    const bg_task_t task = (bg_task_t){
+    const bgtask_t task = (bgtask_t){
         .config = config,
         .meta = {
             .async_obj = async_obj,
@@ -98,7 +98,7 @@ void bg_task_manager_pass_task(
 }
 
 
-i32 __task_thread_wrapper(void *data)
+i32 bgtask__internal_thread_wrapper(void *data)
 {
     thread_payload_t *payload = data;
     if (payload->arenas.persitent) {
@@ -117,12 +117,12 @@ i32 __task_thread_wrapper(void *data)
     return 0;
 }
 
-void bg_task_manager_run_all_tasks(bg_task_manager_t *self)
+void bgtask_manager_run_all_tasks(bgtask_manager_t *self)
 {
     //TODO: maybe have this restrain to few threads only
     while(!queue_is_empty(&self->tasks)) {
 
-        bg_task_t task = {0};
+        bgtask_t task = {0};
         queue_get_in_buffer(&self->tasks, &task, sizeof(task));
 
         arena_t scratch = arena_init(&self->arena, KB);
@@ -133,20 +133,20 @@ void bg_task_manager_run_all_tasks(bg_task_manager_t *self)
                 .scratch = scratch,
                 .persitent = task.config.arena
             },
-            .task = task
+            .task = task,
         };
 
-        if (thrd_create(&payload->task.meta.async_obj->thrd.id, __task_thread_wrapper, payload) != thrd_success) {
+        if (thrd_create(&payload->task.meta.async_obj->thrd.id, bgtask__internal_thread_wrapper, payload) != thrd_success) {
             eprint("Failed to generate thread");
         }
     }
 }
 
-void bg_task_manager_destroy(bg_task_manager_t *self)
+void bgtask_manager_destroy(bgtask_manager_t *self)
 {
     queue_destroy(&self->tasks);
     arena_destroy(&self->arena);
-    memset(self, 0, sizeof(bg_task_manager_t));
+    memset(self, 0, sizeof(bgtask_manager_t));
 }
 
 void async_destroy(void *self) 

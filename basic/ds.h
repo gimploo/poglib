@@ -131,6 +131,8 @@ __ds_t __impl_file_load_ds(file_t *file, ds_type type)
     switch(type) 
     {
         case DS_stack_t: 
+            eprint("rethink this");
+            /*
             file_readbytes(file, ds, sizeof(stack_t ));
             output.s = __impl_stack_init(
                     ((stack_t *)ds)->__capacity, 
@@ -140,6 +142,7 @@ __ds_t __impl_file_load_ds(file_t *file, ds_type type)
                     file, 
                     output.s.__data, 
                     output.s.__capacity * output.s.__elem_size);
+            */
         break;
 
         case DS_queue_t: 
@@ -176,11 +179,12 @@ __ds_t __impl_file_load_ds(file_t *file, ds_type type)
         break;
 
         case DS_slot_t: 
+            eprint("Doesnt work!");
             file_readbytes(file, ds, sizeof(slot_t ));
             output.sl = __impl_slot_init(
                     ((slot_t *)ds)->__capacity, 
                     ((slot_t *)ds)->__elem_type,
-                    ((slot_t *)ds)->__elem_size);
+                    ((slot_t *)ds)->__elem_size, NULL, 0);
             {
                 tmps[0] = output.sl.__data;
                 tmps[1] = output.sl.__index_table;

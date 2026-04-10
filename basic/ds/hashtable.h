@@ -6,7 +6,6 @@
 #include "../util.h"
 
 //TODO: Integrate arenas
-
 //NOTE: hashtable inlines data that are of 8 bytes less and pointers of 8 bytes more
 
 typedef struct table_entry_t {
@@ -77,7 +76,7 @@ hashtable_t __impl_hashtable_init(const u32 capacity, const u32 value_size)
     ASSERT(value_size > 0);
 
     return (hashtable_t ) {
-        .entries = slot_init(capacity, table_entry_t),
+        .entries = slot_init(capacity, table_entry_t, NULL),
         .mode = value_size >= sizeof(void *) ? VALUE_MODE_POINTER : VALUE_MODE_INLINE_COPY,
         .type_size = value_size
     };

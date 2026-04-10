@@ -323,7 +323,7 @@ void gui__internal_ui_create_text_internal(gui_t * const gui, const ui_region_t 
                 .height = glyph_h,
                 .width = glyph_w,
             },
-            .color = COLOR_WHITE,
+            .color = config.color.base,
             .zorder = gui->internal.layout_cursor_stack.top,
             .uv = quad,
             .is_text = true,
@@ -338,7 +338,7 @@ void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
 {
     gui__internal_ui_validate_config(config);
     const ui_region_t child_region = gui__internal_ui_add_child(gui, config);
-    const vec4f_t quad_color = gui__internal_get_color(gui, config);
+    const vec4f_t computed_color = gui__internal_get_color(gui, config);
 
     if (config.label.len) {
         gui__internal_ui_create_text_internal(gui, child_region, config);
@@ -347,7 +347,7 @@ void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
 
     const ui_attr_t attr = {
         .position = child_region,
-        .color = quad_color,
+        .color = computed_color,
         .zorder = gui->internal.layout_cursor_stack.top,
         .uv = {0},
         .is_text = false,

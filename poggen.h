@@ -27,7 +27,7 @@ typedef struct poggen_t {
     assetmanager_t      assets;
     hashtable_t         scenes;
     scene_t             *current_scene;
-    bg_task_manager_t   bg_task_manager;
+    bgtask_manager_t    bg_task_manager;
     arena_t             arena;
 
     struct {
@@ -81,7 +81,7 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
         .scenes         = hashtable_init(MAX_SCENES_ALLOWED, scene_t ),
         .current_scene  = NULL,
         .arena          = arena,
-        .bg_task_manager = bg_task_manager_init(),
+        .bg_task_manager = bgtask_manager_init(),
         .handle = {
             .app          = app
         },
@@ -149,7 +149,7 @@ void poggen_update(poggen_t *self, const f32 dt)
     if (self->config.enable_physics && self->physics_sys.instance && !self->physics_sys.phy_simulation_started)
         eprint("Missed to register physics interaction rules, else DISABLE physics in config passed to engine");
 
-    bg_task_manager_run_all_tasks(&self->bg_task_manager);
+    bgtask_manager_run_all_tasks(&self->bg_task_manager);
 
     scene_t *current_scene = self->current_scene;
     if (current_scene == NULL) eprint("Current scene is null");
@@ -171,7 +171,7 @@ void poggen_destroy(poggen_t *self)
         mem_free((void *)hashtable_get_entry_value(&self->scenes, entry), sizeof(scene_t));
     }
     hashtable_destroy(&self->scenes);
-    bg_task_manager_destroy(&self->bg_task_manager);
+    bgtask_manager_destroy(&self->bg_task_manager);
 
     if (self->config.enable_physics)
         physics_sys_jolt_destroy(self->physics_sys.instance);

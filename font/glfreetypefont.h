@@ -120,9 +120,8 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize, b
 
     gltexture2d_t tex = {
         .buf = NULL,
+        .filepath = str__from_cstr(filepath, strlen(filepath))
     };
-
-    memcpy((char *)tex.filepath, (char *)filepath, sizeof(tex.filepath));
 
     FT_Library  ft;
     FT_Face     face;

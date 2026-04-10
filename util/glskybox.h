@@ -29,17 +29,17 @@ typedef struct {
     glshader_t shader;
 } glskybox_t;
 
-glskybox_t      glskybox__init(const SKYBOX_TYPE type, arena_t * const arena);
-glrendercall_t  glskybox__get_render_config(const glskybox_t *self, const matrix4f_t projection, const matrix4f_t view);
-void            glskybox__destroy(glskybox_t *self);
+glskybox_t      glskybox_init(const SKYBOX_TYPE type, arena_t * const arena);
+glrendercall_t  glskybox_get_render_config(const glskybox_t *self, const matrix4f_t projection, const matrix4f_t view);
+void            glskybox_destroy(glskybox_t *self);
 
 #ifndef IGNORE_GL_SKYBOX_IMPLEMENTATION
 
-glskybox_t glskybox__init(const SKYBOX_TYPE type, arena_t * const arena)
+glskybox_t glskybox_init(const SKYBOX_TYPE type, arena_t * const arena)
 {
     return (glskybox_t) {
         .type = type,
-        .cubemap = glcubemap__init(AVAILABLE_SKYBOXES[type]),
+        .cubemap = glcubemap_init(AVAILABLE_SKYBOXES[type]),
         .shader = glshader__file_init(
             str(POGLIB_ROOT_DIR "/util/glskybox/glskybox-shader-vs.glsl"),
             str(POGLIB_ROOT_DIR "/util/glskybox/glskybox-shader-fg.glsl"),
@@ -48,13 +48,13 @@ glskybox_t glskybox__init(const SKYBOX_TYPE type, arena_t * const arena)
     };
 }
 
-void glskybox__destroy(glskybox_t *self)
+void glskybox_destroy(glskybox_t *self)
 {
     glshader_destroy((glshader_t *)&self->shader);
-    glcubemap__destroy((glcubemap_t *)&self->cubemap);
+    glcubemap_destroy((glcubemap_t *)&self->cubemap);
 }
 
-glrendercall_t glskybox__get_render_config(
+glrendercall_t glskybox_get_render_config(
         const glskybox_t *self, 
         const matrix4f_t projection,
         const matrix4f_t view)

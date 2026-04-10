@@ -1,7 +1,6 @@
 #pragma once
 #include "basic.h"
 #include "gfx/glrenderer3d.h"
-#include "gfx/glrenderer2d.h"
 #include "poglib/basic/arena.h"
 #include "poglib/basic/common.h"
 #if defined(WINDOW_GLFW)
@@ -108,9 +107,6 @@ f32 application_get_tick(const application_t *app)
 void application_run(application_t * const app)
 {
 #ifdef DEBUG
-    #if defined(_WIN64)
-        SetUnhandledExceptionFilter(TopLevelExceptionHandler);
-    #endif
     dbg_init();
 #endif
 

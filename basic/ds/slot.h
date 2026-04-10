@@ -1,6 +1,7 @@
 #pragma once
 #include "../common.h"
 #include "list.h"
+#include <poglib/basic/arena.h>
 
 /*============================================================================
                 - STATIC ARRAY (SLOT ARRAY ) DATA STRUCTURE -
@@ -8,10 +9,7 @@
 
 typedef struct slot_t {
 
-    // public 
     u64                 len;
-
-    //private
     u8                  *__data;
     char                __elem_type[MAX_TYPE_CHARACTER_LENGTH];
     u64                 __elem_size;
@@ -19,10 +17,14 @@ typedef struct slot_t {
     bool                *__index_table;
     bool                __are_elem_pointers;
 
+    struct {
+        arena_t *arena;
+        u32 mem_alignment;
+    } internal;
 } slot_t ;
 
 
-#define             slot_init(CAPACITY, TYPE)                              __impl_slot_init((CAPACITY), (#TYPE), sizeof(TYPE))
+#define             slot_init(CAPACITY, TYPE, PARENA)                              __impl_slot_init((CAPACITY), (#TYPE), sizeof(TYPE), PARENA, _Alignof(TYPE))
 void *              slot_insert(slot_t *, const u64 index, const void *value, const u64 value_size);
 void *              slot_update(slot_t *, const u64 index, const void *value, const u64 value_size);
 void                slot_insert_multiple(slot_t *self, const u8 *arraybuffer, const u32 arraylen, const u32 elem_size);
@@ -74,7 +76,7 @@ void * __slot_iter_get_value(const slot_t *slot, u32 *hits, u32 *index)
                         (ITER) = (void *)__slot_iter_get_value(PSLOTARRAY, (u32 *)&SLT__hits, (u32 *)&SLT__index))
 
 
-slot_t __impl_slot_init(const u64 array_capacity, const char *elem_type, const u64 elem_size)
+slot_t __impl_slot_init(const u64 array_capacity, const char *elem_type, const u64 elem_size, arena_t * const arena, const u32 mem_alignment)
 {
     assert(elem_type);
     assert(elem_size > 0);
@@ -85,13 +87,17 @@ slot_t __impl_slot_init(const u64 array_capacity, const char *elem_type, const u
     if (elem_type[len - 1] == '*') flag = true;
 
     slot_t o = {
-        .len = 0,
-        .__data               = (u8 *)calloc(array_capacity, elem_size),
-        .__elem_type           = {0},
-        .__elem_size           = elem_size,
-        .__capacity             = array_capacity,
-        .__index_table          = (bool *)calloc(array_capacity, sizeof(bool)),
-        .__are_elem_pointers  = flag,
+      .len = 0,
+      .__data                 = arena ? arena_reserve_aligned(arena, array_capacity * elem_size, mem_alignment) : (u8 *)calloc(array_capacity, elem_size),
+      .__elem_type            = {0},
+      .__elem_size            = elem_size,
+      .__capacity             = array_capacity,
+      .__index_table          = (bool *)calloc(array_capacity, sizeof(bool)),
+      .__are_elem_pointers    = flag,
+      .internal = {
+        .arena = arena,
+        .mem_alignment = mem_alignment
+      }
     };
 
     if (!flag)  memcpy(o.__elem_type, elem_type, MAX_TYPE_CHARACTER_LENGTH);
@@ -188,7 +194,11 @@ void __impl_slot_destroy(slot_t *table)
 {
     if (table == NULL) eprint("table arguemnt is null");
 
-    free(table->__data);
+    if (table->internal.arena) {
+        arena_giveback(table->internal.arena, table->__data, table->__elem_size * table->__capacity, table->internal.mem_alignment);
+    } else {
+        free(table->__data);
+    }
     table->__data = NULL;
     free(table->__index_table);
     table->__index_table = NULL;
@@ -258,7 +268,9 @@ slot_t slot_clone(const slot_t *slot)
     slot_t output = __impl_slot_init(
             slot->__capacity, 
             slot->__elem_type, 
-            slot->__elem_size);
+            slot->__elem_size,
+            slot->internal.arena,
+            slot->internal.mem_alignment);
 
     slot_iterator(slot, iter) {
         slot_insert(&output,

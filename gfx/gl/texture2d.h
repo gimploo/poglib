@@ -14,7 +14,7 @@
 typedef struct gltexture2d_t {
     
     GLuint          id; 
-    char      filepath[1024];
+    str_t           filepath;
     const u8        *buf;
     int             width;
     int             height;
@@ -95,32 +95,28 @@ gltexture2d_t gltexture2d_init(const char *filepath)
 {
     if (filepath == NULL) eprint("file argument is null");
 
-    GLuint id;
-    int width = 0, height = 0, bpp = 0;
+    i32 width = 0, height = 0, bpp = 0;
     u8 *buf = NULL;
-    stbi_set_flip_vertically_on_load(1);                                
-    buf = stbi_load(filepath, &width, &height, &bpp, 0); //forcing RGBA per pixel
+    stbi_set_flip_vertically_on_load(1);
+
+    buf = stbi_load(filepath, &width, &height, &bpp, 4);
     if (buf == NULL) eprint("Failed to load `%s` texture", filepath);
 
-    GLenum format;
-    if (bpp == 1)       format = GL_RED;
-    else if (bpp == 3)  format = GL_RGB;
-    else if (bpp == 4)  format = GL_RGBA;
-
+    GLuint id;
     GL_CHECK(glGenTextures(1, &id));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, id));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));	
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
     GL_CHECK(glTexImage2D(
         GL_TEXTURE_2D, 
         0, 
-        format, 
+        bpp == 4 ? GL_RGBA8: GL_RGB8, 
         width,
         height,
         0,
-        format, // The format the buf variable is in
+        GL_RGBA,
         GL_UNSIGNED_BYTE,
         buf
      ));
@@ -128,20 +124,14 @@ gltexture2d_t gltexture2d_init(const char *filepath)
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
     GL_LOG("Texture `%i` successfully created", id);
 
-    gltexture2d_t o = {
+    return (gltexture2d_t) {
         .id         = id,
-        .filepath   = {0},
+        .filepath   = str__from_cstr(filepath, strlen(filepath)),
         .buf        = buf,
         .width      = width,
         .height     = height,
         .bpp        = bpp,
     };
-
-    const u64 len = strlen(filepath);
-    if (len > ARRAY_LEN(o.filepath)) eprint("filepath too long");
-    memcpy((char *)o.filepath, filepath, len);
-
-    return o;
 }
 
 void gltexture2d_destroy(const gltexture2d_t *texture)
