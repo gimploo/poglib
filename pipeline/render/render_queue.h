@@ -174,7 +174,14 @@ void renderqueue_dispatch(renderqueue_t *const self)
                 .nmemb = idx_buffer.size / sizeof(u32),
             },
             .shader_config = shader_config,
-            .textures = !enable_instancing ? command->call_config.textures : (gltexturelist_t){0},
+            .textures = enable_instancing 
+                ? (gltexturelist_t) {
+                        .count = 1,
+                        .items = {
+                            [0] = command->instance_config.texture
+                        }
+                    }
+                : command->call_config.textures,
             .instancing = {
                 .enable = enable_instancing,
                 .count = instancing_count
@@ -202,8 +209,8 @@ bool renderqueue__internal_is_instanced_only(rendercommand_types type)
 }
 
 //FIXME: 
-//1. O(n**2) problem with `render_queue_pass_command`, fix - State Sorting 
+//O(n**2) problem with `render_queue_pass_command`, fix - State Sorting 
 
 //TODO:
-//1. Have texture support for instancing
+//Have texture support for instancing
 #endif

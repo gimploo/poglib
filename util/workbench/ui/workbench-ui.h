@@ -43,7 +43,7 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
         gui_ui_compose_begin(gui, (ui_config_t){ 
             .composition = {0},
             .color = {
-                .base = COLOR_GRAY,
+                .base = COLOR_OFFWHITE,
             },
             .dim = {
                 .height = 40,
@@ -156,9 +156,54 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
         gui_ui_compose_end(gui);
     } 
     gui_ui_compose_end(gui);
+
+    gui_ui_compose_begin(gui, (ui_config_t) {
+        .composition = {
+            .styles = UI_STYLE_ROUNDED_CORNERS,
+            .traits = UI_BEHAVIOR_CLICKABLE | UI_BEHAVIOR_HOVERABLE
+        },
+        .dim = {
+            .height = 30,
+            .width = 70,
+        },
+        .color = {
+            .base = COLOR_WHITE,
+            .highlight = COLOR_OFFWHITE
+        },
+        .margin = {
+            .left = 5, 
+            .right = 5,
+            .top = 10,
+            .bottom = 10 
+        },
+        .padding = {
+            .left = 5,
+            .top = 5,
+            .bottom = 5,
+            .right = 5
+        }
+    });{
+        gui_ui_compose_begin(gui, (ui_config_t) {
+            .composition = {0},
+            .dim = {
+                .height = 40,
+                .width = 40,
+            },
+            .color = {
+                .base = COLOR_BLACK,
+                .highlight = COLOR_BLUE
+            },
+            .label = str("collider"),
+        });
+        gui_ui_compose_end(gui);
+    }
+    gui_ui_compose_end(gui);
 }
 
-void workbench_compose_ui__test(const application_t * const app, gui_t *gui)
+
+
+
+void workbench__internal_compose_ui__test(const application_t * const app, gui_t *gui)
 {
     const u32 window_width = global_window->width;
     const f32 fps = application_get_fps(app);

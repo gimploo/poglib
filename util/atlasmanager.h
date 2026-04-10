@@ -4,54 +4,69 @@
 typedef struct {
     gltexture2d_t texture;
     slot_t sprites;
-} atlasmanager_t;
+    struct {
+        arena_t *arena;
+    } internal;
+} spriteatlas_t;
 
-atlasmanager_t  atlasmanager_init(
-                    const char *filepath, 
-                    const u32 tile_count_width, 
-                    const u32 tile_count_height);
-#define         atlasmanager_get_sprite(PATLAS, INDEX)    ((rect_t *)slot_get_buffer(&(PATLAS)->sprites))[INDEX]
-void            atlasmanager_destroy(atlasmanager_t *self);
+spriteatlas_t          spriteatlas_init(str_t filepath, const u32 tile_count_width, const u32 tile_count_height, arena_t * const arena);
+#define                spriteatlas_get_sprite_uv(PATLAS, INDEX)    ((rect_t *)slot_get_buffer(&(PATLAS)->sprites))[INDEX]
+box_t                  spriteatlas_get_sprite(const spriteatlas_t * const self, const u32 slot_index);
+void                   spriteatlas_destroy(spriteatlas_t *self);
 
-atlasmanager_t atlasmanager_init(const char *filepath, const u32 tile_count_width, const u32 tile_count_height)
+#ifndef IGNORE_SPRITEATLAS_IMPLEMENTATION
+
+spriteatlas_t spriteatlas_init(str_t filepath, const u32 tile_count_width, const u32 tile_count_height, arena_t * const arena)
 {
-    if (filepath == NULL) eprint("filepath argument is null");
-
-    gltexture2d_t texture = gltexture2d_init(filepath);
-
-    const f32 norm_font_width    = normalize(texture.width / (f32)tile_count_width, 0.f, texture.width);
-    const f32 norm_font_height   = normalize(texture.height / (f32)tile_count_height, 0.f, texture.height);
-
-    slot_t atlas = slot_init(tile_count_width * tile_count_height, rect_t);
+    ASSERT(filepath.len);
+    gltexture2d_t texture = gltexture2d_init(filepath.data);
+    const f32 norm_tile_width  = 1.0f / (f32)tile_count_width;
+    const f32 norm_tile_height = 1.0f / (f32)tile_count_height;
+    slot_t atlas = slot_init(tile_count_width * tile_count_height, rect_t, arena);
 
     for (u32 v = 0, tile_index = 0; v < tile_count_height; v++)
     {
         for (u32 u = 0; u < tile_count_width; u++)
         {
-            f32 left_U      = u * norm_font_width;
-            f32 right_U     = left_U + norm_font_width; 
-            f32 top_V       = -(v * norm_font_height);
-            f32 bottom_V    = top_V - norm_font_height ;
+            const f32 left_U   = u * norm_tile_width;
+            const f32 right_U  = left_U + norm_tile_width;
+            const f32 top_V    = 1.0f - (v * norm_tile_height);
+            const f32 bottom_V = 1.0f - ((v + 1) * norm_tile_height);
 
-            const rect_t rect = (rect_t ){
-                left_U,     top_V,
-                right_U,    top_V,
-                right_U,    bottom_V,
-                left_U,     bottom_V,
+            const rect_t rect = (rect_t){
+                left_U,  top_V,
+                right_U, top_V,
+                right_U, bottom_V,
+                left_U,  bottom_V,
             };
-            slot_insert(&atlas, tile_index, &rect, sizeof(rect));
 
-            ++tile_index;
+            slot_insert(&atlas, tile_index, &rect, sizeof(rect));
+            tile_index++;
         }
     }
-    return (atlasmanager_t) {
+    return (spriteatlas_t) {
         .sprites = atlas,
         .texture = texture
     };
 }
 
-void atlasmanager_destroy(atlasmanager_t *self)
+box_t spriteatlas_get_sprite(const spriteatlas_t * const self, const u32 slot_index)
+{
+    ASSERT(self);
+    ASSERT(slot_index < self->sprites.len);
+
+    const rect_t *uvs = (rect_t *)slot_get_value(&self->sprites, slot_index);
+    return (box_t) {
+        .x      = uvs->vertex[BOTTOM_LEFT].x,
+        .y      = uvs->vertex[BOTTOM_LEFT].y,
+        .width  = uvs->vertex[BOTTOM_RIGHT].x - uvs->vertex[BOTTOM_LEFT].x,
+        .height = uvs->vertex[TOP_LEFT].y - uvs->vertex[BOTTOM_LEFT].y,
+    };
+}
+
+void spriteatlas_destroy(spriteatlas_t *self)
 {
     gltexture2d_destroy(&self->texture);
     slot_destroy(&self->sprites);
 }
+#endif

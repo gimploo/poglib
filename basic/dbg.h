@@ -200,22 +200,22 @@ bool __is_file_in_ignore_files(const char *filepath)
     return false;
 }
 
-// Init function required to start the debugger
-
 #ifdef _WIN64
 LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo)
 {
-    /* std::stringstream s;
-       s << "Fatal: Unhandled exception 0x" << std::hex << pExceptionInfo->ExceptionRecord->ExceptionCode 
-       << std::endl; */
-
-    eprint("APPLICATION SEGFAULTED\n");
-
+    const char *message = "APPLICATION SEGFAULTED\n";
+    fprintf(stderr, "\n\033[0;37m" "\033[0;31m\n\t %s\033[0m\n", message);\
+    return EXCEPTION_EXECUTE_HANDLER;
 }
 #endif
 
+// Init function required to start the debugger
 void dbg_init(void)
 {
+#if defined(_WIN64)
+    SetUnhandledExceptionFilter(TopLevelExceptionHandler);
+#endif
+
     FILE *fp = fopen(DEFAULT_DBG_MEM_LOG_PATH, "w");
     if (!fp) {
         printf("%s not found \n", DEFAULT_DBG_MEM_LOG_PATH);

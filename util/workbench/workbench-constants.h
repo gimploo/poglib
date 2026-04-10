@@ -59,4 +59,12 @@ u32 CAMERA_INDICES[] = {
     9, 21, 19,  9, 23, 21,  9, 25, 23,  9, 11, 25,  // front cap continued
 };
 
+typedef enum {
+
+    PROTOTYPE_SPRITE_CHECKERED_GRAY = 19,
+    PROTOTYPE_SPRITE_CHECKERED_DARK_GRAY = 20,
+    PROTOTYPE_SPRITE_DARK_GRAY = 21,
+
+} PROTOTYPE_TEXTURE_TYPE;
+
 
