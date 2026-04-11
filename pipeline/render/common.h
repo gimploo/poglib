@@ -14,13 +14,23 @@ typedef enum {
     RENDER_COMMAND_TYPE_COUNT,
 } rendercommand_types;
 
+typedef enum {
+    RENDER_COMMAND_DRAW_MODE_TRIANGLE = GL_TRIANGLES,
+    RENDER_COMMAND_DRAW_MODE_LINES = GL_LINES,
+    RENDER_COMMAND_DRAW_MODE_COUNT,
+} rendercommand_draw_mode;
+
+
+typedef struct {
+    bool is_ready; //NOTE: to know whether the list is initialized
+    rendercommand_draw_mode draw_mode;
+    rendercommand_types type;
+    list_t render_commands;
+} renderqueue__internal_bucket_type;
+
 typedef struct {
     u8 bucket_ready_count;
-    struct {
-        bool is_ready;                  //NOTE: to know whether the list is initialized
-        rendercommand_types type;
-        list_t render_commands;
-    } buckets[MAX_RENDER_BUCKETS_ALLOWED];
+    renderqueue__internal_bucket_type buckets[MAX_RENDER_BUCKETS_ALLOWED];
     arena_t arena;
 
     struct {

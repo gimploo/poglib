@@ -12,7 +12,7 @@
 #include <threads.h>
 
 #define DEFAULT_DBG_MEM_LOG_PATH "bin/dbg_mem_log.txt"
-const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h" };
+const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h", "jolt-wrapper.h" };
 
 // Eprint for for both linux and windows
 #define eprint(fmt, ...) do {\
@@ -37,12 +37,13 @@ typedef struct dbg_t {
     FILE        *fp;
     const char  *fname;
     llist_t     list;
+    bool        logged_to_console;
 
 } dbg_t ;
 
 static dbg_t global_debug;
 #if defined(DEBUG)
-    void        dbg_init();
+    void        dbg_init(void);
     void        dbg_destroy(void);
 #else 
     #define     dbg_init()      fprintf(stderr,"[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n")
@@ -203,7 +204,7 @@ bool __is_file_in_ignore_files(const char *filepath)
 #ifdef _WIN64
 LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo)
 {
-    const char *message = "APPLICATION SEGFAULTED\n";
+    const char *message = "APPLICATION SEGFAULTED - i think?\n";
     fprintf(stderr, "\n\033[0;37m" "\033[0;31m\n\t %s\033[0m\n", message);\
     return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -225,6 +226,7 @@ void dbg_init(void)
     global_debug.fp = fp;
     global_debug.fname = DEFAULT_DBG_MEM_LOG_PATH;
     global_debug.list = llist_init();
+    global_debug.logged_to_console = false;
     mtx_init(&global_debug.lock, mtx_plain);
 
     fprintf(stdout, "[*] DBG: INITALIZED\n");
@@ -518,26 +520,39 @@ void dbg_destroy(void)
 
 void window_print_trace(void)
 {
-    unsigned int   i;
-    void         * stack[ 100 ];
-    unsigned short frames;
-    SYMBOL_INFO  * symbol;
-    HANDLE         process;
+    unsigned int    i;
+    void          * stack[ 100 ];
+    unsigned short  frames;
+    SYMBOL_INFO   * symbol;
+    HANDLE          process;
+    IMAGEHLP_LINE64 line;
+    DWORD           displacement;
 
     process = GetCurrentProcess();
 
+    // SymInitialize should ideally be called once at app startup, 
+    // but keeping it here for standalone functionality.
     SymInitialize( process, NULL, TRUE );
 
-    frames               = CaptureStackBackTrace( 0, 100, stack, NULL );
-    symbol               = ( SYMBOL_INFO * )calloc( sizeof( SYMBOL_INFO ) + 256 * sizeof( char ), 1 );
+    frames = CaptureStackBackTrace( 0, 100, stack, NULL );
+    
+    symbol = ( SYMBOL_INFO * )calloc( sizeof( SYMBOL_INFO ) + 256 * sizeof( char ), 1 );
     symbol->MaxNameLen   = 255;
     symbol->SizeOfStruct = sizeof( SYMBOL_INFO );
+
+    // Initialize line structure
+    line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
 
     printf("\n[*] Printing stack frames ... \n\n");
     for( i = 0; i < frames; i++ )
     {
-        SymFromAddr( process, ( DWORD64 )( stack[ i ] ), 0, symbol );
-        printf( " %02i |  %s [0x%0X]\n", frames - i, symbol->Name, symbol->Address );
+        DWORD64 address = ( DWORD64 )( stack[ i ] );
+        const char *short_file_path = /*strlen(line.FileName) > 8 ? line.FileName + 8 :*/ line.FileName;
+        SymFromAddr( process, address, 0, symbol );
+        if (SymGetLineFromAddr64(process, address, &displacement, &line))
+            printf( " %02i |  %s (%s:%lu)\n", frames - i, symbol->Name, short_file_path, line.LineNumber);
+        else
+            printf( " %02i |  %s [0x%0llX]\n", frames - i, symbol->Name, symbol->Address );
     }
     printf ("\n[!] Obtained %d stack frames.\n\n", frames);
 
@@ -585,6 +600,11 @@ void linux_print_trace(void)
 
 void stacktrace_print(void)
 {
+    mtx_lock(&global_debug.lock);
+        if (global_debug.logged_to_console)
+            return;
+        global_debug.logged_to_console = true;
+    mtx_unlock(&global_debug.lock);
 #if defined(__linux__)
     linux_print_trace();
 #elif defined(_WIN64)
@@ -594,4 +614,4 @@ void stacktrace_print(void)
     if (global_debug.fp != NULL) dbg_destroy();
 }
 #endif //IGNORE_STACKTRACE_IMPLEMENTATION
-       
+

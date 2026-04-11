@@ -162,6 +162,7 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
             .styles = UI_STYLE_ROUNDED_CORNERS,
             .traits = UI_BEHAVIOR_CLICKABLE | UI_BEHAVIOR_HOVERABLE
         },
+        .id = 1,
         .dim = {
             .height = 30,
             .width = 70,

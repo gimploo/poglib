@@ -159,7 +159,7 @@ void physics_sys_jolt_set_interaction_rules(physics_sys_jolt_t * const self, con
 {
     ASSERT(config.count < MAX_COLLISION_INTERACTABILITY_ENTRIES);
 
-	JPH_ObjectLayerPairFilter* objectLayerPairFilterTable = JPH_ObjectLayerPairFilterTable_Create(config.count);
+    JPH_ObjectLayerPairFilter* objectLayerPairFilterTable = JPH_ObjectLayerPairFilterTable_Create(config.count * 2);
 
     struct {
         u16 count;
@@ -183,22 +183,33 @@ void physics_sys_jolt_set_interaction_rules(physics_sys_jolt_t * const self, con
                 config.data[index][0].objectlayer_type, 
                 config.data[index][1].objectlayer_type);
 
+        if (config.data[index][0].objectlayer_type != config.data[index][1].objectlayer_type)
+            JPH_ObjectLayerPairFilterTable_EnableCollision(
+                    objectLayerPairFilterTable, 
+                    config.data[index][1].objectlayer_type, 
+                    config.data[index][0].objectlayer_type);
+
         for (u8 objectlayer_config_index = 0; objectlayer_config_index < 2; objectlayer_config_index++)
         {
-            const u8 object_type = config.data[index][objectlayer_config_index].objectlayer_type;
+            const u8 config_object_type = config.data[index][objectlayer_config_index].objectlayer_type;
+            const u8 config_broadphase_type = config.data[index][objectlayer_config_index].broadphase_type;
+            const bool conflicting_broadphase_type = objectlayer_configs.data[config_object_type].config.broadphase_type == config_broadphase_type;
 
-            if(objectlayer_configs.data[object_type].is_occupied)
+            if(objectlayer_configs.data[config_object_type].is_occupied && !conflicting_broadphase_type)
                 continue;
 
-            objectlayer_configs.data[object_type].is_occupied = true;
-            objectlayer_configs.data[object_type].config = config.data[index][objectlayer_config_index];
+            if (objectlayer_configs.data[config_object_type].is_occupied && conflicting_broadphase_type)
+                eprint("Broadphase mismatch - check the registeration again");
+
+            objectlayer_configs.data[config_object_type].is_occupied = true;
+            objectlayer_configs.data[config_object_type].config = config.data[index][objectlayer_config_index];
             objectlayer_configs.count++;
 
             const u8 broadphase_type = config.data[index][objectlayer_config_index].broadphase_type;
-            if (broadphase_types.data[broadphase_type].is_occupied)
+            if (broadphase_types.data[config_broadphase_type].is_occupied)
                 continue;
 
-            broadphase_types.data[broadphase_type].is_occupied = true;
+            broadphase_types.data[config_broadphase_type].is_occupied = true;
             broadphase_types.count++;
         }
     }
@@ -213,11 +224,11 @@ void physics_sys_jolt_set_interaction_rules(physics_sys_jolt_t * const self, con
     }
 
 
-	JPH_ObjectVsBroadPhaseLayerFilter* objectVsBroadPhaseLayerFilter = JPH_ObjectVsBroadPhaseLayerFilterTable_Create(
-            self->broadphaselayerinterface_table,
-            broadphase_types.count, 
-            objectLayerPairFilterTable, 
-            objectlayer_configs.count);
+    JPH_ObjectVsBroadPhaseLayerFilter* objectVsBroadPhaseLayerFilter = JPH_ObjectVsBroadPhaseLayerFilterTable_Create(
+        router,
+        broadphase_types.count, 
+        objectLayerPairFilterTable, 
+        objectlayer_configs.count);
 
     self->objectvsbroadphaselayerfilter = objectVsBroadPhaseLayerFilter;
     self->objectlayerpairfilter_table = objectLayerPairFilterTable;

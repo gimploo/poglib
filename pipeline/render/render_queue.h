@@ -51,9 +51,12 @@ void renderqueue_pass_command(renderqueue_t *const self, const rendercommand_t c
 
     const bool is_bucket_ready = self->buckets[self->bucket_ready_count].is_ready;
     if (!is_bucket_ready) {
-        self->buckets[self->bucket_ready_count].render_commands = list_init(rendercommand_t);
-        self->buckets[self->bucket_ready_count].is_ready = true;
-        self->buckets[self->bucket_ready_count].type = command.type;
+        self->buckets[self->bucket_ready_count] = (renderqueue__internal_bucket_type){
+            .render_commands = list_init(rendercommand_t),
+            .draw_mode = command.draw_mode,
+            .is_ready = true,
+            .type = command.type,
+        };
         list_append(&self->buckets[self->bucket_ready_count].render_commands, command);
         self->bucket_ready_count++;
         return;
@@ -108,7 +111,7 @@ bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const que
         list_t *const commands = &queue->buckets[idx].render_commands;
         if (!queue->buckets[idx].is_ready)  continue;
 
-        if (command.type == queue->buckets[idx].type) {
+        if (command.type == queue->buckets[idx].type && command.draw_mode == queue->buckets[idx].draw_mode) {
             renderqueue__internal_add_to_batch(commands, command);
             return true;
         }
