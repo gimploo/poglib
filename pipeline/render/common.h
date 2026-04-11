@@ -26,6 +26,7 @@ typedef struct {
     rendercommand_draw_mode draw_mode;
     rendercommand_types type;
     list_t render_commands;
+    bool enable_wireframe;
 } renderqueue__internal_bucket_type;
 
 typedef struct {
