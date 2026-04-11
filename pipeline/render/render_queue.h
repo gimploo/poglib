@@ -56,6 +56,7 @@ void renderqueue_pass_command(renderqueue_t *const self, const rendercommand_t c
             .draw_mode = command.draw_mode,
             .is_ready = true,
             .type = command.type,
+            .enable_wireframe = command.enable_wireframe
         };
         list_append(&self->buckets[self->bucket_ready_count].render_commands, command);
         self->bucket_ready_count++;
@@ -111,7 +112,10 @@ bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const que
         list_t *const commands = &queue->buckets[idx].render_commands;
         if (!queue->buckets[idx].is_ready)  continue;
 
-        if (command.type == queue->buckets[idx].type && command.draw_mode == queue->buckets[idx].draw_mode) {
+        if (command.type == queue->buckets[idx].type 
+            && command.draw_mode == queue->buckets[idx].draw_mode
+            && command.enable_wireframe == queue->buckets[idx].enable_wireframe
+        ) {
             renderqueue__internal_add_to_batch(commands, command);
             return true;
         }
@@ -166,7 +170,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
         calls[total_render_command] = (glrendercall_t ) {
             .draw_mode = command->draw_mode,
             .allow_empty_vtx_buffer = false,
-            .is_wireframe = false,
+            .is_wireframe = command->enable_wireframe,
             .vtx = {
                 [VBO_STREAM_TYPE_GEOMETRY] = vtx_buffer,
                 [VBO_STREAM_TYPE_INSTANCE] = instance_buffer

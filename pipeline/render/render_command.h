@@ -18,6 +18,7 @@ typedef struct {
 
 typedef struct {
     rendercommand_types type;
+    bool enable_wireframe;
     rendercommand_draw_mode draw_mode;
     union {
         struct {
