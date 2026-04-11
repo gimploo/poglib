@@ -78,7 +78,7 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
     poggen_t tmp =  (poggen_t ){
         .config         = config,
         .assets         = assetmanager_init(),
-        .scenes         = hashtable_init(MAX_SCENES_ALLOWED, scene_t ),
+        .scenes         = hashtable_init(MAX_SCENES_ALLOWED, scene_t, &app->handle.arena),
         .current_scene  = NULL,
         .arena          = arena,
         .bg_task_manager = bgtask_manager_init(),
@@ -103,11 +103,13 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
 void __impl_poggen_add_scene(poggen_t *self, const scene_t scene)
 {
     assert(self);
+
     scene_t *tmp = (scene_t *)hashtable_insert(
         &self->scenes, 
         scene.label, 
         mem_init((scene_t *)&scene, sizeof(scene_t))
     );
+    tmp->manager = entitymanager_init(10, &tmp->arena);
 
     if (!self->current_scene)
         self->current_scene = tmp;

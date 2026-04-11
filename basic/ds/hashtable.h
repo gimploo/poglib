@@ -5,8 +5,8 @@
 #include "./slot.h"
 #include "../util.h"
 
-//TODO: Integrate arenas
 //NOTE: hashtable inlines data that are of 8 bytes less and pointers of 8 bytes more
+//NOTE: this uses round robin collision resolution
 
 typedef struct table_entry_t {
     str_t   key;
@@ -35,8 +35,8 @@ typedef struct hashtable_t {
     u32 type_size;
 } hashtable_t ;
 
-#define hashtable_init(CAPACITY, TYPE)\
-    __impl_hashtable_init((CAPACITY), sizeof(TYPE))
+#define hashtable_init(CAPACITY, TYPE, PARENA)\
+    __impl_hashtable_init((CAPACITY), sizeof(TYPE), (PARENA))
 
 #define hashtable_insert(TABLE, KEY, VALUE) \
     _Generic((VALUE), \
@@ -70,15 +70,15 @@ uint32_t hash_cstr(const char *key) {
 }
 
 
-hashtable_t __impl_hashtable_init(const u32 capacity, const u32 value_size)
+hashtable_t __impl_hashtable_init(const u32 capacity, const u32 value_size, arena_t * const arena)
 {
     ASSERT(capacity > 0);
     ASSERT(value_size > 0);
 
     return (hashtable_t ) {
-        .entries = slot_init(capacity, table_entry_t, NULL),
+        .entries = slot_init(capacity, table_entry_t, arena),
         .mode = value_size >= sizeof(void *) ? VALUE_MODE_POINTER : VALUE_MODE_INLINE_COPY,
-        .type_size = value_size
+        .type_size = value_size,
     };
 }
 

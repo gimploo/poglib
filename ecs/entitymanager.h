@@ -1,5 +1,6 @@
 #pragma once
 #include "./entity.h"
+#include <poglib/basic/arena.h>
 
 /*=============================================================================
                             - ENTITY MANAGER -
@@ -16,9 +17,13 @@ typedef struct entitymanager_t {
     // A queue of newly created entities ready to be added (solution to fix iterator invalidation)
     queue_t     __newly_added_entities;
 
+    struct {
+        arena_t *arena;
+    } internal;
+
 } entitymanager_t ;
 
-entitymanager_t     entitymanager_init(const u64 total_entity_types);
+entitymanager_t     entitymanager_init(const u64 total_entity_types, arena_t * const arena);
 #define             entitymanager_add_entity(PMANAGER, TAG)                     __impl_entitymanager_add_entity((PMANAGER), (TAG), #TAG)
 void                entitymanager_update(entitymanager_t *manager);
 
@@ -34,9 +39,9 @@ void                entitymanager_destroy(entitymanager_t *manager);
 
 #ifndef IGNORE_ENTITY_MANAGER_IMPLEMENTATION
 
-#define MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME 100
+#define MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME 1000
 
-entitymanager_t entitymanager_init(const u64 total_entity_types)
+entitymanager_t entitymanager_init(const u64 total_entity_types, arena_t * const arena)
 {
     assert(total_entity_types > 0);
 
@@ -50,9 +55,10 @@ entitymanager_t entitymanager_init(const u64 total_entity_types)
     return (entitymanager_t ) {
         .entities               = list_init(entity_t *),
         .entitymap              = map,
-        .__newly_added_entities = queue_init(
-                                    MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME, 
-                                    entity_t *)
+        .__newly_added_entities = queue_init(MAX_ENTITIES_ALLOWED_TO_BE_CREATED_PER_FRAME, entity_t *, arena),
+        .internal = {
+            .arena = arena
+        }
     };
 }
 

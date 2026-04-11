@@ -396,10 +396,13 @@ void __impl_glbatch_put(glbatch_t *batch, const void *elem, const u64 elemsize)
 
                 queue_t oldqueue = batch->globjs;
                 queue_destroy(&batch->globjs);
+                eprint("Refactor: do we even need this anymore");
+                /*
                 batch->globjs = __impl_queue_init(
                         oldqueue.__capacity,
                         poly->sides * 3 * sizeof(glvertex2d_t ),
                         "glpolygon_t");
+                */
             }
 
             if ((poly->sides * 3) != batch->__meta.nvertex)
@@ -596,7 +599,7 @@ gltext_t gltext_init(const u64 capacity)
 {
     return (gltext_t ) {
         .data =  {
-            .globjs = __impl_queue_init(capacity, sizeof(glquad_t ), "glquad_t"),
+            .globjs = __impl_queue_init(capacity, sizeof(glquad_t ), "glquad_t", _Alignof(glquad_t), NULL),
             .__meta = {
                 .type       = GLBT_type(glquad_t ),
                 .nvertex    = 6 
@@ -634,7 +637,7 @@ glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, const char *type_
         default: eprint("batch type not accounted for");
     }
     glbatch_t o =  {
-        .globjs   = __impl_queue_init(capacity, typesize, type_name),
+        .globjs   = __impl_queue_init(capacity, typesize, type_name, 16, NULL),
         .__meta = {
             .type = type,
             .nvertex = nvertex

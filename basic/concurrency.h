@@ -67,7 +67,7 @@ typedef struct {
 bgtask_manager_t bgtask_manager_init(void)
 {
     return (bgtask_manager_t) {
-        .tasks = queue_init(10, bgtask_t),
+        .tasks = queue_init(10, bgtask_t, NULL),
         .arena = arena_init(NULL, 2 * MB)
     };
 }

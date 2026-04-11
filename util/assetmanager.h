@@ -38,10 +38,10 @@ assetmanager_t assetmanager_init(void)
 {
     return (assetmanager_t ){
         .assetmaps = {
-            [AT_GLSHADER]       = hashtable_init(10, asset_t ),
-            [AT_GLTEXTURE2D]    = hashtable_init(10, asset_t ),
-            [AT_SOUND_WAV]      = hashtable_init(10, asset_t ),
-            [AT_FONT_FREETYPE]  = hashtable_init(10, asset_t ),
+            [AT_GLSHADER]       = hashtable_init(10, asset_t, NULL),
+            [AT_GLTEXTURE2D]    = hashtable_init(10, asset_t, NULL),
+            [AT_SOUND_WAV]      = hashtable_init(10, asset_t, NULL),
+            [AT_FONT_FREETYPE]  = hashtable_init(10, asset_t, NULL),
         }
     };
 }
