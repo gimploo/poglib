@@ -147,10 +147,13 @@ __ds_t __impl_file_load_ds(file_t *file, ds_type type)
 
         case DS_queue_t: 
             file_readbytes(file, ds, sizeof(queue_t ));
+            eprint("refactor this");
+            /*
             output.q = __impl_queue_init(
                     ((queue_t *)ds)->__capacity, 
                     ((queue_t *)ds)->__elem_size,
-                    ((queue_t *)ds)->__elem_type);
+                    0, NULL);
+            */
             file_readbytes(
                     file, 
                     output.q.__data, 

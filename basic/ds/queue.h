@@ -1,12 +1,13 @@
 #pragma once
 #include "../dbg.h"
 #include "../common.h"
+#include <poglib/basic/arena.h>
 
 /*=============================================================================
                             - QUEUE DATA STRUCTURE -
 =============================================================================*/
 
-typedef struct queue_t {
+typedef struct {
 
     u64     len;
     u8      *__data;
@@ -14,13 +15,15 @@ typedef struct queue_t {
     u64     __end;
     u64     __capacity;
     u64     __elem_size;
-    char    __elem_type[MAX_TYPE_CHARACTER_LENGTH];
-    bool    __are_values_pointers;   // This variable checks if the list is a list of pointers 
-                                   
+    bool    __are_values_pointers;
+    struct {
+        arena_t *arena;
+        u8 mem_alignment;
+    } internal;
 } queue_t ;
 
 
-#define             queue_init(CAPACITY, TYPE)                                  __impl_queue_init(CAPACITY, sizeof(TYPE), #TYPE)
+#define             queue_init(CAPACITY, TYPE, PARENA)                          __impl_queue_init((CAPACITY), sizeof(TYPE), #TYPE, _Alignof(TYPE), (PARENA))
 
 #define             queue_put(PQUEUE, ELEM)                                     __impl_queue_put((PQUEUE), &(ELEM), sizeof(ELEM))
 #define             queue_get(PQUEUE)                                           __impl_queue_get((PQUEUE)) 
@@ -46,8 +49,11 @@ void                queue_destroy(queue_t *queue);
 void queue_destroy(queue_t *queue)
 {
     assert(queue);
-
-    free(queue->__data);
+    if (queue->internal.arena) {
+        arena_giveback(queue->internal.arena, queue->__data, queue->__elem_size * queue->__capacity, queue->internal.mem_alignment);
+    } else {
+        free(queue->__data);
+    }
     queue->__data = NULL;
     queue->__start = queue->__end = queue->len = 0; 
 
@@ -90,32 +96,26 @@ void queue_dump(queue_t *queue)
 
 
 
-queue_t __impl_queue_init(u64 capacity, u64 elem_size, const char *elem_type)
+queue_t __impl_queue_init(u64 capacity, u64 elem_size, const char *elem_type, const u8 mem_alignment, arena_t * const arena)
 {
     assert(capacity > 0);
     assert(elem_type);
     assert(elem_size > 0);
 
-    bool flag = false;
-    u32 len = strlen(elem_type);
-    if (elem_type[len] > MAX_TYPE_CHARACTER_LENGTH) eprint("variable type is too big, exceeded the %i limit threshold\n", MAX_TYPE_CHARACTER_LENGTH);
-    if (elem_type[len - 1] == '*') flag = true;
-
-    queue_t o = {
+    const bool flag = elem_type[strlen(elem_type) - 1] == '*';
+    return (queue_t) {
         .len = 0 ,
-        .__data = (u8 *)calloc(capacity, elem_size),
+        .__data = arena ? arena_reserve_aligned(arena, elem_size * capacity, mem_alignment) : (u8 *)calloc(capacity, elem_size),
         .__start = 0,
         .__end = 0,
         .__capacity = capacity,
         .__elem_size = elem_size,
-        .__elem_type = {0},
-        .__are_values_pointers = flag
+        .__are_values_pointers = flag,
+        .internal = {
+            .arena = arena,
+            .mem_alignment = mem_alignment
+        }
     };
-
-    if (!flag)  memcpy(o.__elem_type, elem_type, MAX_TYPE_CHARACTER_LENGTH);
-    else        memcpy(o.__elem_type, elem_type, len - 1);
-
-    return o;
 }
 
 void queue_clear(queue_t *queue)

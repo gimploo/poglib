@@ -316,7 +316,7 @@ void __glmesh_processScene(glmodel_t *self, const struct aiScene *scene)
     //Map all bones to an index for easy lookup
     const u32 total_bones = __get_total_bones(scene);
     if(total_bones) {
-        hashtable_t table = hashtable_init(total_bones, i32);
+        hashtable_t table = hashtable_init(total_bones, i32, NULL);
         self->bone_name_to_index = mem_init(&table, sizeof(table));
     }
 

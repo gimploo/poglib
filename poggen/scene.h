@@ -58,7 +58,7 @@ void * __impl_scene_alloc_content(scene_t * const self, const u64 content_size, 
         .label          = #SCENE_NAME,\
         .assets         = NULL,\
         .arena          = arena_init(NULL, 5 * MB),\
-        .manager        = entitymanager_init(10),\
+        .manager        = {0},\
         .content        = NULL,\
         .__is_paused    = false,\
         .__is_over      = false,\
