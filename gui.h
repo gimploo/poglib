@@ -19,26 +19,26 @@
 //Each cursor update is pushed to the stack
 
 //TODO:
-//1. Scroll
-//2. Text wrapping 
-//3. Rounded corners
-//4. Way to have composition ui placed at the right end of the screen from the start
-//5. Way for enclosed text to take up the entire parent dimension instead
-//6. Toggle 
-//7. Text truncate
+//1.Scroll
+//2.Text wrapping 
+//3.Rounded corners
+//4.Way to have composition ui placed at the right end of the screen from the start
+//5.Way for enclosed text to take up the entire parent dimension instead
+//6.Toggle 
+//7.Text truncate
 
 //BUG:
 //1. WDC coordinates text are not wrapping around to next line of NDC coordinates text while enclosed in the same composition
 
 typedef enum {
-    UI_BEHAVIOR_NONE        = 0 << 1,
-    UI_BEHAVIOR_HOVERABLE   = 1 << 1,
-    UI_BEHAVIOR_CLICKABLE   = 2 << 1,
+    UI_BEHAVIOR_NONE        = 0,
+    UI_BEHAVIOR_HOVERABLE   = 1 << 0,
+    UI_BEHAVIOR_CLICKABLE   = 1 << 1,
 } ui_trait_type;
 
 typedef enum {
-    UI_STYLE_NONE               = 0 << 1,
-    UI_STYLE_ROUNDED_CORNERS    = 1 << 1
+    UI_STYLE_NONE               = 0,
+    UI_STYLE_ROUNDED_CORNERS    = 1 << 0
 } ui_style_config;
 
 typedef struct {
@@ -66,6 +66,7 @@ typedef struct {
         u32 height;
     } dim;
 
+    u32 id;
     str_t label;
 
     struct {
@@ -115,6 +116,10 @@ struct gui_t {
         } layout_cursor_stack;
     } internal;
 
+    struct {
+        u32 hovered_ui_id;
+    } state;
+
     ui_composition callback;
 };
 
@@ -127,6 +132,9 @@ void    gui_ui_compose_end(gui_t *gui);
 
 //INFO: pass above declared function that includes the gui compisition into here
 void    gui_set_composition(gui_t * const self, ui_composition callback);
+
+bool    gui_ui_ishovered(gui_t *const self, const u32 id);
+bool    gui_ui_isclicked(gui_t *const self, const u32 id);
 
 #define gui_update(self, app, ...) \
     ((self)->callback((app), (self), __VA_ARGS__))
@@ -174,7 +182,7 @@ void gui_destroy(gui_t *self)
 
 ui_region_t gui__internal_get_current_region(gui_t *gui,const ui_config_t config);
 
-vec4f_t gui__internal_get_color(gui_t *gui, ui_config_t config)
+void gui__internal_update_state(gui_t *gui, ui_config_t config)
 {
     window_t *win = window_get_current_active_window();
     const vec2i_t mouse_pos = window_mouse_get_position(win);
@@ -189,11 +197,17 @@ vec4f_t gui__internal_get_color(gui_t *gui, ui_config_t config)
         && (f32)mouse_pos.y > region.cursor.y
         && (f32)mouse_pos.y < region.cursor.y + region.height;
 
-    if ((config.composition.traits & UI_BEHAVIOR_HOVERABLE) && is_cursor_on_ui) {
-        return config.color.highlight;
-    }
+    gui->state.hovered_ui_id = is_cursor_on_ui ? config.id : 0;
+}
 
-    return config.color.base;
+bool gui__internal_is_cursor_on_ui(gui_t *gui, ui_config_t config)
+{
+    return gui->state.hovered_ui_id != 0 && config.id == gui->state.hovered_ui_id;
+}
+
+vec4f_t gui__internal_get_color(gui_t *gui, ui_config_t config)
+{
+    return gui__internal_is_cursor_on_ui(gui, config) ? config.color.highlight :config.color.base;
 }
 
 void gui__internal_ui_push_cursor_layout(gui_t *gui, const layout_ctx_t old_cursor__updated, const layout_ctx_t new_cursor)
@@ -226,6 +240,9 @@ void gui__internal_ui_validate_config(ui_config_t config)
 {
     ASSERT(config.dim.height > 0);
     ASSERT(config.dim.width > 0);
+    if (config.composition.traits & UI_BEHAVIOR_CLICKABLE) {
+        ASSERT(config.id != 0);
+    }
 }
 
 ui_region_t gui__internal_ui_add_child(gui_t *gui, const ui_config_t config)
@@ -338,6 +355,8 @@ void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
 {
     gui__internal_ui_validate_config(config);
     const ui_region_t child_region = gui__internal_ui_add_child(gui, config);
+
+    gui__internal_update_state(gui, config);
     const vec4f_t computed_color = gui__internal_get_color(gui, config);
 
     if (config.label.len) {
@@ -355,10 +374,6 @@ void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
     list_append(&gui->gfx.instanced_attrs, attr);
 }
 
-bool ui_is_clicked(const ui_t * const ui)
-{
-}
-
 
 
 void gui__internal_ui_reset(gui_t *self)
@@ -370,6 +385,7 @@ void gui__internal_ui_reset(gui_t *self)
         .max_row_height = 0,
         .starting_region = starting_region
     };
+    self->state.hovered_ui_id = 0;
 }
 
 void gui_render(gui_t *self)
@@ -496,4 +512,18 @@ void gui_set_composition(gui_t * const self, ui_composition callback)
 {
     self->callback = callback;
 }
+
+bool gui_ui_ishovered(gui_t *const self, const u32 id)
+{
+    return !id && self->state.hovered_ui_id == id;
+}
+
+bool gui_ui_isclicked(gui_t *const self, const u32 id)
+{
+    ASSERT(global_window);
+    return gui_ui_is_hot(self, id) && window_mouse_button_is_pressed(global_window, SDL_MOUSESTATE_JUST_PRESSED);
+}
+
+
+
 #endif

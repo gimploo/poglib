@@ -6,13 +6,6 @@
 #include "poglib/gfx/gl/types.h"
 #include "poglib/pipeline/render/common.h"
 #include <poglib/gfx/glrenderer3d.h>
-#include <stddef.h>
-
-typedef enum {
-    RENDER_COMMAND_DRAW_MODE_TRIANGLE = GL_TRIANGLES,
-    RENDER_COMMAND_DRAW_MODE_LINES = GL_LINES,
-    RENDER_COMMAND_DRAW_MODE_COUNT,
-} rendercommand_draw_mode;
 
 // NOTE: these only uses the prototype textures
 // TODO: maybe bring the prototyping instances outside to another system

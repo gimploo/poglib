@@ -10,16 +10,21 @@ typedef enum {
     PHYS_COLLIDER_TYPE_COUNT,
 } collider_type;
 
+typedef enum {
+    PHY_BP_STATIC = 0,
+    PHY_BP_DYNAMIC = 1,
+    PHY_BP_SENSORS = 2,
+    PHY_BP_DEBRIS = 3,
+    PHY_BP_COUNT
+} broadphase_type;
+
 typedef struct {
     JPH_BodyID body_id;
-    union {
-        JPH_ObjectLayer objectlayer;
-        collider_type collider_type;
-    } collider_type;
+    JPH_ObjectLayer objectlayer_type;
+    collider_type collider_type;
 } collider_t;
 
 typedef union {
-
     vec3f_t dim;
     struct {
         f32 height;
@@ -31,6 +36,7 @@ typedef union {
 collider_t collider_init(
     const vec3f_t position,
     const collider_dimension_t cd_dim,
+    const JPH_ObjectLayer objectlayer_type,
     const JPH_MotionType jph_motion_type,         //TODO: think of way to abstract this away 
     const collider_type type,
     const bool activate_only_on_impact)
@@ -47,7 +53,7 @@ collider_t collider_init(
                     cd_dim.height / 2.0f,
                     cd_dim.radius,
                     jph_motion_type, 
-                    type, 
+                    objectlayer_type, 
                     !activate_only_on_impact);
         break;
         case PHYS_COLLIDER_TYPE_SPHERE:
@@ -59,7 +65,7 @@ collider_t collider_init(
                     position, 
                     (vec3f_t){ cd_dim.dim.x / 2.0f, cd_dim.dim.y / 2.0f, cd_dim.dim.z / 2.0f }, 
                     jph_motion_type, 
-                    type, 
+                    objectlayer_type, 
                     !activate_only_on_impact);
         break;
         default: eprint("unknown type");
@@ -67,7 +73,8 @@ collider_t collider_init(
 
     return (collider_t) {
         .body_id = body_id,
-        .collider_type = type
+        .collider_type = type,
+        .objectlayer_type = objectlayer_type
     };
 }
 
