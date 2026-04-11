@@ -136,8 +136,9 @@ void    gui_set_composition(gui_t * const self, ui_composition callback);
 bool    gui_ui_ishovered(gui_t *const self, const u32 id);
 bool    gui_ui_isclicked(gui_t *const self, const u32 id);
 
-#define gui_update(self, app, ...) \
-    ((self)->callback((app), (self), __VA_ARGS__))
+#define gui_update(SELF, APP, ...) do {\
+    ((SELF)->callback((APP), (SELF), __VA_ARGS__));\
+} while(0);
 
 void    gui_render(gui_t *self);
 void    gui_destroy(gui_t *self);
@@ -197,7 +198,9 @@ void gui__internal_update_state(gui_t *gui, ui_config_t config)
         && (f32)mouse_pos.y > region.cursor.y
         && (f32)mouse_pos.y < region.cursor.y + region.height;
 
-    gui->state.hovered_ui_id = is_cursor_on_ui ? config.id : 0;
+    gui->state.hovered_ui_id = is_cursor_on_ui 
+        ? config.id 
+        : gui->state.hovered_ui_id;
 }
 
 bool gui__internal_is_cursor_on_ui(gui_t *gui, ui_config_t config)
@@ -376,7 +379,7 @@ void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
 
 
 
-void gui__internal_ui_reset(gui_t *self)
+void gui__internal_reset_layout_cursor(gui_t *self)
 {
     const ui_region_t starting_region = self->internal.layout_cursor_stack.buffer[0].starting_region;
     self->internal.layout_cursor_stack.top = 0;
@@ -385,6 +388,10 @@ void gui__internal_ui_reset(gui_t *self)
         .max_row_height = 0,
         .starting_region = starting_region
     };
+}
+
+void gui__internal_reset_state(gui_t *self)
+{
     self->state.hovered_ui_id = 0;
 }
 
@@ -394,7 +401,8 @@ void gui_render(gui_t *self)
         eprint("No ui composition provided!");
     }
 
-    gui__internal_ui_reset(self);
+    gui__internal_reset_layout_cursor(self);
+    gui__internal_reset_state(self);
 
     const matrix4f_t ortho_ndc = glms_ortho(0.0f, global_window->width, global_window->height, 0.0f, -2.0f, 2.0f);
 
@@ -515,13 +523,13 @@ void gui_set_composition(gui_t * const self, ui_composition callback)
 
 bool gui_ui_ishovered(gui_t *const self, const u32 id)
 {
-    return !id && self->state.hovered_ui_id == id;
+    return self->state.hovered_ui_id != 0 && self->state.hovered_ui_id == id;
 }
 
 bool gui_ui_isclicked(gui_t *const self, const u32 id)
 {
     ASSERT(global_window);
-    return gui_ui_is_hot(self, id) && window_mouse_button_is_pressed(global_window, SDL_MOUSESTATE_JUST_PRESSED);
+    return gui_ui_ishovered(self, id) && window_mouse_button_is_pressed(global_window, SDL_MOUSEBUTTON_LEFT);
 }
 
 

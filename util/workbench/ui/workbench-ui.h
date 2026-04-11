@@ -197,6 +197,11 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
             .label = str("collider"),
         });
         gui_ui_compose_end(gui);
+
+        if (gui_ui_isclicked(gui, 1)) {
+            printf("toggled collider view\n");
+        }
+
     }
     gui_ui_compose_end(gui);
 }
