@@ -326,8 +326,10 @@ INTERNAL void __mouse_update_position(window_t *window)
         .y = gl_mouse_y 
     };
 
+#ifndef DISABLE_SDL_MOUSE_LOGS
     SDL_Log("Mouse pos := (%i, %i)\n", x, y);
     SDL_Log("Mouse pos (norm) := (%f, %f)\n", gl_mouse_x, gl_mouse_y);
+#endif
 
     //NOTE: calculates relative mouse position from last frame
     i32 dx = 0.f, dy = 0.f;
