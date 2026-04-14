@@ -9,8 +9,12 @@
 |  | (Kbd, Mouse, AI) |       | (Raw Key States)  |                           |
 |  +------------------+       +---------+---------+                           |
 |                                       |                                     |
-|                                       V                                     |
-|  [STAGE 2: COMMAND BUFFER]                                                  |
+|                                       v                                     |
++=============================================================================+
+| [STAGE 2: COMMAND BUFFER] (poglib/pipeline/input)                           |
++=============================================================================+
+|                                                                             |
+|   command_buffer.h                                                          |
 |  +-------------------------+                                                |
 |  | Bitmask or Queue        |                                                |
 |  | {CMD_FWD, CMD_SPRINT...}|                                                |
@@ -19,9 +23,10 @@
 |               V                                                             |
 |                                                                             |
 +=============================================================================+
-| [STAGE 3: BEHAVIOR PIPELINE] (poglib/pipeline/behavior)                     |
+| [STAGE 3: BEHAVIOR PIPELINE] (poglib/pipeline/logic)                        |
 +=============================================================================+
 |                                                                             |
+|  state_stack.h                                                              |
 | +-------------------------------------------------------------------------+ |
 | |                                                                         | |
 | |  BEHAVIOR TICK (Pure Data Transformation)                               | |
@@ -51,6 +56,7 @@
 | [STAGE 4: PHYSICS PIPELINE] (poglib/pipeline/physics)                       |
 +=============================================================================+
 |                                                                             |
+|   jolt_solver.h                                                             |
 |  +-------------------------------------------------------+                  |
 |  | PHYSICS RESOLUTION (Jolt Physics Solver)              |                  |
 |  |                                                       |                  |
