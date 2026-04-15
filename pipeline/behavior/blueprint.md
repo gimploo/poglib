@@ -63,7 +63,7 @@
 |  | 1. Apply MovementIntent (forces/velocity)             |                  |
 |  | 2. Step Physics (poglib_physics_step)                 |                  |
 |  | 3. Update Transform Component                         |                  |
-|  | 4. Cache Physics Data  -------------------------------+---+
+|  | 4. Cache Physics Data  -------------------------------+---+              |
 |  |                                                       |   |              |
 |  +--------------------------+----------------------------+   |              |
 |                             | (Write)                        | (Store)      |
