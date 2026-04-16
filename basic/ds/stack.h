@@ -17,7 +17,7 @@ typedef struct stack_t {
     bool    __are_values_pointers;     // This variable checks if the list is a list of pointers 
    
     struct {
-        const arena_t * const arena;
+        arena_t * const arena;
         u32 mem_alignment;
     } internal;
 } stack_t ;
