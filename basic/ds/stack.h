@@ -25,17 +25,14 @@ typedef struct stack_t {
 
 #define             stack_init(CAPACITY, TYPE, PARENA)\
                         stack__internal_init((CAPACITY), #TYPE, sizeof(TYPE), (PARENA), _Alignof(TYPE))
-
+void *              stack_peak(const stack_t * const self);
 #define             stack_push(PSTACK, ELEM)\
-                        stack__internal_push((PSTACK), &(ELEM), sizeof(ELEM))
-
+                        stack__internal_push((PSTACK), (void *)&(ELEM), sizeof(ELEM))
 void *              stack_pop(stack_t *);
-
 #define             stack_is_empty(pstack)\
                         ((pstack)->__top == -1 ? true : false)
 #define             stack_is_full(pstack)\
                         ((pstack)->top == ((pstack)->capacity - 1) ? true : false)
-
 void                stack_print(stack_t *stack, void (*print_elem)(void *));
 void                stack_destroy(stack_t *);
 
@@ -133,6 +130,12 @@ void stack_destroy(stack_t *stack)
     stack->__capacity = 0;
     stack->__elem_size = 0;
     stack->len = 0;
+}
+
+void * stack_peak(const stack_t * const self)
+{
+    ASSERT(self->len);
+    return self->__data + self->__elem_size * self->__top;
 }
 
 #endif 

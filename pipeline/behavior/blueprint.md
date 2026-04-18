@@ -15,6 +15,7 @@
 +=============================================================================+
 |                                                                             |
 |   command_buffer.h                                                          |
+|   (Reverse lookup table) - [action -> input key]                            |
 |  +-------------------------+                                                |
 |  | Bitmask or Queue        |                                                |
 |  | {CMD_FWD, CMD_SPRINT...}|                                                |

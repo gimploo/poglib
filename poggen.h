@@ -1,7 +1,6 @@
 #pragma once
 #include "./util/assetmanager.h"
 #include "./poggen/scene.h"
-#include "poggen/action.h"
 #include "poglib/basic/arena.h"
 #include "poglib/physics/jolt-wrapper.h"
 
@@ -13,7 +12,7 @@
 ==============================================================================*/
 
 typedef struct {
-    bool enable_physics;
+    bool                enable_physics;
 } poggen_config_t;
 
 typedef struct {
@@ -156,7 +155,7 @@ void poggen_update(poggen_t *self, const f32 dt)
     scene_t *current_scene = self->current_scene;
     if (current_scene == NULL) eprint("Current scene is null");
 
-    current_scene->__input(current_scene, dt);
+    scene__internal_input_callback(current_scene, dt);
 
     if (self->physics_sys.phy_simulation_started)
         physics_sys_jolt_update(self->physics_sys.instance, dt);
