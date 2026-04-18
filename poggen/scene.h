@@ -2,6 +2,8 @@
 #include "../ecs/entitymanager.h"
 #include "../util/assetmanager.h"
 #include "poglib/basic/arena.h"
+#include "poglib/poggen/input/commandqueue.h"
+#include "poglib/poggen/input/commandregistry.h"
 
 // #include "./action.h"
 //TODO: the action map is a list, i dont like it this way, i might need to make 
@@ -22,6 +24,7 @@ typedef struct scene_t {
     assetmanager_t       *assets;
     entitymanager_t      manager;
     void                 *content;
+    commandqueue_t       commandqueue;
     bool                 __is_paused;
     bool                 __is_over;
     void                 (*__init)(struct scene_t *);
@@ -39,6 +42,7 @@ void * scene_alloc_content(scene_t * const self, const u64 content_size);
 #define             scene_get_engine(...)                                      global_poggen
 #define             scene_alloc_content(PSCENE, CONTENT_TYPE)\
                     (CONTENT_TYPE *)__impl_scene_alloc_content((PSCENE), sizeof(CONTENT_TYPE), _Alignof(CONTENT_TYPE))
+void                scene_register_input_commands(scene_t * const self, const commandregistry_t registry);
 
 
 
@@ -70,6 +74,11 @@ void * __impl_scene_alloc_content(scene_t * const self, const u64 content_size, 
    }
 
 
+void scene__internal_input_callback(scene_t * const self, const f32 dt) {
+    commandqueue_sync_input(&self->commandqueue);
+    self->__input(self, dt);
+}
+
 
 void __scene_destroy(scene_t *scene)
 {
@@ -87,6 +96,11 @@ void __scene_destroy(scene_t *scene)
     scene->__render = NULL;
     scene->__destroy = NULL;
     scene->__input = NULL;
+}
+
+void scene_register_input_commands(scene_t * const self, const commandregistry_t registry)
+{
+    self->commandqueue = commandqueue_init(&self->arena, registry);
 }
 
 #endif
