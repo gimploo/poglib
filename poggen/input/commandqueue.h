@@ -46,7 +46,6 @@ void cq__internal_print_u16_bitmask(uint16_t mask) {
 
 void commandqueue_sync_input(commandqueue_t * const self) {
     const u8 *keyboard_buffer = SDL_GetKeyboardState(NULL);
-    const sdl_mousebuttontype mouse_state = global_window->mouse.button;
     const commandregistry_t *commands = &self->registry;
 
     self->internal.bitmask = 0;
@@ -59,8 +58,12 @@ void commandqueue_sync_input(commandqueue_t * const self) {
             queue_put(&self->commands, command_type);
             self->internal.bitmask |= (1 << command_type);
             printf("KB Tracked %i\n", command_type);
-        } else if (self->registry.registry[command_type].type == COMMANDINPUTKEY_TYPE_MOUSE 
-            && mouse_state == self->registry.registry[command_type].sdl_mouse_key) {
+        } else if (
+            self->registry.registry[command_type].type == COMMANDINPUTKEY_TYPE_MOUSE 
+            && window_mouse_button_is_pressed(
+                global_window, 
+                self->registry.registry[command_type].sdl_mouse_key)
+        ) {
             queue_put(&self->commands, command_type);
             self->internal.bitmask |= (1 << command_type);
             printf("MS Tracked %i\n", command_type);

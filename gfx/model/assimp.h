@@ -19,6 +19,7 @@
 #include <poglib/external/assimp/include/assimp/scene.h>
 
 //TODO: materials implementation is fucked - need to learn how do this 
+//TODO: arena support
 
 #define MAX_BONES 128
 
