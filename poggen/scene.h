@@ -42,7 +42,7 @@ void * scene_alloc_content(scene_t * const self, const u64 content_size);
 #define             scene_get_engine(...)                                      global_poggen
 #define             scene_alloc_content(PSCENE, CONTENT_TYPE)\
                     (CONTENT_TYPE *)__impl_scene_alloc_content((PSCENE), sizeof(CONTENT_TYPE), _Alignof(CONTENT_TYPE))
-void                scene_register_input_commands(scene_t * const self, const commandregistry_t registry);
+void                scene_register_input_bindings(scene_t * const self, const commandregistry_t registry);
 
 
 
@@ -50,8 +50,7 @@ void                scene_register_input_commands(scene_t * const self, const co
 
 #ifndef IGNORE_POGGEN_SCENE_IMPLEMENTATION
 
-void * __impl_scene_alloc_content(scene_t * const self, const u64 content_size, const u8 memory_alignment)
-{
+void * __impl_scene_alloc_content(scene_t * const self, const u64 content_size, const u8 memory_alignment) {
     self->content = arena_reserve_aligned(&self->arena, content_size, memory_alignment);
     return self->content;
 }
@@ -79,9 +78,7 @@ void scene__internal_input_callback(scene_t * const self, const f32 dt) {
     self->__input(self, dt);
 }
 
-
-void __scene_destroy(scene_t *scene)
-{
+void __scene_destroy(scene_t *scene) {
     assert(scene);
 
     entitymanager_destroy(&scene->manager);
@@ -98,8 +95,7 @@ void __scene_destroy(scene_t *scene)
     scene->__input = NULL;
 }
 
-void scene_register_input_commands(scene_t * const self, const commandregistry_t registry)
-{
+void scene_register_input_bindings(scene_t * const self, const commandregistry_t registry) {
     self->commandqueue = commandqueue_init(&self->arena, registry);
 }
 

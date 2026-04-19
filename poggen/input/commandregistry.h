@@ -20,13 +20,13 @@ typedef struct {
         SDL_Scancode sdl_keyboard_key;
         sdl_mousebuttontype sdl_mouse_key;
     };
-} commandinputkey_t;
+} commandinputbinding_t;
 
 #define MAX_COMMAND_TYPE_ALLOWED 255
 
 typedef struct {
     u16                 count;
-    commandinputkey_t   registry[MAX_COMMAND_TYPE_ALLOWED];
+    commandinputbinding_t   registry[MAX_COMMAND_TYPE_ALLOWED];
 } commandregistry_t;
 
 

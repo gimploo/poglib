@@ -37,6 +37,8 @@ void                queue_clear(queue_t *queue);
 void                queue_print(queue_t *queue, void (*print)(void *));
 void                queue_dump(queue_t *queue);
 
+void                *queue_peek(const queue_t * const );
+
 void                queue_destroy(queue_t *queue);
 
 
@@ -221,6 +223,11 @@ void queue_print(queue_t *queue, void (*print_elem)(void *))
     printf("\n");
 }
 
+
+void * queue_peek(const queue_t * const self) {
+    ASSERT(self->len);
+    return self->__data + self->__end * self->__elem_size;
+}
 
 
 #endif 

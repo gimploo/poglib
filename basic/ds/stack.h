@@ -15,9 +15,9 @@ typedef struct stack_t {
     u64     __capacity;
     u64     __elem_size;
     bool    __are_values_pointers;     // This variable checks if the list is a list of pointers 
-   
+
     struct {
-        arena_t * const arena;
+        arena_t *arena;
         u32 mem_alignment;
     } internal;
 } stack_t ;
@@ -25,7 +25,7 @@ typedef struct stack_t {
 
 #define             stack_init(CAPACITY, TYPE, PARENA)\
                         stack__internal_init((CAPACITY), #TYPE, sizeof(TYPE), (PARENA), _Alignof(TYPE))
-void *              stack_peak(const stack_t * const self);
+void *              stack_peek(const stack_t * const self);
 #define             stack_push(PSTACK, ELEM)\
                         stack__internal_push((PSTACK), (void *)&(ELEM), sizeof(ELEM))
 void *              stack_pop(stack_t *);
@@ -132,7 +132,7 @@ void stack_destroy(stack_t *stack)
     stack->len = 0;
 }
 
-void * stack_peak(const stack_t * const self)
+void * stack_peek(const stack_t * const self)
 {
     ASSERT(self->len);
     return self->__data + self->__elem_size * self->__top;

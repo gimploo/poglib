@@ -31,7 +31,7 @@ typedef struct glcamera_t {
 } glcamera_t ;
 
 glcamera_t      glcamera_perspective(const vec3f_t pos, const vec2f_t theta);
-void            glcamera__set_scroll_speed(glcamera_t * const self, const f32 speed);
+void            glcamera_set_scroll_speed(glcamera_t * const self, const f32 speed);
 void            glcamera_process_input(glcamera_t * const self, const f32 dt);
 matrix4f_t      glcamera_getview(glcamera_t *self);
 
@@ -188,7 +188,7 @@ glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t radians)
     return o;
 }
 
-void glcamera__set_scroll_speed(glcamera_t * const self, const f32 speed)
+void glcamera_set_scroll_speed(glcamera_t * const self, const f32 speed)
 {
     self->scroll_speed = speed;
 }

@@ -159,6 +159,7 @@ void poggen_update(poggen_t *self, const f32 dt)
 
     if (self->physics_sys.phy_simulation_started)
         physics_sys_jolt_update(self->physics_sys.instance, dt);
+
     current_scene->__update(current_scene, dt);
 }
 
