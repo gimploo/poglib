@@ -1,4 +1,5 @@
 #pragma once
+#include <poglib/application.h>
 #include "./util/assetmanager.h"
 #include "./poggen/scene.h"
 #include "poglib/basic/arena.h"
@@ -108,7 +109,6 @@ void __impl_poggen_add_scene(poggen_t *self, const scene_t scene)
         scene.label, 
         mem_init((scene_t *)&scene, sizeof(scene_t))
     );
-    tmp->manager = entitymanager_init(10, &tmp->arena);
 
     if (!self->current_scene)
         self->current_scene = tmp;

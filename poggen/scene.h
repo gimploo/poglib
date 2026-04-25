@@ -1,5 +1,4 @@
 #pragma once
-#include "../ecs/entitymanager.h"
 #include "../util/assetmanager.h"
 #include "poglib/basic/arena.h"
 #include "poglib/poggen/input/commandqueue.h"
@@ -22,7 +21,6 @@ typedef struct scene_t {
     const char           *label;
     arena_t              arena;
     assetmanager_t       *assets;
-    entitymanager_t      manager;
     void                 *content;
     commandqueue_t       commandqueue;
     bool                 __is_paused;
@@ -61,7 +59,6 @@ void * __impl_scene_alloc_content(scene_t * const self, const u64 content_size, 
         .label          = #SCENE_NAME,\
         .assets         = NULL,\
         .arena          = arena_init(NULL, 5 * MB),\
-        .manager        = {0},\
         .content        = NULL,\
         .__is_paused    = false,\
         .__is_over      = false,\
@@ -81,7 +78,6 @@ void scene__internal_input_callback(scene_t * const self, const f32 dt) {
 void __scene_destroy(scene_t *scene) {
     assert(scene);
 
-    entitymanager_destroy(&scene->manager);
     scene->__destroy(scene);
 
     arena_destroy(&scene->arena)    ;

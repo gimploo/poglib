@@ -27,7 +27,7 @@ void __c_transform_update(c_transform_t *transform)
 
     // Translation
     transform->position = glms_vec3_add(transform->position, transform->velocity);
-    
+
     //Rotation
 }
 
