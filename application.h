@@ -57,7 +57,7 @@ typedef struct application_t {
 void            application_run(application_t * const app);
 
 #define         application_alloc_content(PAPP, TYPE)\
-                    (TYPE *)application__internal_alloc_content((PAPP), sizeof(TYPE), _Alignof(TYPE))
+                    (TYPE *)application__internal_alloc_content((PAPP), sizeof(TYPE))
 
 #define         application_get_content(PAPP)               (void *)(PAPP)->content.raw_data
 #define         application_get_window(PAPP)                (PAPP)->handle.window
@@ -124,6 +124,8 @@ void application_run(application_t * const app)
     flags = SDL_INIT_EVERYTHING;
 #endif
 
+    runtimectx_init();
+
     app->window.aspect_ratio = (f32)app->window.width / (f32)app->window.height;
     app->context.base_dir = __get_base_dir();
 
@@ -183,6 +185,7 @@ void application_run(application_t * const app)
 
     window_destroy();
     arena_destroy(&app->handle.arena);
+    runtimectx_destroy();
 
 #ifdef DEBUG
     dbg_destroy();
@@ -201,12 +204,11 @@ str_t application_get_absolute_filepath(application_t *app, const char *filepath
 }
 
 
-void * application__internal_alloc_content(application_t * const app, const u64 content_size, const u32 memory_alignment)
+void * application__internal_alloc_content(application_t * const app, const u64 content_size)
 {
-    void * const content = arena_reserve_aligned(
+    void * const content = arena_reserve(
             &app->handle.arena,
-            content_size,
-            memory_alignment);
+            content_size);
     app->content = (buffer_t) {
         .raw_data = content,
         .size = content_size

@@ -18,7 +18,6 @@ typedef struct stack_t {
 
     struct {
         arena_t *arena;
-        u32 mem_alignment;
     } internal;
 } stack_t ;
 
@@ -52,14 +51,13 @@ stack_t stack__internal_init(const u64 capacity, const char *elem_type, const u3
 
     stack_t o = {
         .len                   = 0,
-        .__data                = (u8 *)arena_reserve_aligned(arena, capacity * elem_size, mem_alignment),
+        .__data                = (u8 *)arena_reserve(arena, capacity * elem_size),
         .__top                 = -1,
         .__capacity            = capacity,
         .__elem_size           = elem_size,
         .__are_values_pointers = flag,
         .internal = {
             .arena = arena,
-            .mem_alignment = mem_alignment
         }
     };
 
@@ -122,8 +120,7 @@ void stack_destroy(stack_t *stack)
     arena_giveback(
         stack->internal.arena, 
         stack->__data, 
-        stack->__elem_size * stack->__capacity, 
-        stack->internal.mem_alignment);
+        stack->__elem_size * stack->__capacity);
 
     stack->__data = NULL;
     stack->__top = -1;
