@@ -439,10 +439,6 @@ void glmodel_destroy(glmodel_t *self)
 
     animator_destroy(&self->animator);
 
-    if (self->bone_name_to_index) {
-        hashtable_destroy(self->bone_name_to_index);
-    }
-
     aiReleaseImport(self->scene);
     arena_destroy(&self->arena);
 
