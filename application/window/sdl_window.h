@@ -373,7 +373,9 @@ static inline window_t __subwindow_init(const char *title, u64 width, u64 height
     glewExperimental = true; // if using GLEW version 1.13 or earlier
     output.__glcontext = SDL_GL_CreateContext(output.__sdl_window);
     if (!output.__glcontext) eprint("SDL Error: %s\n", SDL_GetError());
-    SDL_GL_MakeCurrent(output.__sdl_window, output.__glcontext);
+    if (SDL_GL_MakeCurrent(output.__sdl_window, output.__glcontext) != 0) {
+        eprint("SDL_GL_MakeCurrent Error: %s\n", SDL_GetError());
+    }
 
     GLenum glewError = glewInit();
     if (glewError != GLEW_OK) eprint("GLEW Error: %s\n", glewGetErrorString(glewError));
@@ -429,7 +431,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 
     u32 WinFlags = 0;
 #ifdef __gl_h_
-    WinFlags = SDL_WINDOW_OPENGL ;
+    WinFlags = SDL_WINDOW_OPENGL;
 #endif
 
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
@@ -455,8 +457,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3))
         eprint("SDL GL Error: %s\n", SDL_GetError());
 
-    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 
-                        SDL_GL_CONTEXT_PROFILE_CORE))
+    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE))
         eprint("SDL GL Error: %s\n", SDL_GetError());
 
     if (SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1))
@@ -465,21 +466,30 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     if (SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24))
         eprint("SDL GL Error: %s\n", SDL_GetError());
 
-    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 
-            SDL_GL_CONTEXT_PROFILE_COMPATIBILITY))
-        eprint("SDL GL Error: %s\n", SDL_GetError());
-
 #endif 
 
 
 #ifdef __gl_h_
     glewExperimental = true; // if using GLEW version 1.13 or earlier
     win.__glcontext = SDL_GL_CreateContext(win.__sdl_window);
-    SDL_GL_SetSwapInterval(0);
-    if (!win.__glcontext) eprint("SDL GL Error: %s\n", SDL_GetError());
+    if (!win.__glcontext) 
+        eprint("SDL GL Error: %s\n", SDL_GetError());
 
+    if (SDL_GL_MakeCurrent(win.__sdl_window, win.__glcontext) != 0) {
+        eprint("SDL_GL_MakeCurrent Error: %s\n", SDL_GetError());
+    }
+
+    SDL_GL_SetSwapInterval(0);
     GLenum glewError = glewInit();
-    if (glewError != GLEW_OK) eprint("GLEW Error: %s\n", glewGetErrorString(glewError));
+    if (glewError != GLEW_OK) {
+        const char *err_cstr = (const char *)glewGetErrorString(glewError);
+        //NOTE: work around for running the engine on wayland after recent update. 
+        if (!strcmp("No GLX display", err_cstr)) {
+            logging("Glew reported no glx display, but continuing ...");
+        } else {
+            eprint("GLEW Error: %s\n", err_cstr);
+        }
+    }
 
     printf("[OUTPUT] Using OpenGL renderer version (%s)\n", glGetString(GL_VERSION));
 
