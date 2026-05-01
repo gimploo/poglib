@@ -3,6 +3,7 @@
 #include "../common.h"
 
 //TODO: use arenas
+//TODO: bring better cache locality
 
 /*==============================================================================
                         - DYNAMIC ARRAY DATA STRUCTURE -

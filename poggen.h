@@ -1,8 +1,9 @@
 #pragma once
 #include <poglib/application.h>
-#include "./util/assetmanager.h"
+//#include "./util/assetmanager.h"
 #include "./poggen/scene.h"
 #include "poglib/basic/arena.h"
+#include "poglib/basic/ds/hashtable.h"
 #include "poglib/physics/jolt-wrapper.h"
 
 //TODO: collision setup is done during engine init phase - thinking whether we could
@@ -24,7 +25,6 @@ typedef struct {
 typedef struct poggen_t {
 
     poggen_config_t     config;
-    assetmanager_t      assets;
     hashtable_t         scenes;
     scene_t             *current_scene;
     bgtask_manager_t    bg_task_manager;
@@ -41,9 +41,9 @@ typedef struct poggen_t {
 global poggen_t     *global_poggen = NULL;
 
 poggen_t *                          poggen_init(application_t * const app, const poggen_config_t config);
-#define                             poggen_add_scene(PGEN, SCENE_NAME)                          __impl_poggen_add_scene((PGEN), __impl_scene_init(SCENE_NAME))
-void                                poggen_remove_scene(poggen_t *self, const char *label);
-void                                poggen_change_scene(poggen_t *self, const char *scene_label);
+#define                             poggen_add_scene(PGEN, SCENE_NAME)                          poggen__internal_add_scene((PGEN), __impl_scene_init(SCENE_NAME))
+void                                poggen_remove_scene(poggen_t *self, str_t label);
+void                                poggen_change_scene(poggen_t *self, str_t scene_label);
 
 void                                poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt_rules_config_t config);
 window_t *                          poggen_get_window(const poggen_t *self);
@@ -77,8 +77,8 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
 
     poggen_t tmp =  (poggen_t ){
         .config         = config,
-        .assets         = assetmanager_init(),
-        .scenes         = hashtable_init(MAX_SCENES_ALLOWED, scene_t, &app->handle.arena),
+        //.assets         = assetmanager_init(),
+        .scenes         = hashtable_init(MAX_SCENES_ALLOWED, HT_KEY_TYPE_STR, scene_t, &app->handle.arena),
         .current_scene  = NULL,
         .arena          = arena,
         .bg_task_manager = bgtask_manager_init(),
@@ -100,44 +100,45 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
     return global_poggen;
 }
 
-void __impl_poggen_add_scene(poggen_t *self, const scene_t scene)
+void poggen__internal_add_scene(poggen_t *self, const scene_t scene_config)
 {
     assert(self);
 
-    scene_t *tmp = (scene_t *)hashtable_insert(
+    scene_t * const scene = mem_init((scene_t *)&scene_config, sizeof(scene_t));
+    hashtable_insert(
         &self->scenes, 
-        scene.label, 
-        mem_init((scene_t *)&scene, sizeof(scene_t))
+        (hashtable_key_t){scene_config.label},
+        scene
     );
 
     if (!self->current_scene)
-        self->current_scene = tmp;
+        self->current_scene = scene;
 
     if (self->config.enable_physics && !self->physics_sys.phy_simulation_started) {
         physics_sys_jolt_start_simulation(self->physics_sys.instance);
         self->physics_sys.phy_simulation_started = true;
     }
 
-    tmp->__init(tmp);
+    scene->__init(scene);
 }
 
 
-void poggen_remove_scene(poggen_t *self, const char *label)
+void poggen_remove_scene(poggen_t *self, const str_t label)
 {
     assert(self);
-    assert(label);
+    assert(label.len);
 
-    hashtable_delete(&self->scenes, label);
+    hashtable_delete(&self->scenes, (hashtable_key_t){label});
 }
 
-void poggen_change_scene(poggen_t *self, const char *scene_label)
+void poggen_change_scene(poggen_t *self, const str_t scene_label)
 {
     assert(self);
-    assert(scene_label);
+    assert(scene_label.len);
 
     const hashtable_t *table = &self->scenes;
 
-    scene_t *scene = (scene_t *)hashtable_get_value(table, scene_label);
+    scene_t *scene = (scene_t *)hashtable_get_value(table, (hashtable_key_t){scene_label});
     assert(scene);
     printf("SCENE UPDATED FROM (%s) TO (%s)\n", self->current_scene->label, scene->label);
     self->current_scene = scene;
@@ -167,10 +168,11 @@ void poggen_destroy(poggen_t *self)
 {
     assert(self);
 
-    assetmanager_destroy(&self->assets);
-    hashtable_iterator(&self->scenes, entry) {
-        __scene_destroy((scene_t *)hashtable_get_entry_value(&self->scenes, entry));
-        mem_free((void *)hashtable_get_entry_value(&self->scenes, entry), sizeof(scene_t));
+    //assetmanager_destroy(&self->assets);
+    hashtable_iterator(&self->scenes, tableentry) {
+        hashtable_entry_t *entry = tableentry;
+        __scene_destroy(entry->value);
+        mem_free(entry->value, sizeof(scene_t));
     }
     hashtable_destroy(&self->scenes);
     bgtask_manager_destroy(&self->bg_task_manager);
