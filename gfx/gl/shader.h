@@ -164,14 +164,14 @@ static inline void __shader_load_from_file(glshader_t *shader, const char *verte
 
     file_t vs_file = file_init(vertex_source_path, "r");
         char *vs_code = arena 
-            ? arena_reserve_raw(arena, vs_file.size + 1) 
+            ? arena_reserve(arena, vs_file.size + 1) 
             : (char *)calloc(1, vs_file.size + 1);
         file_readall(&vs_file, vs_code, vs_file.size);
     file_destroy(&vs_file);
 
     file_t fg_file = file_init(fragment_source_path, "r");
         char *fs_code = arena 
-            ? arena_reserve_raw(arena, fg_file.size + 1)
+            ? arena_reserve(arena, fg_file.size + 1)
             : (char *)calloc(1, fg_file.size + 1);
         file_readall(&fg_file, fs_code, fg_file.size);
     file_destroy(&fg_file);

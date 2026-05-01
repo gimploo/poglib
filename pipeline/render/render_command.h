@@ -244,7 +244,7 @@ buffer_t rendercommand_get_instance_buffer(const list_t *const commands,
     const rendercommand_t *command = list_get_value(commands, 0);
 
     buffer_t buffer = {
-        .raw_data = (u8 *)arena_reserve_array(arena, rendercommand_instance_data_t, commands->len),
+        .raw_data = (u8 *)arena_reserve(arena, sizeof(rendercommand_instance_data_t) * commands->len),
         .size = sizeof(rendercommand_instance_data_t) * commands->len
     };
 
@@ -304,7 +304,7 @@ buffer_t rendercommand__internal_merge_all_vtx_together(const list_t *const comm
         maximum_size += command->call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].size;
     }
 
-    u8 *buffer = arena_reserve_raw(arena, maximum_size);
+    u8 *buffer = arena_reserve(arena, maximum_size);
     u64 top = 0;
     list_iterator(commands, iter) {
         const rendercommand_t *command = iter;

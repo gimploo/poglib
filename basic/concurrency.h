@@ -113,7 +113,7 @@ i32 bgtask__internal_thread_wrapper(void *data)
         );
     }
     atomic_store_explicit(&payload->task.meta.async_obj->is_done, true, memory_order_release);
-    arena_giveback(&payload->arenas.scratch, payload, sizeof(thread_payload_t), 0);
+    arena_giveback(&payload->arenas.scratch, payload, sizeof(thread_payload_t));
     return 0;
 }
 
@@ -126,7 +126,7 @@ void bgtask_manager_run_all_tasks(bgtask_manager_t *self)
         queue_get_in_buffer(&self->tasks, &task, sizeof(task));
 
         arena_t scratch = arena_init(&self->arena, KB);
-        thread_payload_t *payload = arena_reserve_raw(&scratch, sizeof(thread_payload_t));
+        thread_payload_t *payload = arena_reserve(&scratch, sizeof(thread_payload_t));
 
         *payload = (thread_payload_t){
             .arenas = {

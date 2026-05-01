@@ -2,6 +2,8 @@
 #include <poglib/basic.h>
 #include "./asset.h"
 
+//FIXME: fixes required here 
+
 
 /*==============================================================================
                         -- ASSET MANAGER --
@@ -38,7 +40,7 @@ assetmanager_t assetmanager_init(void)
 {
     return (assetmanager_t ){
         .assetmaps = {
-            [AT_GLSHADER]       = hashtable_init(10, asset_t, NULL),
+            [AT_GLSHADER]       = hashtable_init(10, HT_KEYasset_t, NULL),
             [AT_GLTEXTURE2D]    = hashtable_init(10, asset_t, NULL),
             [AT_SOUND_WAV]      = hashtable_init(10, asset_t, NULL),
             [AT_FONT_FREETYPE]  = hashtable_init(10, asset_t, NULL),
@@ -107,14 +109,14 @@ void assetmanager_destroy(assetmanager_t *self)
         {
             case AT_GLSHADER: 
                 hashtable_iterator(table, asset) {
-                    glshader_t *shader = ((table_entry_t *)asset)->ptr;
+                    glshader_t *shader = ((ht__internal_table_entry_t *)asset)->ptr;
                     glshader_destroy(shader);
                     mem_free(asset, sizeof(asset_t));
                 }
             break;
             case AT_GLTEXTURE2D:
                 hashtable_iterator(table, asset) {
-                    gltexture2d_t *tex = ((table_entry_t *)asset)->ptr;
+                    gltexture2d_t *tex = ((ht__internal_table_entry_t *)asset)->ptr;
                     gltexture2d_destroy(tex);
                     mem_free(asset, sizeof(asset_t));
                 }
@@ -122,7 +124,7 @@ void assetmanager_destroy(assetmanager_t *self)
 
             case AT_FONT_FREETYPE:
                 hashtable_iterator(table, asset) {
-                    glfreetypefont_t *font = ((table_entry_t *)asset)->ptr;
+                    glfreetypefont_t *font = ((ht__internal_table_entry_t *)asset)->ptr;
                     glfreetypefont_destroy(font);
                     mem_free(asset, sizeof(asset_t));
                 }
