@@ -26,7 +26,7 @@ slot_t              slot_init(const u64 array_capacity, const u64 elem_size, con
 void *              slot_insert(slot_t *, const u64 index, const void *value, const u64 value_size);
 void *              slot_update(slot_t *, const u64 index, const void *value, const u64 value_size);
 void                slot_insert_multiple(slot_t *self, const u8 *arraybuffer, const u32 arraylen, const u32 elem_size);
-bool                slot_is_index_occupied(const slot_t *self, const u32 index);
+bool                slot_is_index_occupied(const slot_t * const self, const u32 index);
 #define             slot_append(PSLOTARRAY, VALUE)                         slot_insert((PSLOTARRAY), (PSLOTARRAY)->len, &(VALUE), sizeof(VALUE))
 #define             slot_delete(PSLOTARRAY, INDEX)                         __impl_slot_delete((PSLOTARRAY), (INDEX))
 slot_t              slot_clone(const slot_t *slot);
@@ -94,7 +94,7 @@ slot_t slot_init(const u64 array_capacity, const u64 elem_size, const bool store
     return o;
 }
 
-bool __check_if_empty(const slot_t *table, const u64 index)
+bool slot_is_index_occupied(const slot_t * const table, const u32 index)
 {
     return table->internal.index_table[index];
 }
@@ -109,21 +109,26 @@ void * __slot_get_reference_to_only_value_at_index(const slot_t *table, const u6
 
 
 void * slot_insert(
-        slot_t *table,
-        const u64   index, 
-        const void  *value_addr, 
-        const u64   value_size)
+        slot_t * const table,
+        const u64 index, 
+        const void *value_addr, 
+        const u64 value_size)
 { 
     if (table == NULL) eprint("table argument is null");
     if (value_size != table->internal.elem_size) eprint("expected value size (%li) but got (%li)", table->internal.elem_size, value_size);
     ASSERT(index >= 0 && index < table->internal.capacity);
 
-    if (!__check_if_empty(table, index)) {
-        memcpy(table->data + (index * table->internal.elem_size), value_addr, table->internal.elem_size);
-        table->internal.index_table[index] = true;
-    } else {
+    if (slot_is_index_occupied(table, index)) {
         eprint("slot at [%li] index is not empty", index);
     }
+
+    if (value_addr) {
+        memcpy(table->data + (index * table->internal.elem_size), value_addr, table->internal.elem_size);
+    } else {
+        memset(table->data + (index * table->internal.elem_size), 0, table->internal.elem_size);
+    }
+
+    table->internal.index_table[index] = true;
     table->len++;
     return __slot_get_reference_to_only_value_at_index(table, index);
 }
@@ -138,7 +143,7 @@ void * slot_update(
     if (value_size != table->internal.elem_size) eprint("expected value size (%li) but got (%li)", table->internal.elem_size, value_size);
     ASSERT(index >= 0 && index < table->internal.capacity);
 
-    if (__check_if_empty(table, index)) {
+    if (slot_is_index_occupied(table, index)) {
 
         memcpy(
             table->data + (index * table->internal.elem_size), 
@@ -280,11 +285,6 @@ void slot_insert_multiple(
                 arr + (elem_size * i), 
                 elem_size);
     }
-}
-
-inline bool slot_is_index_occupied(const slot_t *self, const u32 index)
-{
-    return __check_if_empty(self, index);
 }
 
 #endif

@@ -51,6 +51,7 @@ void            hashtable_delete(hashtable_t * const table, const hashtable_key_
 const void *    hashtable_get_value(const hashtable_t * const table, const hashtable_key_t key);
 void            hashtable_print(const hashtable_t * const table, void (*print)(void *));
 bool            hashtable_has_key(const hashtable_t * const table, const hashtable_key_t key);
+hashtable_key_t hashtable_get_key_from_value(hashtable_t * const self, const void * const value);
 void            hashtable_destroy(hashtable_t * const table);
 
 
@@ -267,6 +268,19 @@ bool hashtable_has_key(const hashtable_t *table, const hashtable_key_t key)
         index = (index + 1) % entries_capacity;
         probe_distance += 1;
     }
+}
+
+hashtable_key_t hashtable_get_key_from_value(hashtable_t * const self, const void * const value)
+{
+    ASSERT(value);
+    hashtable_iterator(self, iter)
+    {
+        const hashtable_entry_t *entry = iter;
+        if (entry->value == value) {
+            return entry->key;
+        }
+    }
+    eprint("tried to get key from a value that doesnot exist in the table");
 }
 
 #endif
