@@ -40,3 +40,26 @@ void mem_free(void *data, const u32 data_size)
     memset(data, 0, data_size);
     free(data);
 }
+
+u32 get_index_from_bitflag(const u32 bitflag) {
+    ASSERT(bitflag != 0);
+
+#if defined(_MSC_VER)
+    // MSVC (Windows) intrinsic
+    unsigned long index;
+    _BitScanForward(&index, bitflag);
+    return index;
+#elif defined(__GNUC__) || defined(__clang__)
+    // GCC / Clang (Linux/MinGW) intrinsic
+    return __builtin_ctz(bitflag);
+#else
+    // Fallback: De Bruijn sequence or simple loop if intrinsics are unavailable
+    uint32_t index = 0;
+    while ((bitflag & 1) == 0) {
+        bitflag >>= 1;
+        index++;
+    }
+    return index;
+#endif
+}
+

@@ -4,6 +4,7 @@
 #include "./poggen/scene.h"
 #include "poglib/basic/arena.h"
 #include "poglib/basic/ds/hashtable.h"
+#include "poglib/ecs.h"
 #include "poglib/physics/jolt-wrapper.h"
 
 //TODO: collision setup is done during engine init phase - thinking whether we could
@@ -15,6 +16,7 @@
 
 typedef struct {
     bool                enable_physics;
+    bool                enable_ecs;
 } poggen_config_t;
 
 typedef struct {
@@ -34,7 +36,10 @@ typedef struct poggen_t {
         application_t *const app;
     } handle;
 
-    poggen__internal_physics_t physics_sys;
+    struct {
+        poggen__internal_physics_t physics;
+        ecs_t                      ecs;
+    } systems;
 
 } poggen_t ;
 
@@ -85,10 +90,13 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
         .handle = {
             .app          = app
         },
-        .physics_sys = config.enable_physics ? (poggen__internal_physics_t){
-            .instance = physics_sys_jolt_init(&arena),
-            .phy_simulation_started = false
-        } : (poggen__internal_physics_t){0}
+        .systems = {
+            .ecs = config.enable_ecs ? ecs_init() : (ecs_t){0},
+            .physics = config.enable_physics ? (poggen__internal_physics_t){
+                .instance = physics_sys_jolt_init(&arena),
+                .phy_simulation_started = false
+            } : (poggen__internal_physics_t){0},
+        },
     };
     poggen_t *output = (poggen_t *)calloc(1, sizeof(poggen_t ));
     memcpy(output, &tmp, sizeof(tmp));
@@ -114,9 +122,9 @@ void poggen__internal_add_scene(poggen_t *self, const scene_t scene_config)
     if (!self->current_scene)
         self->current_scene = scene;
 
-    if (self->config.enable_physics && !self->physics_sys.phy_simulation_started) {
-        physics_sys_jolt_start_simulation(self->physics_sys.instance);
-        self->physics_sys.phy_simulation_started = true;
+    if (self->config.enable_physics && !self->systems.physics.phy_simulation_started) {
+        physics_sys_jolt_start_simulation(self->systems.physics.instance);
+        self->systems.physics.phy_simulation_started = true;
     }
 
     scene->__init(scene);
@@ -148,7 +156,7 @@ void poggen_update(poggen_t *self, const f32 dt)
 {
     assert(self);
 
-    if (self->config.enable_physics && self->physics_sys.instance && !self->physics_sys.phy_simulation_started)
+    if (self->config.enable_physics && self->systems.physics.instance && !self->systems.physics.phy_simulation_started)
         eprint("Missed to register physics interaction rules, else DISABLE physics in config passed to engine");
 
     bgtask_manager_run_all_tasks(&self->bg_task_manager);
@@ -158,8 +166,8 @@ void poggen_update(poggen_t *self, const f32 dt)
 
     scene__internal_input_callback(current_scene, dt);
 
-    if (self->physics_sys.phy_simulation_started)
-        physics_sys_jolt_update(self->physics_sys.instance, dt);
+    if (self->systems.physics.phy_simulation_started)
+        physics_sys_jolt_update(self->systems.physics.instance, dt);
 
     current_scene->__update(current_scene, dt);
 }
@@ -178,7 +186,10 @@ void poggen_destroy(poggen_t *self)
     bgtask_manager_destroy(&self->bg_task_manager);
 
     if (self->config.enable_physics)
-        physics_sys_jolt_destroy(self->physics_sys.instance);
+        physics_sys_jolt_destroy(self->systems.physics.instance);
+
+    if (self->config.enable_ecs)
+        ecs_destroy(&self->systems.ecs);
 
     arena_destroy(&self->arena);
 
@@ -191,10 +202,10 @@ void poggen_destroy(poggen_t *self)
 void poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt_rules_config_t config)
 {
     ASSERT(self->config.enable_physics);
-    ASSERT(self->physics_sys.instance);
+    ASSERT(self->systems.physics.instance);
 
-    physics_sys_jolt_set_interaction_rules(self->physics_sys.instance, config);
-    physics_sys_jolt_start_simulation(self->physics_sys.instance);
+    physics_sys_jolt_set_interaction_rules(self->systems.physics.instance, config);
+    physics_sys_jolt_start_simulation(self->systems.physics.instance);
 }
 
 physics_sys_jolt_event_queue_t * poggen_get_physics_collision_events(const poggen_t * const self)
@@ -203,8 +214,8 @@ physics_sys_jolt_event_queue_t * poggen_get_physics_collision_events(const pogge
         eprint("Enable physics first, to use this");
     }
 
-    ASSERT(self->physics_sys.instance);
-    return physics_sys_get_collision_event_queue(self->physics_sys.instance);
+    ASSERT(self->systems.physics.instance);
+    return physics_sys_get_collision_event_queue(self->systems.physics.instance);
 }
 
 #endif
