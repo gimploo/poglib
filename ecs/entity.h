@@ -17,11 +17,11 @@ struct ecs_entitymanager_t {
 };
 
 
-ecs_entitymanager_t ecs_entitymanager_init(arena_t * const arena)
+ecs_entitymanager_t ecs_entitymanager(arena_t * const arena)
 {
     ASSERT(arena);
     return (ecs_entitymanager_t) {
-        .entities = slot_init(MAX_ENTITY_COUNT, sizeof(ecs_entity_t), false, arena),
+        .entities = slot_init(MAX_ENTITY_COUNT, sizeof(ecs_entity_t), arena),
         .lookup = hashtable_init(MAX_ENTITY_COUNT, HT_KEY_TYPE_U32, u32, arena)
     };
 }
@@ -62,10 +62,3 @@ void ecs_entitymanager_remove(ecs_entitymanager_t * const self, const u32 entity
     hashtable_insert(&self->lookup, (hashtable_key_t){ .u32 = swap_entity->id }, swap_entity_idx);
 }
 
-void ecs_entitymanager_destroy(ecs_entitymanager_t *self)
-{
-    ASSERT(self);
-
-    slot_destroy(&self->entities);
-    hashtable_destroy(&self->lookup);
-}

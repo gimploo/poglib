@@ -4,12 +4,14 @@
 #include "./ecs/entity.h"
 #include "./ecs/component.h"
 #include "./ecs/system.h"
+#include "poglib/basic/ds/slot.h"
 
 typedef struct {
     arena_t arena;
     struct {
         ecs_entitymanager_t         entitymanager;
         ecs_componentmanager_t      componentmanager;
+        ecs_systemmanager_t         systemmanager;
     } managers;
 
     struct {
@@ -19,6 +21,7 @@ typedef struct {
 
 
 ecs_t           ecs_init(void);
+void            ecs_update(ecs_t *const self);
 void            ecs_entity_add(ecs_t * const self, const u32 component_signature);
 void            ecs_entity_remove(ecs_t * const self, const u32 entityId);
 void            ecs_destroy(ecs_t * const self);
@@ -36,7 +39,9 @@ ecs_t ecs_init(void)
             .entity_generator_counter = -1,
         },
         .managers = {
-            .entitymanager = ecs_entitymanager_init(&arena)
+            .entitymanager = ecs_entitymanager(&arena),
+            .componentmanager = ecs_componentmanager(&arena),
+            .systemmanager = ecs_systemmanager(&arena),
         }
     };
 }
@@ -67,6 +72,19 @@ void ecs_entity_remove(ecs_t * const self, const u32 entityId)
         entityId
     );
 }
+
+void ecs_update(ecs_t *const self)
+{
+    ASSERT(self);
+    slot_iterator(&self->managers.componentmanager.componentpool_slots, component_pool)
+    {
+        if(slot_is_index_occupied(&self->managers.systemmanager.systems, slot_iterator_index)) {
+            ecs_system_callback callback = slot_get_value(&self->managers.systemmanager.systems, slot_iterator_index);
+            callback(component_pool);
+        }
+    }
+}
+
 
 void ecs_destroy(ecs_t * const self)
 {

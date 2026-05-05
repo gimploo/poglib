@@ -169,6 +169,10 @@ void poggen_update(poggen_t *self, const f32 dt)
     if (self->systems.physics.phy_simulation_started)
         physics_sys_jolt_update(self->systems.physics.instance, dt);
 
+    if (self->config.enable_ecs) {
+        ecs_update(&self->systems.ecs);
+    }
+
     current_scene->__update(current_scene, dt);
 }
 
