@@ -18,12 +18,11 @@ typedef struct {
     bool    __are_values_pointers;
     struct {
         arena_t *arena;
-        u8 mem_alignment;
     } internal;
 } queue_t ;
 
 
-#define             queue_init(CAPACITY, TYPE, PARENA)                          __impl_queue_init((CAPACITY), sizeof(TYPE), #TYPE, _Alignof(TYPE), (PARENA))
+#define             queue_init(CAPACITY, TYPE, PARENA)                          __impl_queue_init((CAPACITY), sizeof(TYPE), #TYPE, (PARENA))
 
 #define             queue_put(PQUEUE, ELEM)                                     __impl_queue_put((PQUEUE), &(ELEM), sizeof(ELEM))
 #define             queue_get(PQUEUE)                                           __impl_queue_get((PQUEUE)) 
@@ -52,7 +51,7 @@ void queue_destroy(queue_t *queue)
 {
     assert(queue);
     if (queue->internal.arena) {
-        arena_giveback(queue->internal.arena, queue->__data, queue->__elem_size * queue->__capacity, queue->internal.mem_alignment);
+        arena_giveback(queue->internal.arena, queue->__data, queue->__elem_size * queue->__capacity);
     } else {
         free(queue->__data);
     }
@@ -98,7 +97,7 @@ void queue_dump(queue_t *queue)
 
 
 
-queue_t __impl_queue_init(u64 capacity, u64 elem_size, const char *elem_type, const u8 mem_alignment, arena_t * const arena)
+queue_t __impl_queue_init(u64 capacity, u64 elem_size, const char *elem_type, arena_t * const arena)
 {
     assert(capacity > 0);
     assert(elem_type);
@@ -107,7 +106,7 @@ queue_t __impl_queue_init(u64 capacity, u64 elem_size, const char *elem_type, co
     const bool flag = elem_type[strlen(elem_type) - 1] == '*';
     return (queue_t) {
         .len = 0 ,
-        .__data = arena ? arena_reserve_aligned(arena, elem_size * capacity, mem_alignment) : (u8 *)calloc(capacity, elem_size),
+        .__data = arena ? arena_reserve(arena, elem_size * capacity) : (u8 *)calloc(capacity, elem_size),
         .__start = 0,
         .__end = 0,
         .__capacity = capacity,
@@ -115,7 +114,6 @@ queue_t __impl_queue_init(u64 capacity, u64 elem_size, const char *elem_type, co
         .__are_values_pointers = flag,
         .internal = {
             .arena = arena,
-            .mem_alignment = mem_alignment
         }
     };
 }

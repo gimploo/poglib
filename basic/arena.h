@@ -8,13 +8,14 @@
  *                      -- ARENA MEMORY ALLOCATOR --
 ================================================================================*/
 
+//NOTE: supports only 16 byte alignment
+
+typedef struct free_chunks_t free_chunks_t;
 struct free_chunks_t {
     u8 *memory;
-    u8 alignment;
+    free_chunks_t *next;
     u32 size;
-    struct free_chunks_t *next;
 };
-typedef struct free_chunks_t free_chunks_t;
 
 struct arena_t {
     u8 *memory;
@@ -32,24 +33,21 @@ struct arena_t {
 typedef struct arena_t arena_t;
 
 arena_t     arena_init(arena_t *, u32 capacity);
-#define     arena_reserve(PARENA, TYPE)\
-            (TYPE *)arena_reserve_aligned((PARENA), sizeof(TYPE), _Alignof(TYPE))
-#define     arena_reserve_array(PARENA, TYPE, COUNT)\
-            (TYPE *)arena_reserve_aligned((PARENA), sizeof(TYPE) * (COUNT), _Alignof(TYPE))
-void *      arena_reserve_raw(arena_t *self, u32 memory_size);
-void *      arena_reserve_aligned(arena_t *self, const u32 memory_size, const u8 memory_alignment);
+void *      arena_reserve(arena_t *self, u32 memory_size);
+void        arena_giveback(arena_t *self, const void *ptr, const u32 size);
 void        arena_clear(arena_t *self);
-void        arena_giveback(arena_t *self, const void *ptr, const u32 size, const u8 alignment);
 void        arena_destroy(arena_t *self);
 
 #ifndef IGNORE_ARENA_IMPLEMENTATION
+
+void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const u32 memory_size);
 
 arena_t arena_init(arena_t *arena, u32 capacity)
 {
     arena_t o = {
         .capacity = capacity,
         .size = 0,
-        .memory = arena ? arena_reserve_aligned(arena, capacity, 16) : calloc(capacity, sizeof(u8)),
+        .memory = arena ? arena__internal_reserve_memory_16byte_aligned(arena, capacity) : calloc(capacity, sizeof(u8)),
         .freelist = {0},
         .meta = {
             .lifetime_owner = arena,
@@ -59,80 +57,75 @@ arena_t arena_init(arena_t *arena, u32 capacity)
     return o;
 }
 
-void * __check_in_freelist(arena_t *self, const u32 memory_size, const u8 mem_alignment)
+void * arena__internal_check_in_freelist(arena_t *self, const u32 memory_size)
 {
+    void *memory = NULL;
     if (self->freelist.count) {
         free_chunks_t *chunk = self->freelist.head;
         free_chunks_t *prev_chunk = NULL;
         for(u32 i = 0; i < self->freelist.count; i++) {
             ASSERT(self->freelist.head);
             ASSERT(chunk);
-            if (memory_size == chunk->size && chunk->alignment == mem_alignment) {
-                if (prev_chunk) {
-                    prev_chunk->next = chunk->next;
-                } else {
-                    self->freelist.head = chunk->next;
-                }
-                if(self->meta.lifetime_owner) {
-                    arena_giveback(
-                        self->meta.lifetime_owner,
-                        chunk,
-                        sizeof(free_chunks_t),
-                        0
-                    );
-                } else {
-                    free(chunk);
-                }
-                self->freelist.count--;
-                return chunk->memory;
+
+            if (memory_size != chunk->size) {
+                prev_chunk = chunk;
+                chunk = chunk->next;
+                continue;
             }
-            prev_chunk = chunk;
-            chunk = chunk->next;
+
+            memory = chunk->memory;
+
+            if (prev_chunk) {
+                prev_chunk->next = chunk->next;
+            } else {
+                self->freelist.head = chunk->next;
+            }
+
+            self->freelist.count--;
+            free(chunk);
+            return memory;
         }
     }
-    return NULL;
+    return memory;
 }
 
-void * arena_reserve_aligned(arena_t *self, const u32 memory_size, const u8 memory_alignment)
+void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const u32 memory_size)
 {
-    if((memory_alignment & (memory_alignment - 1)) != 0) 
-        eprint("Alignment must be a power of 2 (2, 4, 8, 16, etc)");
-
-    const bool requested_aligned = memory_alignment != 0;
-    const u32 align = requested_aligned ? memory_alignment : 1;
-
-    const u32 rounded_mem_size = requested_aligned
-        ? (memory_size + (align - 1)) & ~(align - 1)
-        : memory_size;
-
+    const u64 align = 16;
     void *mem = NULL;
+
     mtx_lock(&self->meta.lock);
     {
         const u64 current_ptr = (u64)self->memory + self->size;
-        const u32 remainder = current_ptr & (align - 1);
-        const u32 alignment_padding = (remainder == 0) ? 0 : (align - remainder);
-        const u64 offset = self->size + alignment_padding;
+        const u64 aligned_ptr = (current_ptr + (align - 1)) & ~(align - 1);
+        const u32 padding = (u32)(aligned_ptr - current_ptr);
+        const u64 offset = self->size + padding;
 
-        if ((offset + rounded_mem_size) > self->capacity)
+        if ((offset + memory_size) > self->capacity)
         {
             eprint("Arena is full");
             mtx_unlock(&self->meta.lock);
             return NULL;
         }
 
-        void *res_memory = __check_in_freelist(self, rounded_mem_size, memory_alignment);
+        void *res_memory = arena__internal_check_in_freelist(self, memory_size);
         if (res_memory) {
+            memset(res_memory, 0, memory_size);
             mtx_unlock(&self->meta.lock);
             return res_memory;
         }
 
-        mem = (void *)((u8 *)self->memory + offset);
-        memset(mem, 0, rounded_mem_size);
+        mem = (void *)aligned_ptr;
+        memset(mem, 0, memory_size);
 
-        self->size = offset + rounded_mem_size;
+        self->size = offset + memory_size;
     }
     mtx_unlock(&self->meta.lock);
+
     ASSERT(mem);
+    if(((u64)(mem) & (16 - 1)) != 0) {
+        eprint("Memory is not 16 byte aligned");
+    };
     return mem;
 }
 
@@ -143,7 +136,8 @@ void arena_clear(arena_t *self)
     mtx_unlock(&self->meta.lock);
 }
 
-void arena_giveback(arena_t *self, const void *ptr, const u32 size, const u8 alignment)
+
+void arena_giveback(arena_t *self, const void *ptr, const u32 size)
 {
     ASSERT(self);
     ASSERT(ptr);
@@ -157,13 +151,12 @@ void arena_giveback(arena_t *self, const void *ptr, const u32 size, const u8 ali
         }
 
         free_chunks_t *new_chunk = self->meta.lifetime_owner 
-            ? arena_reserve_raw(self->meta.lifetime_owner, sizeof(free_chunks_t))
+            ? arena_reserve(self->meta.lifetime_owner, sizeof(free_chunks_t))
             : calloc(1, sizeof(free_chunks_t));
 
         ASSERT(new_chunk);
         *new_chunk = (free_chunks_t) {
             .memory = (u8 *)ptr,
-            .alignment = alignment,
             .size = size,
             .next = NULL
         };
@@ -181,7 +174,7 @@ void arena_giveback(arena_t *self, const void *ptr, const u32 size, const u8 ali
 void arena_destroy(arena_t *self)
 {
     if (self->meta.lifetime_owner) {
-        arena_giveback(self->meta.lifetime_owner, self->memory, self->capacity, 0);
+        arena_giveback(self->meta.lifetime_owner, self->memory, self->capacity);
         mtx_destroy(&self->meta.lock);
         return;
     }
@@ -203,9 +196,9 @@ void arena_destroy(arena_t *self)
     mtx_destroy(&self->meta.lock);
 }
 
-void * arena_reserve_raw(arena_t *self, u32 memory_size)
+void * arena_reserve(arena_t *self, u32 memory_size)
 {
-    return arena_reserve_aligned(self, memory_size, 0);
+    return arena__internal_reserve_memory_16byte_aligned(self, memory_size);
 }
 
 

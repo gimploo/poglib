@@ -1,6 +1,4 @@
 #pragma once
-#include "../ecs/entitymanager.h"
-#include "../util/assetmanager.h"
 #include "poglib/basic/arena.h"
 #include "poglib/poggen/input/commandqueue.h"
 #include "poglib/poggen/input/commandregistry.h"
@@ -19,10 +17,9 @@
 
 typedef struct scene_t {
 
-    const char           *label;
+    str_t                label;
     arena_t              arena;
-    assetmanager_t       *assets;
-    entitymanager_t      manager;
+    //assetmanager_t       *assets;
     void                 *content;
     commandqueue_t       commandqueue;
     bool                 __is_paused;
@@ -41,7 +38,7 @@ void * scene_alloc_content(scene_t * const self, const u64 content_size);
 #define             scene_get_type(PSCENE)                                     (PSCENE)->__enum_id
 #define             scene_get_engine(...)                                      global_poggen
 #define             scene_alloc_content(PSCENE, CONTENT_TYPE)\
-                    (CONTENT_TYPE *)__impl_scene_alloc_content((PSCENE), sizeof(CONTENT_TYPE), _Alignof(CONTENT_TYPE))
+                    (CONTENT_TYPE *)__impl_scene_alloc_content((PSCENE), sizeof(CONTENT_TYPE))
 void                scene_register_input_bindings(scene_t * const self, const commandregistry_t registry);
 
 
@@ -50,18 +47,16 @@ void                scene_register_input_bindings(scene_t * const self, const co
 
 #ifndef IGNORE_POGGEN_SCENE_IMPLEMENTATION
 
-void * __impl_scene_alloc_content(scene_t * const self, const u64 content_size, const u8 memory_alignment) {
-    self->content = arena_reserve_aligned(&self->arena, content_size, memory_alignment);
+void * __impl_scene_alloc_content(scene_t * const self, const u64 content_size) {
+    self->content = arena_reserve(&self->arena, content_size);
     return self->content;
 }
 
 
 #define __impl_scene_init(SCENE_NAME)\
     (scene_t ){\
-        .label          = #SCENE_NAME,\
-        .assets         = NULL,\
+        .label          = str(#SCENE_NAME),\
         .arena          = arena_init(NULL, 5 * MB),\
-        .manager        = {0},\
         .content        = NULL,\
         .__is_paused    = false,\
         .__is_over      = false,\
@@ -81,13 +76,12 @@ void scene__internal_input_callback(scene_t * const self, const f32 dt) {
 void __scene_destroy(scene_t *scene) {
     assert(scene);
 
-    entitymanager_destroy(&scene->manager);
     scene->__destroy(scene);
 
     arena_destroy(&scene->arena)    ;
 
-    scene->assets = NULL;
-    scene->label = NULL;
+    //scene->assets = NULL;
+    scene->label = (str_t){0};
     scene->__init  = NULL;
     scene->__update = NULL;
     scene->__render = NULL;

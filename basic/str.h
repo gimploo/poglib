@@ -5,16 +5,20 @@
 #include "./arena.h"
 #include "./util.h"
 
+//FIXME: we are not giving back allocated space from arenas
+
 typedef struct str_t {
 
-    size_t    len;
     char      *data;
-    bool      __is_manually_heap_allocated;
+    u32       len;
+    struct {
+        bool heap_allocated;
+    } internal;
 
 } str_t ;
 
-#define         str(STRING)              (str_t ) { .data = STRING, .len = sizeof(STRING) - 1, .__is_manually_heap_allocated = false }
-#define         str_lit(STRING)          { .data = STRING, .len = sizeof(STRING) - 1, .__is_manually_heap_allocated = false }
+#define         str(STRING)              (str_t ) { .data = STRING, .len = sizeof(STRING) - 1, .internal.heap_allocated = false }
+#define         str_lit(STRING)          { .data = STRING, .len = sizeof(STRING) - 1, .internal.heap_allocated = false }
 str_t           str_init(arena_t *arena, const char * const __buffer);
 str_t           str__from_cstr(const char *data, const u32 len);
 void            str_free(str_t *x);
@@ -43,9 +47,11 @@ str_t str_init(arena_t *arena, const char * const __buffer)
     str_t s = {
         .len = strlen(__buffer),
         .data = arena 
-            ? arena_reserve_raw(arena, sizeof(char) * (strlen(__buffer) + 1)) 
+            ? arena_reserve(arena, sizeof(char) * (strlen(__buffer) + 1)) 
             : mem_init(NULL, sizeof(char) * strlen(__buffer) + 1),
-        .__is_manually_heap_allocated = arena ? false : true
+        .internal = {
+            .heap_allocated = arena ? false : true
+        }
     };
 
     memcpy(s.data, __buffer, strlen(__buffer));
@@ -55,7 +61,7 @@ str_t str_init(arena_t *arena, const char * const __buffer)
 
 void str_free(str_t *x)
 {
-    if (!x->__is_manually_heap_allocated) 
+    if (!x->internal.heap_allocated) 
         return;
 
     free(x->data);
@@ -238,13 +244,13 @@ str_t str_join(arena_t *arena, const str_t *part1, const char *part2)
 
     const u32 part2_len = strlen(part2);
 
-    char *buffer = arena_reserve_raw(arena, sizeof(char) * (part1->len + part2_len + 1));
+    char *buffer = arena_reserve(arena, sizeof(char) * (part1->len + part2_len + 1));
     ASSERT(buffer);
     sprintf(buffer, "%.*s%s", part1->len, part1->data, part2);
     return (str_t) {
         .len = part1->len + part2_len,
         .data = buffer,
-        .__is_manually_heap_allocated = false
+        .internal.heap_allocated = false
     };
 }
 
@@ -276,7 +282,7 @@ str_t str__from_cstr(const char *data, const u32 len)
     return (str_t) {
         .data = (char *)data,
         .len = len,
-        .__is_manually_heap_allocated = false
+        .internal.heap_allocated = false
     };
 }
 

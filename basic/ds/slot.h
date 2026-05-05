@@ -1,7 +1,6 @@
 #pragma once
 #include "../common.h"
-#include "list.h"
-#include <poglib/basic/arena.h>
+#include "../arena.h"
 
 /*============================================================================
                 - STATIC ARRAY (SLOT ARRAY ) DATA STRUCTURE -
@@ -9,35 +8,33 @@
 
 typedef struct slot_t {
 
-    u64                 len;
-    u8                  *__data;
-    char                __elem_type[MAX_TYPE_CHARACTER_LENGTH];
-    u64                 __elem_size;
-    u64                 __capacity;
-    bool                *__index_table;
-    bool                __are_elem_pointers;
+    u8 *data;
+    u32 len;
 
     struct {
+        bool    *index_table;
+        u64     elem_size;
+        u64     capacity;
         arena_t *arena;
-        u32 mem_alignment;
     } internal;
+
 } slot_t ;
 
 
-#define             slot_init(CAPACITY, TYPE, PARENA)                              __impl_slot_init((CAPACITY), (#TYPE), sizeof(TYPE), PARENA, _Alignof(TYPE))
+slot_t              slot_init(const u64 array_capacity, const u64 elem_size, arena_t * const arena);
 void *              slot_insert(slot_t *, const u64 index, const void *value, const u64 value_size);
 void *              slot_update(slot_t *, const u64 index, const void *value, const u64 value_size);
 void                slot_insert_multiple(slot_t *self, const u8 *arraybuffer, const u32 arraylen, const u32 elem_size);
-bool                slot_is_index_occupied(slot_t *self, const u32 index);
+bool                slot_is_index_occupied(const slot_t * const self, const u32 index);
 #define             slot_append(PSLOTARRAY, VALUE)                         slot_insert((PSLOTARRAY), (PSLOTARRAY)->len, &(VALUE), sizeof(VALUE))
 #define             slot_delete(PSLOTARRAY, INDEX)                         __impl_slot_delete((PSLOTARRAY), (INDEX))
 slot_t              slot_clone(const slot_t *slot);
 void *              slot_get_value(const slot_t *table, const u64 index);
 #define             slot_iterator(PSLOTARRAY, ITER)                        __impl_slot_for_loop_iterator((PSLOTARRAY), (ITER))
-#define             slot_get_capacity(PSLOT)                                (PSLOT)->__capacity
-#define             slot_get_buffer(PSLOT)                                  (PSLOT)->__data
-#define             slot_get_size(PSLOT)                                    ((PSLOT)->__elem_size * (PSLOT)->len)
-#define             slot_get_elem_size(PSLOT)                               ((PSLOT)->__elem_size)
+#define             slot_get_capacity(PSLOT)                                (PSLOT)->internal.capacity
+#define             slot_get_buffer(PSLOT)                                  (PSLOT)->data
+#define             slot_get_size(PSLOT)                                    ((PSLOT)->internal.elem_size * (PSLOT)->len)
+#define             slot_get_elem_size(PSLOT)                               ((PSLOT)->internal.elem_size)
 void                slot_print(const slot_t *table, void (*print)(void*));
 void                slot_dump(const slot_t *table);
 void                slot_clear(slot_t *);
@@ -55,9 +52,9 @@ void                slot_clear(slot_t *);
 
 void * __slot_iter_get_value(const slot_t *slot, u32 *hits, u32 *index)
 {
-    while(*index < slot->__capacity && *hits < slot->len) {
+    while(*index < slot->internal.capacity && *hits < slot->len) {
 
-        if (slot->__index_table[*index]) {
+        if (slot->internal.index_table[*index]) {
             *hits = *hits + 1;
             return slot_get_value(slot, *index);
         }
@@ -70,83 +67,65 @@ void * __slot_iter_get_value(const slot_t *slot, u32 *hits, u32 *index)
 
 #define __impl_slot_for_loop_iterator(PSLOTARRAY, ITER)\
             if ((PSLOTARRAY)->len != 0)\
-                for (void **SLT__index = 0, **SLT__hits = 0, *(ITER) = (void *)__slot_iter_get_value((PSLOTARRAY),(u32 *)&SLT__hits, (u32 *)&SLT__index);\
+                for (void **slot_iterator_index = 0, **SLT__hits = 0, *(ITER) = (void *)__slot_iter_get_value((PSLOTARRAY),(u32 *)&SLT__hits, (u32 *)&slot_iterator_index);\
                     (ITER) != NULL;\
-                    SLT__index = (void **)((u64)SLT__index + 1),\
-                        (ITER) = (void *)__slot_iter_get_value(PSLOTARRAY, (u32 *)&SLT__hits, (u32 *)&SLT__index))
+                    slot_iterator_index = (void **)((u64)slot_iterator_index + 1),\
+                    (ITER) = (void *)__slot_iter_get_value(PSLOTARRAY, (u32 *)&SLT__hits, (u32 *)&slot_iterator_index))
 
 
-slot_t __impl_slot_init(const u64 array_capacity, const char *elem_type, const u64 elem_size, arena_t * const arena, const u32 mem_alignment)
+
+slot_t slot_init(const u64 array_capacity, const u64 elem_size, arena_t * const arena)
 {
-    assert(elem_type);
-    assert(elem_size > 0);
-
-    bool flag = false;
-    u32 len = strlen(elem_type);
-    if (elem_type[len] > 15) eprint("variable name is too big, exceeded the 16 limit threshold\n");
-    if (elem_type[len - 1] == '*') flag = true;
+    ASSERT(elem_size > 0);
 
     slot_t o = {
       .len = 0,
-      .__data                 = arena ? arena_reserve_aligned(arena, array_capacity * elem_size, mem_alignment) : (u8 *)calloc(array_capacity, elem_size),
-      .__elem_type            = {0},
-      .__elem_size            = elem_size,
-      .__capacity             = array_capacity,
-      .__index_table          = (bool *)calloc(array_capacity, sizeof(bool)),
-      .__are_elem_pointers    = flag,
+      .data                     = arena ? arena_reserve(arena, array_capacity * elem_size) : (u8 *)calloc(array_capacity, elem_size),
       .internal = {
-        .arena = arena,
-        .mem_alignment = mem_alignment
+          .elem_size            = elem_size,
+          .capacity             = array_capacity,
+          .index_table          = arena ? arena_reserve(arena, array_capacity) : (u8 *)calloc(array_capacity, sizeof(bool)),
+          .arena                = arena,
       }
     };
-
-    if (!flag)  memcpy(o.__elem_type, elem_type, MAX_TYPE_CHARACTER_LENGTH);
-    else        memcpy(o.__elem_type, elem_type, len - 1);
 
     return o;
 }
 
-bool __check_if_empty(const slot_t *table, const u64 index)
+bool slot_is_index_occupied(const slot_t * const table, const u32 index)
 {
-    return table->__index_table[index];
+    return table->internal.index_table[index];
 }
 
-void * __slot_get_reference_to_only_value_at_index(const slot_t *table, const u64 index)
+void * slot__internal_get_reference_to_only_value_at_index(const slot_t *table, const u64 index)
 {
-    if (!table->__are_elem_pointers)
-        return (void *)(table->__data + index * table->__elem_size);
-    else 
-        return *(void **)(table->__data + index * table->__elem_size);
+    return (void *)(table->data + index * table->internal.elem_size);
 }
 
 
 void * slot_insert(
-        slot_t *table,
-        const u64   index, 
-        const void  *value_addr, 
-        const u64   value_size)
+        slot_t * const table,
+        const u64 index, 
+        const void *value_addr, 
+        const u64 value_size)
 { 
     if (table == NULL) eprint("table argument is null");
-    if (value_size != table->__elem_size) eprint("expected value size (%li) but got (%li)", table->__elem_size, value_size);
-    assert(index >= 0 && index < table->__capacity);
+    if (value_size != table->internal.elem_size) eprint("expected value size (%li) but got (%li)", table->internal.elem_size, value_size);
+    ASSERT(index >= 0 && index < table->internal.capacity);
 
-    if (!__check_if_empty(table, index)) {
-
-        memcpy(
-            table->__data + (index * table->__elem_size), 
-            value_addr, 
-            table->__elem_size);
-
-        table->__index_table[index] = true;
-
-    } else {
-
+    if (slot_is_index_occupied(table, index)) {
         eprint("slot at [%li] index is not empty", index);
+    }
 
-    } 
+    if (value_addr) {
+        memcpy(table->data + (index * table->internal.elem_size), value_addr, table->internal.elem_size);
+    } else {
+        memset(table->data + (index * table->internal.elem_size), 0, table->internal.elem_size);
+    }
+
+    table->internal.index_table[index] = true;
     table->len++;
-    
-    return __slot_get_reference_to_only_value_at_index(table, index);
+    return slot__internal_get_reference_to_only_value_at_index(table, index);
 }
 
 void * slot_update(
@@ -156,17 +135,17 @@ void * slot_update(
         const u64   value_size)
 {
     if (table == NULL) eprint("table argument is null");
-    if (value_size != table->__elem_size) eprint("expected value size (%li) but got (%li)", table->__elem_size, value_size);
-    assert(index >= 0 && index < table->__capacity);
+    if (value_size != table->internal.elem_size) eprint("expected value size (%li) but got (%li)", table->internal.elem_size, value_size);
+    ASSERT(index >= 0 && index < table->internal.capacity);
 
-    if (__check_if_empty(table, index)) {
+    if (slot_is_index_occupied(table, index)) {
 
         memcpy(
-            table->__data + (index * table->__elem_size), 
+            table->data + (index * table->internal.elem_size), 
             value_addr, 
-            table->__elem_size);
+            table->internal.elem_size);
 
-        table->__index_table[index] = true;
+        table->internal.index_table[index] = true;
 
     } else {
 
@@ -175,16 +154,16 @@ void * slot_update(
 
     } 
 
-    return __slot_get_reference_to_only_value_at_index(table, index);
+    return slot__internal_get_reference_to_only_value_at_index(table, index);
 }
 
 void __impl_slot_delete(slot_t *table, const u64 index)
 {
     if (table == NULL) eprint("table argument is null");
 
-    assert(index >= 0 && index < table->__capacity);
+    ASSERT(index >= 0 && index < table->internal.capacity);
 
-    table->__index_table[index] = false;
+    table->internal.index_table[index] = false;
 
     table->len--;
 }
@@ -195,25 +174,26 @@ void __impl_slot_destroy(slot_t *table)
     if (table == NULL) eprint("table arguemnt is null");
 
     if (table->internal.arena) {
-        arena_giveback(table->internal.arena, table->__data, table->__elem_size * table->__capacity, table->internal.mem_alignment);
+        arena_giveback(table->internal.arena, table->data, table->internal.elem_size * table->internal.capacity);
+        arena_giveback(table->internal.arena, table->internal.index_table, table->internal.capacity);
     } else {
-        free(table->__data);
+        free(table->data);
+        free(table->internal.index_table);
     }
-    table->__data = NULL;
-    free(table->__index_table);
-    table->__index_table = NULL;
+    table->data = NULL;
+    table->internal.index_table = NULL;
 }
 
 void slot_print(const slot_t *table, void (*print)(void*))
 {
-    assert(table);
-    assert(print);
+    ASSERT(table);
+    ASSERT(print);
 
     printf("{");
 
-    for (u64 i = 0; i < table->__capacity; i++)
+    for (u64 i = 0; i < table->internal.capacity; i++)
     {
-        if (!table->__index_table[i]) continue;
+        if (!table->internal.index_table[i]) continue;
 
         print(slot_get_value(table, i));
 
@@ -226,22 +206,21 @@ void slot_print(const slot_t *table, void (*print)(void*))
 
 void * slot_get_value(const slot_t *table, const u64 index)
 {
-    assert(table);
-    if(index <= 0 && index >= table->__capacity) eprint("invalid index (%li) value", index);;
+    ASSERT(table);
+    if(index <= 0 && index >= table->internal.capacity) eprint("invalid index (%li) value", index);;
+    ASSERT(table->len > 0);
 
-    return __slot_get_reference_to_only_value_at_index(table, index);
+    return slot__internal_get_reference_to_only_value_at_index(table, index);
 }
 
 void slot_dump(const slot_t *table)
 {
-    assert(table);
+    ASSERT(table);
 
-    printf("len = %li\ncapacity = %li\nelem_size = %li\nelem_type = %s\nare_elem_are_pointers = %s\n",
+    printf("len = %li\ncapacity = %li\nelem_size = %li\n",
          table->len,
-         table->__capacity,
-         table->__elem_size,
-         table->__elem_type,
-         table->__are_elem_pointers ? "TRUE" : "FALSE");
+         table->internal.capacity,
+         table->internal.elem_size);
 
     const char *output = 
         "=====================\n"
@@ -249,34 +228,32 @@ void slot_dump(const slot_t *table)
         "=====================\n";
 
     printf("%s", output);
-    for (u64 i = 0; i < table->__capacity; i++)
+    for (u64 i = 0; i < table->internal.capacity; i++)
     {
-        printf("%02li | %s \n", i, table->__index_table[i] ? "TRUE" : "FALSE");
+        printf("%02li | %s \n", i, table->internal.index_table[i] ? "TRUE" : "FALSE");
     }
     printf("=====================\n");
 }
 
 void slot_clear(slot_t *slot)
 {
-    assert(slot);
+    ASSERT(slot);
     slot->len = 0;
-    memset(slot->__index_table, 0, sizeof(bool) * slot->__capacity);
+    memset(slot->internal.index_table, 0, sizeof(bool) * slot->internal.capacity);
 }
 
 slot_t slot_clone(const slot_t *slot)
 {
-    slot_t output = __impl_slot_init(
-            slot->__capacity, 
-            slot->__elem_type, 
-            slot->__elem_size,
-            slot->internal.arena,
-            slot->internal.mem_alignment);
+    slot_t output = slot_init(
+            slot->internal.capacity, 
+            slot->internal.elem_size,
+            slot->internal.arena);
 
     slot_iterator(slot, iter) {
         slot_insert(&output,
             output.len, 
             iter, 
-            slot->__elem_size);
+            slot->internal.elem_size);
     }
 
     return output;
@@ -301,11 +278,6 @@ void slot_insert_multiple(
                 arr + (elem_size * i), 
                 elem_size);
     }
-}
-
-inline bool slot_is_index_occupied(slot_t *self, const u32 index)
-{
-    return __check_if_empty(self, index);
 }
 
 #endif

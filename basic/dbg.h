@@ -19,13 +19,11 @@ const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h", "jolt-wrapper.h"
 \
     fprintf(stderr, "\n\033[0;37m" "[(%s:%d): %s] " "\033[0;31m\n\t" fmt "\033[0m\n",__FILE__, __LINE__, __func__, ##__VA_ARGS__);\
     stacktrace_print();\
-    const void **i = NULL;\
-    *i;\
+    exit(-1);\
 \
 } while (0)
 
 #define ASSERT(FMT, ...) if (!(FMT)) eprint(#FMT " " ##__VA_ARGS__)
-#define assert ASSERT
 
 /*=============================================================================
                         - MEMORY LEAK CHECKER -
@@ -234,7 +232,7 @@ void dbg_init(void)
 
 void __debugprint(void *arg)
 {
-    assert(arg);
+    ASSERT(arg);
     dbg_node_info_t info = *(dbg_node_info_t *)arg;
 
     const char* fmt = 
@@ -251,7 +249,7 @@ void __debugprint(void *arg)
 void debug_mem_dump(void)
 {
     llist_t *list = &global_debug.list;
-    assert(list);
+    ASSERT(list);
 
     if (list == NULL) {
         fprintf(stderr, "%s: list argument is null\n", __func__);
@@ -285,7 +283,7 @@ static void * _debug_malloc(const size_t size, const char *file_path, const size
         exit(0);
     }
 
-    assert(list);
+    ASSERT(list);
 
     void *malloc_mem = malloc(size);
     memset(malloc_mem, 0, size);
@@ -311,7 +309,7 @@ static void * _debug_malloc(const size_t size, const char *file_path, const size
     __dbg_set_stacktraces(&info);
 
     node_t *node = node_init(&info, sizeof(info));
-    assert(node);
+    ASSERT(node);
     llist_append_node(list, node);
     
 #define malloc(n) _debug_malloc((n), __FILE__, __LINE__, __func__)
@@ -340,7 +338,7 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
         fprintf(stderr, "You forgot to add dbg_init() in your code"); 
         exit(0);
     }
-    assert(list);
+    ASSERT(list);
 
     void *realloc_mem = realloc(pointer, size);
 
@@ -393,7 +391,7 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
     __dbg_set_stacktraces(&info);
 
     node_t *node = node_init(&info, sizeof(info));
-    assert(node);
+    ASSERT(node);
     llist_append_node(list, node);
 
 #define free(P) _debug_free((P), (#P), __FILE__, __LINE__, __func__) 
@@ -415,7 +413,7 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
     }
 
     llist_t *list = &global_debug.list;
-    assert(list);
+    ASSERT(list);
 
     if (__is_file_in_ignore_files(file_path)) {
             fprintf(fp,"%s file ignored\n", file_path);
