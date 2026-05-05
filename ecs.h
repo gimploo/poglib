@@ -1,37 +1,94 @@
 #pragma once
-#include "./ecs/entitymanager.h"
-#include "./ecs/components.h"
+#include <poglib/basic.h>
 
-//TODO: systems dont work anymore (very old code);
-//#include "./ecs/systems.h"
+#include "./ecs/entity.h"
+#include "./ecs/component.h"
+#include "./ecs/system.h"
+#include "poglib/basic/ds/slot.h"
 
-typedef struct ecs_t {
+typedef struct {
+    arena_t arena;
+    struct {
+        ecs_entitymanager_t         entitymanager;
+        ecs_componentmanager_t      componentmanager;
+        ecs_systemmanager_t         systemmanager;
+    } managers;
 
-    entitymanager_t entities;
-    assetmanager_t assets;
-
-    //TODO: Implement systems manager (since entites takes care of components we can have 
-    //a separate manager for systems to make managing easier i think!)
-
+    struct {
+        u32 entity_generator_counter;
+    } internal;
 } ecs_t;
 
 
-ecs_t ecs_init(const u32 total_entity_types)
+ecs_t           ecs_init(void);
+void            ecs_update(ecs_t *const self);
+void            ecs_entity_add(ecs_t * const self, const u32 component_signature);
+void            ecs_entity_remove(ecs_t * const self, const u32 entityId);
+void            ecs_destroy(ecs_t * const self);
+
+
+#ifndef IGNORE_ECS_IMPLEMENTATION
+
+ecs_t ecs_init(void)
 {
-    return (ecs_t ){
-        .entities = entitymanager_init(total_entity_types),
-        .assets = assetmanager_init() 
+    arena_t arena = arena_init(NULL, 1 * KB);
+
+    return (ecs_t) {
+        .arena = arena,
+        .internal = {
+            .entity_generator_counter = -1,
+        },
+        .managers = {
+            .entitymanager = ecs_entitymanager(&arena),
+            .componentmanager = ecs_componentmanager(&arena),
+            .systemmanager = ecs_systemmanager(&arena),
+        }
     };
 }
 
-void ecs_update(ecs_t *s, const f32 dt)
+void ecs_entity_add(ecs_t * const self, const u32 component_signature)
 {
-    entitymanager_update(&s->entities);
+    const ecs_entity_t new_entity = {
+        .id = ++self->internal.entity_generator_counter,
+        .component_signature = component_signature,
+    };
+    ecs_entitymanager_add(
+        &self->managers.entitymanager, 
+        new_entity
+    );
+
+    ecs_componentmanager_add(
+        &self->managers.componentmanager,
+        new_entity.id,
+        component_signature
+    );
 }
 
-void ecs_destroy(ecs_t *s)
+void ecs_entity_remove(ecs_t * const self, const u32 entityId)
 {
-    entitymanager_destroy(&s->entities);
-    assetmanager_destroy(&s->assets);
+    ecs_entitymanager_remove(&self->managers.entitymanager, entityId);
+    ecs_componentmanager_removeall(
+        &self->managers.componentmanager,
+        entityId
+    );
 }
 
+void ecs_update(ecs_t *const self)
+{
+    ASSERT(self);
+    slot_iterator(&self->managers.componentmanager.componentpool_slots, component_pool)
+    {
+        if(slot_is_index_occupied(&self->managers.systemmanager.systems, slot_iterator_index)) {
+            ecs_system_callback callback = slot_get_value(&self->managers.systemmanager.systems, slot_iterator_index);
+            callback(component_pool);
+        }
+    }
+}
+
+
+void ecs_destroy(ecs_t * const self)
+{
+    arena_destroy(&self->arena);
+}
+
+#endif

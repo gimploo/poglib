@@ -115,12 +115,12 @@ physics_sys_jolt_t * physics_sys_jolt_init(arena_t * const arena)
             .double_buffer_event_queue = {
                 .buffer1 = {
                     .capacity = 4000,
-                    .events = arena_reserve_array(arena, physics_sys_jolt_collision_event_t, 4000),
+                    .events = arena_reserve(arena, sizeof(physics_sys_jolt_collision_event_t) * 4000),
                     .count = 0,
                 },
                 .buffer2 = {
                     .capacity = 4000,
-                    .events = arena_reserve_array(arena, physics_sys_jolt_collision_event_t, 4000),
+                    .events = arena_reserve(arena, sizeof(physics_sys_jolt_collision_event_t) * 4000),
                     .count = 0,
                 },
             },

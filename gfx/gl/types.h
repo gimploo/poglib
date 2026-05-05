@@ -599,7 +599,7 @@ gltext_t gltext_init(const u64 capacity)
 {
     return (gltext_t ) {
         .data =  {
-            .globjs = __impl_queue_init(capacity, sizeof(glquad_t ), "glquad_t", _Alignof(glquad_t), NULL),
+            .globjs = __impl_queue_init(capacity, sizeof(glquad_t ), "glquad_t", NULL),
             .__meta = {
                 .type       = GLBT_type(glquad_t ),
                 .nvertex    = 6 
@@ -637,7 +637,7 @@ glbatch_t __impl_glbatch_init(u64 capacity, glbatch_type type, const char *type_
         default: eprint("batch type not accounted for");
     }
     glbatch_t o =  {
-        .globjs   = __impl_queue_init(capacity, typesize, type_name, 16, NULL),
+        .globjs   = __impl_queue_init(capacity, typesize, type_name, NULL),
         .__meta = {
             .type = type,
             .nvertex = nvertex
