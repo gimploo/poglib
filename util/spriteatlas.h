@@ -22,7 +22,7 @@ spriteatlas_t spriteatlas_init(str_t filepath, const u32 tile_count_width, const
     gltexture2d_t texture = gltexture2d_init(filepath.data);
     const f32 norm_tile_width  = 1.0f / (f32)tile_count_width;
     const f32 norm_tile_height = 1.0f / (f32)tile_count_height;
-    slot_t atlas = slot_init(tile_count_width * tile_count_height, sizeof(rect_t), false, arena);
+    slot_t atlas = slot_init(tile_count_width * tile_count_height, sizeof(rect_t), arena);
 
     for (u32 v = 0, tile_index = 0; v < tile_count_height; v++)
     {
