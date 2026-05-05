@@ -66,8 +66,8 @@ u16 ecs_component__internal_get_componenttype_size(ecs_component_type type)
 ecs_componentmanager_t ecs_componentmanager(arena_t *arena)
 {
     ecs_componentmanager_t o = {
-        .componentpool_slots = slot_init(ECS_CMP_COUNT, sizeof(slot_t), false, arena),
-        .entity2component_lookup_slots = slot_init(ECS_CMP_COUNT, sizeof(hashtable_t), false, arena),
+        .componentpool_slots = slot_init(ECS_CMP_COUNT, sizeof(slot_t), arena),
+        .entity2component_lookup_slots = slot_init(ECS_CMP_COUNT, sizeof(hashtable_t), arena),
     };
 
     for (u16 comp_idx = 0; comp_idx < ECS_CMP_COUNT; comp_idx++)
@@ -80,7 +80,6 @@ ecs_componentmanager_t ecs_componentmanager(arena_t *arena)
         *packedcmp_slot = slot_init(
             MAX_ENTITY_COUNT, 
             ecs_component__internal_get_componenttype_size(componenttype), 
-            false, 
             arena
         );
 
