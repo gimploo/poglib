@@ -142,8 +142,8 @@ glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh) {
     for (u32 i = 0; i < mesh->mNumFaces; i++)
         total_indicies += mesh->mFaces[i].mNumIndices;
 
-    slot_t vtx = slot_init(mesh->mNumVertices, sizeof(glvertex3d_t), false, NULL);
-    slot_t ind = slot_init(total_indicies, sizeof(u32), false, NULL);
+    slot_t vtx = slot_init(mesh->mNumVertices, sizeof(glvertex3d_t), NULL);
+    slot_t ind = slot_init(total_indicies, sizeof(u32), NULL);
 
     // Copy indices
     for (u32 i = 0; i < mesh->mNumFaces; i++) {

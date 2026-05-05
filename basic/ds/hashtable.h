@@ -91,7 +91,7 @@ hashtable_t hashtable__internal_init(const u32 capacity, const ht_key_type keyty
     }
 
     return (hashtable_t ) {
-        .entries = slot_init(capacity, sizeof(hashtable_entry_t), false, arena),
+        .entries = slot_init(capacity, sizeof(hashtable_entry_t), arena),
         .internal = {
             .value_stored_as_pointers = value_size >= sizeof(void *),
             .keytype = keytype,
