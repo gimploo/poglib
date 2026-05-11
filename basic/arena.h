@@ -14,13 +14,13 @@ typedef struct free_chunks_t free_chunks_t;
 struct free_chunks_t {
     u8 *memory;
     free_chunks_t *next;
-    u32 size;
+    u64 size;
 };
 
 struct arena_t {
     u8 *memory;
-    u32 capacity;
-    u32 size;
+    u64 capacity;
+    u64 size;
     struct {
         free_chunks_t *head;
         u32 count;
@@ -32,17 +32,17 @@ struct arena_t {
 };
 typedef struct arena_t arena_t;
 
-arena_t     arena_init(arena_t *, u32 capacity);
-void *      arena_reserve(arena_t *self, u32 memory_size);
-void        arena_giveback(arena_t *self, const void *ptr, const u32 size);
+arena_t     arena_init(arena_t *, u64 capacity);
+void *      arena_reserve(arena_t *self, u64 memory_size);
+void        arena_giveback(arena_t *self, const void *ptr, const u64 size);
 void        arena_clear(arena_t *self);
 void        arena_destroy(arena_t *self);
 
 #ifndef IGNORE_ARENA_IMPLEMENTATION
 
-void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const u32 memory_size);
+void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const u64 memory_size);
 
-arena_t arena_init(arena_t *arena, u32 capacity)
+arena_t arena_init(arena_t *arena, u64 capacity)
 {
     arena_t o = {
         .capacity = capacity,
@@ -57,7 +57,7 @@ arena_t arena_init(arena_t *arena, u32 capacity)
     return o;
 }
 
-void * arena__internal_check_in_freelist(arena_t *self, const u32 memory_size)
+void * arena__internal_check_in_freelist(arena_t *self, const u64 memory_size)
 {
     void *memory = NULL;
     if (self->freelist.count) {
@@ -89,8 +89,11 @@ void * arena__internal_check_in_freelist(arena_t *self, const u32 memory_size)
     return memory;
 }
 
-void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const u32 memory_size)
+void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const u64 memory_size)
 {
+    if ((self->capacity - self->size) < memory_size) {
+        eprint("Ran out of memory, asking for `%i`bytes but `%i`bytes only available\n\tcapacity = %i | size = %i", memory_size, (self->capacity - self->size), self->capacity, self->size);
+    }
     const u64 align = 16;
     void *mem = NULL;
 
@@ -98,7 +101,7 @@ void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const
     {
         const u64 current_ptr = (u64)self->memory + self->size;
         const u64 aligned_ptr = (current_ptr + (align - 1)) & ~(align - 1);
-        const u32 padding = (u32)(aligned_ptr - current_ptr);
+        const u64 padding = (u64)(aligned_ptr - current_ptr);
         const u64 offset = self->size + padding;
 
         if ((offset + memory_size) > self->capacity)
@@ -137,7 +140,7 @@ void arena_clear(arena_t *self)
 }
 
 
-void arena_giveback(arena_t *self, const void *ptr, const u32 size)
+void arena_giveback(arena_t *self, const void *ptr, const u64 size)
 {
     ASSERT(self);
     ASSERT(ptr);
@@ -196,8 +199,9 @@ void arena_destroy(arena_t *self)
     mtx_destroy(&self->meta.lock);
 }
 
-void * arena_reserve(arena_t *self, u32 memory_size)
+void * arena_reserve(arena_t *self, u64 memory_size)
 {
+    ASSERT(memory_size);
     return arena__internal_reserve_memory_16byte_aligned(self, memory_size);
 }
 

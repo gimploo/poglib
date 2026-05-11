@@ -28,7 +28,7 @@ runtimectx_t * runtimectx_init(void)
     runtimectx_t * o = calloc(1, sizeof(runtimectx_t));
 
    *o = (runtimectx_t ){
-        .stringpool = arena_init(NULL, 1 * KB),
+        .stringpool = arena_init(NULL, 5 * KB),
         .scrap_buffer = (buffer_t) {
             .raw_data = calloc(4 * MB, 1),
             .size = 4 * MB

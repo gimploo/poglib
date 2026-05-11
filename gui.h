@@ -150,7 +150,7 @@ void    gui_destroy(gui_t *self);
 gui_t gui_init(arena_t * const arena, const ui_region_t starting_region)
 {
     return (gui_t){
-        .shader =  glshader__file_init(
+        .shader =  glshader_file_init(
             str(POGLIB_ROOT_DIR"/gui/uishader-vtx.glsl"), 
             str(POGLIB_ROOT_DIR"/gui/uishader-frag.glsl"), 
             arena),

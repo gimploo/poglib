@@ -25,7 +25,7 @@ typedef struct {
 #define MAX_COMMAND_TYPE_ALLOWED 255
 
 typedef struct {
-    u16                 count;
+    u16                     count;
     commandinputbinding_t   registry[MAX_COMMAND_TYPE_ALLOWED];
 } commandregistry_t;
 

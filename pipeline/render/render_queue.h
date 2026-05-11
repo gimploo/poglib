@@ -30,7 +30,7 @@ renderqueue_t renderqueue_init(void)
         .buckets = {0},
         .arena = arena, 
         .internal = {
-            .instance_shader = glshader__file_init(
+            .instance_shader = glshader_file_init(
                 str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-vtx.glsl"),
                 str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-frag.glsl"),
                 &arena

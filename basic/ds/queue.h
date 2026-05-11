@@ -26,7 +26,7 @@ typedef struct {
 
 #define             queue_put(PQUEUE, ELEM)                                     __impl_queue_put((PQUEUE), &(ELEM), sizeof(ELEM))
 #define             queue_get(PQUEUE)                                           __impl_queue_get((PQUEUE)) 
-void                queue_get_in_buffer(queue_t *queue, void *buffer, u64 buffer_size);
+void                queue_get_in_buffer(queue_t *queue, buffer_t buffer);
 #define             queue_is_empty(PQUEUE)                                      ((PQUEUE)->__start == (PQUEUE)->__end)
 #define             queue_is_full(PQUEUE)                                       ((PQUEUE)->len == (PQUEUE)->__capacity) ? true : false
 
@@ -178,13 +178,13 @@ void * __impl_queue_get(queue_t *queue)
     return elem_pos;
 }
 
-void queue_get_in_buffer(queue_t *queue, void *buffer, u64 buffer_size)
+void queue_get_in_buffer(queue_t *queue, buffer_t buffer)
 {
     if (queue == NULL)                   eprint("queue_get: queue argument is null");
     if (queue_is_empty(queue))           eprint("underflow");
     //if (queue->__elem_size <= 8)           eprint("Use normal queue_get() instead");
-    if (buffer_size < queue->__elem_size)  eprint("buffer is too smol, expected %lu but given %lu", queue->__elem_size, buffer_size);
-    if (buffer_size == 8)                eprint("passed in buffer is a pointer");
+    if (buffer.size < queue->__elem_size)  eprint("buffer is too smol, expected %lu but given %lu", queue->__elem_size, buffer.size);
+    if (buffer.size == 8)                eprint("passed in buffer is a pointer");
 
     void *elem_pos = NULL;
     if (queue->__are_values_pointers)
@@ -195,7 +195,7 @@ void queue_get_in_buffer(queue_t *queue, void *buffer, u64 buffer_size)
     queue->__start    = (queue->__start + 1) % queue->__capacity;
     queue->len--;
 
-    memcpy(buffer, elem_pos, queue->__elem_size);
+    memcpy(buffer.raw_data, elem_pos, queue->__elem_size);
 }
 
 

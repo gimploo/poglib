@@ -1,13 +1,7 @@
 #pragma once
-#include "poglib/basic/ds/slot.h"
-#include "poglib/ecs/component.h"
+#include <poglib/basic.h>
+#include "./component.h"
 
-typedef void (*ecs_system_callback)(slot_t * const componentpool);
-
-typedef struct ecs_systemmanager_t ecs_systemmanager_t;
-struct ecs_systemmanager_t {
-    slot_t systems;
-};
 
 typedef struct ecs_system_t ecs_system_t;
 struct ecs_system_t {
@@ -35,6 +29,7 @@ ecs_systemmanager_t ecs_systemmanager(arena_t * const arena)
 
 void ecs_systemmanager_add(ecs_systemmanager_t *const self, const ecs_system_t system)
 {
+    ASSERT(system.callback);
     slot_insert(
         &self->systems, 
         1 << system.type, 
@@ -44,6 +39,7 @@ void ecs_systemmanager_add(ecs_systemmanager_t *const self, const ecs_system_t s
 
 void ecs_systemmanager_update(ecs_systemmanager_t *const self, const ecs_system_t system)
 {
+    ASSERT(system.callback);
     slot_update(
         &self->systems, 
         1 << system.type, 

@@ -1,11 +1,12 @@
 #pragma once
 #include <poglib/application.h>
-//#include "./util/assetmanager.h"
 #include "./poggen/scene.h"
 #include "poglib/basic/arena.h"
+#include "poglib/basic/concurrency.h"
 #include "poglib/basic/ds/hashtable.h"
 #include "poglib/ecs.h"
 #include "poglib/physics/jolt-wrapper.h"
+#include "poglib/util/assetmanager.h"
 
 //TODO: collision setup is done during engine init phase - thinking whether we could
 //move this over to local scene - gemini says it would hit performance - need to test and figure out
@@ -33,12 +34,13 @@ typedef struct poggen_t {
     arena_t             arena;
 
     struct {
-        application_t *const app;
+        application_t *app;
     } handle;
 
     struct {
-        poggen__internal_physics_t physics;
-        ecs_t                      ecs;
+        poggen__internal_physics_t  physics;
+        ecs_t                       ecs;
+        assetmanager_t              assets;
     } systems;
 
 } poggen_t ;
@@ -53,6 +55,7 @@ void                                poggen_change_scene(poggen_t *self, str_t sc
 void                                poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt_rules_config_t config);
 window_t *                          poggen_get_window(const poggen_t *self);
 physics_sys_jolt_event_queue_t *    poggen_get_physics_collision_events(const poggen_t * const self);
+ecs_t *                             poggen_get_ecs_handle(poggen_t * const self);
 
 void                                poggen_update(poggen_t *self, const f32 dt);
 #define                             poggen_render(PGEN, DT)                                         (PGEN)->current_scene->__render((PGEN)->current_scene, DT)
@@ -78,30 +81,29 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
     if (!global_window)     eprint("A window is required to run poggen\n");
     if (global_poggen)      eprint("Trying to initialize a second `poggen` in the same instance");
 
-    arena_t arena = arena_init(&app->handle.arena, 2 * MB);
-
-    poggen_t tmp =  (poggen_t ){
-        .config         = config,
-        //.assets         = assetmanager_init(),
-        .scenes         = hashtable_init(MAX_SCENES_ALLOWED, HT_KEY_TYPE_STR, scene_t, &app->handle.arena),
-        .current_scene  = NULL,
-        .arena          = arena,
-        .bg_task_manager = bgtask_manager_init(),
-        .handle = {
-            .app          = app
-        },
-        .systems = {
-            .ecs = config.enable_ecs ? ecs_init() : (ecs_t){0},
-            .physics = config.enable_physics ? (poggen__internal_physics_t){
-                .instance = physics_sys_jolt_init(&arena),
-                .phy_simulation_started = false
-            } : (poggen__internal_physics_t){0},
-        },
-    };
     poggen_t *output = (poggen_t *)calloc(1, sizeof(poggen_t ));
-    memcpy(output, &tmp, sizeof(tmp));
-
     ASSERT(output);
+
+    *output = (poggen_t ){
+        .config             = config,
+        .scenes             = hashtable_init(MAX_SCENES_ALLOWED, HT_KEY_TYPE_STR, scene_t, &app->handle.arena),
+        .current_scene      = NULL,
+        .arena              = arena_init(&app->handle.arena, 2 * MB),
+        .bg_task_manager    = bgtask_manager_init(),
+        .handle = {
+            .app            = app
+        },
+        .systems = {0},
+    };
+
+    //NOTE: SYSTEMS
+    output->systems.ecs = config.enable_ecs ? ecs_init() : (ecs_t){0};
+    output->systems.assets = assetmanager_init(&output->bg_task_manager);
+    output->systems.physics = config.enable_physics ? (poggen__internal_physics_t){
+        .phy_simulation_started = false,
+        .instance = physics_sys_jolt_init(&output->arena)
+    } : (poggen__internal_physics_t){0};
+
 
     global_poggen  = output;
 
@@ -180,7 +182,7 @@ void poggen_destroy(poggen_t *self)
 {
     assert(self);
 
-    //assetmanager_destroy(&self->assets);
+    assetmanager_destroy(&self->systems.assets);
     hashtable_iterator(&self->scenes, tableentry) {
         hashtable_entry_t *entry = tableentry;
         __scene_destroy(entry->value);
@@ -220,6 +222,12 @@ physics_sys_jolt_event_queue_t * poggen_get_physics_collision_events(const pogge
 
     ASSERT(self->systems.physics.instance);
     return physics_sys_get_collision_event_queue(self->systems.physics.instance);
+}
+
+ecs_t * poggen_get_ecs_handle(poggen_t * const self)
+{
+    ASSERT(self->config.enable_ecs);
+    return &self->systems.ecs;
 }
 
 #endif

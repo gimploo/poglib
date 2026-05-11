@@ -42,7 +42,7 @@ typedef struct dbg_t {
 static dbg_t global_debug;
 #if defined(DEBUG)
     void        dbg_init(void);
-    void        dbg_destroy(void);
+#define         dbg_destroy() dbg__internal_destroy(false)
 #else 
     #define     dbg_init()      fprintf(stderr,"[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n")
     #define     dbg_destroy()   fprintf(stderr,"[!] DBG IS NOT INITIALIZED (Define DEBUG macro to activate)\n")
@@ -479,7 +479,7 @@ void _debug_free(void *pointer, const char *pointer_name , const char *file_path
 
 
 // Close function required to end the debugger
-void dbg_destroy(void)
+void dbg__internal_destroy(bool did_program_crashed)
 {
     mtx_lock(&global_debug.lock);
     fprintf(stdout, "[!] DBG: CONCLUDED\n");
@@ -490,6 +490,13 @@ void dbg_destroy(void)
                 "NO MEMORY LEAKS\n");
         fprintf(stdout, 
                 "\n\t\033[01;32mNO MEMORY LEAKS \033[0m\n\n");
+    } else if (did_program_crashed) {
+        fprintf(global_debug.fp, 
+                "MEMORY LEAK FOUND: (%0li) COUNT - PROGRAM CRASHED!\n", global_debug.list.count);
+        fprintf(stdout, 
+                "\n\t\033[01;31m MEMORY LEAK FOUND\033[0m: (%02li) - PROGRAM CRASHED, requires investigation!\n\n", global_debug.list.count);
+
+        debug_mem_dump();
     } else {
 
         fprintf(global_debug.fp, 
@@ -500,7 +507,9 @@ void dbg_destroy(void)
         debug_mem_dump();
 
     }
-    llist_destroy(&global_debug.list);
+    if (!did_program_crashed) {
+        llist_destroy(&global_debug.list);
+    }
     fclose(global_debug.fp);
     mtx_unlock(&global_debug.lock);
     mtx_destroy(&global_debug.lock);
@@ -609,7 +618,7 @@ void stacktrace_print(void)
     window_print_trace();
 #endif
 
-    if (global_debug.fp != NULL) dbg_destroy();
+    if (global_debug.fp != NULL) dbg__internal_destroy(true);
 }
 #endif //IGNORE_STACKTRACE_IMPLEMENTATION
 

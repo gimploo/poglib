@@ -3,12 +3,6 @@
 #include "poglib/poggen/input/commandqueue.h"
 #include "poglib/poggen/input/commandregistry.h"
 
-// #include "./action.h"
-//TODO: the action map is a list, i dont like it this way, i might need to make 
-//an static list ds of some sort, cuz the extra cycles the input function takes
-//is just dumb, it needs to be at O(1). The reason i choose list over map, is 
-//that map takes a string as key and not number. 
-
 /*============================================================================
                             - SCENE -
 ============================================================================*/
@@ -19,7 +13,6 @@ typedef struct scene_t {
 
     str_t                label;
     arena_t              arena;
-    //assetmanager_t       *assets;
     void                 *content;
     commandqueue_t       commandqueue;
     bool                 __is_paused;
@@ -80,7 +73,6 @@ void __scene_destroy(scene_t *scene) {
 
     arena_destroy(&scene->arena)    ;
 
-    //scene->assets = NULL;
     scene->label = (str_t){0};
     scene->__init  = NULL;
     scene->__update = NULL;

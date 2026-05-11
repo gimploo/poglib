@@ -73,7 +73,7 @@ const char * const DEFAULT_SIMPLE_SHAPES_VSHADER =
 
 #define         glshader_default_init(...)                                      glshader_from_cstr_init(DEFAULT_VSHADER, DEFAULT_FSHADER)
 
-glshader_t      glshader__file_init(const str_t vtxpath, const str_t fgpath, arena_t * const arena);
+glshader_t      glshader_file_init(const str_t vtxpath, const str_t fgpath, arena_t * const arena);
 
 glshader_t      glshader_from_file_init(const char *file_vs, const char *file_fs);
 glshader_t      glshader_from_cstr_init(const char *vs_code, const char *fs_code);
@@ -347,7 +347,7 @@ void glshader_destroy(glshader_t *shader)
     GL_LOG("Shader `%i` successfully deleted", shader->id);
 }
 
-glshader_t glshader__file_init(const str_t vtxpath, const str_t fgpath, arena_t * const arena)
+glshader_t glshader_file_init(const str_t vtxpath, const str_t fgpath, arena_t * const arena)
 {
     ASSERT(arena);
 

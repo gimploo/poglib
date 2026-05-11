@@ -3,6 +3,7 @@
 #include "poglib/poggen/input/commandqueue.h"
 #include "poglib/poggen/input/commandregistry.h"
 #include <poglib/basic.h>
+#include <poglib/ecs.h>
 
 
 //NOTE: each state is responsible to pop / push state on the stack
@@ -12,19 +13,17 @@
 
 typedef struct behaviorautomata_t behaviorautomata_t;
 
-typedef struct {
-    //TODO: add ecs after its ready!
-    union {
-        void *ctx;
-    };
-} behaviorautomata_stateconfig_t;
+typedef union {
+    ecs_t *ecs;
+    void *payload;
+} behaviorautomata_ctx_t;
 
 typedef struct {
     u16                             state_type;
-    behaviorautomata_stateconfig_t  config;
-    void (*start)(behaviorautomata_t * const, void *const ctx);
-    void (*update)(behaviorautomata_t * const, const commandqueue_t * const queue, void * const ctx);
-    void (*exit)(behaviorautomata_t * const, void *const ctx);
+    behaviorautomata_ctx_t          ctx;
+    void (*start)(behaviorautomata_t * const, behaviorautomata_ctx_t *const ctx);
+    void (*update)(behaviorautomata_t * const, const commandqueue_t * const queue, behaviorautomata_ctx_t * const ctx);
+    void (*exit)(behaviorautomata_t * const, behaviorautomata_ctx_t *const ctx);
 } behaviorautomata_state_t;
 
 struct behaviorautomata_t {
@@ -38,28 +37,32 @@ void                        behaviorautomata_update(behaviorautomata_t * const s
 
 #ifndef IGNORE_BEHAVIORAUTOMATA_IMPLEMENTATION
 
-behaviorautomata_t behaviorautomata_init(arena_t * const arena) {
+behaviorautomata_t behaviorautomata_init(arena_t * const arena)
+{
     ASSERT(arena);
     return (behaviorautomata_t){
         .stack = stack_init(10, behaviorautomata_state_t, arena),
     };
 }
 
-void behaviorautomata_push_state(behaviorautomata_t * const self, const behaviorautomata_state_t state) {
+void behaviorautomata_push_state(behaviorautomata_t * const self, behaviorautomata_state_t state)
+{
+    ASSERT(state.ctx.ecs);
+
     stack_push(&self->stack, state);
-    state.start(self, state.config.ctx);
+    state.start(self, &state.ctx);
 }
 
 void behaviorautomata_pop_state(behaviorautomata_t * const self) {
     behaviorautomata_state_t *state = stack_peek(&self->stack);
     stack_pop(&self->stack);
-    state->exit(self, state->config.ctx);
+    state->exit(self, &state->ctx);
 }
 
 void behaviorautomata_update(behaviorautomata_t * const self, const commandqueue_t * const queue) {
     if (!self->stack.len) return;
 
     behaviorautomata_state_t *state = stack_peek(&self->stack);
-    state->update(self, queue, state->config.ctx);
+    state->update(self, queue, &state->ctx);
 }
 #endif
