@@ -66,8 +66,7 @@ asset_id assetmanager_load_model_async(assetmanager_t *const self, const str_t f
 {
     const u32 asset_id = ++self->internal.asset_idx_generator;
 
-    //TODO: this is not cleaned up
-    taskresponse_t *response = task_response(
+    taskresponse_t *response = taskresponse(
         &self->arena, 
         sizeof(glmodel_t)
     );
@@ -80,6 +79,7 @@ asset_id assetmanager_load_model_async(assetmanager_t *const self, const str_t f
     bgtask_manager_pass_task(
         self->bgtask_manager, 
         (taskconfig_t) {
+            .result_dest = response,
             .payload = {
                 .args = {
                     .count = 1,
@@ -90,8 +90,7 @@ asset_id assetmanager_load_model_async(assetmanager_t *const self, const str_t f
                 .storage = {0}
             },
             .callback = assetmanager__internal_thread_callback_load_glmodel,
-        },
-        response
+        }
     );
 
     return asset_id;
@@ -110,13 +109,10 @@ const void * assetmanager_get_assetresource(const assetmanager_t * const self, c
         (hashtable_key_t) { .u32 = assetId }
     );
 
-    //FIXME: workaround have a lookup table that tell which asset type are loaded async
-    if (assettype == ASSET_TYPE_SHADER) {
-        return entry;
-    } else {
-        taskresponse_t *obj = (taskresponse_t *)entry;
-        return obj->is_done ? obj->resource : NULL;
-    }
+    const taskresponse_t *response = (taskresponse_t *)entry;
+    return ASSET_ASYNC_LOADING_SUPPORT[assettype] 
+        ? (response->is_done ? response->resource : NULL)
+        : entry;
 }
 
 

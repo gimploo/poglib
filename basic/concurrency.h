@@ -7,37 +7,25 @@
 #include "./ds/queue.h"
 #include "poglib/basic/str.h"
 
+//TODO: way to safely exit from active running threads.
+
 #define __ASYNC_META_HEADER__\
     atomic_bool is_done;\
     thrd_t thrd_id;\
-
-typedef struct {
-    __ASYNC_META_HEADER__
-    void *resource;
-} taskresponse_t;
 
 #define async(TYPE) struct {\
     __ASYNC_META_HEADER__\
     TYPE *data;\
 }
 
-taskresponse_t * task_response(arena_t * const arena, const u64 response_size)
-{
-    ASSERT(response_size);
-    taskresponse_t *taskresponse = arena_reserve(arena, sizeof(taskresponse_t));
-    taskresponse->resource = arena_reserve(arena, response_size);
-    return taskresponse;
-}
+typedef struct taskresponse_t taskresponse_t;
+struct taskresponse_t {
+    __ASYNC_META_HEADER__
+    void *resource;
+};
 
-taskresponse_t * task_response_empty(arena_t * const arena)
-{
-    taskresponse_t *asyncobj = arena_reserve(arena, sizeof(taskresponse_t));
-    asyncobj->resource = NULL;
-    return asyncobj;
-}
-
-typedef struct {
-
+typedef struct taskpayload_t taskpayload_t;
+struct taskpayload_t {
     struct {
         u32 count;
         union {
@@ -45,20 +33,39 @@ typedef struct {
             void *any;
         } arg[4];
     } args;
-
     struct {
         bool is_ready;
         arena_t arena;
     } storage;
+};
 
-} taskpayload_t;
-
-int i = sizeof(taskresponse_t);
-
-typedef struct {
-    taskpayload_t payload;
+typedef struct taskconfig_t taskconfig_t;
+struct taskconfig_t {
+    taskpayload_t       payload;
+    taskresponse_t      *result_dest;
     void (*callback)(const taskpayload_t args, void *output_reserved_mem);
-} taskconfig_t;
+};
+
+typedef struct bgtask_manager_t bgtask_manager_t;
+struct bgtask_manager_t {
+    queue_t tasks;
+    arena_t arena;
+};
+
+taskresponse_t *    taskresponse(arena_t * const arena, const u64 response_size);
+taskresponse_t *    task_response_empty(arena_t * const arena);
+void                taskresponse_destroy(taskresponse_t *self);
+
+
+bgtask_manager_t    bgtask_manager_init(void);
+void                bgtask_manager_pass_task(bgtask_manager_t * const self, const taskconfig_t config);
+void                bgtask_manager_run_all_tasks(bgtask_manager_t *self);
+void                bgtask_manager_destroy(bgtask_manager_t *self);
+
+
+#ifndef IGNORE_CONCURRENCY_IMPLEMENTATION
+
+#define TOTAL_THREADS_AVAILABLE 4
 
 typedef struct {
     taskconfig_t config;
@@ -66,20 +73,16 @@ typedef struct {
 } bgtask__internal_t;
 
 typedef struct {
-
     bgtask__internal_t task;
     arena_t *bgarena;
-
 } thread__internal_payload_t;
 
-typedef struct {
-
-    queue_t tasks;
-    arena_t arena;
-
-} bgtask_manager_t;
-
-#define TOTAL_THREADS_AVAILABLE 4
+taskresponse_t * taskresponse(arena_t * const arena, const u64 response_size)
+{
+    taskresponse_t *taskresponse = arena_reserve(arena, sizeof(taskresponse_t));
+    taskresponse->resource = response_size > 0 ? arena_reserve(arena, response_size) : NULL;
+    return taskresponse;
+}
 
 bgtask_manager_t bgtask_manager_init(void)
 {
@@ -89,20 +92,16 @@ bgtask_manager_t bgtask_manager_init(void)
     };
 }
 
-void bgtask_manager_pass_task(
-    bgtask_manager_t * const self, 
-    const taskconfig_t config,
-    taskresponse_t* const response_ref
-) {
-    ASSERT(response_ref);
+void bgtask_manager_pass_task(bgtask_manager_t * const self, const taskconfig_t config)
+{
     ASSERT(config.payload.args.count > 0);
     ASSERT(config.callback);
 
-    response_ref->thrd_id = (thrd_t){0};
+    config.result_dest->thrd_id = (thrd_t){0};
 
     const bgtask__internal_t task = (bgtask__internal_t){
         .config = config,
-        .response_ref = response_ref,
+        .response_ref = config.result_dest,
     };
     queue_put(&self->tasks, task);
 }
@@ -153,7 +152,7 @@ void bgtask_manager_destroy(bgtask_manager_t *self)
     memset(self, 0, sizeof(bgtask_manager_t));
 }
 
-void async_destroy(void *self) 
+void taskresponse_destroy(taskresponse_t *self) 
 {
     taskresponse_t *obj = self;
 #ifdef _WIN32
@@ -163,4 +162,5 @@ void async_destroy(void *self)
 #endif
 }
 
+#endif
 

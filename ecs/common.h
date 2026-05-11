@@ -1,5 +1,6 @@
 #pragma once
 #include <poglib/basic.h>
+#include <poglib/ecs/component/types.h>
 
 /* -------------------------------- ENTITY -------------------------------------------- */
 
@@ -11,26 +12,16 @@ struct ecs_entitymanager_t {
     hashtable_t lookup;
 };
 
+
 /* ------------------------------- COMPONENT ------------------------------------------ */
 
-typedef enum {
-    ECS_CMP_TRANSFORM_IDX   = 0,
-    ECS_CMP_MESH_IDX        = 1,
-    ECS_CMP_INPUT_IDX       = 2,
-    ECS_CMP_COUNT
-} ecs_component_storage_index;
-
-typedef enum {
-    ECS_CMP_TRANSFORM   = 1 << ECS_CMP_TRANSFORM_IDX,
-    ECS_CMP_MESH        = 1 << ECS_CMP_MESH_IDX,
-    ECS_CMP_INPUT       = 1 << ECS_CMP_INPUT_IDX,
-} ecs_component_type;
-
-typedef struct {
-    u32 hit_count;                                          //NOTE: each component result index is cmp_idx (+1 increment) and 
-                                                            //not the bitmask index (power of 2)
+typedef struct ecs_query_entitycmps_t ecs_query_entitycmps_t;
+struct ecs_query_entitycmps_t{
+    //NOTE: each component result index is cmp_idx (+1 increment) and 
+    //not the bitmask index (power of 2)
+    u32 hit_count;
     void *cmps[ECS_CMP_COUNT];
-} ecs_query_entitycmps_t;
+};
 
 typedef struct ecs_componentmanager_t ecs_componentmanager_t;
 struct ecs_componentmanager_t {

@@ -208,7 +208,7 @@ void slot_print(const slot_t *table, void (*print)(void*))
 void * slot_get_value(const slot_t *table, const u64 index)
 {
     ASSERT(table);
-    if(index <= 0 && index >= table->internal.capacity) eprint("invalid index (%li) value", index);;
+    if(index < 0 || index >= table->internal.capacity) eprint("invalid index (%li) value having slot capacity (%li)", index, table->internal.capacity);
     ASSERT(table->len > 0);
 
     return slot__internal_get_reference_to_only_value_at_index(table, index);

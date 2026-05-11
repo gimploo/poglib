@@ -9,3 +9,11 @@ typedef enum asset_type {
 
 typedef u32 asset_id;
 
+#define INVALID_ASSET_ID        0
+
+
+const bool ASSET_ASYNC_LOADING_SUPPORT[ASSET_TYPE_COUNT] = {
+    [ASSET_TYPE_MODEL]      = true,
+    [ASSET_TYPE_SHADER]     = false, //Requires opengl to compile shaders
+};
+

@@ -13,16 +13,16 @@
 
 typedef struct behaviorautomata_t behaviorautomata_t;
 
-typedef union {
-    ecs_t *ecs;
-    void *payload;
+typedef struct {
+    ecs_t   *ecs;
+    void    *payload;
 } behaviorautomata_ctx_t;
 
 typedef struct {
     u16                             state_type;
     behaviorautomata_ctx_t          ctx;
     void (*start)(behaviorautomata_t * const, behaviorautomata_ctx_t *const ctx);
-    void (*update)(behaviorautomata_t * const, const commandqueue_t * const queue, behaviorautomata_ctx_t * const ctx);
+    void (*update)(behaviorautomata_t * const, const commandqueue_t * const queue, behaviorautomata_ctx_t * const ctx, const f32 delta_time);
     void (*exit)(behaviorautomata_t * const, behaviorautomata_ctx_t *const ctx);
 } behaviorautomata_state_t;
 
@@ -33,7 +33,7 @@ struct behaviorautomata_t {
 behaviorautomata_t          behaviorautomata_init(arena_t * const arena);
 void                        behaviorautomata_pop_state(behaviorautomata_t * const self);
 void                        behaviorautomata_push_state(behaviorautomata_t * const self, behaviorautomata_state_t state);
-void                        behaviorautomata_update(behaviorautomata_t * const self, const commandqueue_t * const queue);
+void                        behaviorautomata_update(behaviorautomata_t * const self, const commandqueue_t * const queue, const f32 delta_time);
 
 #ifndef IGNORE_BEHAVIORAUTOMATA_IMPLEMENTATION
 
@@ -59,10 +59,10 @@ void behaviorautomata_pop_state(behaviorautomata_t * const self) {
     state->exit(self, &state->ctx);
 }
 
-void behaviorautomata_update(behaviorautomata_t * const self, const commandqueue_t * const queue) {
+void behaviorautomata_update(behaviorautomata_t * const self, const commandqueue_t * const queue, const f32 delta_time) {
     if (!self->stack.len) return;
 
     behaviorautomata_state_t *state = stack_peek(&self->stack);
-    state->update(self, queue, &state->ctx);
+    state->update(self, queue, &state->ctx, delta_time);
 }
 #endif
