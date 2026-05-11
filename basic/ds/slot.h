@@ -38,6 +38,7 @@ void *              slot_get_value(const slot_t *table, const u64 index);
 void                slot_print(const slot_t *table, void (*print)(void*));
 void                slot_dump(const slot_t *table);
 void                slot_clear(slot_t *);
+void                slot_fill_empty(slot_t * const);
 
 #define             slot_destroy(PSLOTARRAY)                               __impl_slot_destroy(PSLOTARRAY)
 
@@ -110,7 +111,7 @@ void * slot_insert(
         const u64 value_size)
 { 
     if (table == NULL) eprint("table argument is null");
-    if (value_size != table->internal.elem_size) eprint("expected value size (%li) but got (%li)", table->internal.elem_size, value_size);
+    if (value_size != table->internal.elem_size) eprint("expected value size (%li)bytes but got (%li)bytes", table->internal.elem_size, value_size);
     ASSERT(index >= 0 && index < table->internal.capacity);
 
     if (slot_is_index_occupied(table, index)) {
@@ -278,6 +279,12 @@ void slot_insert_multiple(
                 arr + (elem_size * i), 
                 elem_size);
     }
+}
+
+void slot_fill_empty(slot_t * const self)
+{
+    self->len = self->internal.capacity;
+    memset(self->data, 0, self->len * self->internal.elem_size);
 }
 
 #endif

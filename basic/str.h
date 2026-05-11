@@ -257,7 +257,7 @@ str_t str_join(arena_t *arena, const str_t *part1, const char *part2)
 //credit: gunslinger
 void cstr_get_file_extension(const char *filepath, char output[32])
 {
-    uint32_t str_len = strlen(filepath);
+    u32 str_len = strlen(filepath);
     const char* at = (filepath + str_len - 1);
     while (*at != '.' && at != filepath)
     {
@@ -267,10 +267,9 @@ void cstr_get_file_extension(const char *filepath, char output[32])
     if (*at == '.')
     {
         at++;
-        uint32_t i = 0; 
+        u32 i = 0; 
         while (*at)
         {
-            char c = *at;
             output[i++] = *at++;
         }
         output[i] = '\0';

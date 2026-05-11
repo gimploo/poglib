@@ -1,178 +1,168 @@
 #pragma once
 #include <poglib/basic.h>
 #include "./asset.h"
+#include "poglib/basic/arena.h"
+#include "poglib/basic/concurrency.h"
 #include "poglib/basic/ds/hashtable.h"
+#include "poglib/gfx/gl/shader.h"
+#include "poglib/gfx/model/assimp.h"
 
-//FIXME: fixes required here 
+typedef struct assetmanager_t assetmanager_t;
+struct assetmanager_t {
 
+    arena_t             arena;
+    bgtask_manager_t    *bgtask_manager;
+    hashtable_t         assetmaps[ASSET_TYPE_COUNT];
 
-/*==============================================================================
-                        -- ASSET MANAGER --
-===============================================================================*/
+    struct {
+        u32 asset_idx_generator;
+    } internal;
 
-typedef struct assetmanager_t {
+};
 
-    hashtable_t assetmaps[AT_COUNT];
-
-} assetmanager_t ;
-
-
-assetmanager_t  assetmanager_init(void);
-
-#define         assetmanager_add_shader(PASSETMANAGER, LABEL, VERTEXFILE, FRAGMENTFILE)    __impl_assetmanager_add_asset((PASSETMANAGER), (LABEL), (VERTEXFILE), (FRAGMENTFILE), 0, AT_GLSHADER) 
-#define         assetmanager_add_texture2d(PASSETMANAGER, LABEL, FILEPATH)                 __impl_assetmanager_add_asset((PASSETMANAGER), (LABEL), (FILEPATH), NULL, 0, AT_GLTEXTURE2D) 
-#define         assetmanager_add_freetypefont(PASSETMANAGER, LABEL, FILEPATH, FONTSIZE)    __impl_assetmanager_add_asset((PASSETMANAGER), (LABEL), (FILEPATH), NULL, (FONTSIZE), AT_FONT_FREETYPE) 
-
-#define         assetmanager_get_shader(PASSETMANAGER, LABEL)                   (glshader_t *)__impl_assetmanager_get_asset((PASSETMANAGER), (LABEL), AT_GLSHADER)
-#define         assetmanager_get_texture2d(PASSETMANAGER, LABEL)                (gltexture2d_t *)__impl_assetmanager_get_asset((PASSETMANAGER), (LABEL), AT_GLTEXTURE2D)
-#define         assetmanager_get_freetypefont(PASSETMANAGER, LABEL)             (glfreetypefont_t *)__impl_assetmanager_get_asset((PASSETMANAGER), (LABEL), AT_FONT_FREETYPE)
-
-void            assetmanager_destroy(assetmanager_t *self);
-
-
-/*------------------------------------------------------------------------------
-                        IMPLEMENTATION
--------------------------------------------------------------------------------*/
+assetmanager_t      assetmanager_init(bgtask_manager_t * const taskmanager);
+asset_id            assetmanager_load_model_async(assetmanager_t *self, const str_t filepath);
+asset_id            assetmanager_load_glsl_shader(assetmanager_t *self, const str_t vtx, const str_t frag);
+const void *        assetmanager_get_assetresource(const assetmanager_t * const self, const asset_type assettype, const u32 assetId);
+void                assetmanager_destroy(assetmanager_t *const self);
 
 #ifndef IGNORE_ASSETMANAGER_IMPLEMENTATION
 
-
-assetmanager_t assetmanager_init(void)
+assetmanager_t assetmanager_init(bgtask_manager_t * const taskmanager)
 {
-    return (assetmanager_t ){
+    arena_t arena = arena_init(NULL, 1 * MB);
+    assetmanager_t result = {
         .assetmaps = {
-            [AT_GLSHADER]       = hashtable_init(10, HT_KEY_TYPE_STR, asset_t, NULL),
-            [AT_GLTEXTURE2D]    = hashtable_init(10, HT_KEY_TYPE_STR, asset_t, NULL),
-            [AT_SOUND_WAV]      = hashtable_init(10, HT_KEY_TYPE_STR, asset_t, NULL),
-            [AT_FONT_FREETYPE]  = hashtable_init(10, HT_KEY_TYPE_STR, asset_t, NULL),
+            [ASSET_TYPE_MODEL] = hashtable_init(10, HT_KEY_TYPE_U32, async(glmodel_t), &arena),
+            [ASSET_TYPE_SHADER] = hashtable_init(10, HT_KEY_TYPE_U32, glshader_t, &arena),
+        },
+        .bgtask_manager = taskmanager,
+        .internal = {
+            .asset_idx_generator = 0
         }
     };
+    result.arena = arena;
+    return result;
 }
 
-asset_t * __impl_assetmanager_add_asset(assetmanager_t *manager, const char *label, const char *filepath01, const char *filepath02, const u32 fontsize, asset_type type) 
+void assetmanager__internal_thread_callback_load_glmodel(const taskpayload_t payload, void *output_mem) 
 {
-    assert(filepath01);
-    assert(manager);
+    ASSERT(output_mem);
+    ASSERT(payload.args.count == 1);
+    const str_t filepath = payload.args.arg[0].str;
+    *(glmodel_t *)output_mem = glmodel_init(filepath.data);
+}
 
-    asset_t output = {
-        .label = label,
-        .filepath01 = filepath01,
-        .filepath02 = filepath02,
-        .type = type
-    };
+void assetmanager__internal_thread_callback_load_glshader(taskpayload_t payload, void *output_mem)
+{
+    ASSERT(payload.args.count == 2);
+    ASSERT(payload.storage.is_ready);
+    const str_t vtx_filepath = payload.args.arg[0].str;
+    const str_t frag_filepath = payload.args.arg[1].str;
+    *(glshader_t *)output_mem = glshader_file_init(vtx_filepath, frag_filepath, &payload.storage.arena);
+}
 
-    switch(type)
-    {
-        case AT_GLSHADER:
-            assert(filepath02);
-            output.shader = glshader_from_file_init(filepath01, filepath02);
-        break;
+asset_id assetmanager_load_model_async(assetmanager_t *const self, const str_t filepath)
+{
+    const u32 asset_id = ++self->internal.asset_idx_generator;
 
-        case AT_GLTEXTURE2D:
-        {
-            gltexture2d_t tex = gltexture2d_init(filepath01);
-            memcpy(&output.texture2d, &tex, sizeof(gltexture2d_t));
-        }
-        break;
+    //TODO: this is not cleaned up
+    taskresponse_t *response = task_response(
+        &self->arena, 
+        sizeof(glmodel_t)
+    );
+    hashtable_insert(
+        &self->assetmaps[ASSET_TYPE_MODEL], 
+        (hashtable_key_t) {.u32 = asset_id }, 
+        response
+    );
 
-        case AT_FONT_FREETYPE:
-        {
-            assert(fontsize != 0);
-            glfreetypefont_t font = glfreetypefont_init(filepath01, fontsize, false);
-            memcpy(&output.font, &font, sizeof(font)); 
-        }
-        break;
+    bgtask_manager_pass_task(
+        self->bgtask_manager, 
+        (taskconfig_t) {
+            .payload = {
+                .args = {
+                    .count = 1,
+                    .arg = {
+                        [0] = filepath,
+                    }
+                },
+                .storage = {0}
+            },
+            .callback = assetmanager__internal_thread_callback_load_glmodel,
+        },
+        response
+    );
 
-        case AT_SOUND_WAV:
-            eprint("TODO : asset type");
-        break;
+    return asset_id;
+}
 
-        default: eprint("type not accounted for");
+const void * assetmanager_get_assetresource(const assetmanager_t * const self, const asset_type assettype, const u32 assetId)
+{
+    ASSERT(assettype >= 0 && assettype < ASSET_TYPE_COUNT);
+
+    if (!hashtable_has_key(&self->assetmaps[assettype], (hashtable_key_t){ .u32 = assetId })) {
+        eprint("asset id `%i` is not a valid identifier for asset type `%i`", assetId, assettype);
     }
 
-    hashtable_t *table = &manager->assetmaps[type];
-    assert(table);
+    const void *entry = hashtable_get_value(
+        &self->assetmaps[assettype], 
+        (hashtable_key_t) { .u32 = assetId }
+    );
 
-    return (asset_t *)hashtable_insert(table, (hashtable_key_t){label}, mem_init(&output, sizeof(output)));
-}
-
-
-void assetmanager_destroy(assetmanager_t *self) 
-{
-    assert(self);
-
-    for (u32 type = 0; type < AT_COUNT; type++)
-    {
-        hashtable_t *table = &self->assetmaps[type];
-        assert(table);
-
-        switch(type)
-        {
-            case AT_GLSHADER: 
-                hashtable_iterator(table, asset) {
-                    glshader_t *shader = ((ht__internal_table_entry_t *)asset)->ptr;
-                    glshader_destroy(shader);
-                    mem_free(asset, sizeof(asset_t));
-                }
-            break;
-            case AT_GLTEXTURE2D:
-                hashtable_iterator(table, asset) {
-                    gltexture2d_t *tex = ((ht__internal_table_entry_t *)asset)->ptr;
-                    gltexture2d_destroy(tex);
-                    mem_free(asset, sizeof(asset_t));
-                }
-            break;
-
-            case AT_FONT_FREETYPE:
-                hashtable_iterator(table, asset) {
-                    glfreetypefont_t *font = ((ht__internal_table_entry_t *)asset)->ptr;
-                    glfreetypefont_destroy(font);
-                    mem_free(asset, sizeof(asset_t));
-                }
-            break;
-
-            case AT_SOUND_WAV:
-                // TODO: 
-            break;
-
-            default: eprint("type not accounted for ");
-        }
-        hashtable_destroy(table);
-
+    //FIXME: workaround have a lookup table that tell which asset type are loaded async
+    if (assettype == ASSET_TYPE_SHADER) {
+        return entry;
+    } else {
+        taskresponse_t *obj = (taskresponse_t *)entry;
+        return obj->is_done ? obj->resource : NULL;
     }
 }
 
 
-const void * __impl_assetmanager_get_asset(const assetmanager_t *manager, const char *label, asset_type type)
+void assetmanager_destroy(assetmanager_t *const self)
 {
-    assert(manager);
+    ASSERT(self);
+    arena_destroy(&self->arena);
+}
 
-    const hashtable_t *table = &manager->assetmaps[type];
-    assert(table);
+asset_id assetmanager_load_glsl_shader(assetmanager_t *self, const str_t vtx_filepath, const str_t frag_filepath)
+{
+    const u32 asset_id = ++self->internal.asset_idx_generator;
 
-    asset_t *asset = (asset_t *)hashtable_get_value(table, label);
-    assert(asset);
+    glshader_t *shader = arena_reserve(&self->arena, sizeof(glshader_t));
+    *shader = glshader_file_init(vtx_filepath, frag_filepath, &self->arena);
 
-    switch(type)
-    {
-        case AT_GLSHADER: 
-            return &((asset_t *)asset)->shader;
-        break;
-        case AT_GLTEXTURE2D:
-            return &((asset_t *)asset)->texture2d;
-        break;
+    hashtable_insert(
+        &self->assetmaps[ASSET_TYPE_SHADER], 
+        (hashtable_key_t) {.u32 = asset_id }, 
+        shader
+    );
+    return asset_id;
 
-        case AT_FONT_FREETYPE:
-            return &((asset_t *)asset)->font;
-        break;
-
-        case AT_SOUND_WAV:
-            eprint("TODO");
-        break;
-
-        default: eprint("Asset `%s` type not accounted for ", label);
-    }
-
+    //FIXME Opengl limitation - cant run another gl context in another thread
+    /*
+    bgtask_manager_pass_task(
+        self->bgtask_manager, 
+        (taskconfig_t) {
+            .payload = (taskpayload_t){
+                .args ={
+                    .count = 2,
+                    .arg = {
+                        [0] = vtx_filepath,
+                        [1] = frag_filepath,
+                    },
+                },
+                .storage = {
+                    .is_ready = true,
+                    .arena = arena
+                }
+            },
+            .callback = assetmanager__internal_thread_callback_load_glshader,
+        },
+        response
+    );
+    */
 }
 
 #endif

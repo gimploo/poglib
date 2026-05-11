@@ -1,36 +1,11 @@
 #pragma once
-#include <poglib/gfx/gl/texture2d.h>
-#include <poglib/gfx/gl/shader.h>
-#include "../font/glfreetypefont.h"
+#include <poglib/basic.h>
 
 typedef enum asset_type {
-
-    AT_GLSHADER,
-    AT_GLTEXTURE2D,
-    AT_SOUND_WAV,
-    AT_FONT_FREETYPE,
-
-    AT_COUNT
-
+    ASSET_TYPE_MODEL    = 0,
+    ASSET_TYPE_SHADER   = 1,
+    ASSET_TYPE_COUNT
 } asset_type;
 
-typedef struct asset_t {
+typedef u32 asset_id;
 
-    const char  *label;
-    const char  *filepath01;
-    const char  *filepath02;
-    asset_type  type;
-
-    union {
-
-        gltexture2d_t   texture2d;
-        glshader_t      shader;
-        glfreetypefont_t font;
-
-    };
-
-} asset_t ;
-
-
-#ifndef IGNORE_ASSETMANAGER_IMPLEMENTATION
-#endif

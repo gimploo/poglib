@@ -5,57 +5,72 @@
 #include "./common.h"
 #include "./arena.h"
 #include "./ds/queue.h"
+#include "poglib/basic/str.h"
 
 #define __ASYNC_META_HEADER__\
     atomic_bool is_done;\
-    struct {\
-        thrd_t id;\
-    } thrd;\
+    thrd_t thrd_id;\
 
 typedef struct {
     __ASYNC_META_HEADER__
     void *resource;
-} async_object_t;
+} taskresponse_t;
 
 #define async(TYPE) struct {\
     __ASYNC_META_HEADER__\
     TYPE *data;\
 }
 
-typedef struct {
-    u32 count;
-    void *arg1;
-    void *arg2;
-    void *arg3;
-    void *arg4;
-} task_args_t;
+taskresponse_t * task_response(arena_t * const arena, const u64 response_size)
+{
+    ASSERT(response_size);
+    taskresponse_t *taskresponse = arena_reserve(arena, sizeof(taskresponse_t));
+    taskresponse->resource = arena_reserve(arena, response_size);
+    return taskresponse;
+}
+
+taskresponse_t * task_response_empty(arena_t * const arena)
+{
+    taskresponse_t *asyncobj = arena_reserve(arena, sizeof(taskresponse_t));
+    asyncobj->resource = NULL;
+    return asyncobj;
+}
 
 typedef struct {
+
     struct {
-        void *(*func_ptr_ret)(task_args_t args, arena_t *);
-        void (*func_ptr_no_ret)(task_args_t args);
-    };
-    task_args_t arg;
-    arena_t *arena;
-} task_config_t;
+        u32 count;
+        union {
+            str_t str;
+            void *any;
+        } arg[4];
+    } args;
+
+    struct {
+        bool is_ready;
+        arena_t arena;
+    } storage;
+
+} taskpayload_t;
+
+int i = sizeof(taskresponse_t);
 
 typedef struct {
-    task_config_t config;
-    struct {
-        async_object_t *async_obj;
-        const void **res_addr;
-    } meta;
-} bgtask_t;
+    taskpayload_t payload;
+    void (*callback)(const taskpayload_t args, void *output_reserved_mem);
+} taskconfig_t;
+
+typedef struct {
+    taskconfig_t config;
+    taskresponse_t *response_ref;
+} bgtask__internal_t;
 
 typedef struct {
 
-    bgtask_t task;
-    struct {
-        arena_t *persitent;
-        arena_t scratch;
-    } arenas;
+    bgtask__internal_t task;
+    arena_t *bgarena;
 
-} thread_payload_t;
+} thread__internal_payload_t;
 
 typedef struct {
 
@@ -64,56 +79,47 @@ typedef struct {
 
 } bgtask_manager_t;
 
+#define TOTAL_THREADS_AVAILABLE 4
+
 bgtask_manager_t bgtask_manager_init(void)
 {
     return (bgtask_manager_t) {
-        .tasks = queue_init(10, bgtask_t, NULL),
-        .arena = arena_init(NULL, 2 * MB)
+        .tasks = queue_init(TOTAL_THREADS_AVAILABLE, bgtask__internal_t, NULL),
+        .arena = arena_init(NULL, 8 * KB)
     };
 }
 
 void bgtask_manager_pass_task(
     bgtask_manager_t * const self, 
-    const task_config_t config,
-    void * const async_object_obj
+    const taskconfig_t config,
+    taskresponse_t* const response_ref
 ) {
-    async_object_t * const async_obj = async_object_obj;
-    ASSERT(async_obj);
+    ASSERT(response_ref);
+    ASSERT(config.payload.args.count > 0);
+    ASSERT(config.callback);
 
-    async_obj->thrd.id = (thrd_t){0};
+    response_ref->thrd_id = (thrd_t){0};
 
-    if ((config.arena == NULL && config.func_ptr_ret != NULL)
-        ||(config.arena != NULL && config.func_ptr_ret == NULL)) {
-        eprint("Pass an arena when func_ptr_ret is set");
-    }
-
-    const bgtask_t task = (bgtask_t){
+    const bgtask__internal_t task = (bgtask__internal_t){
         .config = config,
-        .meta = {
-            .async_obj = async_obj,
-            .res_addr = config.func_ptr_ret ? (const void **)&async_obj->resource : NULL
-        }
+        .response_ref = response_ref,
     };
     queue_put(&self->tasks, task);
 }
 
 
-i32 bgtask__internal_thread_wrapper(void *data)
+i32 bgtask__internal_thread_wrapper(void *thread_payload_data)
 {
-    thread_payload_t *payload = data;
-    if (payload->arenas.persitent) {
-        const void *output = payload->task.config.func_ptr_ret(
-            payload->task.config.arg, 
-            payload->arenas.persitent
-        );
-        *payload->task.meta.res_addr = output;
-    } else {
-        payload->task.config.func_ptr_no_ret(
-            payload->task.config.arg
-        );
-    }
-    atomic_store_explicit(&payload->task.meta.async_obj->is_done, true, memory_order_release);
-    arena_giveback(&payload->arenas.scratch, payload, sizeof(thread_payload_t));
+    thread__internal_payload_t *payload = thread_payload_data;
+
+    payload->task.config.callback(
+        payload->task.config.payload,
+        payload->task.response_ref->resource
+    );
+
+    atomic_store_explicit(&payload->task.response_ref->is_done, true, memory_order_release);
+    arena_giveback(payload->bgarena, payload, sizeof(thread__internal_payload_t));
+
     return 0;
 }
 
@@ -122,21 +128,19 @@ void bgtask_manager_run_all_tasks(bgtask_manager_t *self)
     //TODO: maybe have this restrain to few threads only
     while(!queue_is_empty(&self->tasks)) {
 
-        bgtask_t task = {0};
-        queue_get_in_buffer(&self->tasks, &task, sizeof(task));
+        bgtask__internal_t task = {0};
+        queue_get_in_buffer(&self->tasks, (buffer_t) { 
+            .raw_data = (void *)&task, 
+            .size = sizeof(task) 
+        });
 
-        arena_t scratch = arena_init(&self->arena, KB);
-        thread_payload_t *payload = arena_reserve(&scratch, sizeof(thread_payload_t));
-
-        *payload = (thread_payload_t){
-            .arenas = {
-                .scratch = scratch,
-                .persitent = task.config.arena
-            },
+        thread__internal_payload_t *payload = arena_reserve(&self->arena, sizeof(thread__internal_payload_t));
+        *payload = (thread__internal_payload_t){
             .task = task,
+            .bgarena = &self->arena
         };
 
-        if (thrd_create(&payload->task.meta.async_obj->thrd.id, bgtask__internal_thread_wrapper, payload) != thrd_success) {
+        if (thrd_create(&payload->task.response_ref->thrd_id, bgtask__internal_thread_wrapper, payload) != thrd_success) {
             eprint("Failed to generate thread");
         }
     }
@@ -151,11 +155,11 @@ void bgtask_manager_destroy(bgtask_manager_t *self)
 
 void async_destroy(void *self) 
 {
-    async_object_t *obj = self;
+    taskresponse_t *obj = self;
 #ifdef _WIN32
-    thrd_exit(obj->thrd.id._Tid);
+    thrd_exit(obj->thrd_id._Tid);
 #else
-    thrd_exit(obj->thrd.id);
+    thrd_exit(obj->thrd_id);
 #endif
 }
 

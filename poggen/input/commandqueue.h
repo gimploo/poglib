@@ -3,20 +3,22 @@
 #include "./commandregistry.h"
 #include "SDL_keyboard.h"
 #include "SDL_mouse.h"
-#include "poglib/application/window/sdl_window.h"
-
-//TODO: revaluate whether queue is needed and keep the bitmask as the SOT
 
 #define MAX_ALLOWED_COMMANDS_PER_FRAME 10
 
 typedef u16 command_t;
 
 typedef struct {
+
     commandregistry_t registry;
-    queue_t commands;
+
+    //TODO: revaluate whether queue is needed and keep the bitmask as the single SOT
+    queue_t commands; 
+
     struct {
         u16 bitmask;
     } internal;
+
 } commandqueue_t;
 
 
@@ -51,13 +53,13 @@ void commandqueue_sync_input(commandqueue_t * const self) {
     self->internal.bitmask = 0;
     queue_clear(&self->commands);
 
-    printf("-------------------- NEW BATCH --------------------------------\n");
+    //printf("-------------------- NEW BATCH --------------------------------\n");
     for (u16 command_type = 0; command_type < commands->count; command_type++) {
         if (self->registry.registry[command_type].type == COMMANDINPUTKEY_TYPE_KEYBOARD
             && keyboard_buffer[self->registry.registry[command_type].sdl_keyboard_key]) {
             queue_put(&self->commands, command_type);
             self->internal.bitmask |= (1 << command_type);
-            printf("KB Tracked %i\n", command_type);
+            //printf("KB Tracked %i\n", command_type);
         } else if (
             self->registry.registry[command_type].type == COMMANDINPUTKEY_TYPE_MOUSE 
             && window_mouse_button_is_pressed(
@@ -66,11 +68,11 @@ void commandqueue_sync_input(commandqueue_t * const self) {
         ) {
             queue_put(&self->commands, command_type);
             self->internal.bitmask |= (1 << command_type);
-            printf("MS Tracked %i\n", command_type);
+            //printf("MS Tracked %i\n", command_type);
         }
-        printf("Bitmask: ");cq__internal_print_u16_bitmask(self->internal.bitmask);
+        //printf("Bitmask: ");cq__internal_print_u16_bitmask(self->internal.bitmask);
     }
-    printf("-------------------- END BATCH --------------------------------\n");
+    //printf("-------------------- END BATCH --------------------------------\n");
 }
 
 

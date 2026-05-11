@@ -10,13 +10,6 @@ struct ecs_entity_t {
     u32 component_signature;
 };
 
-typedef struct ecs_entitymanager_t ecs_entitymanager_t;
-struct ecs_entitymanager_t {
-    slot_t      entities;
-    hashtable_t lookup;
-};
-
-
 ecs_entitymanager_t ecs_entitymanager(arena_t * const arena)
 {
     ASSERT(arena);
