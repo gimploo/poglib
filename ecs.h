@@ -7,15 +7,17 @@
 
 ecs_t        ecs_init(void);
 void         ecs_update(ecs_t *const self);
-void         ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config);
-void         ecs_entity_remove(ecs_t * const self, const u32 entityId);
+u32             ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config);
+void            ecs_entity_remove(ecs_t * const self, const u32 entityId);
 void         ecs_destroy(ecs_t * const self);
 
 #ifndef IGNORE_ECS_IMPLEMENTATION
 
 ecs_t ecs_init(void)
 {
-    arena_t arena = arena_init(NULL, 1 * GB);
+    //FIXME: WTF it needs 500 MB ??
+    //TODO: Figure out a way to visualize know where memory is distributed in the system 
+    arena_t arena = arena_init(NULL, 500 * MB);
     ecs_t result = {
         .internal = {
             .entity_generator_counter = 0,
@@ -30,7 +32,7 @@ ecs_t ecs_init(void)
     return result;
 }
 
-void ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config)
+u32 ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config)
 {
     const ecs_entity_t new_entity = {
         .id = self->internal.entity_generator_counter++,
@@ -46,6 +48,7 @@ void ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_co
         new_entity.id,
         component_config
     );
+    return new_entity.id;
 }
 
 void ecs_entity_remove(ecs_t * const self, const u32 entityId)
@@ -68,6 +71,7 @@ void ecs_update(ecs_t *const self)
         }
     }
 }
+
 
 void ecs_destroy(ecs_t * const self)
 {
