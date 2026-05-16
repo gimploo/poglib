@@ -13,13 +13,33 @@
 //TODO: maybe have all the shader uniform locations localized to one place, 
 //so not to need to call 'get location' every time we send it.
 
-typedef struct glshader_t {
+#define MAX_UNIFORMS_ALLOWED_IN_SHADER 16
+
+typedef struct {
+    u16 count;
+    str_t data[MAX_UNIFORMS_ALLOWED_IN_SHADER];
+} glshaderuniform_registry_t;
+
+typedef struct {
+    u16 count; 
+    struct {
+        str_t name;
+        u32 locid;
+    } locs[MAX_UNIFORMS_ALLOWED_IN_SHADER];
+} glshader__internal_uniform_locs_t;
+
+typedef struct {
 
     u32 id;
     str_t vs;
     str_t fg;
 
+    struct {
+        glshader__internal_uniform_locs_t uniformlocs;
+    } internal;
+
 } glshader_t;
+
 
 static_assert(sizeof(u32) == sizeof(GLuint), "shader.h - Gluint and u32 size doesnot match");
 
@@ -73,10 +93,10 @@ const char * const DEFAULT_SIMPLE_SHAPES_VSHADER =
 
 #define         glshader_default_init(...)                                      glshader_from_cstr_init(DEFAULT_VSHADER, DEFAULT_FSHADER)
 
-glshader_t      glshader_file_init(const str_t vtxpath, const str_t fgpath, arena_t * const arena);
+glshader_t              glshader_init(const str_t vtxpath, const str_t fgpath, const glshaderuniform_registry_t uniforms, arena_t * const arena);
 
-glshader_t      glshader_from_file_init(const char *file_vs, const char *file_fs);
-glshader_t      glshader_from_cstr_init(const char *vs_code, const char *fs_code);
+glshader_t              glshader_from_file_init(const char *file_vs, const char *file_fs);
+glshader_t              glshader_from_cstr_init(const char *vs_code, const char *fs_code);
 
 void            glshader_send_uniform_fval(const glshader_t *shader, const char *uniform, float val);
 void            glshader_send_uniform_uival(const glshader_t *shader, const char *uniform, unsigned int val);
@@ -158,7 +178,7 @@ static inline void __shader_load_code(glshader_t *shader, const char *vs_code, c
 }
 
 
-static inline void __shader_load_from_file(glshader_t *shader, const char *vertex_source_path, const char *fragment_source_path, arena_t * const arena)
+static inline void glshader__internal_load_from_file(glshader_t *shader, const char *vertex_source_path, const char *fragment_source_path, arena_t * const arena)
 {
     if (shader == NULL) eprint("shader argument is null");
 
@@ -193,7 +213,7 @@ glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
         .vs = str__from_cstr(file_vs, strlen(file_vs)),
         .fg = str__from_cstr(file_fs, strlen(file_vs)),
     };
-    __shader_load_from_file(&shader, file_vs, file_fs, NULL);
+    glshader__internal_load_from_file(&shader, file_vs, file_fs, NULL);
 
     return shader;
 }
@@ -211,6 +231,35 @@ glshader_t glshader_from_cstr_init(const char *vs_code, const char *fs_code)
     __shader_load_code(&shader, vs_code, fs_code);
 
     return shader;
+}
+
+
+glshader__internal_uniform_locs_t glshader__internal_uniforms_cache_locs(const u32 shader_id, const str_t *uniforms_array, const u16 uniforms_count)
+{
+    ASSERT(uniforms_array);
+
+    glshader__internal_uniform_locs_t result = {
+        .count = uniforms_count,
+        .locs = {0}
+    };
+
+    if (!uniforms_count) 
+        return result;
+
+    for (u32 idx = 0; idx < uniforms_count; idx++)
+    {
+        const char *name = uniforms_array[idx].data;
+        if (!name) eprint("Uniform is null, re-check uniform registry for the shader");
+
+        i32 location;
+        GL_CHECK(location = glGetUniformLocation(shader_id, name));
+        if (location == -1) 
+            eprint("[ERROR] `%s` uniform doesnt exist", name);
+
+        result.locs[idx].name = uniforms_array[idx];
+        result.locs[idx].locid = location;
+    }
+    return result;
 }
 
 
@@ -347,7 +396,11 @@ void glshader_destroy(glshader_t *shader)
     GL_LOG("Shader `%i` successfully deleted", shader->id);
 }
 
-glshader_t glshader_file_init(const str_t vtxpath, const str_t fgpath, arena_t * const arena)
+glshader_t glshader_init(
+    const str_t vtxpath, 
+    const str_t fgpath, 
+    const glshaderuniform_registry_t uniforms,
+    arena_t * const arena)
 {
     ASSERT(arena);
 
@@ -356,11 +409,17 @@ glshader_t glshader_file_init(const str_t vtxpath, const str_t fgpath, arena_t *
         .vs = fgpath,
     };
 
-    __shader_load_from_file(
-            &shader, 
-            vtxpath.data, 
-            fgpath.data, 
-            arena);
+    glshader__internal_load_from_file(
+        &shader, 
+        vtxpath.data, 
+        fgpath.data, 
+        arena
+    );
+
+    shader.internal.uniformlocs = glshader__internal_uniforms_cache_locs(
+        shader.id, 
+        uniforms.data,
+        uniforms.count);
 
     return shader;
 }

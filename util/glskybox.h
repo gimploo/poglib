@@ -40,9 +40,17 @@ glskybox_t glskybox_init(const SKYBOX_TYPE type, arena_t * const arena)
     return (glskybox_t) {
         .type = type,
         .cubemap = glcubemap_init(AVAILABLE_SKYBOXES[type]),
-        .shader = glshader_file_init(
+        .shader = glshader_init(
             str(POGLIB_ROOT_DIR "/util/glskybox/glskybox-shader-vs.glsl"),
             str(POGLIB_ROOT_DIR "/util/glskybox/glskybox-shader-fg.glsl"),
+            (glshaderuniform_registry_t) {
+                .count = 3,
+                .data = {
+                    [0] = str_lit("projection"),
+                    [1] = str_lit("view"),
+                    [2] = str_lit("transform"),
+                }
+            },
             arena
         )
     };

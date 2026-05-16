@@ -1,5 +1,5 @@
 #pragma once
-#include "SDL_scancode.h"
+#include <SDL2/SDL_scancode.h>
 #include <poglib/basic.h>
 #include <poglib/application/window/sdl_window.h>
 
