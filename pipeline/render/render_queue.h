@@ -86,7 +86,7 @@ void renderqueue__internal_validate_command(rendercommand_t command)
             //NOTE: this geometrys are instanced - currently only transforms are passed to it
         break;
         case RENDER_COMMAND_TYPE_CUSTOM: 
-            ASSERT(command.call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data == NULL);
+            ASSERT(command.call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data);
         break;
         case RENDER_COMMAND_TYPE_CUSTOM_WITH_INSTANCING: 
             if(command.call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data)
@@ -218,6 +218,4 @@ bool renderqueue__internal_is_instanced_only(rendercommand_types type)
 //FIXME: 
 //O(n**2) problem with `render_queue_pass_command`, fix - State Sorting 
 
-//TODO:
-//Have texture support for instancing
 #endif
