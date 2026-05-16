@@ -1,8 +1,8 @@
 #pragma once
 #include <poglib/basic.h>
 #include "./commandregistry.h"
-#include "SDL_keyboard.h"
-#include "SDL_mouse.h"
+#include <SDL2/SDL_keyboard.h>
+#include <SDL2/SDL_mouse.h>
 
 #define MAX_ALLOWED_COMMANDS_PER_FRAME 10
 

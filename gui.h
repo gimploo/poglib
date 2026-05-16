@@ -150,10 +150,17 @@ void    gui_destroy(gui_t *self);
 gui_t gui_init(arena_t * const arena, const ui_region_t starting_region)
 {
     return (gui_t){
-        .shader =  glshader_file_init(
+        .shader =  glshader_init(
             str(POGLIB_ROOT_DIR"/gui/uishader-vtx.glsl"), 
             str(POGLIB_ROOT_DIR"/gui/uishader-frag.glsl"), 
-            arena),
+            (glshaderuniform_registry_t) {
+                .count = 1,
+                .data = {
+                    [0] = str_lit("projection")
+                }
+            },
+            arena
+        ),
         .freetypefont = glfreetypefont_init(DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH, 14, true),
         .arena = arena_init(arena, 1 * MB),
         .gfx = {

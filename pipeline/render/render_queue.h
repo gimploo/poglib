@@ -30,9 +30,16 @@ renderqueue_t renderqueue_init(void)
         .buckets = {0},
         .arena = arena, 
         .internal = {
-            .instance_shader = glshader_file_init(
+            .instance_shader = glshader_init(
                 str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-vtx.glsl"),
                 str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-frag.glsl"),
+                (glshaderuniform_registry_t){
+                    .count = 2,
+                    .data = {
+                        [0] = str_lit("projection"),
+                        [1] = str_lit("view")
+                    }
+                },
                 &arena
             ),
         }
