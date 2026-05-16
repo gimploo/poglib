@@ -9,6 +9,7 @@
 
 // NOTE: these only uses the prototype textures
 // TODO: maybe bring the prototyping instances outside to another system
+
 typedef struct {
     vec3f_t translation;
     vec3f_t scale;

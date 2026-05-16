@@ -45,6 +45,9 @@ struct ecs_component_model_t {
 
     asset_id asset_id;
 
+    struct {
+        u32 entity_id;
+    } internal;
 };
 
 typedef struct ecs_component_input_t ecs_component_input_t;
