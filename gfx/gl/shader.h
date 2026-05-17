@@ -129,7 +129,7 @@ void glshader_bind(const glshader_t *shader)
     GL_SHADER_BIND(shader);
 }
 
-static inline void __shader_load_code(glshader_t *shader, const char *vs_code, const char *fs_code)
+void glshader__internal_compile_shader(glshader_t *shader, const char *vs_code, const char *fs_code)
 {
     if (shader == NULL) eprint("shader argument is null");
 
@@ -196,7 +196,7 @@ static inline void glshader__internal_load_from_file(glshader_t *shader, const c
         file_readall(&fg_file, fs_code, fg_file.size);
     file_destroy(&fg_file);
 
-    __shader_load_code(shader, vs_code, fs_code);
+    glshader__internal_compile_shader(shader, vs_code, fs_code);
 
     if (!arena) {
         free(vs_code);
@@ -228,7 +228,7 @@ glshader_t glshader_from_cstr_init(const char *vs_code, const char *fs_code)
         .fg = {0}
     };
 
-    __shader_load_code(&shader, vs_code, fs_code);
+    glshader__internal_compile_shader(&shader, vs_code, fs_code);
 
     return shader;
 }

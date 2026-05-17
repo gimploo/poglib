@@ -3,6 +3,10 @@
 #include "poglib/basic/common.h"
 #include "poglib/gfx/gl/vbo_stream_types.h"
 
+#define GL_VAO_INVALID_ID     0
+#define GL_VBO_INVALID_ID     0
+#define GL_EBO_INVALID_ID     0
+
 typedef struct { 
     u32 id; 
 } vao_t ;
@@ -16,13 +20,13 @@ typedef struct {
 } vbo_stream_t;
 
 typedef struct {
-    GLenum usage;
-    //TODO: Revist the fixed 2 chunk implementation - can be improved, i think?
-    vbo_stream_t chunks[VBO_STREAM_TYPE_COUNT];
+    //NOTE: GL_STATIC_DRAW / GL_DYNAMIC_DRAW
+    u32             usage; 
+    vbo_stream_t    chunks[VBO_STREAM_TYPE_COUNT];
 } vbo_config_t;
 
 typedef struct {
-    GLuint  id; 
+    u32  id; 
     struct {
         vbo_config_t config;
         i64     attribute_index;  //TODO: move this into internals
@@ -31,9 +35,9 @@ typedef struct {
 
 typedef struct ebo_t {
 
-    vbo_t   *vbo;
-    GLuint  id;
-    u32     indices_count;
+    vbo_t *vbo;
+    u32  id;
+    u32  indices_count;
 
 } ebo_t ;
 

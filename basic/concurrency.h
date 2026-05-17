@@ -1,12 +1,9 @@
 #pragma once
-#include <threads.h>
-#include <stdalign.h>
-#include <stdatomic.h>
+#include <poglib/basic.h>
 #include "./dbg.h"
 #include "./common.h"
 #include "./arena.h"
 #include "./ds/queue.h"
-#include "poglib/basic/str.h"
 
 //TODO: way to safely exit from active running threads.
 
@@ -30,21 +27,25 @@ struct taskpayload_t {
     struct {
         u32 count;
         union {
-            str_t str;
-            void *any;
+            str_t   str;
+            u64     u64;
+            void    *any;
         } arg[4];
     } args;
-    struct {
-        bool is_ready;
-        arena_t arena;
-    } storage;
+};
+
+typedef struct taskstorage_t taskstorage_t;
+struct taskstorage_t {
+    bool is_ready;
+    arena_t arena;
 };
 
 typedef struct taskconfig_t taskconfig_t;
 struct taskconfig_t {
     taskpayload_t       payload;
     taskresponse_t      *result_dest;
-    void (*callback)(const taskpayload_t args, void *output_reserved_mem);
+    taskstorage_t       storage;
+    void (*callback)(const taskpayload_t args, taskstorage_t storage, void *output_reserved_mem);
 };
 
 typedef struct bgtask_manager_t bgtask_manager_t;
@@ -70,6 +71,7 @@ void                bgtask_manager_destroy(bgtask_manager_t *self);
 
 typedef struct {
     taskconfig_t config;
+    taskstorage_t  storage;
     taskresponse_t *response_ref;
 } bgtask__internal_t;
 
@@ -102,6 +104,7 @@ void bgtask_manager_pass_task(bgtask_manager_t * const self, const taskconfig_t 
 
     const bgtask__internal_t task = (bgtask__internal_t){
         .config = config,
+        .storage = config.storage,
         .response_ref = config.result_dest,
     };
     queue_put(&self->tasks, task);
@@ -114,6 +117,7 @@ i32 bgtask__internal_thread_wrapper(void *thread_payload_data)
 
     payload->task.config.callback(
         payload->task.config.payload,
+        payload->task.storage,
         payload->task.response_ref->resource
     );
 
