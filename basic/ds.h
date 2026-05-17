@@ -8,4 +8,5 @@
 #include "ds/hashtable.h"
 #include "ds/linkedlist.h"
 #include "ds/slot.h"
+#include "ds/mpsc-queue.h"
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <threads.h>
+#include <stdalign.h>
 #include <stdatomic.h>
 #include "./dbg.h"
 #include "./common.h"

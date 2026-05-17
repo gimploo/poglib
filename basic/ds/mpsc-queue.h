@@ -1,0 +1,129 @@
+#pragma once
+#include <poglib/basic.h>
+
+/*============================================================================
+        - Multiple producer - Single consumer lockless queue -
+============================================================================*/
+
+typedef struct mpsc_queue_t mpsc_queue_t;
+typedef struct mpsc_queue_item_t mpsc_queue_item_t;
+
+mpsc_queue_t        mpsc_queue_init(arena_t *arena, const u64 capacity, const u32 elem_size);
+const void *        mpsc_queue_get(mpsc_queue_t * const self);
+void                mpsc_queue_put(mpsc_queue_t * const self, void * const item, const u32 elem_size);
+void                mpsc_queue_destroy(mpsc_queue_t * const self);
+
+
+#ifndef IGNORE_MPC_QUEUE_IMPLEMENTATION
+
+struct mpsc_queue_t {
+    alignas(64) atomic_uintmax_t    head;
+    alignas(64) atomic_uintmax_t    tail;
+    mpsc_queue_item_t               *buffer;
+    struct {
+        arena_t *arena;
+        u64 capacity;
+        u64 allocated_size;
+        u32 elem_size;
+    } internals;
+};
+
+struct mpsc_queue_item_t {
+    atomic_bool is_ready;
+    const void *data;
+};
+
+
+
+mpsc_queue_t mpsc_queue_init(arena_t *arena, const u64 capacity, const u32 elem_size)
+{
+    ASSERT(capacity > 0);
+    const u64 allocated_size = sizeof(mpsc_queue_item_t) * capacity;
+    return (mpsc_queue_t) {
+        .head = 0,
+        .tail = 0,
+        .buffer = arena_reserve(arena, allocated_size),
+        .internals = {
+            .arena = arena,
+            .capacity = capacity,
+            .elem_size = elem_size,
+            .allocated_size = allocated_size
+        }
+    };
+}
+
+bool mpsc_queue__internal_is_full(const u64 head, const u64 tail, const u64 capacity)
+{
+    return (tail - head) >= capacity;
+}
+
+bool mpsc_queue__internal_is_empty(const u64 head, const u64 tail)
+{
+    return tail == head;
+}
+
+mpsc_queue_item_t * mpsc_queue__internal_get_item(const mpsc_queue_t * const self, const u64 index)
+{
+    return self->buffer + (index & (self->internals.capacity - 1));
+}
+
+void mpsc_queue_put(mpsc_queue_t * const self, void * const item, const u32 elem_size)
+{
+    ASSERT(self->internals.elem_size == elem_size);
+
+    u64 claimed_tail_index;
+    while (true) {
+        u64 current_head_index = atomic_load_explicit(&self->head, memory_order_acquire);
+        u64 current_tail_index = atomic_load_explicit(&self->tail, memory_order_relaxed);
+
+        if (mpsc_queue__internal_is_full(current_head_index, current_tail_index, self->internals.capacity)) {
+            eprint("MPSC Queue is full");
+        }
+
+        if (atomic_compare_exchange_weak_explicit(
+                &self->tail, 
+                &current_tail_index, 
+                current_tail_index + 1, 
+                memory_order_relaxed, 
+                memory_order_relaxed)
+        ) {
+            claimed_tail_index = current_tail_index;
+            break;
+        }
+    }
+
+    mpsc_queue_item_t * const item_addr = mpsc_queue__internal_get_item(self, claimed_tail_index);
+    item_addr->data = item;
+    atomic_store_explicit(&item_addr->is_ready, true, memory_order_release);
+}
+
+
+const void * mpsc_queue_get(mpsc_queue_t * const self)
+{
+    const u64 current_tail_index = atomic_load_explicit(&self->tail, memory_order_acquire);
+    const u64 current_head_index = atomic_load_explicit(&self->head, memory_order_acquire);
+
+    if (mpsc_queue__internal_is_empty(current_head_index, current_tail_index)) {
+        eprint("MPSC Queue is empty");
+    }
+
+    mpsc_queue_item_t * const item_addr = mpsc_queue__internal_get_item(self, current_head_index);
+    const bool is_item_ready = atomic_load_explicit(&item_addr->is_ready, memory_order_acquire);
+    if (!is_item_ready) {
+        return NULL;
+    }
+
+    const void *result = item_addr->data;
+    atomic_store_explicit(&self->head, current_head_index + 1, memory_order_release);
+    atomic_store_explicit(&item_addr->is_ready, false, memory_order_release);
+
+    return result;
+}
+
+void mpsc_queue_destroy(mpsc_queue_t * const self)
+{
+    ASSERT(self);
+    arena_giveback(self->internals.arena, self->buffer, self->internals.allocated_size);
+}
+
+#endif
