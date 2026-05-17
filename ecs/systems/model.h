@@ -40,7 +40,7 @@ void ecs_system_model(const slot_t *const componentpool, const ecs_componentmana
         ASSERT(material);
 
         const glshader_t *shader = (glshader_t *)assetmanager_get_assetresource(
-                &global_poggen->systems.assets, ASSET_TYPE_SHADER, material->shaderid);
+                &global_poggen->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shaderid);
         ASSERT(shader);
 
         const ecs_component_transform_t *transform = (ecs_component_transform_t *)ecs_componentmanager_get_component(

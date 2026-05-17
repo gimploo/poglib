@@ -259,16 +259,18 @@ void physics_sys_jolt__internal_on_contact_added(void* userData, const JPH_Body*
     physics_sys_jolt_t* sys = (physics_sys_jolt_t*)userData;
 
     mtx_lock(&sys->internal.double_buffer_event_queue.swap_mutex);
-    if ((sys->internal.double_buffer_event_queue.write_queue->count + 1) == sys->internal.double_buffer_event_queue.write_queue->capacity) {
-        logging("Collision Event Queue failed to add an event due to size constraint");
-    } else {
-        physics_sys_jolt_collision_event_t* ev = &sys->internal.double_buffer_event_queue.write_queue->events[sys->internal.double_buffer_event_queue.write_queue->count++];
-        ev->entity_a = (void *)JPH_Body_GetUserData((JPH_Body *)b1);
-        ev->entity_b = (void *)JPH_Body_GetUserData((JPH_Body *)b2);
-        ev->id_a = JPH_Body_GetID(b1);
-        ev->id_b = JPH_Body_GetID(b2);
-        //TODO: Extract manifold point if needed...
-    } 
+    {
+        if ((sys->internal.double_buffer_event_queue.write_queue->count + 1) == sys->internal.double_buffer_event_queue.write_queue->capacity) {
+            logging("Collision Event Queue failed to add an event due to size constraint");
+        } else {
+            physics_sys_jolt_collision_event_t* ev = &sys->internal.double_buffer_event_queue.write_queue->events[sys->internal.double_buffer_event_queue.write_queue->count++];
+            ev->entity_a = (void *)JPH_Body_GetUserData((JPH_Body *)b1);
+            ev->entity_b = (void *)JPH_Body_GetUserData((JPH_Body *)b2);
+            ev->id_a = JPH_Body_GetID(b1);
+            ev->id_b = JPH_Body_GetID(b2);
+            //TODO: Extract manifold point if needed...
+        } 
+    }
     mtx_unlock(&sys->internal.double_buffer_event_queue.swap_mutex);
 }
 

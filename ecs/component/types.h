@@ -62,8 +62,8 @@ struct ecs_component_input_t {
 
 typedef struct ecs_component_material_t ecs_component_material_t;
 struct ecs_component_material_t {
-    asset_id textureid;
-    asset_id shaderid;
+    asset_id texture_id;
+    asset_id shader_id;
 };
 
 

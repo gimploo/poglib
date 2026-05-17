@@ -6,20 +6,24 @@
 ============================================================================*/
 
 typedef struct mpsc_queue_t mpsc_queue_t;
-typedef struct mpsc_queue_item_t mpsc_queue_item_t;
 
-mpsc_queue_t        mpsc_queue_init(arena_t *arena, const u64 capacity, const u32 elem_size);
+mpsc_queue_t        mpsc_queue(arena_t *arena, const u64 capacity, const u32 elem_size);
 const void *        mpsc_queue_get(mpsc_queue_t * const self);
 void                mpsc_queue_put(mpsc_queue_t * const self, void * const item, const u32 elem_size);
-void                mpsc_queue_destroy(mpsc_queue_t * const self);
 
 
 #ifndef IGNORE_MPC_QUEUE_IMPLEMENTATION
 
+typedef struct mpsc_queue__internal_item_t mpsc_queue__internal_item_t;
+struct mpsc_queue__internal_item_t {
+    atomic_bool is_ready;
+    const void *data;
+};
+
 struct mpsc_queue_t {
     alignas(64) atomic_uintmax_t    head;
     alignas(64) atomic_uintmax_t    tail;
-    mpsc_queue_item_t               *buffer;
+    mpsc_queue__internal_item_t     *buffer;
     struct {
         arena_t *arena;
         u64 capacity;
@@ -28,17 +32,10 @@ struct mpsc_queue_t {
     } internals;
 };
 
-struct mpsc_queue_item_t {
-    atomic_bool is_ready;
-    const void *data;
-};
-
-
-
-mpsc_queue_t mpsc_queue_init(arena_t *arena, const u64 capacity, const u32 elem_size)
+mpsc_queue_t mpsc_queue(arena_t *arena, const u64 capacity, const u32 elem_size)
 {
     ASSERT(capacity > 0);
-    const u64 allocated_size = sizeof(mpsc_queue_item_t) * capacity;
+    const u64 allocated_size = sizeof(mpsc_queue__internal_item_t) * capacity;
     return (mpsc_queue_t) {
         .head = 0,
         .tail = 0,
@@ -62,7 +59,7 @@ bool mpsc_queue__internal_is_empty(const u64 head, const u64 tail)
     return tail == head;
 }
 
-mpsc_queue_item_t * mpsc_queue__internal_get_item(const mpsc_queue_t * const self, const u64 index)
+mpsc_queue__internal_item_t * mpsc_queue__internal_get_item(const mpsc_queue_t * const self, const u64 index)
 {
     return self->buffer + (index & (self->internals.capacity - 1));
 }
@@ -92,7 +89,7 @@ void mpsc_queue_put(mpsc_queue_t * const self, void * const item, const u32 elem
         }
     }
 
-    mpsc_queue_item_t * const item_addr = mpsc_queue__internal_get_item(self, claimed_tail_index);
+    mpsc_queue__internal_item_t * const item_addr = mpsc_queue__internal_get_item(self, claimed_tail_index);
     item_addr->data = item;
     atomic_store_explicit(&item_addr->is_ready, true, memory_order_release);
 }
@@ -107,7 +104,7 @@ const void * mpsc_queue_get(mpsc_queue_t * const self)
         eprint("MPSC Queue is empty");
     }
 
-    mpsc_queue_item_t * const item_addr = mpsc_queue__internal_get_item(self, current_head_index);
+    mpsc_queue__internal_item_t * const item_addr = mpsc_queue__internal_get_item(self, current_head_index);
     const bool is_item_ready = atomic_load_explicit(&item_addr->is_ready, memory_order_acquire);
     if (!is_item_ready) {
         return NULL;
@@ -118,12 +115,6 @@ const void * mpsc_queue_get(mpsc_queue_t * const self)
     atomic_store_explicit(&item_addr->is_ready, false, memory_order_release);
 
     return result;
-}
-
-void mpsc_queue_destroy(mpsc_queue_t * const self)
-{
-    ASSERT(self);
-    arena_giveback(self->internals.arena, self->buffer, self->internals.allocated_size);
 }
 
 #endif

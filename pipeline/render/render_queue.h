@@ -88,17 +88,17 @@ void renderqueue__internal_validate_command(rendercommand_t command)
 {
     switch(command.type)
     {
-        case RENDER_COMMAND_TYPE_CAPSULE:
-        case RENDER_COMMAND_TYPE_CUBE:
+        case RENDER_COMMAND_TYPE_INSTANCED_CAPSULE:
+        case RENDER_COMMAND_TYPE_INSTANCED_CUBE:
             //NOTE: this geometrys are instanced - currently only transforms are passed to it
         break;
-        case RENDER_COMMAND_TYPE_CUSTOM: 
-            ASSERT(command.call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data);
+        case RENDER_COMMAND_TYPE_MESH: 
+            ASSERT(command.geometry.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data);
         break;
-        case RENDER_COMMAND_TYPE_CUSTOM_WITH_INSTANCING: 
-            if(command.call_config.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data)
+        case RENDER_COMMAND_TYPE_INSTANCED_MESH: 
+            if(command.geometry.vtx[VBO_STREAM_TYPE_GEOMETRY].raw_data)
                 eprint("Instancing uses a common geometry, avoid initializing geometry data");
-            if(!command.call_config.vtx[VBO_STREAM_TYPE_INSTANCE].raw_data) 
+            if(!command.geometry.vtx[VBO_STREAM_TYPE_INSTANCE].raw_data) 
                 eprint("Custom render types are configured to be instanced, expecting instance buffer but found uninitialized!");
         break;
         default: eprint("unknown type");
@@ -133,13 +133,13 @@ bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const que
         //FIXME: this will fail for custom meshes!!
         const rendercommand_t * const existing_render_command_in_bucket = list_get_value(commands, 0);
 
-        const bool has_same_texture = command.call_config.textures.count 
-            && existing_render_command_in_bucket->call_config.textures.count 
+        const bool has_same_texture = command.geometry.textures.count 
+            && existing_render_command_in_bucket->geometry.textures.count 
             && rendercommand_are_all_textures_the_same(&command, existing_render_command_in_bucket);
 
-        const bool has_same_shader = command.call_config.shader_config.shader 
-            && existing_render_command_in_bucket->call_config.shader_config.shader
-            && command.call_config.shader_config.shader->id == existing_render_command_in_bucket->call_config.shader_config.shader->id;
+        const bool has_same_shader = command.geometry.shader_config.shader 
+            && existing_render_command_in_bucket->geometry.shader_config.shader
+            && command.geometry.shader_config.shader->id == existing_render_command_in_bucket->geometry.shader_config.shader->id;
 
         const bool has_same_attributes = rendercommand_are_all_attrs_the_same(existing_render_command_in_bucket, &command);
 
@@ -192,17 +192,17 @@ void renderqueue_dispatch(renderqueue_t *const self)
                 ? (gltexturelist_t) {
                         .count = 1,
                         .items = {
-                            [0] = command->instance_config.texture
+                            [0] = command->instance.texture
                         }
                     }
-                : command->call_config.textures,
+                : command->geometry.textures,
             .instancing = {
                 .enable = enable_instancing,
                 .count = instancing_count
             }
         };
 
-        glrenderer3d_drawcall(calls[total_render_command]);
+        //glrenderer3d_drawcall(calls[total_render_command]);
         total_render_command++;
     }
     renderqueue__internal_flush(self);
@@ -219,7 +219,7 @@ void renderqueue__internal_flush(renderqueue_t * const self)
 
 bool renderqueue__internal_is_instanced_only(rendercommand_types type)
 {
-    return type & (RENDER_COMMAND_TYPE_CUBE | RENDER_COMMAND_TYPE_CAPSULE);
+    return type & (RENDER_COMMAND_TYPE_INSTANCED_CUBE | RENDER_COMMAND_TYPE_INSTANCED_CAPSULE);
 }
 
 //FIXME: 

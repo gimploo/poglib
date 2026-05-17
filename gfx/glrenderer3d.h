@@ -279,10 +279,6 @@ void glrenderer3d_drawcall(const glrendercall_t call)
     });
 }
 
-
-//TODO: here we are reallocating memory inside the GPU every loop - check vbo logic.
-//Explore strategies to pre allocate static memory and a fixed dynamic memory and maybe stream
-//the dyanmic stuff into the pre allocated dynaimc mem
 void glrenderer3d_draw(const glrendererconfig_t config)
 {
     ASSERT(config.calls.count > 0);
