@@ -34,6 +34,8 @@ typedef struct arena_t arena_t;
 
 arena_t     arena_init(arena_t *, u64 capacity);
 void *      arena_reserve(arena_t *self, u64 memory_size);
+bool        arena_is_init(const arena_t * const self);
+void *      arena_store(arena_t * const self, const void * const mem, const u64 mem_size);
 void        arena_giveback(arena_t *self, const void *ptr, const u64 size);
 void        arena_clear(arena_t *self);
 void        arena_destroy(arena_t *self);
@@ -205,5 +207,19 @@ void * arena_reserve(arena_t *self, u64 memory_size)
     return arena__internal_reserve_memory_16byte_aligned(self, memory_size);
 }
 
+void * arena_store(arena_t * const self, const void * const mem, const u64 mem_size)
+{
+    ASSERT(mem_size > 0);
+    ASSERT(mem);
+    void *raw_mem = arena_reserve(self, mem_size);
+    memcpy(raw_mem, mem, mem_size);
+    return raw_mem;
+}
+
+
+bool arena_is_init(const arena_t * const self)
+{
+    return self->memory == NULL || self->capacity > 0;
+}
 
 #endif

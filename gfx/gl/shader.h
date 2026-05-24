@@ -3,6 +3,7 @@
 #include "material.h"
 #include "maps.h"
 #include "poglib/basic/arena.h"
+#include "poglib/basic/ds/hashtable.h"
 #include "poglib/basic/str.h"
 #include <string.h>
 
@@ -15,18 +16,58 @@
 
 #define MAX_UNIFORMS_ALLOWED_IN_SHADER 16
 
-typedef struct {
-    u16 count;
-    str_t data[MAX_UNIFORMS_ALLOWED_IN_SHADER];
-} glshaderuniform_registry_t;
+typedef enum gluniform_type {
+    GL_UNIFORM_TYPE_MATRIX4F,
+    GL_UNIFORM_TYPE_VEC4,
+    GL_UNIFORM_TYPE_VEC3,
+    GL_UNIFORM_TYPE_VEC2,
+    GL_UNIFORM_TYPE_F32,
+    GL_UNIFORM_TYPE_I32,
+    GL_UNIFORM_TYPE_U32,
+    GL_UNIFORM_TYPE_BOOL,
+    GL_UNIFORM_TYPE_MATRIX4F_ARRAY,
+} gluniform_type;
 
 typedef struct {
-    u16 count; 
+    str_t name;
+    gluniform_type type;
+} gluniform_meta_t;
+
+typedef struct {
+    str_t name;
+    gluniform_type type;
+    struct {
+        u32 loc_idx;
+    } internal;
+} gluniform__internal_meta_t;
+
+typedef union {
+    matrix4f_t  mat4;
+    vec4f_t     vec4;
+    vec3f_t     vec3;
+    vec2f_t     vec2;
+    f32         f32;
+    i32         i32;
+    u32         u32;
+    bool        boolean;
+    struct {
+        matrix4f_t *data;
+        u32 count;
+    } mat4s;
+} gluniform_value_t;
+
+typedef struct {
+    u8 count;
+    gluniform_meta_t data[MAX_UNIFORMS_ALLOWED_IN_SHADER];
+} gluniform_registry_t;
+
+typedef struct {
+    u8 count;
     struct {
         str_t name;
-        u32 locid;
-    } locs[MAX_UNIFORMS_ALLOWED_IN_SHADER];
-} glshader__internal_uniform_locs_t;
+        gluniform_value_t value;
+    } data[MAX_UNIFORMS_ALLOWED_IN_SHADER];
+} gluniforms_t;
 
 typedef struct {
 
@@ -35,16 +76,14 @@ typedef struct {
     str_t fg;
 
     struct {
-        glshader__internal_uniform_locs_t uniformlocs;
+        hashtable_t uniformlocs;
     } internal;
 
 } glshader_t;
 
 
-static_assert(sizeof(u32) == sizeof(GLuint), "shader.h - Gluint and u32 size doesnot match");
-
 const char * const DEFAULT_VSHADER = 
-    "#version 330 core\n"
+    "#version 430 core\n"
     "layout (location = 0) in vec3 v_pos;\n"
     "layout (location = 1) in vec4 v_color;\n"
     "layout (location = 2) in vec2 v_tex_coord;\n"
@@ -60,7 +99,7 @@ const char * const DEFAULT_VSHADER =
     "}";
 
 const char * const DEFAULT_FSHADER = 
-    "#version 330 core\n"
+    "#version 430 core\n"
     "in vec4 color;\n"
     "in vec2 tex_coord;\n"
     "\n"
@@ -76,7 +115,7 @@ const char * const DEFAULT_FSHADER =
     "}";
 
 const char * const DEFAULT_SIMPLE_SHAPES_VSHADER = 
-    "#version 330 core\n"
+    "#version 430 core\n"
     "layout (location = 0) in vec3 v_pos;\n"
     "layout (location = 1) in vec4 v_uv;\n"
     "layout (location = 2) in vec2 v_normals;\n"
@@ -93,10 +132,16 @@ const char * const DEFAULT_SIMPLE_SHAPES_VSHADER =
 
 #define         glshader_default_init(...)                                      glshader_from_cstr_init(DEFAULT_VSHADER, DEFAULT_FSHADER)
 
-glshader_t              glshader_init(const str_t vtxpath, const str_t fgpath, const glshaderuniform_registry_t uniforms, arena_t * const arena);
+glshader_t              glshader_init(const str_t vtxpath, const str_t fgpath, const gluniform_registry_t uniforms, arena_t * const arena);
 
 glshader_t              glshader_from_file_init(const char *file_vs, const char *file_fs);
 glshader_t              glshader_from_cstr_init(const char *vs_code, const char *fs_code);
+
+//========================= Uniforms ======================================
+
+void            glshader_upload_uniforms(const glshader_t * const shader, const gluniforms_t uniforms);
+
+//                          (or)
 
 void            glshader_send_uniform_fval(const glshader_t *shader, const char *uniform, float val);
 void            glshader_send_uniform_uival(const glshader_t *shader, const char *uniform, unsigned int val);
@@ -107,10 +152,10 @@ void            glshader_send_uniform_vec4f(const glshader_t *shader, const char
 void            glshader_send_uniform_matrix4f(const glshader_t *shader, const char *uniform, matrix4f_t val);
 void            glshader_send_uniform_matrix4fv(const glshader_t *shader, const char *uniform, const matrix4f_t *val, const u32 matrices_count);
 
-void            glshader_send_uniform_material(const glshader_t *shader, const glmaterial_t material);
-void            glshader_send_uniform_lightmap(const glshader_t *shader, const gllightmap_t map);
+//=========================================================================
 
 void            glshader_bind(const glshader_t *shader);
+u32             glshader_get_uniform_count(const glshader_t * const shader);
 
 void            glshader_destroy(glshader_t *shader);
 
@@ -234,21 +279,17 @@ glshader_t glshader_from_cstr_init(const char *vs_code, const char *fs_code)
 }
 
 
-glshader__internal_uniform_locs_t glshader__internal_uniforms_cache_locs(const u32 shader_id, const str_t *uniforms_array, const u16 uniforms_count)
+hashtable_t glshader__internal_uniforms_cache_locs(const u32 shader_id, const gluniform_meta_t *uniforms_array, const u16 uniforms_count, arena_t * const arena)
 {
     ASSERT(uniforms_array);
-
-    glshader__internal_uniform_locs_t result = {
-        .count = uniforms_count,
-        .locs = {0}
-    };
-
     if (!uniforms_count) 
-        return result;
+        return (hashtable_t){0};
+
+    hashtable_t result = hashtable_init(MAX_UNIFORMS_ALLOWED_IN_SHADER, HT_KEY_TYPE_STR, gluniform__internal_meta_t, arena);
 
     for (u32 idx = 0; idx < uniforms_count; idx++)
     {
-        const char *name = uniforms_array[idx].data;
+        const char *name = uniforms_array[idx].name.data;
         if (!name) eprint("Uniform is null, re-check uniform registry for the shader");
 
         i32 location;
@@ -256,10 +297,59 @@ glshader__internal_uniform_locs_t glshader__internal_uniforms_cache_locs(const u
         if (location == -1) 
             eprint("[ERROR] `%s` uniform doesnt exist", name);
 
-        result.locs[idx].name = uniforms_array[idx];
-        result.locs[idx].locid = location;
+        const gluniform__internal_meta_t * const meta = arena_store(
+            arena, 
+            &(gluniform__internal_meta_t) {
+                .name = uniforms_array[idx].name,
+                .type = uniforms_array[idx].type,
+                .internal = {
+                    .loc_idx = location
+                }
+            },
+            sizeof(gluniform__internal_meta_t)
+        );
+        hashtable_insert(&result, (hashtable_key_t){ .str = uniforms_array[idx].name }, meta);
     }
     return result;
+}
+
+void glshader_upload_uniforms(const glshader_t * const shader, const gluniforms_t uniforms)
+{
+    if (!uniforms.count)
+        return;
+
+    ASSERT(shader->internal.uniformlocs.entries.len == uniforms.count);
+
+    for (u8 idx = 0; idx < uniforms.count; idx++)
+    {
+        const str_t name = uniforms.data[idx].name;
+        const gluniform_value_t * const value = &uniforms.data[idx].value;
+
+        const gluniform__internal_meta_t *meta = (gluniform__internal_meta_t *)hashtable_get_value(&shader->internal.uniformlocs, (hashtable_key_t){ .str = name });
+        const u32 loc_idx = meta->internal.loc_idx;
+
+        switch(meta->type)
+        {
+            case GL_UNIFORM_TYPE_MATRIX4F:          GL_CHECK(glUniformMatrix4fv(loc_idx, 1, GL_FALSE, (f32 *)value->mat4.raw));
+            break;
+            case GL_UNIFORM_TYPE_VEC4:              GL_CHECK(glUniform4f(loc_idx, value->vec4.raw[0], value->vec4.raw[1], value->vec4.raw[2], value->vec4.raw[3]));
+            break;
+            case GL_UNIFORM_TYPE_VEC3:              GL_CHECK(glUniform3f(loc_idx, value->vec3.raw[0], value->vec3.raw[1], value->vec3.raw[2]));
+            break;
+            case GL_UNIFORM_TYPE_VEC2:              GL_CHECK(glUniform2f(loc_idx, value->vec2.raw[0], value->vec2.raw[1]));
+            break;
+            case GL_UNIFORM_TYPE_F32:               GL_CHECK(glUniform1f(loc_idx, value->f32));
+            break;
+            case GL_UNIFORM_TYPE_I32:               GL_CHECK(glUniform1i(loc_idx, value->i32));
+            break;
+            case GL_UNIFORM_TYPE_U32:
+            case GL_UNIFORM_TYPE_BOOL:              GL_CHECK(glUniform1ui(loc_idx, value->u32));
+            break;
+            case GL_UNIFORM_TYPE_MATRIX4F_ARRAY:    GL_CHECK(glUniformMatrix4fv(loc_idx, value->mat4s.count, GL_FALSE, (f32 *)value->mat4s.data));
+            break;
+                eprint("unknown uniform type");
+        }
+    }
 }
 
 
@@ -338,60 +428,12 @@ void glshader_send_uniform_matrix4fv(const glshader_t *shader, const char *unifo
     GL_CHECK(glUniformMatrix4fv(location, matrices_count, GL_FALSE, (f32 *)val));
 }
 
-void glshader_send_uniform_material(const glshader_t *shader, const glmaterial_t material)
-{    
-    GL_SHADER_BIND(shader);
-    int location;
-
-    char buffer[64] = {0};
-    snprintf(buffer, sizeof(buffer), "%s.ambient", material.label);
-    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
-    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
-    glshader_send_uniform_vec3f(shader, buffer, material.ambient);
-
-    snprintf(buffer, sizeof(buffer), "%s.diffuse", material.label);
-    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
-    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
-    glshader_send_uniform_vec3f(shader, buffer, material.diffuse);
-
-    snprintf(buffer, sizeof(buffer), "%s.specular", material.label);
-    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
-    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
-    glshader_send_uniform_vec3f(shader, buffer, material.specular);
-
-    snprintf(buffer, sizeof(buffer), "%s.shininess", material.label);
-    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
-    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
-    glshader_send_uniform_fval(shader, buffer, material.shininess);
-}
-
-void glshader_send_uniform_lightmap(const glshader_t *shader, const gllightmap_t map)
-{
-    GL_SHADER_BIND(shader);
-    char buffer[64] = {0};
-    int location;
-
-    snprintf(buffer, sizeof(buffer), "%s.shininess", map.label);
-    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
-    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
-    glshader_send_uniform_fval(shader, buffer, map.shininess);
-
-    snprintf(buffer, sizeof(buffer), "%s.diffuse", map.label);
-    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
-    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
-    glshader_send_uniform_ival(shader, buffer, map.diffuse);
-
-    snprintf(buffer, sizeof(buffer), "%s.specular", map.label);
-    GL_CHECK(location = glGetUniformLocation(shader->id, buffer));
-    if (location == -1) eprint("[ERROR] `%s` uniform doesnt exist", buffer);
-    glshader_send_uniform_ival(shader, buffer, map.specular);
-}
-
 void glshader_destroy(glshader_t *shader)
 {
     if (shader == NULL) eprint("shader argument is null");
 
     GL_CHECK(glDeleteProgram(shader->id));
+    hashtable_destroy(&shader->internal.uniformlocs);
 
     GL_LOG("Shader `%i` successfully deleted", shader->id);
 }
@@ -399,7 +441,7 @@ void glshader_destroy(glshader_t *shader)
 glshader_t glshader_init(
     const str_t vtxpath, 
     const str_t fgpath, 
-    const glshaderuniform_registry_t uniforms,
+    const gluniform_registry_t uniforms,
     arena_t * const arena)
 {
     ASSERT(arena);
@@ -419,8 +461,16 @@ glshader_t glshader_init(
     shader.internal.uniformlocs = glshader__internal_uniforms_cache_locs(
         shader.id, 
         uniforms.data,
-        uniforms.count);
+        uniforms.count,
+        arena
+    );
 
     return shader;
+}
+
+
+u32 glshader_get_uniform_count(const glshader_t * const shader)
+{
+    return shader->internal.uniformlocs.entries.len;
 }
 #endif

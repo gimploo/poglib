@@ -36,7 +36,6 @@ struct taskpayload_t {
 
 typedef struct taskstorage_t taskstorage_t;
 struct taskstorage_t {
-    bool is_ready;
     arena_t arena;
 };
 

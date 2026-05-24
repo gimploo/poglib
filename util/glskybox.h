@@ -1,6 +1,5 @@
 #pragma once
 #include "poglib/basic/common.h"
-#include "poglib/external/cglm/struct/affine.h"
 #include "poglib/gfx/gl/cubemap.h"
 #include "poglib/gfx/gl/types.h"
 #include "poglib/math/la.h"
@@ -43,12 +42,21 @@ glskybox_t glskybox_init(const SKYBOX_TYPE type, arena_t * const arena)
         .shader = glshader_init(
             str(POGLIB_ROOT_DIR "/util/glskybox/glskybox-shader-vs.glsl"),
             str(POGLIB_ROOT_DIR "/util/glskybox/glskybox-shader-fg.glsl"),
-            (glshaderuniform_registry_t) {
+            (gluniform_registry_t) {
                 .count = 3,
                 .data = {
-                    [0] = str_lit("projection"),
-                    [1] = str_lit("view"),
-                    [2] = str_lit("transform"),
+                    [0] = {
+                        .name = str_lit("projection"),
+                        .type = GL_UNIFORM_TYPE_MATRIX4F
+                    },
+                    [1] = {
+                        .name = str_lit("view"),
+                        .type = GL_UNIFORM_TYPE_MATRIX4F
+                    },
+                    [2] = {
+                        .name = str_lit("transform"),
+                        .type = GL_UNIFORM_TYPE_MATRIX4F
+                    }
                 }
             },
             arena
@@ -100,20 +108,17 @@ glrendercall_t glskybox_get_render_config(
             .shader = &self->shader,
             .uniforms = {
                 .count = 3,
-                .uniform = {
+                .data = {
                     [0] = {
-                        .name = "projection",
-                        .type = "matrix4f_t",
+                        .name = str_lit("projection"),
                         .value.mat4 = projection
                     },
                     [1] = {
-                        .name = "view",
-                        .type = "matrix4f_t",
+                        .name = str_lit("view"),
                         .value.mat4 = view
                     },
                     [2] = {
-                        .name = "transform",
-                        .type = "matrix4f_t",
+                        .name = str_lit("transform"),
                         .value.mat4 = glms_scale_make(vec3f(50.0f))
                     }
                 }

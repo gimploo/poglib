@@ -33,36 +33,10 @@ typedef struct {
     } interleaved;
 } glvtx_attribute_t;
 
-
 typedef struct {
     u8 count;
     glvtx_attribute_t attr[MAX_ATTRIBUTES_COUNT_PER_CALL];
 } glvtx_attributelist_t;
-
-
-typedef struct {
-    const char *name;
-    const char *type;
-    union {
-        matrix4f_t  mat4;
-        vec4f_t     vec4;
-        vec3f_t     vec3;
-        vec2f_t     vec2;
-        f32         f32;
-        i32         i32;
-        u32         u32;
-        bool        boolean;
-        struct {
-            matrix4f_t *data;
-            u32 count;
-        } mat4s;
-    } value;
-} uniform_t;
-
-typedef struct {
-    u8 count;
-    uniform_t uniform[10];
-} gluniforms_t;
 
 typedef struct {
     const glshader_t *shader;

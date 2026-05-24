@@ -11,6 +11,10 @@
 #include "poglib/application.h"
 #include "poglib/application/window/sdl_window.h"
 #include "poglib/basic/common.h"
+#include "poglib/gfx/gl/shader.h"
+#include "poglib/pipeline/render/common.h"
+#include "poglib/util/assetmanager.h"
+#include "poglib/util/spriteatlas.h"
 
 typedef struct {
 
@@ -30,6 +34,11 @@ typedef struct {
         bool enable;
     } gui;
 
+    struct {
+        spriteatlas_t atlas;
+        glshader_t shader;
+    } primitives;
+
     glshader_t shader;
     glcamera_t world_camera;
     vec3f_t player_camera_position;
@@ -41,7 +50,7 @@ typedef struct {
 
 } workbench_t;
 
-workbench_t workbench_init(application_t * const app);
+workbench_t workbench_init(arena_t * const arena);
 
 void        workbench_update_player_camera_position(workbench_t *self, const vec3f_t pos);
 void        workbench_pass_line(workbench_t *self, const line_t line);
@@ -49,22 +58,71 @@ void        workbench_track_lightsource(workbench_t *self, const gllight_t *ligh
 void        workbench_toggle_wireframe_mode(workbench_t *self);
 void        workbench_toggle_gui(workbench_t *self);
 void        workbench_update_world_camera(workbench_t * const self, const f32 dt);
-void        workbench_render(workbench_t *self, const application_t * const app);
+
+void        workbench_render_push_cube(workbench_t * const self, const vec4f_t translation, const vec4f_t scale, const vec4f_t color, const bool override_wireframe);
+void        workbench_render(workbench_t *self);
+
 void        workbench_destroy(workbench_t *self);
 
 
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0.f, 0.f, 10.f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
 
-workbench_t workbench_init(application_t * const app)
+workbench_t workbench_init(arena_t * const arena)
 {
-    const str_t vshader = str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.vs");
-    const str_t fshader = str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.fs");
-
+    ASSERT(global_poggen);
     workbench_t o = {
-        .shader = glshader_from_file_init(
-            vshader.data, 
-            fshader.data),
+        .shader = glshader_init(
+            str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.vs"), 
+            str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.fs"),
+            (gluniform_registry_t){
+                .count = 5,
+                .data = {
+                    [0] = {
+                        .name = str_lit("view"),
+                        .type = GL_UNIFORM_TYPE_MATRIX4F
+                    },
+                    [1] = {
+                        .name = str_lit("projection"),
+                        .type = GL_UNIFORM_TYPE_MATRIX4F
+                    },
+                    [2] = {
+                        .name = str_lit("transform"),
+                        .type = GL_UNIFORM_TYPE_MATRIX4F
+                    },
+                    [3] = {
+                        .name = str_lit("color"),
+                        .type = GL_UNIFORM_TYPE_VEC4
+                    },
+                    [4] = {
+                        .name = str_lit("cameraPos"),
+                        .type = GL_UNIFORM_TYPE_VEC3
+                    }
+                }
+            },
+            arena
+        ),
+        .primitives = {
+            .shader  = glshader_init(
+                str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-vtx.glsl"),
+                str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-frag.glsl"),
+                (gluniform_registry_t){ 
+                    .count = 2,
+                    .data = {
+                        [0] = {
+                            .name = str_lit("projection"),
+                            .type = GL_UNIFORM_TYPE_MATRIX4F
+                        },
+                        [1] = {
+                            .name = str_lit("view"),
+                            .type = GL_UNIFORM_TYPE_MATRIX4F
+                        },
+                    }
+                },
+                arena
+            ),
+            .atlas = spriteatlas_init(str(POGLIB_ROOT_DIR"/res/sprites/prototype.png"), 8, 4, arena),
+        },
         .world_camera = glcamera_perspective(
             WORKBENCH_CAMERA_DEFAULT_POSITION,
             WORKBENCH_CAMERA_DEFAULT_ROTATION 
@@ -77,7 +135,7 @@ workbench_t workbench_init(application_t * const app)
         },
         .gui = {
             .handle = gui_init(
-                &app->handle.arena, 
+                arena, 
                 (ui_region_t) {
                     .cursor = {0},
                     .width = global_window->width, 
@@ -86,6 +144,8 @@ workbench_t workbench_init(application_t * const app)
             .enable = true
         }
     };
+
+    assetmanager_load_all_primitives(&global_poggen->systems.assets);
 
     glcamera_set_scroll_speed(&o.world_camera, 100.0f);
     gui_set_composition(&o.gui.handle, (ui_composition)workbench_compose_ui);
@@ -159,26 +219,22 @@ void workbench__internal_render_lightsources(workbench_t *self)
                             .shader = &self->shader,
                             .uniforms = {
                                 .count = 4,
-                                .uniform = {
+                                .data = {
                                     [0] = {
-                                        .name = "view",
-                                        .type = "matrix4f_t",
+                                        .name = str_lit("view"),
                                         .value = glcamera_getview(&self->world_camera)
                                     },
                                     [1] = {
-                                        .name = "projection",
-                                        .type = "matrix4f_t",
+                                        .name = str_lit("projection"),
                                         .value = glms_perspective(
                                             radians(45), global_poggen->handle.app->window.aspect_ratio, 1.0f, 10000.0f)
                                     },
                                     [2] = {
-                                        .name = "color",
-                                        .type = "vec4f_t",
+                                        .name = str_lit("color"),
                                         .value.vec4 = ((gllight_t *)iter)->color
                                     },
                                     [3] = {
-                                        .name = "transform",
-                                        .type = "matrix4f_t",
+                                        .name = str_lit("transform"),
                                         .value = glms_mat4_mul(
                                             glms_translate_make(((gllight_t *)iter)->position),
                                             glms_scale_make((vec3f_t){10.f, 10.f, 10.f})
@@ -198,6 +254,8 @@ void workbench__internal_render_lightsources(workbench_t *self)
 void workbench_destroy(workbench_t *self)
 {
     glshader_destroy(&self->shader);
+    glshader_destroy(&self->primitives.shader);
+    spriteatlas_destroy(&self->primitives.atlas);
     list_destroy(&self->draw_lines);
     list_destroy(&self->lightsources);
     gui_destroy(&self->gui.handle);
@@ -238,27 +296,23 @@ void workbench__internal_render_batch_lines(workbench_t *self)
                         .shader = &self->shader,
                         .uniforms = {
                             .count = 4,
-                            .uniform = {
+                            .data = {
                                 [0] = {
-                                    .name = "view",
-                                    .type = "matrix4f_t",
+                                    .name = str_lit("view"),
                                     .value = glcamera_getview(&self->world_camera)
                                 },
                                 [1] = {
-                                    .name = "projection",
-                                    .type = "matrix4f_t",
+                                    .name = str_lit("projection"),
                                     .value = glms_perspective(
                                             radians(45), global_poggen->handle.app->window.aspect_ratio, 1.0f, 1000.0f
                                     )
                                 },
                                 [2] = {
-                                    .name = "color",
-                                    .type = "vec4f_t",
+                                    .name = str_lit("color"),
                                     .value.vec4 = COLOR_BLACK
                                 },
                                 [3] = {
-                                    .name = "transform",
-                                    .type = "matrix4f_t",
+                                    .name = str_lit("transform"),
                                     .value = glms_mat4_mul(
                                             glms_translate_make(self->player_camera_position),
                                             glms_scale_make((vec3f_t){10.f, 10.f, 10.f})
@@ -294,15 +348,13 @@ void workbench__internal_render_batch_lines(workbench_t *self)
                         .shader = &self->shader,
                         .uniforms = {
                             .count = 4,
-                            .uniform = {
+                            .data = {
                                 [0] = {
-                                    .name = "view",
-                                    .type = "matrix4f_t",
+                                    .name = str_lit("view"),
                                     .value = glcamera_getview(&self->world_camera)
                                 },
                                 [1] = {
-                                    .name = "projection",
-                                    .type = "matrix4f_t",
+                                    .name = str_lit("projection"),
                                     .value = glms_perspective(
                                         radians(45), 
                                         global_poggen->handle.app->window.aspect_ratio, 
@@ -310,13 +362,11 @@ void workbench__internal_render_batch_lines(workbench_t *self)
                                     )
                                 },
                                 [2] = {
-                                    .name = "transform",
-                                    .type = "matrix4f_t",
+                                    .name = str_lit("transform"),
                                     .value = glms_scale(MATRIX4F_IDENTITY, (vec3f_t){1000.0f, 1.0f, 1000.0f}),
                                 },
                                 [3] = {
-                                    .name = "color",
-                                    .type = "vec4f_t",
+                                    .name = str_lit("color"),
                                     .value.vec4 = COLOR_DARK_GRAY
                                 },
                             }
@@ -332,29 +382,25 @@ void workbench__internal_render_batch_lines(workbench_t *self)
                         .shader = &self->shader,
                         .uniforms = {
                             .count = 4,
-                            .uniform = {
+                            .data = {
                                 [0] = {
-                                    .name = "view",
-                                    .type = "matrix4f_t",
+                                    .name = str_lit("view"),
                                     .value = glcamera_getview(&self->world_camera)
                                 },
                                 [1] = {
-                                    .name = "projection",
-                                    .type = "matrix4f_t",
+                                    .name = str_lit("projection"),
                                     .value = glms_perspective(
-                                            radians(45), 
-                                            global_poggen->handle.app->window.aspect_ratio, 
-                                            1.0f, 1000.0f
-                                            )
+                                        radians(45), 
+                                        global_poggen->handle.app->window.aspect_ratio, 
+                                        1.0f, 1000.0f
+                                    )
                                 },
                                 [2] = {
-                                    .name = "transform",
-                                    .type = "matrix4f_t",
+                                    .name = str_lit("transform"),
                                     .value = MATRIX4F_IDENTITY
                                 },
                                 [3] = {
-                                    .name = "color",
-                                    .type = "vec4f_t",
+                                    .name = str_lit("color"),
                                     .value.vec4 = COLOR_BLUE
                                 },
                             }
@@ -381,11 +427,11 @@ void workbench__internal_render_batch_lines(workbench_t *self)
     });
 }
 
-void workbench__internal_update_ui(workbench_t * const self, const application_t *app);
+void workbench__internal_update_ui(workbench_t * const self);
 
-void workbench_render(workbench_t *self, const application_t * const app)
+void workbench_render(workbench_t *self)
 {
-    workbench__internal_update_ui(self, app);
+    workbench__internal_update_ui(self);
 
     workbench__internal_render_grid(
         &self->shader,
@@ -414,10 +460,70 @@ void workbench_update_world_camera(workbench_t * const self, const f32 dt)
     glcamera_process_input(&self->world_camera, dt);
 }
 
-void workbench__internal_update_ui(workbench_t * const self, const application_t *app)
+void workbench__internal_update_ui(workbench_t * const self)
 {
     if (!self->gui.enable) return;
 
-    gui_update(&self->gui.handle, app, self->world_camera.position);
+    gui_update(&self->gui.handle, self->world_camera.position);
 }
+
+void workbench_render_push_cube(
+    workbench_t * const self,
+    const vec4f_t translation,
+    const vec4f_t scale,
+    const vec4f_t color,
+    const bool override_wireframe
+) {
+    renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
+    const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
+    const matrix4f_t perspective_projection  = glms_perspective(
+        radians(45), 
+        global_poggen->handle.app->window.aspect_ratio, 
+        1.0f, 
+        10000.0f
+    );
+
+    renderqueue_pass_command(
+        renderqueue, 
+        (rendercommand_t) {
+            .enable_wireframe = override_wireframe || self->render_config.wireframe_mode,
+            .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
+            .mesh = assetmanager_get_gpu_loaded_primitive_asset(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE),
+            .instance = {
+                .size = sizeof(rendercommand_instance_t),
+                .raw_data = (u8 *)&(rendercommand_instance_t) {
+                    .translation = translation,
+                    .scale = scale,
+                    .color = color,
+                    .uv = spriteatlas_get_sprite(&self->primitives.atlas, PROTOTYPE_SPRITE_CHECKERED_DARK_GRAY),
+                }
+            },
+            .material = {
+                .textures = {
+                    .count = 1,
+                    .ids = {
+                        self->primitives.atlas.texture.id
+                    }
+                },
+                .shader = {
+                    .data = &self->primitives.shader,
+                    .uniforms = {
+                        .count = 2,
+                        .data = {
+                           [0] = {
+                               .name = str("projection"),
+                               .value = perspective_projection
+                           },
+                           [1] = {
+                               .name = str("view"),
+                               .value = glcamera_getview(&self->world_camera)
+                           }
+                        }
+                    }
+                }
+            },
+        }
+    );
+}
+
 

@@ -68,30 +68,25 @@ void workbench__internal_render_grid(
             .shader = shader,
             .uniforms = {
                 .count = 5,
-                .uniform = {
+                .data = {
                     [0] = {
-                        .name = "view",
-                        .type = "matrix4f_t",
+                        .name = str_lit("view"),
                         .value = camera_view
                     },
                     [1] = {
-                        .name = "projection",
-                        .type = "matrix4f_t",
+                        .name = str_lit("projection"),
                         .value = perspective_projection,
                     },
                     [2] = {
-                        .name = "transform",
-                        .type = "matrix4f_t",
+                        .name = str_lit("transform"),
                         .value = MATRIX4F_IDENTITY
                     },
                     [3] = {
-                        .name = "color",
-                        .type = "vec4f_t",
+                        .name = str_lit("color"),
                         .value.vec4 = COLOR_NOT_AS_BRIGHT_AS_WHITE
                     },
                     [4] = {
-                        .name = "cameraPos",
-                        .type = "vec3f_t",
+                        .name = str_lit("cameraPos"),
                         .value.vec3 = camera_pos
                     },
                 }

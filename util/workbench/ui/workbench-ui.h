@@ -3,6 +3,7 @@
 #include "poglib/application/window/sdl_window.h"
 #include "poglib/basic/color.h"
 #include "poglib/basic/str.h"
+#include "poglib/poggen.h"
 #include <poglib/gui.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,7 +13,7 @@ void    workbench_render_ui(gui_t *self);
 
 #ifndef IGNORE_WORKBENCH_GUI_RENDER
 
-void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t camera_pos)
+void workbench_compose_ui(gui_t *gui, vec3f_t camera_pos)
 {
     const u32 window_width = global_window->width;
     char tempbuffer[32] = {0};
@@ -38,7 +39,7 @@ void workbench_compose_ui(const application_t * const app, gui_t *gui, vec3f_t c
         }
     }); 
     {
-        const f32 fps = application_get_fps(app);
+        const f32 fps = application_get_fps(global_poggen->handle.app);
         snprintf(tempbuffer, sizeof(tempbuffer), "FPS: %d", (int)fps);
         gui_ui_compose_begin(gui, (ui_config_t){ 
             .composition = {0},

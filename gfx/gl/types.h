@@ -83,13 +83,13 @@ typedef struct glvertex2d_t {
 
 typedef struct glvertex3d_t {
 
+    vec4f_t bone_weights;
+    vec4i_t bone_ids;
+    vec3f_t bitangents;
     vec3f_t pos;
     vec3f_t norm;
-    vec2f_t uv;
     vec3f_t tangents;
-    vec3f_t bitangents;
-    vec4i_t bone_ids;
-    vec4f_t bone_weights;
+    vec2f_t uv;
 
 } glvertex3d_t ;
 
@@ -112,6 +112,12 @@ typedef struct glmesh_t {
     u8 material_index;
 
 } glmesh_t;
+
+typedef enum glmesh_primitive_type {
+    GL_MESH_PRIMITIVE_TYPE_CUBE = 0,
+    GL_MESH_PRIMITIVE_TYPE_CAPSULE = 1,
+    GL_MESH_PRIMITVE_TYPE_COUNT
+} glmesh_primitive_type;
 
 void glmesh_destroy(glmesh_t *self)
 {

@@ -3,6 +3,7 @@
 #include "model/assimp.h"
 #include "poglib/basic/ds/list.h"
 #include "poglib/gfx/gl/common.h"
+#include "poglib/gfx/gl/shader.h"
 #include "poglib/gfx/gl/texture2d.h"
 #include "poglib/gfx/gl/renderconfig.h"
 #include "poglib/gfx/gl/vbo_stream_types.h"
@@ -378,59 +379,9 @@ void glrenderer3d_draw(const glrendererconfig_t config)
 
         //uniforms
         ASSERT(config.calls.call[call_idx].shader_config.uniforms.count >= 0);
-        for (u8 uni_idx = 0; uni_idx < config.calls.call[call_idx].shader_config.uniforms.count; uni_idx++)
-        {
-            uniform_t *uniform = (void *)&config.calls.call[call_idx].shader_config.uniforms.uniform[uni_idx];
-
-            if (strcmp(uniform->type, "matrix4f_t") == 0)
-                glshader_send_uniform_matrix4f(
-                        config.calls.call[call_idx].shader_config.shader, 
-                        uniform->name, 
-                        uniform->value.mat4);
-            else if (strcmp(uniform->type, "vec4f_t" ) == 0) 
-                glshader_send_uniform_vec4f(
-                        config.calls.call[call_idx].shader_config.shader, 
-                        uniform->name, 
-                        uniform->value.vec4);
-            else if (strcmp(uniform->type, "vec3f_t" ) == 0)
-                glshader_send_uniform_vec3f(
-                        config.calls.call[call_idx].shader_config.shader, 
-                        uniform->name, 
-                        uniform->value.vec3);
-            else if (strcmp(uniform->type, "vec2f_t" ) == 0)
-                glshader_send_uniform_vec2f(
-                        config.calls.call[call_idx].shader_config.shader, 
-                        uniform->name, 
-                        uniform->value.vec2);
-            else if (strcmp(uniform->type, "matrix4f_t []") == 0)
-                glshader_send_uniform_matrix4fv(
-                        config.calls.call[call_idx].shader_config.shader, 
-                        uniform->name,
-                        uniform->value.mat4s.data,
-                        uniform->value.mat4s.count);
-            else if (strcmp(uniform->type, "i32") == 0)
-                glshader_send_uniform_ival(
-                        config.calls.call[call_idx].shader_config.shader, 
-                        uniform->name,
-                        uniform->value.i32);
-            else if (strcmp(uniform->type, "f32") == 0)
-                glshader_send_uniform_fval(
-                        config.calls.call[call_idx].shader_config.shader, 
-                        uniform->name,
-                        uniform->value.f32);
-            else if (strcmp(uniform->type, "u32") == 0)
-                glshader_send_uniform_uival(
-                        config.calls.call[call_idx].shader_config.shader, 
-                        uniform->name,
-                        uniform->value.u32);
-            else if (strcmp(uniform->type, "boolean") == 0)
-                glshader_send_uniform_ival(
-                        config.calls.call[call_idx].shader_config.shader, 
-                        uniform->name,
-                        uniform->value.boolean);
-            else eprint("unknown uniform type `%s` for name `%s`", 
-                    uniform->type, uniform->name);
-        }
+        glshader_upload_uniforms(
+            config.calls.call[call_idx].shader_config.shader, 
+            config.calls.call[call_idx].shader_config.uniforms);
 
         //Textures
         for (u8 txt_idx = 0; txt_idx < config.calls.call[call_idx].textures.count; ++txt_idx)

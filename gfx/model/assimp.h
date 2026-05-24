@@ -621,4 +621,70 @@ gltexturelist_t glmodel_get_texuturelist(const glmodel_t *self)
     return list;
 }
 
+glvtx_attributelist_t glmodel_get_attirbutelist(const glmodel_t *const self)
+{
+    return (glvtx_attributelist_t) {
+        .count = 7,
+        .attr = {
+            [0] = {
+                .ncmp = 3,
+                .type = GL_FLOAT,
+                .interleaved = {
+                    .offset = offsetof(glvertex3d_t, pos),
+                    .stride = sizeof(glvertex3d_t),
+                }
+            },
+            [1] = {
+                .ncmp = 3,
+                .type = GL_FLOAT,
+                .interleaved = {
+                    .offset = offsetof(glvertex3d_t, norm),
+                    .stride = sizeof(glvertex3d_t),
+                }
+            },
+
+            [2] = {
+                .ncmp = 2,
+                .type = GL_FLOAT,
+                .interleaved = {
+                    .offset = offsetof(glvertex3d_t, uv),
+                    .stride = sizeof(glvertex3d_t)
+                }
+            },
+            [3] = {
+                .ncmp = 3,
+                .type = GL_FLOAT,
+                .interleaved = {
+                    .offset = offsetof(glvertex3d_t, tangents),
+                    .stride = sizeof(glvertex3d_t)
+                }
+            },
+            [4] = {
+                .ncmp = 3,
+                .type = GL_FLOAT,
+                .interleaved = {
+                    .offset = offsetof(glvertex3d_t, bitangents),
+                    .stride = sizeof(glvertex3d_t)
+                }
+            },
+            [5] = {
+                .ncmp = 4,
+                .type = GL_INT,
+                .interleaved = {
+                    .offset = offsetof(glvertex3d_t, bone_ids),
+                    .stride = sizeof(glvertex3d_t)
+                }
+            },
+            [6] = {
+                .ncmp = 4,
+                .type = GL_FLOAT,
+                .interleaved = {
+                    .offset = offsetof(glvertex3d_t, bone_weights),
+                    .stride = sizeof(glvertex3d_t)
+                }
+            }
+        }
+    };
+}
+
 #endif

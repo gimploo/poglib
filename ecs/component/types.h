@@ -43,7 +43,7 @@ struct ecs_component_transform_t {
 typedef struct ecs_component_model_t ecs_component_model_t;
 struct ecs_component_model_t {
 
-    asset_id asset_id;
+    u32 asset_id;
 
     struct {
         u32 entity_id;
@@ -62,8 +62,8 @@ struct ecs_component_input_t {
 
 typedef struct ecs_component_material_t ecs_component_material_t;
 struct ecs_component_material_t {
-    asset_id texture_id;
-    asset_id shader_id;
+    u32 texture_asset_id;
+    u32 shader_asset_id;
 };
 
 

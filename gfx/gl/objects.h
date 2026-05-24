@@ -29,20 +29,20 @@ typedef struct {
     u32  id; 
     struct {
         vbo_config_t config;
-        i64     attribute_index;  //TODO: move this into internals
+        i64     attribute_index;
     } internals;
 } vbo_t ;
 
 typedef struct ebo_t {
 
-    vbo_t *vbo;
     u32  id;
     u32  indices_count;
+    vbo_t *vbo;
 
 } ebo_t ;
 
 
-vbo_t           vbo_init(vbo_config_t config);
+vbo_t           vbo_init(const vbo_config_t config);
 
 //FIXME: @deprecated
 vbo_t           vbo_static_init(const void *vertices, const size_t vsize, const u64 count);
@@ -125,7 +125,7 @@ vbo_t vbo_static_init(
     return VBO;
 }
 
-vbo_t vbo_init(vbo_config_t config)
+vbo_t vbo_init(const vbo_config_t config)
 {
     u32 vbo_id;
 
@@ -198,7 +198,7 @@ vao_t vao_init(void)
     vao_t vao;
 
     GL_CHECK(glGenVertexArrays(1, &vao.id)); 
-    
+
     GL_LOG("VAO `%i` created", vao.id);
 
     return vao;
