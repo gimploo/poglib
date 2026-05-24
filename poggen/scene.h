@@ -2,6 +2,7 @@
 #include "poglib/basic/arena.h"
 #include "poglib/poggen/input/commandqueue.h"
 #include "poglib/poggen/input/commandregistry.h"
+#include "poglib/util/assetmanager.h"
 
 /*============================================================================
                             - SCENE -
@@ -59,7 +60,6 @@ void * __impl_scene_alloc_content(scene_t * const self, const u64 content_size) 
         .__render       = SCENE_NAME##_render,\
         .__destroy      = SCENE_NAME##_destroy,\
    }
-
 
 void scene__internal_input_callback(scene_t * const self, const f32 dt) {
     commandqueue_sync_input(&self->commandqueue);

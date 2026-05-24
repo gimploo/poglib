@@ -7,9 +7,9 @@
 
 typedef struct mpsc_queue_t mpsc_queue_t;
 
-mpsc_queue_t        mpsc_queue(arena_t *arena, const u64 capacity, const u32 elem_size);
+mpsc_queue_t        mpsc_queue(arena_t *arena, const u64 capacity);
 const void *        mpsc_queue_get(mpsc_queue_t * const self);
-void                mpsc_queue_put(mpsc_queue_t * const self, void * const item, const u32 elem_size);
+void                mpsc_queue_put(mpsc_queue_t * const self, void * const item_addr);
 
 
 #ifndef IGNORE_MPC_QUEUE_IMPLEMENTATION
@@ -28,11 +28,10 @@ struct mpsc_queue_t {
         arena_t *arena;
         u64 capacity;
         u64 allocated_size;
-        u32 elem_size;
     } internals;
 };
 
-mpsc_queue_t mpsc_queue(arena_t *arena, const u64 capacity, const u32 elem_size)
+mpsc_queue_t mpsc_queue(arena_t *arena, const u64 capacity)
 {
     ASSERT(capacity > 0);
     const u64 allocated_size = sizeof(mpsc_queue__internal_item_t) * capacity;
@@ -43,7 +42,6 @@ mpsc_queue_t mpsc_queue(arena_t *arena, const u64 capacity, const u32 elem_size)
         .internals = {
             .arena = arena,
             .capacity = capacity,
-            .elem_size = elem_size,
             .allocated_size = allocated_size
         }
     };
@@ -64,10 +62,8 @@ mpsc_queue__internal_item_t * mpsc_queue__internal_get_item(const mpsc_queue_t *
     return self->buffer + (index & (self->internals.capacity - 1));
 }
 
-void mpsc_queue_put(mpsc_queue_t * const self, void * const item, const u32 elem_size)
+void mpsc_queue_put(mpsc_queue_t * const self, void * const item_addr)
 {
-    ASSERT(self->internals.elem_size == elem_size);
-
     u64 claimed_tail_index;
     while (true) {
         u64 current_head_index = atomic_load_explicit(&self->head, memory_order_acquire);
@@ -89,9 +85,9 @@ void mpsc_queue_put(mpsc_queue_t * const self, void * const item, const u32 elem
         }
     }
 
-    mpsc_queue__internal_item_t * const item_addr = mpsc_queue__internal_get_item(self, claimed_tail_index);
-    item_addr->data = item;
-    atomic_store_explicit(&item_addr->is_ready, true, memory_order_release);
+    mpsc_queue__internal_item_t * const item = mpsc_queue__internal_get_item(self, claimed_tail_index);
+    item->data = item_addr;
+    atomic_store_explicit(&item->is_ready, true, memory_order_release);
 }
 
 
@@ -101,7 +97,7 @@ const void * mpsc_queue_get(mpsc_queue_t * const self)
     const u64 current_head_index = atomic_load_explicit(&self->head, memory_order_acquire);
 
     if (mpsc_queue__internal_is_empty(current_head_index, current_tail_index)) {
-        eprint("MPSC Queue is empty");
+        return NULL;
     }
 
     mpsc_queue__internal_item_t * const item_addr = mpsc_queue__internal_get_item(self, current_head_index);

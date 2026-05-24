@@ -1,21 +1,12 @@
 #pragma once
+#include "poglib/util/assetmanager.h"
 #include <poglib/basic.h>
 #include <poglib/gfx/glrenderer3d.h>
+#include <poglib/gfx/gl/instance-buffer.h>
 
 #define MAX_RENDER_BUCKETS_ALLOWED 255
 #define INSTANCE_RENDER_BUCKET_CUBE_INDEX 0 
 #define INSTANCE_RENDER_BUCKET_CAPSULE_INDEX 1 
-
-typedef enum {
-
-    RENDER_COMMAND_TYPE_MESH = 0,
-
-    RENDER_COMMAND_TYPE_INSTANCED_CUBE = 1,
-    RENDER_COMMAND_TYPE_INSTANCED_CAPSULE = 2,
-    RENDER_COMMAND_TYPE_INSTANCED_MESH = 3,
-
-    RENDER_COMMAND_TYPE_COUNT,
-} rendercommand_types;
 
 typedef enum {
     RENDER_COMMAND_DRAW_MODE_TRIANGLE = GL_TRIANGLES,
@@ -23,22 +14,19 @@ typedef enum {
     RENDER_COMMAND_DRAW_MODE_COUNT,
 } rendercommand_draw_mode;
 
-
 typedef struct {
-    bool is_ready; //NOTE: to know whether the list is initialized
-    rendercommand_draw_mode draw_mode;
-    rendercommand_types type;
     list_t render_commands;
+    rendercommand_draw_mode draw_mode;
     bool enable_wireframe;
+    bool is_instanced;
 } renderqueue__internal_bucket_type;
 
 typedef struct {
     u8 bucket_ready_count;
     renderqueue__internal_bucket_type buckets[MAX_RENDER_BUCKETS_ALLOWED];
-    arena_t arena;
-
     struct {
-        glshader_t instance_shader;
+        glinstancebuffer_t instancebuffer;
+        arena_t arena;
     } internal;
 } renderqueue_t;
 

@@ -91,7 +91,7 @@ typedef struct {
 
 typedef struct gui_t gui_t;
 
-typedef void (*ui_composition)(const application_t * const app, gui_t *gui, ...);
+typedef void (*ui_composition)(gui_t *gui, ...);
 
 typedef struct {
     ui_region_t region;
@@ -136,8 +136,8 @@ void    gui_set_composition(gui_t * const self, ui_composition callback);
 bool    gui_ui_ishovered(gui_t *const self, const u32 id);
 bool    gui_ui_isclicked(gui_t *const self, const u32 id);
 
-#define gui_update(SELF, APP, ...) do {\
-    ((SELF)->callback((APP), (SELF), __VA_ARGS__));\
+#define gui_update(SELF, ...) do {\
+    ((SELF)->callback((SELF), __VA_ARGS__));\
 } while(0);
 
 void    gui_render(gui_t *self);
@@ -153,10 +153,13 @@ gui_t gui_init(arena_t * const arena, const ui_region_t starting_region)
         .shader =  glshader_init(
             str(POGLIB_ROOT_DIR"/gui/uishader-vtx.glsl"), 
             str(POGLIB_ROOT_DIR"/gui/uishader-frag.glsl"), 
-            (glshaderuniform_registry_t) {
+            (gluniform_registry_t) {
                 .count = 1,
                 .data = {
-                    [0] = str_lit("projection")
+                    [0] = {
+                        .name = str_lit("projection"),
+                        .type = GL_UNIFORM_TYPE_MATRIX4F
+                    }
                 }
             },
             arena
@@ -441,10 +444,9 @@ void gui_render(gui_t *self)
                         .shader = &self->shader,
                         .uniforms = {
                             .count = 1,
-                            .uniform = {
+                            .data = {
                                 [0] = {
-                                    .name = "projection",
-                                    .type = "matrix4f_t",
+                                    .name = str_lit("projection"),
                                     .value.mat4 = ortho_ndc
                                 },
                             }

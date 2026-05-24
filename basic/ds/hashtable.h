@@ -28,7 +28,6 @@ union hashtable_key_t {
 };
 
 typedef struct hashtable_t {
-    slot_t keys;
     slot_t entries;
     struct {
         ht_key_type keytype;
@@ -116,7 +115,7 @@ u32 hashtable__internal_get_hashed_key_index(const hashtable_t * const self, con
         : ht__internal_hash_u32(key.u32) % slot_get_capacity(&self->entries);
 }
 
-void hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t key, void *value)
+void hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t key, void *const value)
 {
     if (table->entries.len == slot_get_capacity(&table->entries)) {
         eprint("Exceeded limit");

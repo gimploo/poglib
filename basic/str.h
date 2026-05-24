@@ -27,7 +27,7 @@ void            str_get_data(const str_t *data, char *output);
 u32             str_where_is_string_in_buffer(str_t *word, str_t *__buffer);
 str_t           str_read_file_to_str(arena_t *arena, const char *file_path);
 str_t           str_cpy_delimiter(str_t *__buffer, char ch);
-bool            str_cmp(const str_t *a, const str_t *b);
+bool            str_cmp(const str_t a, const str_t b);
 void            str_cpy(str_t *dest, str_t *source);
 str_t           str_get_directory_path(const char *string);
 str_t           str_join(arena_t *arena, const str_t *part1, const char *part2);
@@ -85,15 +85,12 @@ void str_cpy(str_t *dest, str_t *source)
     dest->len = source->len;
 }
 
-bool str_cmp(const str_t *a, const str_t *b) 
+bool str_cmp(const str_t a, const str_t b) 
 {
-    assert(a);
-    assert(b);
+    if (a.len != b.len) return false;
 
-    if (a->len != b->len) return false;
-
-    for (size_t i = 0; i < a->len; i++) 
-        if (a->data[i] != b->data[i]) 
+    for (size_t i = 0; i < a.len; i++) 
+        if (a.data[i] != b.data[i]) 
             return false;
     return true;
 }

@@ -36,6 +36,7 @@ void            list_combine(list_t *dest, const list_t *src);
 
 void            list_dump(const list_t *list);
 void            list_print(const list_t *list, void (*print)(void*));
+bool            list_is_init(const list_t * const self);
 
 #define         list_get_buffer(PLIST) (PLIST)->data
 void *          list_get_value(const list_t *list, const u64 index);
@@ -230,5 +231,11 @@ void __impl_list_append_multiple(
                 arr + (elem_size * i), 
                 elem_size);
     }
+}
+
+
+bool list_is_init(const list_t * const self)
+{
+    return !(self->__original_capacity == 0);
 }
 #endif

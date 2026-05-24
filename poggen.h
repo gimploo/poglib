@@ -6,6 +6,8 @@
 #include "poglib/basic/ds/hashtable.h"
 #include "poglib/ecs.h"
 #include "poglib/physics/jolt-wrapper.h"
+#include "poglib/pipeline/render/common.h"
+#include "poglib/pipeline/render/render_queue.h"
 #include "poglib/util/assetmanager.h"
 
 //TODO: collision setup is done during engine init phase - thinking whether we could
@@ -41,6 +43,7 @@ typedef struct poggen_t {
         poggen__internal_physics_t  physics;
         ecs_t                       ecs;
         assetmanager_t              assets;
+        renderqueue_t               renderqueue;
     } systems;
 
 } poggen_t ;
@@ -58,7 +61,7 @@ physics_sys_jolt_event_queue_t *    poggen_get_physics_collision_events(const po
 ecs_t *                             poggen_get_ecs_handle(poggen_t * const self);
 
 void                                poggen_update(poggen_t *self, const f32 dt);
-#define                             poggen_render(PGEN, DT)                                         (PGEN)->current_scene->__render((PGEN)->current_scene, DT)
+void                                poggen_render(poggen_t *self, const f32 dt);
 
 void                                poggen_destroy(poggen_t *self);
 
@@ -83,27 +86,27 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
 
     poggen_t *output = (poggen_t *)calloc(1, sizeof(poggen_t ));
     ASSERT(output);
-
+    arena_t arena = arena_init(&app->handle.arena, 2 * MB);
     *output = (poggen_t ){
         .config             = config,
         .scenes             = hashtable_init(MAX_SCENES_ALLOWED, HT_KEY_TYPE_STR, scene_t, &app->handle.arena),
         .current_scene      = NULL,
-        .arena              = arena_init(&app->handle.arena, 2 * MB),
+        .arena              = arena,
         .bg_task_manager    = bgtask_manager_init(),
         .handle = {
             .app            = app
         },
-        .systems = {0},
+        .systems = {
+            .assets      = assetmanager_init(&output->bg_task_manager),
+            .renderqueue = renderqueue_init(),
+            .ecs         = config.enable_ecs ? ecs_init() : (ecs_t){0},
+            .physics     = config.enable_physics 
+                           ? (poggen__internal_physics_t){
+                               .phy_simulation_started = false,
+                               .instance = physics_sys_jolt_init(&arena)
+                           } : (poggen__internal_physics_t){0},
+},
     };
-
-    //NOTE: SYSTEMS
-    output->systems.ecs = config.enable_ecs ? ecs_init() : (ecs_t){0};
-    output->systems.assets = assetmanager_init(&output->bg_task_manager);
-    output->systems.physics = config.enable_physics ? (poggen__internal_physics_t){
-        .phy_simulation_started = false,
-        .instance = physics_sys_jolt_init(&output->arena)
-    } : (poggen__internal_physics_t){0};
-
 
     global_poggen  = output;
 
@@ -154,6 +157,13 @@ void poggen_change_scene(poggen_t *self, const str_t scene_label)
     self->current_scene = scene;
 }
 
+void poggen_render(poggen_t *self, const f32 dt)
+{
+    ASSERT(self);
+    self->current_scene->__render(self->current_scene, dt);
+    renderqueue_dispatch(&self->systems.renderqueue);
+}
+
 void poggen_update(poggen_t *self, const f32 dt)
 {
     assert(self);
@@ -161,6 +171,7 @@ void poggen_update(poggen_t *self, const f32 dt)
     if (self->config.enable_physics && self->systems.physics.instance && !self->systems.physics.phy_simulation_started)
         eprint("Missed to register physics interaction rules, else DISABLE physics in config passed to engine");
 
+    assetmanager_update(&self->systems.assets);
     bgtask_manager_run_all_tasks(&self->bg_task_manager);
 
     scene_t *current_scene = self->current_scene;
