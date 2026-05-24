@@ -236,6 +236,6 @@ void __impl_list_append_multiple(
 
 bool list_is_init(const list_t * const self)
 {
-    return !(self->__original_capacity == 0);
+    return self->__original_capacity > 0;
 }
 #endif
