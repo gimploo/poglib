@@ -14,16 +14,10 @@ typedef enum {
     RENDER_COMMAND_DRAW_MODE_COUNT,
 } rendercommand_draw_mode;
 
-typedef struct {
-    list_t render_commands;
-    rendercommand_draw_mode draw_mode;
-    bool enable_wireframe;
-    bool is_instanced;
-} renderqueue__internal_bucket_type;
 
 typedef struct {
     u8 bucket_ready_count;
-    renderqueue__internal_bucket_type buckets[MAX_RENDER_BUCKETS_ALLOWED];
+    list_t buckets[MAX_RENDER_BUCKETS_ALLOWED];
     struct {
         glinstancebuffer_t instancebuffer;
         arena_t arena;

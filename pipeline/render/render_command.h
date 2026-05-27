@@ -31,9 +31,9 @@ struct rendercommand_t {
         } textures;
     } material;
 
-    buffer_t                    instance;
+    buffer(WORD)                instance;
     rendercommand_draw_mode     draw_mode;
-    bool enable_wireframe;
+    bool                        enable_wireframe;
 };
 
 #ifndef IGNORE_RENDER_COMMAND_IMPLEMENTATION
