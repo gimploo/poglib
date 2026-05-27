@@ -59,7 +59,7 @@ void        workbench_toggle_wireframe_mode(workbench_t *self);
 void        workbench_toggle_gui(workbench_t *self);
 void        workbench_update_world_camera(workbench_t * const self, const f32 dt);
 
-void        workbench_render_push_cube(workbench_t * const self, const vec4f_t translation, const vec4f_t scale, const vec4f_t color, const bool override_wireframe);
+void        workbench_render_push_cube(workbench_t * const self, const vec3f_t translation, const vec3f_t scale, const vec4f_t color, const bool override_wireframe);
 void        workbench_render(workbench_t *self);
 
 void        workbench_destroy(workbench_t *self);
@@ -92,11 +92,11 @@ workbench_t workbench_init(arena_t * const arena)
                     },
                     [3] = {
                         .name = str_lit("color"),
-                        .type = GL_UNIFORM_TYPE_VEC4
+                        .type = GL_UNIFORM_TYPE_VEC4F
                     },
                     [4] = {
                         .name = str_lit("cameraPos"),
-                        .type = GL_UNIFORM_TYPE_VEC3
+                        .type = GL_UNIFORM_TYPE_VEC3F
                     }
                 }
             },
@@ -469,8 +469,8 @@ void workbench__internal_update_ui(workbench_t * const self)
 
 void workbench_render_push_cube(
     workbench_t * const self,
-    const vec4f_t translation,
-    const vec4f_t scale,
+    const vec3f_t translation,
+    const vec3f_t scale,
     const vec4f_t color,
     const bool override_wireframe
 ) {
@@ -483,47 +483,49 @@ void workbench_render_push_cube(
         10000.0f
     );
 
-    renderqueue_pass_command(
-        renderqueue, 
-        (rendercommand_t) {
-            .enable_wireframe = override_wireframe || self->render_config.wireframe_mode,
-            .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
-            .mesh = assetmanager_get_gpu_loaded_primitive_asset(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE),
-            .instance = {
-                .size = sizeof(rendercommand_instance_t),
-                .raw_data = (u8 *)&(rendercommand_instance_t) {
-                    .translation = translation,
-                    .scale = scale,
-                    .color = color,
-                    .uv = spriteatlas_get_sprite(&self->primitives.atlas, PROTOTYPE_SPRITE_CHECKERED_DARK_GRAY),
+    const rendercommand_instance_t instance = {
+        .translation = { translation.x, translation.y, translation.z, 0.f },
+        .scale = { scale.x, scale.y, scale.z, 0.f },
+        .color = color,
+        .uv = spriteatlas_get_sprite(&self->primitives.atlas, PROTOTYPE_SPRITE_CHECKERED_DARK_GRAY),
+    };
+
+    rendercommand_t rendercommand = {
+        .enable_wireframe = override_wireframe || self->render_config.wireframe_mode,
+        .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
+        .mesh = assetmanager_get_gpu_loaded_primitive_asset(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE),
+        .instance = {
+            .raw_data = {0},
+            .size = sizeof(rendercommand_instance_t)
+        },
+        .material = {
+            .textures = {
+                .count = 1,
+                .ids = {
+                    self->primitives.atlas.texture.id
                 }
             },
-            .material = {
-                .textures = {
-                    .count = 1,
-                    .ids = {
-                        self->primitives.atlas.texture.id
-                    }
-                },
-                .shader = {
-                    .data = &self->primitives.shader,
-                    .uniforms = {
-                        .count = 2,
-                        .data = {
-                           [0] = {
-                               .name = str("projection"),
-                               .value = perspective_projection
-                           },
-                           [1] = {
-                               .name = str("view"),
-                               .value = glcamera_getview(&self->world_camera)
-                           }
-                        }
+            .shader = {
+                .data = &self->primitives.shader,
+                .uniforms = {
+                    .count = 2,
+                    .data = {
+                       [0] = {
+                           .name = str("projection"),
+                           .value = perspective_projection
+                       },
+                       [1] = {
+                           .name = str("view"),
+                           .value = glcamera_getview(&self->world_camera)
+                       }
                     }
                 }
-            },
-        }
-    );
+            }
+        },
+    };
+
+    memcpy(rendercommand.instance.raw_data, &instance, sizeof(instance));
+    renderqueue_pass_command(renderqueue, rendercommand);
 }
 
 

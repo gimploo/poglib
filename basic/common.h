@@ -80,6 +80,12 @@ f32 randf32(const f32 min, const f32 max)
 
 typedef struct {
     u32 size;
-    u8 *raw_data;
+    void *raw_data;
 } buffer_t;
+
+#define buffer(FIXED_CAPACITY)          \
+    struct {                            \
+        u32 size;                       \
+        u8 raw_data[FIXED_CAPACITY];    \
+    }
 

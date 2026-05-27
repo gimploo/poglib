@@ -13,7 +13,7 @@
 renderqueue_t       renderqueue_init(void);
 void                renderqueue_pass_command(renderqueue_t * const self, const rendercommand_t command);
 void                renderqueue_dispatch(renderqueue_t * const self);
-void                renderqueue_destroy(renderqueue_t *self);
+void                renderqueue_destroy(renderqueue_t * const self);
 
 #ifndef IGNORE_RENDER_QUEUE_IMPLEMENTATION
 
@@ -38,19 +38,15 @@ renderqueue_t renderqueue_init(void)
 
 void renderqueue__internal_bucket_init_and_add_command(renderqueue_t *const self, const rendercommand_t command)
 {
-    self->buckets[self->bucket_ready_count] = (renderqueue__internal_bucket_type){
-        .render_commands = list_init(rendercommand_t),
-        .draw_mode = command.draw_mode,
-        .is_instanced = command.instance.size > 0,
-        .enable_wireframe = command.enable_wireframe
-    };
-    list_append(&self->buckets[self->bucket_ready_count].render_commands, command);
+    self->buckets[self->bucket_ready_count] = list_init(rendercommand_t);
+    list_append(&self->buckets[self->bucket_ready_count], command);
     self->bucket_ready_count++;
 }
 
 void renderqueue_pass_command(renderqueue_t *const self, rendercommand_t command)
 {
     ASSERT(self);
+    ASSERT(command.instance.size <= sizeof(command.instance.raw_data));
 
     renderqueue__internal_validate_command(command);
 
@@ -58,22 +54,30 @@ void renderqueue_pass_command(renderqueue_t *const self, rendercommand_t command
         return;
     }
 
-    if (!list_is_init(&self->buckets[self->bucket_ready_count].render_commands)) {
-        renderqueue__internal_bucket_init_and_add_command(self, command);
-        return;
+    for (u8 idx = 0; idx < ARRAY_LEN(self->buckets); idx++)
+    {
+        if (!list_is_init(&self->buckets[idx])) {
+            renderqueue__internal_bucket_init_and_add_command(self, command);
+            return;
+        }
+
+        if (!self->buckets[idx].len) {
+            renderqueue__internal_add_to_bucket(&self->buckets[idx], command);
+            return;
+        }
     }
 
-    renderqueue__internal_add_to_bucket(&self->buckets[self->bucket_ready_count].render_commands, command);
+    eprint("Buckets fully filled");
 }
 
-void renderqueue_destroy(renderqueue_t *self)
+void renderqueue_destroy(renderqueue_t * const self)
 {
     for (u8 idx = 0; idx < MAX_RENDER_BUCKETS_ALLOWED; idx++)
     {
-        if (!list_is_init(&self->buckets[idx].render_commands)) 
+        if (!list_is_init(&self->buckets[idx])) 
             continue;
 
-        list_destroy(&self->buckets[idx].render_commands);
+        list_destroy(&self->buckets[idx]);
     }
     arena_destroy(&self->internal.arena);
     glinstancebuffer_destroy(&self->internal.instancebuffer);
@@ -107,29 +111,29 @@ bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const que
 {
     for (u8 idx = 0; idx < queue->bucket_ready_count; idx++)
     {
-        list_t *const commands = &queue->buckets[idx].render_commands;
+        list_t *const commands = &queue->buckets[idx];
+        if (!list_is_init(&queue->buckets[idx]))
+            continue;
 
-        if (!list_is_init(&queue->buckets[idx].render_commands))                continue;
-        if (command.draw_mode != queue->buckets[idx].draw_mode)                 continue;
-        if (command.enable_wireframe != queue->buckets[idx].enable_wireframe)   continue;
-
-        const rendercommand_t * const existing_render_command_in_bucket = commands->len
+        const rendercommand_t * const first_render_command = commands->len
             ? list_get_value(commands, 0)
             : NULL;
 
-        if (existing_render_command_in_bucket) {
-            const bool has_same_shader = rendercommand__internal_compare_shader_and_uniforms(
-                existing_render_command_in_bucket, 
-                &command
-            );
-            if (!has_same_shader) continue;
+        if (!first_render_command)                                                  continue;
+        if (command.draw_mode != first_render_command->draw_mode)                   continue;
+        if (command.enable_wireframe != first_render_command->enable_wireframe)     continue;
 
-            const bool has_same_texture = rendercommand__internal_compare_textures_ids(
-                existing_render_command_in_bucket, 
-                &command
-            );
-            if (!has_same_texture) continue;
-        }
+        const bool has_same_shader = rendercommand__internal_compare_shader_and_uniforms(
+            first_render_command, 
+            &command
+        );
+        if (!has_same_shader) continue;
+
+        const bool has_same_texture = rendercommand__internal_compare_textures_ids(
+            first_render_command, 
+            &command
+        );
+        if (!has_same_texture) continue;
 
         renderqueue__internal_add_to_bucket(commands, command);
         return true;
@@ -139,17 +143,17 @@ bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const que
 
 i32 renderqueue__internal_qsort_compare(const void *x, const void *y)
 {
-    const renderqueue__internal_bucket_type *bucket_a = (const renderqueue__internal_bucket_type *)x;
-    const renderqueue__internal_bucket_type *bucket_b = (const renderqueue__internal_bucket_type *)y;
+    const list_t *bucket_a = (const list_t *)x;
+    const list_t *bucket_b = (const list_t *)y;
 
-    bool has_a = bucket_a->render_commands.len > 0;
-    bool has_b = bucket_b->render_commands.len > 0;
+    bool has_a = bucket_a->len > 0;
+    bool has_b = bucket_b->len > 0;
     if (!has_a && !has_b) return 0;
     if (!has_a) return 1;
     if (!has_b) return -1;
 
-    const rendercommand_t *cmd_a = list_get_value(&bucket_a->render_commands, 0);
-    const rendercommand_t *cmd_b = list_get_value(&bucket_b->render_commands, 0);
+    const rendercommand_t *cmd_a = list_get_value(bucket_a, 0);
+    const rendercommand_t *cmd_b = list_get_value(bucket_b, 0);
 
     const u32 shaderid_a = (cmd_a->material.shader.data == NULL) 
         ? 0
@@ -170,22 +174,24 @@ void renderqueue_dispatch(renderqueue_t *const self)
     if (!self->bucket_ready_count) return;
     ASSERT(self->bucket_ready_count < MAX_DRAW_CALLS_PER_FRAME_COUNT);
 
-    qsort(self->buckets, ARRAY_LEN(self->buckets), sizeof(renderqueue__internal_bucket_type), renderqueue__internal_qsort_compare);
+    qsort(self->buckets, ARRAY_LEN(self->buckets), sizeof(list_t), renderqueue__internal_qsort_compare);
 
     u32 current_binded_shader_id = 0;
+    u32 instance_starting_offset = 0;
 
     for (u8 idx = 0; idx < self->bucket_ready_count; idx++)
     {
-        const list_t *bucket_commands = &self->buckets[idx].render_commands;
+        const list_t *bucket_commands = &self->buckets[idx];
         if (!bucket_commands->len) continue;
 
         const rendercommand_t *first_command = list_get_value(bucket_commands, 0);
         const bool is_instanced = first_command->instance.size > 0;
 
         if (is_instanced) {
+            instance_starting_offset = glinstancebuffer_get_current_offest(&self->internal.instancebuffer);
             list_iterator(bucket_commands, iter)
             {
-                rendercommand_t *cmd = (rendercommand_t *)iter;
+                const rendercommand_t * const cmd = (rendercommand_t *)iter;
                 glinstancebuffer_push(
                     &self->internal.instancebuffer,
                     cmd->instance.raw_data,
@@ -213,6 +219,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
         if (is_instanced) {
             glinstancebuffer_bind(
                 &self->internal.instancebuffer, 
+                instance_starting_offset,
                 bucket_commands->len * first_command->instance.size);
         }
 
@@ -237,12 +244,9 @@ void renderqueue_dispatch(renderqueue_t *const self)
                 0
             ));
         }
-
-        if (is_instanced) {
-            glinstancebuffer_unbind(&self->internal.instancebuffer);
-        }
         GL_CHECK(glBindVertexArray(0));
     }
+    glinstancebuffer_unbind(&self->internal.instancebuffer);
     renderqueue__internal_flush(self);
 }
 
@@ -250,7 +254,7 @@ void renderqueue__internal_flush(renderqueue_t * const self)
 {
     for (u8 idx = 0; idx < self->bucket_ready_count; idx++)
     {
-        list_clear(&self->buckets[idx].render_commands);
+        list_clear(&self->buckets[idx]);
     }
     arena_clear(&self->internal.arena);
 }
