@@ -130,9 +130,9 @@ void * slot_insert(
 }
 
 void * slot_update(
-        slot_t *table,
-        const u64   index, 
-        const void  *value_addr, 
+        slot_t * const table,
+        const u64   index,
+        const void  *value_addr,
         const u64   value_size)
 {
     if (table == NULL) eprint("table argument is null");

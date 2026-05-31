@@ -89,3 +89,7 @@ typedef struct {
         u8 raw_data[FIXED_CAPACITY];    \
     }
 
+#define ARRAY_FILL(ARR, VALUE)                          \
+    for (u32 idx = 0; idx < ARRAY_LEN(ARR); idx++)      \
+        ARR[idx] = (VALUE);
+

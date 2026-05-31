@@ -2,7 +2,7 @@
 #include <poglib/basic.h>
 #include "./ecs/entity.h"
 #include "./ecs/component.h"
-#include "./ecs/system.h"
+#include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
 
 ecs_t        ecs_init(void);
@@ -20,12 +20,12 @@ ecs_t ecs_init(void)
     arena_t arena = arena_init(NULL, 500 * MB);
     ecs_t result = {
         .internal = {
-            .entity_generator_counter = 0,
+            .entity_generator_counter = ECS_ENTITY_INVALID_ID,
         },
         .managers = {
             .entitymanager = ecs_entitymanager(&arena),
             .componentmanager = ecs_componentmanager(&arena),
-            .systemmanager = ecs_systemmanager(&arena),
+            .systemmanager = {0},
         }
     };
     result.arena = arena;
@@ -35,7 +35,7 @@ ecs_t ecs_init(void)
 u32 ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config)
 {
     const ecs_entity_t new_entity = {
-        .id = self->internal.entity_generator_counter++,
+        .id = ++self->internal.entity_generator_counter,
         .component_signature = component_config.signature,
     };
     ecs_entitymanager_add(
@@ -63,12 +63,16 @@ void ecs_entity_remove(ecs_t * const self, const u32 entityId)
 void ecs_update(ecs_t *const self)
 {
     ASSERT(self);
-    slot_iterator(&self->managers.componentmanager.componentpool_slots, component_pool)
+
+    const ecs_systemmanager_t * const manager = &self->managers.systemmanager;
+    for (u8 idx = 0; idx < ECS_SYSTEM_MAX_COUNT; idx++)
     {
-        if(slot_is_index_occupied(&self->managers.systemmanager.systems, slot_iterator_index)) {
-            ecs_system_callback callback = slot_get_value(&self->managers.systemmanager.systems, slot_iterator_index);
-            callback(component_pool, &self->managers.componentmanager);
-        }
+        if (!manager->count || !manager->systems[idx].callback)
+            continue;
+
+        manager->systems[idx].callback(
+            &self->managers.componentmanager
+        );
     }
 }
 

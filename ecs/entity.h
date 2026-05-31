@@ -14,8 +14,8 @@ ecs_entitymanager_t ecs_entitymanager(arena_t * const arena)
 {
     ASSERT(arena);
     return (ecs_entitymanager_t) {
-        .entities = slot_init(MAX_ENTITY_COUNT, sizeof(ecs_entity_t), arena),
-        .lookup = hashtable_init(MAX_ENTITY_COUNT, HT_KEY_TYPE_U32, u32, arena)
+        .entities = slot_init(ECS_ENTITY_MAX_COUNT, sizeof(ecs_entity_t), arena),
+        .lookup = hashtable_init(ECS_ENTITY_MAX_COUNT, HT_KEY_TYPE_U32, (ht_value_type){ .size = sizeof(u32), .type = HT_STORAGE_BY_VALUE_INLINE }, arena)
     };
 }
 
@@ -38,7 +38,7 @@ void ecs_entitymanager_remove(ecs_entitymanager_t * const self, const u32 entity
     const u32 remove_entity_idx = (u32)hashtable_get_value(&self->lookup, (hashtable_key_t){entityId});
     const bool is_entity_at_far_end = remove_entity_idx == (self->entities.len - 1);
 
-    hashtable_delete(&self->lookup, (hashtable_key_t){ .u32 = entityId});
+    hashtable_delete(&self->lookup, (hashtable_key_t){ .u32 = entityId });
     slot_delete(&self->entities, remove_entity_idx);
 
     if (is_entity_at_far_end) {

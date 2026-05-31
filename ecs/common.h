@@ -2,9 +2,11 @@
 #include <poglib/basic.h>
 #include <poglib/ecs/component/types.h>
 
+
 /* -------------------------------- ENTITY -------------------------------------------- */
 
-#define MAX_ENTITY_COUNT (1 * MB)
+#define ECS_ENTITY_INVALID_ID   0
+#define ECS_ENTITY_MAX_COUNT    (1 * MB)
 
 typedef struct ecs_entitymanager_t ecs_entitymanager_t;
 struct ecs_entitymanager_t {
@@ -15,33 +17,54 @@ struct ecs_entitymanager_t {
 
 /* ------------------------------- COMPONENT ------------------------------------------ */
 
-typedef struct ecs_query_entitycmps_t ecs_query_entitycmps_t;
-struct ecs_query_entitycmps_t{
-    //NOTE: each component result index is cmp_idx (+1 increment) and 
-    //not the bitmask index (power of 2)
-    u32 hit_count;
-    void *cmps[ECS_CMP_COUNT];
+typedef struct ecs_componentmanager_t ecs_componentmanager_t;
+typedef struct ecs_component_entry_t ecs_component_entry_t;
+typedef struct ecs_entity_view_t ecs_entity_view_t;
+
+struct ecs_entity_view_t {
+    void *entity_cmp_data[ECS_CMP_COUNT];
 };
 
-typedef struct ecs_componentmanager_t ecs_componentmanager_t;
 struct ecs_componentmanager_t {
 
     slot_t componentpool_slots;                             //NOTE: this is going to hold all data of component type 
                                                             //packed together in a single array for a type, each type will 
                                                             //have its own slot index
 
-    slot_t entity2component_lookup_slots;                   //NOTE: list of entityId to component index in packedcomponent_buffers 
-                                                            //individual lookup tables
+    hashtable_t entity2components_lookup;                   //NOTE: tracks each index of an entity's component in the component 
+                                                            //pool together packed into an array of `ECS_CMP_COUNT` size
+};
+
+struct ecs_component_entry_t {
+    ecs_component_type type;
+    u32 entity_id;
+    void *data;
 };
 
 
 /* --------------------------------- SYSTEM ----------------------------------------- */
 
-typedef void (*ecs_system_callback)(slot_t * const componentpool, const ecs_componentmanager_t * const cmp_manager);
+#define ECS_SYSTEM_MAX_COUNT 10
+#define ECS_SYSTEM_CALLBACK_MAX_ARG_COUNT 5
 
+typedef struct ecs_system_t ecs_system_t; 
 typedef struct ecs_systemmanager_t ecs_systemmanager_t;
+typedef struct ecs_system_ctx_t ecs_system_ctx_t;
+
+typedef void (*ecs_system_callback)(ecs_componentmanager_t *const cmp_manager);
+
+struct ecs_system_ctx_t {
+    slot_t *pools[ECS_CMP_COUNT];
+    u32 entity_count;
+};
+
+struct ecs_system_t {
+    ecs_system_callback callback;
+};
+
 struct ecs_systemmanager_t {
-    slot_t systems;
+    u8 count;
+    ecs_system_t systems[ECS_SYSTEM_MAX_COUNT];
 };
 
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <poglib/poggen.h>
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
 #include "poglib/ecs/component/types.h"
@@ -11,12 +12,17 @@
 #include "poglib/util/assetmanager.h"
 #include "poglib/util/glcamera.h"
 
-void ecs_system_render_model(const slot_t *const componentpool, const ecs_componentmanager_t * const cmp_manager)
+void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager)
 {
     ASSERT(global_poggen);
-    slot_iterator(componentpool, ITER)
+
+    slot_t *primary_pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_MODEL_IDX);
+
+    slot_iterator(primary_pool, ITER)
     {
-        const u32 assetid = ((ecs_component_model_t *)ITER)->asset_id;
+        const ecs_component_poolentry_t * const entry = ITER;
+        const u32 assetid = ((ecs_component_model_t *)entry->entity_cmpdata)->asset_id;
+
         const glmodel_t *model = (glmodel_t *)assetmanager_get_assetresource(
             &global_poggen->systems.assets, 
             ASSET_TYPE_MODEL,
@@ -33,9 +39,13 @@ void ecs_system_render_model(const slot_t *const componentpool, const ecs_compon
         );
         ASSERT(gpu_loaded_asset);
 
-        const u32 entity_id                         = ((ecs_component_model_t *)ITER)->internal.entity_id;
-        const ecs_component_material_t *material    = ecs_componentmanager_get_component(cmp_manager, entity_id, ECS_CMP_MATERIAL);
-        const ecs_component_transform_t *transform  = ecs_componentmanager_get_component(cmp_manager, entity_id, ECS_CMP_TRANSFORM);
+        const u32 entity_id = entry->entity_id;
+        const ecs_entity_view_t view = ecs_componentmanager_query_components(
+                cmp_manager, 
+                entity_id, 
+                ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM);
+        const ecs_component_material_t *material    = view.entity_cmp_data[ECS_CMP_MATERIAL_IDX];
+        const ecs_component_transform_t *transform  = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
         const glshader_t *shader                    = assetmanager_get_assetresource(&global_poggen->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader_asset_id);
 
         ASSERT(material);
@@ -46,13 +56,13 @@ void ecs_system_render_model(const slot_t *const componentpool, const ecs_compon
         glcamera_t camera = {0};
         matrix4f_t perspective_projection = MATRIX4F_IDENTITY;
 
+        ASSERT(gpu_loaded_asset->meshes.count == model->meshes.len);
         for (u8 idx = 0; idx < model->meshes.len; idx++)
         {
             renderqueue_pass_command(
                 &global_poggen->systems.renderqueue, 
                 (rendercommand_t) {
-                    .command_type = RENDER_COMMAND_TYPE_MESH,
-                    .mesh = gpu_loaded_asset->meshes.data[idx],
+                    .mesh = &gpu_loaded_asset->meshes.data[idx],
                     .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
                     .enable_wireframe = false,
                     .instance = {0},
@@ -81,7 +91,7 @@ void ecs_system_render_model(const slot_t *const componentpool, const ecs_compon
                                     [4] = {
                                         .name = str_lit("uBones"), 
                                         .value.mat4s = {
-                                            .count = model->transforms[0].len, 
+                                            .count = model->transforms[idx].len, 
                                             .data = (matrix4f_t *)model->transforms[idx].data
                                         }
                                     },
