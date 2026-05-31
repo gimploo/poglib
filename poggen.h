@@ -105,7 +105,7 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
                                .phy_simulation_started = false,
                                .instance = physics_sys_jolt_init(&arena)
                            } : (poggen__internal_physics_t){0},
-},
+        },
     };
 
     global_poggen  = output;
@@ -167,6 +167,7 @@ void poggen_render(poggen_t *self, const f32 dt)
 void poggen_update(poggen_t *self, const f32 dt)
 {
     assert(self);
+    renderqueue_flush(&self->systems.renderqueue);
 
     if (self->config.enable_physics && self->systems.physics.instance && !self->systems.physics.phy_simulation_started)
         eprint("Missed to register physics interaction rules, else DISABLE physics in config passed to engine");

@@ -13,13 +13,13 @@
 renderqueue_t       renderqueue_init(void);
 void                renderqueue_pass_command(renderqueue_t * const self, const rendercommand_t command);
 void                renderqueue_dispatch(renderqueue_t * const self);
+void                renderqueue_flush(renderqueue_t * const self);
 void                renderqueue_destroy(renderqueue_t * const self);
 
 #ifndef IGNORE_RENDER_QUEUE_IMPLEMENTATION
 
 void renderqueue__internal_validate_command(rendercommand_t);
 bool renderqueue__internal_check_for_batchable_commands(renderqueue_t * const queue, rendercommand_t command);
-void renderqueue__internal_flush(renderqueue_t *const self);
 void renderqueue__internal_add_to_bucket(list_t * const render_commands, const rendercommand_t command);
 void rendercommand__internal_shader_upload_uniforms(const rendercommand_t * const command);
 
@@ -271,10 +271,9 @@ void renderqueue_dispatch(renderqueue_t *const self)
         GL_CHECK(glBindVertexArray(0));
     }
     glinstancebuffer_unbind(&self->internal.instancebuffer);
-    renderqueue__internal_flush(self);
 }
 
-void renderqueue__internal_flush(renderqueue_t * const self)
+void renderqueue_flush(renderqueue_t * const self)
 {
     for (u8 idx = 0; idx < self->bucket_ready_count; idx++)
     {
@@ -282,9 +281,5 @@ void renderqueue__internal_flush(renderqueue_t * const self)
     }
     arena_clear(&self->internal.arena);
 }
-
-
-//FIXME: 
-//O(n**2) problem with `render_queue_pass_command`, fix - State Sorting 
 
 #endif
