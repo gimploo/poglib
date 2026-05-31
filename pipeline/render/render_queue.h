@@ -85,6 +85,10 @@ void renderqueue_destroy(renderqueue_t * const self)
 
 void renderqueue__internal_validate_command(const rendercommand_t command)
 {
+    //TODO: validation for textures also (solution - sort the command texture ids in desc order before compare to avoid
+    //unintentional mismatches - or through an error during runtime to reorder the textures (better) so we can avoid the sorting
+    //all together
+
     {   //NOTE: Mesh validation
         ASSERT(command.mesh);
         ASSERT(command.mesh->vao_id > 0);
@@ -135,6 +139,10 @@ bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const que
         );
         if (!has_same_texture) continue;
 
+        const bool has_same_instance_size = first_render_command->instance.size == command.instance.size;
+        if (!has_same_instance_size) 
+            continue;
+
         renderqueue__internal_add_to_bucket(commands, command);
         return true;
     }
@@ -168,6 +176,26 @@ i32 renderqueue__internal_qsort_compare(const void *x, const void *y)
     return 0;
 }
 
+void renderqueue__internal_render_all_meshes_in_bucket(const list_t * const bucket)
+{
+    list_iterator(bucket, iter)
+    {
+        const rendercommand_t *const command = iter;
+        const glshader_t * const shader = command->material.shader.data;
+        ASSERT(shader);
+
+        GL_CHECK(glBindVertexArray(command->mesh->vao_id));
+
+        glshader_upload_uniforms(shader, command->material.shader.uniforms);
+
+        GL_CHECK(glDrawElements(
+            command->draw_mode, 
+            command->mesh->index_count, 
+            GL_UNSIGNED_INT, 
+            0
+        ));
+    }
+}
 
 void renderqueue_dispatch(renderqueue_t *const self)
 {
@@ -176,7 +204,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
 
     qsort(self->buckets, ARRAY_LEN(self->buckets), sizeof(list_t), renderqueue__internal_qsort_compare);
 
-    u32 current_binded_shader_id = 0;
+    u32 binded_shader_id = 0;
     u32 instance_starting_offset = 0;
 
     for (u8 idx = 0; idx < self->bucket_ready_count; idx++)
@@ -185,9 +213,28 @@ void renderqueue_dispatch(renderqueue_t *const self)
         if (!bucket_commands->len) continue;
 
         const rendercommand_t *first_command = list_get_value(bucket_commands, 0);
-        const bool is_instanced = first_command->instance.size > 0;
+        ASSERT(first_command->mesh->vao_id);
 
+        if (first_command->enable_wireframe)    GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
+        else                                    GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+
+        //NOTE: bind shader
+        const glshader_t * const shader = first_command->material.shader.data;
+        if (binded_shader_id != shader->id) {
+            GL_CHECK(glUseProgram(shader->id));
+            binded_shader_id = shader->id;
+        }
+
+        //NOTE: bind textures
+        for(u8 tex_idx = 0; tex_idx < first_command->material.textures.count; tex_idx++) {
+            GL_CHECK(glActiveTexture(GL_TEXTURE0 + tex_idx));
+            GL_CHECK(glBindTexture(GL_TEXTURE_2D, first_command->material.textures.ids[tex_idx]));
+        }
+
+        //NOTE: Use instance if configured
+        const bool is_instanced = first_command->instance.size > 0;
         if (is_instanced) {
+            //NOTE: copy over instace data into the gl instance buffer
             instance_starting_offset = glinstancebuffer_get_current_offest(&self->internal.instancebuffer);
             list_iterator(bucket_commands, iter)
             {
@@ -198,51 +245,28 @@ void renderqueue_dispatch(renderqueue_t *const self)
                     cmd->instance.size
                 );
             }
-        }
-        const glshader_t * const shader = first_command->material.shader.data;
-        if (current_binded_shader_id != shader->id) {
-            GL_CHECK(glUseProgram(shader->id));
-            glshader_upload_uniforms(shader, first_command->material.shader.uniforms);
-            current_binded_shader_id = shader->id;
-        }
 
-        if (first_command->material.textures.count) {
-            for(u8 tex_idx = 0; tex_idx < first_command->material.textures.count; tex_idx++) {
-                GL_CHECK(glActiveTexture(GL_TEXTURE0 + tex_idx));
-                GL_CHECK(glBindTexture(GL_TEXTURE_2D, first_command->material.textures.ids[tex_idx]));
-            }
-        }
+            GL_CHECK(glBindVertexArray(first_command->mesh->vao_id));
 
-        ASSERT(first_command->mesh->vao_id);
-        GL_CHECK(glBindVertexArray(first_command->mesh->vao_id));
-
-        if (is_instanced) {
             glinstancebuffer_bind(
                 &self->internal.instancebuffer, 
                 instance_starting_offset,
                 bucket_commands->len * first_command->instance.size);
-        }
 
-        if (first_command->enable_wireframe) {
-            GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
-        } else {
-            GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
-        }
+            if (binded_shader_id)
+                glshader_upload_uniforms(shader, first_command->material.shader.uniforms);
 
-        if (is_instanced) {
             GL_CHECK(glDrawElementsInstanced(
                 first_command->draw_mode, 
                 first_command->mesh->index_count, 
                 GL_UNSIGNED_INT, 
                 0,
                 bucket_commands->len));
+
         } else {
-            GL_CHECK(glDrawElements(
-                first_command->draw_mode, 
-                first_command->mesh->index_count, 
-                GL_UNSIGNED_INT, 
-                0
-            ));
+
+            renderqueue__internal_render_all_meshes_in_bucket(&self->buckets[idx]);
+
         }
         GL_CHECK(glBindVertexArray(0));
     }

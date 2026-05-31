@@ -38,6 +38,8 @@ u16 ecs_component__internal_get_componenttype_size(ecs_component_type type)
         case ECS_CMP_MATERIAL:
             return sizeof(ecs_component_material_t);
         break;
+        case ECS_CMP_CAMERA:
+            return sizeof(ecs_component_camera_t);
         default: eprint("missing component type - not implemented");
     }
 }
@@ -230,7 +232,6 @@ ecs_entity_view_t ecs_componentmanager_query_components(const ecs_componentmanag
     {
         if (cmp_idx_buffer[cmp_idx] != ECS_CMP_INVALID_IDX && (component_signature & (1 << cmp_idx)) == 0)
             continue;
-
 
         const slot_t *const pool = slot_get_value(&self->componentpool_slots, cmp_idx);
         result.entity_cmp_data[cmp_idx] = ecs_componentmanager__internal_get_cmpdata_from_pooldata(

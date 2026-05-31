@@ -1,6 +1,7 @@
 #pragma once
 #include <poglib/basic.h>
 #include <poglib/math.h>
+#include <poglib/util/glcamera.h>
 
 #define ECS_CMP_INVALID_IDX -1
 
@@ -10,6 +11,7 @@ typedef enum {
     ECS_CMP_MODEL_IDX       = 1,
     ECS_CMP_INPUT_IDX       = 2,
     ECS_CMP_MATERIAL_IDX    = 3,
+    ECS_CMP_CAMERA_IDX      = 4,
     ECS_CMP_COUNT
 
 } ecs_component_storage_index;
@@ -20,6 +22,7 @@ typedef enum {
     ECS_CMP_MODEL       = 1 << ECS_CMP_MODEL_IDX,
     ECS_CMP_INPUT       = 1 << ECS_CMP_INPUT_IDX,
     ECS_CMP_MATERIAL    = 1 << ECS_CMP_MATERIAL_IDX,
+    ECS_CMP_CAMERA      = 1 << ECS_CMP_CAMERA_IDX,
 
 } ecs_component_type;
 
@@ -57,6 +60,11 @@ struct ecs_component_material_t {
     u32 shader_asset_id;
 };
 
+typedef glcamera_t * ecs_component_camera_t;
+
+
+/* ==================================== MISC ==========================================*/
+
 typedef struct NOPADDING ecs_component_poolentry_t ecs_component_poolentry_t;
 struct ecs_component_poolentry_t {
     u32 entity_id;
@@ -66,13 +74,15 @@ struct ecs_component_poolentry_t {
 typedef struct ecs_componentbundle_t ecs_componentbundle_t;
 struct ecs_componentbundle_t {
 
-    u32 signature;                                          //NOTE: this holds the bitmask of all compnents configured for the entity
+    //NOTE: this holds the bitmask of all compnents configured for the entity
+    u32 signature;
     struct {
         union {
             ecs_component_transform_t   transform;
             ecs_component_model_t       model;
             ecs_component_input_t       input;
             ecs_component_material_t    material;
+            ecs_component_camera_t      camera;
         };
     } component[ECS_CMP_COUNT];
 
