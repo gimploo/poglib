@@ -147,6 +147,7 @@ void arena_giveback(arena_t *self, const void *ptr, const u64 size)
     ASSERT(self);
     ASSERT(ptr);
     ASSERT(size > 0);
+    ASSERT(arena_is_init(self));
 
     mtx_lock(&self->meta.lock);
     {

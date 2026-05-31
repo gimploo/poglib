@@ -285,7 +285,15 @@ hashtable_t glshader__internal_uniforms_cache_locs(const u32 shader_id, const gl
     if (!uniforms_count) 
         return (hashtable_t){0};
 
-    hashtable_t result = hashtable_init(MAX_UNIFORMS_ALLOWED_IN_SHADER, HT_KEY_TYPE_STR, gluniform__internal_meta_t, arena);
+    hashtable_t result = hashtable_init(
+        MAX_UNIFORMS_ALLOWED_IN_SHADER,
+        HT_KEY_TYPE_STR,
+        (ht_value_type) {
+            .size = sizeof(gluniform__internal_meta_t),
+            .type = HT_STORAGE_BY_REFERENCE 
+        },
+        arena
+    );
 
     for (u32 idx = 0; idx < uniforms_count; idx++)
     {

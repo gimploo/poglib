@@ -1,8 +1,8 @@
 #pragma once
-#include "poglib/poggen/input/commandqueue.h"
-#include "poglib/util/asset.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
+
+#define ECS_CMP_INVALID_IDX -1
 
 typedef enum {
 
@@ -34,20 +34,11 @@ struct ecs_component_transform_t {
         ECS_CMP_TRANSFORM_SOURCE_PHYSICS,
         ECS_CMP_TRANSFORM_SOURCE_ANIMATION,
     } source;
-    struct {
-        u32 entity_id;
-    } internal;
-
 };
 
 typedef struct ecs_component_model_t ecs_component_model_t;
 struct ecs_component_model_t {
-
     u32 asset_id;
-
-    struct {
-        u32 entity_id;
-    } internal;
 };
 
 typedef struct ecs_component_input_t ecs_component_input_t;
@@ -66,6 +57,11 @@ struct ecs_component_material_t {
     u32 shader_asset_id;
 };
 
+typedef struct NOPADDING ecs_component_poolentry_t ecs_component_poolentry_t;
+struct ecs_component_poolentry_t {
+    u32 entity_id;
+    u8 entity_cmpdata[];
+};
 
 typedef struct ecs_componentbundle_t ecs_componentbundle_t;
 struct ecs_componentbundle_t {

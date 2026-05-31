@@ -319,7 +319,7 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
     const u32 total_bones = assimp__internal_get_total_bones(scene);
     if(total_bones) {
         self->bone_name_to_index = arena_reserve(&self->arena, sizeof(hashtable_t));
-        *self->bone_name_to_index = hashtable_init(total_bones, HT_KEY_TYPE_STR, i32, &self->arena);
+        *self->bone_name_to_index = hashtable_init(total_bones, HT_KEY_TYPE_STR, (ht_value_type){ .size = sizeof(i32), .type = HT_STORAGE_BY_VALUE_INLINE }, &self->arena);
     }
 
     ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL && "Update the transforms list in glmodel_t");

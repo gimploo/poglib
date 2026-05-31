@@ -55,13 +55,13 @@ assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
     arena_t arena = arena_init(NULL, 1 * MB);
     assetmanager_t result = {
         .assetmaps = {
-            [ASSET_TYPE_MODEL] = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, async(glmodel_t), &arena),
-            [ASSET_TYPE_GLSL_SHADER] = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, glshader_t, &arena),
-            [ASSET_TYPE_TEXTURE] = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, gltexture2d_t, &arena),
-            [ASSET_TYPE_PRIMITIVE_MESH] = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, glmesh_primitive_type, &arena),
+            [ASSET_TYPE_MODEL] = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(async(glmodel_t)), .type = HT_STORAGE_BY_REFERENCE }, &arena),
+            [ASSET_TYPE_GLSL_SHADER] = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(glshader_t), .type = HT_STORAGE_BY_REFERENCE }, &arena),
+            [ASSET_TYPE_TEXTURE] = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gltexture2d_t),  .type = HT_STORAGE_BY_REFERENCE }, &arena),
+            [ASSET_TYPE_PRIMITIVE_MESH] = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(glmesh_primitive_type), .type = HT_STORAGE_BY_REFERENCE }, &arena),
         },
         .bgtask_manager = taskmanager,
-        .gpu_uploaded_assets = hashtable_init(ASSET_TYPE_COUNT * MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, gpu_asset_t, &arena),
+        .gpu_uploaded_assets = hashtable_init(ASSET_TYPE_COUNT * MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gpu_asset_t), .type = HT_STORAGE_BY_REFERENCE }, &arena),
         .internal = {
             .asset_idx_generator = 0,
             .gpu_upload_queue = mpsc_queue(&arena, MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT)
@@ -169,6 +169,7 @@ u32 assetmanager_load_glsl_shader(assetmanager_t *self, const str_t vtx_filepath
     *shader = glshader_init(vtx_filepath, frag_filepath, registry, &self->arena);
 
     hashtable_insert(&self->assetmaps[ASSET_TYPE_GLSL_SHADER], (hashtable_key_t){.u32 = asset_id}, shader);
+    logging("Shader compiled %s, %s", shader->fg.data, shader->vs.data);
     return asset_id;
 }
 
@@ -231,6 +232,8 @@ void assetmanager__internal_upload_model_to_gpu(
         vao_unbind();
     }
 
+    logging("Model %s loaded to GPU", model->filepath);
+
     hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
 }
 
@@ -252,7 +255,7 @@ void assetmanager__internal_process_pending_gpu_tasks(assetmanager_t * const sel
 
             case ASSET_TYPE_TEXTURE:
             case ASSET_TYPE_GLSL_SHADER:
-            default: eprint("asset type not implemented");
+            default: eprint("asset type async gpu loading functions are not implemented");
         }
     }
 }

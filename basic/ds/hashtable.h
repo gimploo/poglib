@@ -19,6 +19,17 @@ typedef enum ht_key_type {
     HT_KEY_TYPE_COUNT,
 } ht_key_type;
 
+typedef enum ht_storage_t {
+    HT_STORAGE_BY_REFERENCE = 0,
+    HT_STORAGE_BY_VALUE,
+    HT_STORAGE_BY_VALUE_INLINE,
+} ht_storage_t;
+
+typedef struct ht_value_type {
+    u16 size;
+    ht_storage_t type;
+} ht_value_type;
+
 typedef struct hashtable_entry_t hashtable_entry_t;
 
 typedef union hashtable_key_t hashtable_key_t;
@@ -30,15 +41,20 @@ union hashtable_key_t {
 typedef struct hashtable_t {
     slot_t entries;
     struct {
-        ht_key_type keytype;
-        bool value_stored_as_pointers;
-        arena_t keypool;
+        arena_t         keypool;
+        arena_t         valuepool;
+        ht_value_type   valuetype;
+        ht_key_type     keytype;
     } internal;
 } hashtable_t ;
 
 
-#define         hashtable_init(CAPACITY, KEY_TYPE, VALUE_TYPE, PARENA)\
-                hashtable__internal_init((CAPACITY), KEY_TYPE, sizeof(VALUE_TYPE), (PARENA))
+hashtable_t     hashtable_init(
+                    const u32 capacity, 
+                    const ht_key_type keytype, 
+                    const ht_value_type valuetype, 
+                    arena_t * const arena
+                );
 
 #define         hashtable_insert(PTABLE, KEY, VALUE)\
                 hashtable__internal_insert((PTABLE), (KEY), (void *)(u64)(VALUE))
@@ -47,10 +63,9 @@ typedef struct hashtable_t {
                 slot_iterator(&(TABLE)->entries, (ENTRY))
 
 void            hashtable_delete(hashtable_t * const table, const hashtable_key_t key);
-const void *    hashtable_get_value(const hashtable_t * const table, const hashtable_key_t key);
+void *          hashtable_get_value(const hashtable_t * const table, const hashtable_key_t key);
 void            hashtable_print(const hashtable_t * const table, void (*print)(void *));
 bool            hashtable_has_key(const hashtable_t * const table, const hashtable_key_t key);
-hashtable_key_t hashtable_get_key_from_value(hashtable_t * const self, const void * const value);
 void            hashtable_destroy(hashtable_t * const table);
 
 
@@ -80,19 +95,26 @@ u32 ht__internal_hash_u32(const u32 key) {
     return key * 2654435761u;
 }
 
-hashtable_t hashtable__internal_init(const u32 capacity, const ht_key_type keytype, const u32 value_size, arena_t * const arena)
+hashtable_t hashtable_init(const u32 capacity, const ht_key_type keytype, const ht_value_type valuetype, arena_t * const arena)
 {
     ASSERT(capacity > 0);
-    ASSERT(value_size > 0);
+    ASSERT(valuetype.size > 0);
     ASSERT(keytype < HT_KEY_TYPE_COUNT && keytype >= HT_KEY_TYPE_STR);
     if (!global_runtimectx) {
         eprint("Requries runtimectx to ensure better cache locality");
     }
 
+    if (valuetype.size > 8 && valuetype.type == HT_STORAGE_BY_VALUE_INLINE) {
+        eprint("Use `HT_STORAGE_BY_VALUE` or `HT_STORAGE_BY_REFERENCE` instead");
+    }
+
     return (hashtable_t ) {
         .entries = slot_init(capacity, sizeof(hashtable_entry_t), arena),
         .internal = {
-            .value_stored_as_pointers = value_size >= sizeof(void *),
+            .valuepool = valuetype.type == HT_STORAGE_BY_VALUE 
+                ? arena_init(arena, capacity * valuetype.size) 
+                : (arena_t){0},
+            .valuetype = valuetype,
             .keytype = keytype,
             .keypool = runtimectx_reserve_mem_from_stringpool(250),
         }
@@ -115,7 +137,14 @@ u32 hashtable__internal_get_hashed_key_index(const hashtable_t * const self, con
         : ht__internal_hash_u32(key.u32) % slot_get_capacity(&self->entries);
 }
 
-void hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t key, void *const value)
+void * hashtable__internal_get_value(hashtable_t * const table, void * const value_addr)
+{
+    return (table->internal.valuetype.type == HT_STORAGE_BY_REFERENCE || table->internal.valuetype.type == HT_STORAGE_BY_VALUE_INLINE) 
+        ? value_addr
+        : arena_store(&table->internal.valuepool, value_addr, table->internal.valuetype.size);
+}
+
+void hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t key, void *const value_addr)
 {
     if (table->entries.len == slot_get_capacity(&table->entries)) {
         eprint("Exceeded limit");
@@ -126,6 +155,8 @@ void hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t
     u32 index = hashtable__internal_get_hashed_key_index(table, key);
     u32 probe_distance = 0;
     hashtable_key_t swap_key = key;
+    void *value = hashtable__internal_get_value(table, value_addr);
+
     while(true) {
 
         hashtable_entry_t * const entry = table->entries.len
@@ -166,7 +197,7 @@ void hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t
     }
 }
 
-const void * hashtable_get_value(const hashtable_t *table, const hashtable_key_t key)
+void * hashtable_get_value(const hashtable_t *table, const hashtable_key_t key)
 {
     const u32 entries_capacity = slot_get_capacity(&table->entries);
     u32 index = hashtable__internal_get_hashed_key_index(table, key);
@@ -192,6 +223,17 @@ const void * hashtable_get_value(const hashtable_t *table, const hashtable_key_t
     }
 }
 
+void hashtable__internal_remove_value(hashtable_t *const table, hashtable_entry_t *const entry)
+{
+    ASSERT(entry);
+
+    if (table->internal.valuetype.type == HT_STORAGE_BY_VALUE_INLINE 
+        || table->internal.valuetype.type == HT_STORAGE_BY_REFERENCE) 
+        return;
+
+    arena_giveback(&table->internal.valuepool, entry->value, table->internal.valuetype.size);
+}
+
 
 void hashtable_delete(hashtable_t * const table, const hashtable_key_t key)
 {
@@ -208,6 +250,7 @@ void hashtable_delete(hashtable_t * const table, const hashtable_key_t key)
 
         if (hashtable__internal_compare_key(table, key, entry->key)) {
             slot_delete(&table->entries, index);
+            hashtable__internal_remove_value(table, entry);
             break;
         }
 
@@ -242,6 +285,9 @@ void hashtable_destroy(hashtable_t *table)
 {
     slot_destroy(&table->entries);
     arena_destroy(&table->internal.keypool);
+    if (arena_is_init(&table->internal.valuepool)) {
+        arena_destroy(&table->internal.valuepool);
+    }
 }
 
 bool hashtable_has_key(const hashtable_t *table, const hashtable_key_t key)
@@ -267,19 +313,6 @@ bool hashtable_has_key(const hashtable_t *table, const hashtable_key_t key)
         index = (index + 1) % entries_capacity;
         probe_distance += 1;
     }
-}
-
-hashtable_key_t hashtable_get_key_from_value(hashtable_t * const self, const void * const value)
-{
-    ASSERT(value);
-    hashtable_iterator(self, iter)
-    {
-        const hashtable_entry_t *entry = iter;
-        if (entry->value == value) {
-            return entry->key;
-        }
-    }
-    eprint("tried to get key from a value that doesnot exist in the table");
 }
 
 #endif
