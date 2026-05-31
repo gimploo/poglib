@@ -12,30 +12,10 @@ void ecs_system_transfrom__internal_source_manual(
     transform->translation.z += input.move_dir.z * input.speed.z * input.delta_time;
 }
 
-void ecs_system_transform(slot_t * const componentpool, const ecs_componentmanager_t * const cmp_manager)
+void ecs_system_transform(const ecs_componentmanager_t * const cmp_manager)
 {
-    slot_iterator(componentpool, component)
+    slot_t *const pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_TRANSFORM_IDX);
+    slot_iterator(pool, component)
     {
-        ecs_component_transform_t * const transform = component;
-
-        switch(transform->source)
-        {
-            case ECS_CMP_TRANSFORM_SOURCE_MANUAL:
-                ecs_system_transfrom__internal_source_manual(
-                    transform, 
-                    *(ecs_component_input_t *)ecs_componentmanager_get_component(
-                        cmp_manager, 
-                        transform->internal.entity_id, 
-                        ECS_CMP_INPUT)
-                );
-            break;
-            case ECS_CMP_TRANSFORM_SOURCE_PHYSICS:
-                eprint("not implemented");
-            break;
-            case ECS_CMP_TRANSFORM_SOURCE_ANIMATION:
-                eprint("not implemented");
-            break;
-            default: eprint("unknown transform source type");
-        }
     }
 }

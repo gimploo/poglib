@@ -62,6 +62,8 @@ void            application_run(application_t * const app);
 #define         application_get_content(PAPP)               (void *)(PAPP)->content.raw_data
 #define         application_get_window(PAPP)                (PAPP)->handle.window
 #define         application_get_fps(PAPP)                   (PAPP)->handle.timer->fps
+#define         application_get_fixed_dt(PAPP)              (PAPP)->handle.timer->fixed_dt
+#define         application_get_raw_dt(PAPP)                (PAPP)->handle.timer->raw_dt
 f32             application_get_tick(const application_t *);
 str_t           application_get_absolute_filepath(application_t *app, const char *filepath);
 

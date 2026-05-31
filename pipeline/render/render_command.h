@@ -8,6 +8,7 @@
 //NOTE: instance types are to be aligned to 16 bytes for vec3 and vec4 - so better to use vec4
 //for all cases, although wasteful - GPU requires to padded that way for those types rest can be
 //used as they are.
+
 typedef struct rendercommand_instance_t rendercommand_instance_t;
 struct rendercommand_instance_t {
     box_t uv;
