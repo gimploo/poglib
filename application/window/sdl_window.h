@@ -115,7 +115,7 @@ global window_t     *global_window = NULL;
 window_t *          window_init(const char *title, u64 width, u64 height, const u32 SDL_flags);
 #define             window_get_current_active_window() global_window
 
-void                window_update_user_input(window_t *window);
+void                window_poll_input_events(window_t *window);
 void                window_set_background(window_t *window, vec4f_t color);
 void                window_update_title(window_t *window, const char *title);
 
@@ -802,7 +802,7 @@ void window_subwindow_render_stuff(window_t *subwindow, void (*stuff)(void *), v
 
 #define SDL_KEYSTATE_UNKNOWN SDL_FIRSTEVENT
 
-void window_update_user_input(window_t *window)
+void window_poll_input_events(window_t *window)
 {
     SDL_Event *event = &window->__sdl_event;
 
@@ -908,7 +908,7 @@ void window_render_stuff(window_t *window, void (*render)(void *), void *arg)
 {
     if (window == NULL) eprint("window argument is null");
 
-    window_update_user_input(window);
+    window_poll_input_events(window);
 
 #ifdef __gl_h_
     SDL_GL_MakeCurrent(window->__sdl_window, window->__glcontext);

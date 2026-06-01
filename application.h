@@ -22,6 +22,8 @@
                             - APPLICATION -
 =============================================================================*/
 
+#define APPLICATION_UPDATE_FIXED_TIME_STEP (1.0f / 60.0f)
+
 typedef struct application_t {
 
     struct {
@@ -46,10 +48,11 @@ typedef struct application_t {
         arena_t             arena;
     } handle;
 
-    void (*init)(struct application_t *);
-    void (*update)(struct application_t *, const f32 fixed_dt);
-    void (*render)(struct application_t *, const f32 raw_dt);
-    void (*destroy)(struct application_t *);
+    void (*init)(struct application_t *const);
+    void (*sync)(struct application_t *const);
+    void (*update)(struct application_t *const, const f32 fixed_dt);
+    void (*render)(struct application_t *const, const f32 raw_dt);
+    void (*destroy)(struct application_t *const);
 
 } application_t ;
 
@@ -143,7 +146,7 @@ void application_run(application_t * const app)
     logging("Accessing audio device `%s`...", SDL_GetAudioDeviceName(0,0));
 
     stopwatch_t timer = stopwatch();
-    const f32 FIXED_DT = 1.0f / 60.0f; //Runs at 60Hz
+    const f32 FIXED_DT = APPLICATION_UPDATE_FIXED_TIME_STEP; //Runs at 60Hz
 
     app->handle.window= win;
     app->handle.timer = &timer;
@@ -159,7 +162,9 @@ void application_run(application_t * const app)
     while(win->is_open)
     {
         stopwatch_update(&timer);
-        window_update_user_input(win);
+
+        //Sync systems that pools from the hardware / network
+        app->sync(app);
 
         //Physics / Logic / Input handling
         while(timer.accumulator >= FIXED_DT)
@@ -206,11 +211,11 @@ str_t application_get_absolute_filepath(application_t *app, const char *filepath
 }
 
 
-void * application__internal_alloc_content(application_t * const app, const u64 content_size)
+void * application__internal_alloc_content(application_t *const app, const u64 content_size)
 {
-    void * const content = arena_reserve(
-            &app->handle.arena,
-            content_size);
+    void *const content = arena_reserve(
+        &app->handle.arena,
+        content_size);
     app->content = (buffer_t) {
         .raw_data = content,
         .size = content_size

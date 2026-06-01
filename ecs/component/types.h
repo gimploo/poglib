@@ -26,6 +26,8 @@ typedef enum {
 
 } ecs_component_type;
 
+/*========================= TRANSFORM ====================================== */
+
 typedef struct ecs_component_transform_t ecs_component_transform_t;
 struct ecs_component_transform_t {
 
@@ -39,20 +41,29 @@ struct ecs_component_transform_t {
     } source;
 };
 
+/*========================= MODEL/MESH ====================================== */
+
 typedef struct ecs_component_model_t ecs_component_model_t;
 struct ecs_component_model_t {
     u32 asset_id;
 };
 
-typedef struct ecs_component_input_t ecs_component_input_t;
-struct ecs_component_input_t {
+/*========================= INPUT ====================================== */
 
-    vec3f_t move_dir;
-    vec3f_t speed;
-    f32 delta_time;
-    void (*callback)(ecs_component_input_t *const self, const u16 command_bitmask);
+typedef struct ecs_component_input_t        ecs_component_input_t;
+typedef struct ecs_component_input_state_t  ecs_component_input_state_t;
 
+struct ecs_component_input_state_t {
+    vec3f_t     move_dir;
+    vec3f_t     speed;
 };
+
+struct ecs_component_input_t {
+    ecs_component_input_state_t state; 
+    void (*input_behavior)(ecs_component_input_state_t * const state, const u16 command_bitmask, const f32 dt);
+};
+
+/* =========================== MATERIAL ================================== */
 
 typedef struct ecs_component_material_t ecs_component_material_t;
 struct ecs_component_material_t {
@@ -60,18 +71,21 @@ struct ecs_component_material_t {
     u32 shader_asset_id;
 };
 
+/* =========================== CAMERA ================================== */
+
 typedef glcamera_t * ecs_component_camera_t;
 
 
-/* ==================================== MISC ==========================================*/
+/* =========================== MISC ==========================================*/
 
-typedef struct NOPADDING ecs_component_poolentry_t ecs_component_poolentry_t;
+typedef struct NOPADDING ecs_component_poolentry_t  ecs_component_poolentry_t;
+typedef struct ecs_componentbundle_t                ecs_componentbundle_t;
+
 struct ecs_component_poolentry_t {
     u32 entity_id;
     u8 entity_cmpdata[];
 };
 
-typedef struct ecs_componentbundle_t ecs_componentbundle_t;
 struct ecs_componentbundle_t {
 
     //NOTE: this holds the bitmask of all compnents configured for the entity

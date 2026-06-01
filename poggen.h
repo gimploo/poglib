@@ -60,6 +60,7 @@ window_t *                          poggen_get_window(const poggen_t *self);
 physics_sys_jolt_event_queue_t *    poggen_get_physics_collision_events(const poggen_t * const self);
 ecs_t *                             poggen_get_ecs_handle(poggen_t * const self);
 
+void                                poggen_sync(poggen_t *const self);
 void                                poggen_update(poggen_t *self, const f32 dt);
 void                                poggen_render(poggen_t *self, const f32 dt);
 
@@ -164,6 +165,14 @@ void poggen_render(poggen_t *self, const f32 dt)
     renderqueue_dispatch(&self->systems.renderqueue);
 }
 
+void poggen_sync(poggen_t *const self)
+{
+    ASSERT(self);
+    ASSERT(self->current_scene);
+
+    commandqueue_sync_input(&self->current_scene->commandqueue);
+}
+
 void poggen_update(poggen_t *self, const f32 dt)
 {
     assert(self);
@@ -178,7 +187,7 @@ void poggen_update(poggen_t *self, const f32 dt)
     scene_t *current_scene = self->current_scene;
     if (current_scene == NULL) eprint("Current scene is null");
 
-    scene__internal_input_callback(current_scene, dt);
+    current_scene->__input(current_scene, dt);
 
     if (self->systems.physics.phy_simulation_started)
         physics_sys_jolt_update(self->systems.physics.instance, dt);

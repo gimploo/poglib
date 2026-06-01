@@ -67,6 +67,7 @@ void * __slot_iter_get_value(const slot_t *slot, u32 *hits, u32 *index)
 }
 
 #define __impl_slot_for_loop_iterator(PSLOTARRAY, ITER)\
+            ASSERT(PSLOTARRAY);\
             if ((PSLOTARRAY)->len != 0)\
                 for (void **slot_iterator_index = 0, **SLT__hits = 0, *(ITER) = (void *)__slot_iter_get_value((PSLOTARRAY),(u32 *)&SLT__hits, (u32 *)&slot_iterator_index);\
                     (ITER) != NULL;\

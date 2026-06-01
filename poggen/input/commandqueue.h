@@ -4,7 +4,7 @@
 #include <SDL2/SDL_keyboard.h>
 #include <SDL2/SDL_mouse.h>
 
-#define MAX_ALLOWED_COMMANDS_PER_FRAME 10
+#define MAX_ALLOWED_COMMANDS_PER_FRAME 6
 
 typedef u16 command_t;
 
