@@ -61,11 +61,6 @@ void * __impl_scene_alloc_content(scene_t * const self, const u64 content_size) 
         .__destroy      = SCENE_NAME##_destroy,\
    }
 
-void scene__internal_input_callback(scene_t * const self, const f32 dt) {
-    commandqueue_sync_input(&self->commandqueue);
-    self->__input(self, dt);
-}
-
 void __scene_destroy(scene_t *scene) {
     assert(scene);
 

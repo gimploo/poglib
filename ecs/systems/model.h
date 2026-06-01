@@ -3,6 +3,7 @@
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
 #include "poglib/ecs/component/types.h"
+#include "poglib/external/cglm/struct/io.h"
 #include "poglib/gfx/model/assimp.h"
 #include "poglib/math/la.h"
 #include "poglib/pipeline/render/common.h"
@@ -59,7 +60,6 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager)
             global_poggen->handle.app->window.aspect_ratio, 
             1.0f, 1000.0f
         );
-
 
         ASSERT(gpu_loaded_asset->meshes.count == model->meshes.len);
         for (u8 idx = 0; idx < model->meshes.len; idx++)

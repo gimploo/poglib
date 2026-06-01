@@ -23,7 +23,6 @@ typedef struct stopwatch_t {
 
     f32 raw_dt; // delta time in seconds
     f32 fps;
-    f32 fixed_dt;
 
 } stopwatch_t ;
 
