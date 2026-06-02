@@ -5,6 +5,7 @@
 #include "poglib/basic/concurrency.h"
 #include "poglib/basic/ds/hashtable.h"
 #include "poglib/ecs.h"
+#include "poglib/input/commandqueue.h"
 #include "poglib/physics/jolt-wrapper.h"
 #include "poglib/pipeline/render/common.h"
 #include "poglib/pipeline/render/render_queue.h"
@@ -51,16 +52,17 @@ typedef struct poggen_t {
 global poggen_t     *global_poggen = NULL;
 
 poggen_t *                          poggen_init(application_t * const app, const poggen_config_t config);
-#define                             poggen_add_scene(PGEN, SCENE_NAME)                          poggen__internal_add_scene((PGEN), __impl_scene_init(SCENE_NAME))
+#define                             poggen_add_scene(PGEN, SCENE_NAME)                          poggen__internal_add_scene((PGEN), scene__internal_init(SCENE_NAME))
 void                                poggen_remove_scene(poggen_t *self, str_t label);
 void                                poggen_change_scene(poggen_t *self, str_t scene_label);
 
 void                                poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt_rules_config_t config);
+commandqueue_t  *                   poggen_get_active_commandqueue(const poggen_t *const self);
 window_t *                          poggen_get_window(const poggen_t *self);
 physics_sys_jolt_event_queue_t *    poggen_get_physics_collision_events(const poggen_t * const self);
 ecs_t *                             poggen_get_ecs_handle(poggen_t * const self);
 
-void                                poggen_sync(poggen_t *const self);
+void                                poggen_tick(poggen_t *const self);
 void                                poggen_update(poggen_t *self, const f32 dt);
 void                                poggen_render(poggen_t *self, const f32 dt);
 
@@ -165,12 +167,12 @@ void poggen_render(poggen_t *self, const f32 dt)
     renderqueue_dispatch(&self->systems.renderqueue);
 }
 
-void poggen_sync(poggen_t *const self)
+void poggen_tick(poggen_t *const self)
 {
     ASSERT(self);
     ASSERT(self->current_scene);
 
-    commandqueue_sync_input(&self->current_scene->commandqueue);
+    scene__internal_tick(self->current_scene);
 }
 
 void poggen_update(poggen_t *self, const f32 dt)
@@ -196,7 +198,7 @@ void poggen_update(poggen_t *self, const f32 dt)
         ecs_update(&self->systems.ecs);
     }
 
-    current_scene->__update(current_scene, dt);
+    scene__internal_update(current_scene, dt);
 }
 
 void poggen_destroy(poggen_t *self)
@@ -249,6 +251,14 @@ ecs_t * poggen_get_ecs_handle(poggen_t * const self)
 {
     ASSERT(self->config.enable_ecs);
     return &self->systems.ecs;
+}
+
+commandqueue_t * poggen_get_active_commandqueue(const poggen_t *const self)
+{
+    ASSERT(self);
+    ASSERT(self->current_scene);
+
+    return &self->current_scene->commandqueue;
 }
 
 #endif

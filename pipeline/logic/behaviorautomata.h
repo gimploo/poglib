@@ -1,7 +1,7 @@
 #pragma once
 #include "poglib/basic/ds/stack.h"
-#include "poglib/poggen/input/commandqueue.h"
-#include "poglib/poggen/input/commandregistry.h"
+#include "poglib/input/commandqueue.h"
+#include "poglib/input/commandregistry.h"
 #include <poglib/basic.h>
 #include <poglib/ecs.h>
 

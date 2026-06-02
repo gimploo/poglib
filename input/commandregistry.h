@@ -18,7 +18,11 @@ typedef struct {
     commandinputkey_type type;
     union {
         SDL_Scancode sdl_keyboard_key;
-        sdl_mousebuttontype sdl_mouse_key;
+        struct {
+            sdl_mousebuttontype key;
+            sdl_mousewheelstate wheel;
+            sdl_mousestate      trigger;
+        } sdl_mouse;
     };
 } commandinputbinding_t;
 

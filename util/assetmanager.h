@@ -38,8 +38,8 @@ u32                 assetmanager_load_texture(assetmanager_t *self, const str_t 
 u32                 assetmanager_load_glsl_shader(assetmanager_t *self, const str_t vtx_filepath, const str_t frag_filepath, const gluniform_registry_t registry);
 
 const void *        assetmanager_get_assetresource(const assetmanager_t *const self, const asset_type assettype, const u32 assetId);
-gpu_asset_t *       assetmanager_get_gpu_loaded_asset(const assetmanager_t * const self, const u32 asset_id);
-gpu_mesh_t *        assetmanager_get_gpu_loaded_primitive_asset(const assetmanager_t * const self, const glmesh_primitive_type type);
+gpu_asset_t *       assetmanager_get_gpu_loaded_asset_async(const assetmanager_t * const self, const u32 asset_id);
+gpu_mesh_t *        assetmanager_get_gpu_loaded_primitive_asset_async(const assetmanager_t * const self, const glmesh_primitive_type type);
 
 void                assetmanager_destroy(assetmanager_t *const self);
 
@@ -431,13 +431,15 @@ void assetmanager__internal_upload_capsule_to_gpu(assetmanager_t * const self)
 }
 
 
-gpu_mesh_t * assetmanager_get_gpu_loaded_primitive_asset(const assetmanager_t * const self, const glmesh_primitive_type type)
+gpu_mesh_t * assetmanager_get_gpu_loaded_primitive_asset_async(const assetmanager_t * const self, const glmesh_primitive_type type)
 {
     hashtable_iterator(&self->assetmaps[ASSET_TYPE_PRIMITIVE_MESH], iter)
     {
         const hashtable_entry_t *entry = iter;
         if ((glmesh_primitive_type)entry->value == type) {
-            const gpu_asset_t * const asset = assetmanager_get_gpu_loaded_asset(self, entry->key.u32);
+            const gpu_asset_t * const asset = assetmanager_get_gpu_loaded_asset_async(self, entry->key.u32);
+            if (!asset)
+                return NULL;
             ASSERT(asset->meshes.count > 0);
             return asset->meshes.data;
         }
@@ -452,9 +454,9 @@ void assetmanager_load_all_primitives(assetmanager_t *const self)
     assetmanager__internal_upload_capsule_to_gpu(self);
 }
 
-gpu_asset_t * assetmanager_get_gpu_loaded_asset(const assetmanager_t * const self, const u32 asset_id)
+gpu_asset_t * assetmanager_get_gpu_loaded_asset_async(const assetmanager_t * const self, const u32 asset_id)
 {
-    return (gpu_asset_t *)hashtable_get_value(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id });
+    return (gpu_asset_t *)hashtable_get_value_or_null(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id });
 }
 
 #endif

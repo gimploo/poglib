@@ -8,9 +8,9 @@ void ecs_system_transfrom__internal_source_manual(
         ecs_component_transform_t *const transform,
         ecs_component_input_t *const input
 ) {
-    transform->translation.x += input->state.move_dir.x;
-    transform->translation.y += input->state.move_dir.y;
-    transform->translation.z += input->state.move_dir.z;
+    transform->translation.x += input->state.move_dir.x * input->state.speed.x;
+    transform->translation.y += input->state.move_dir.y * input->state.speed.y;
+    transform->translation.z += input->state.move_dir.z * input->state.speed.z;
 }
 
 void ecs_system_transform(ecs_componentmanager_t *const cmp_manager)

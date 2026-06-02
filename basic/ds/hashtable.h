@@ -63,7 +63,10 @@ hashtable_t     hashtable_init(
                 slot_iterator(&(TABLE)->entries, (ENTRY))
 
 void            hashtable_delete(hashtable_t * const table, const hashtable_key_t key);
+
 void *          hashtable_get_value(const hashtable_t * const table, const hashtable_key_t key);
+void *          hashtable_get_value_or_null(const hashtable_t *table, const hashtable_key_t key);
+
 void            hashtable_print(const hashtable_t * const table, void (*print)(void *));
 bool            hashtable_has_key(const hashtable_t * const table, const hashtable_key_t key);
 void            hashtable_destroy(hashtable_t * const table);
@@ -137,7 +140,7 @@ u32 hashtable__internal_get_hashed_key_index(const hashtable_t * const self, con
         : ht__internal_hash_u32(key.u32) % slot_get_capacity(&self->entries);
 }
 
-void * hashtable__internal_get_value(hashtable_t * const table, void * const value_addr)
+void * hashtable__internal_get_value_based_on_storage(hashtable_t * const table, void * const value_addr)
 {
     return (table->internal.valuetype.type == HT_STORAGE_BY_REFERENCE || table->internal.valuetype.type == HT_STORAGE_BY_VALUE_INLINE) 
         ? value_addr
@@ -155,7 +158,7 @@ void hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t
     u32 index = hashtable__internal_get_hashed_key_index(table, key);
     u32 probe_distance = 0;
     hashtable_key_t swap_key = key;
-    void *value = hashtable__internal_get_value(table, value_addr);
+    void *value = hashtable__internal_get_value_based_on_storage(table, value_addr);
 
     while(true) {
 
@@ -197,7 +200,8 @@ void hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t
     }
 }
 
-void * hashtable_get_value(const hashtable_t *table, const hashtable_key_t key)
+
+void * hashtable__internal_get_value(const hashtable_t *table, const hashtable_key_t key, const bool fail_on_error)
 {
     const u32 entries_capacity = slot_get_capacity(&table->entries);
     u32 index = hashtable__internal_get_hashed_key_index(table, key);
@@ -207,20 +211,34 @@ void * hashtable_get_value(const hashtable_t *table, const hashtable_key_t key)
     while(true){
         const hashtable_entry_t *entry = slot_get_value(&table->entries,index);
 
-        if(!entry->is_occupied)
-            eprint("No entry");
+        if(!entry->is_occupied) {
+            if( fail_on_error ) eprint("No entry");
+            else                return NULL;
+        }
 
         if (hashtable__internal_compare_key(table, key, entry->key)) {
             return entry->value;
         }
 
         if(probe_distance > entry->probe_distance) {
-            eprint("Error here");
+            if( fail_on_error ) eprint("Error here");
+            else                return NULL;
         }
 
         index = (index + 1) % entries_capacity;
         probe_distance += 1;
     }
+}
+
+
+void * hashtable_get_value_or_null(const hashtable_t *table, const hashtable_key_t key)
+{
+    return hashtable__internal_get_value(table, key, false);
+}
+
+void * hashtable_get_value(const hashtable_t *table, const hashtable_key_t key)
+{
+    return hashtable__internal_get_value(table, key, true);
 }
 
 void hashtable__internal_remove_value(hashtable_t *const table, hashtable_entry_t *const entry)

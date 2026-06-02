@@ -34,11 +34,13 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager)
             continue;
         }
 
-        const gpu_asset_t *gpu_loaded_asset = (gpu_asset_t *)assetmanager_get_gpu_loaded_asset(
+        const gpu_asset_t *gpu_loaded_asset = (gpu_asset_t *)assetmanager_get_gpu_loaded_asset_async(
             &global_poggen->systems.assets, 
             assetid
         );
-        ASSERT(gpu_loaded_asset);
+        if (!gpu_loaded_asset) {
+            continue;
+        }
 
         const u32 entity_id = entry->entity_id;
         const ecs_entity_view_t view = ecs_componentmanager_query_components(
