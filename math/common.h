@@ -40,10 +40,10 @@ f32 Q_rsqrt(const f32 number)
 // From: ChiliTomatoNoodle
 f32 wrap_angle(const f32 theta)
 {
-    const f32 modded = fmod(theta, 2.0f * PI);
-    return (modded > PI) ?
-            (modded - 2.0f * PI) :
-            modded;
+	const f32 modded = fmod(theta, 2.0f * PI);
+	return (modded > PI) 
+		? (modded - 2.0f * PI) 
+		: modded;
 }
 
 #endif

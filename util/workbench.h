@@ -1,20 +1,19 @@
 #pragma once
 #include <poglib/poggen.h>
 #include <poglib/gui.h>
-#include "./glcamera.h"
+#include <poglib/input/commandqueue.h>
+#include <poglib/input/commandregistry.h>
 #include <poglib/gfx/glrenderer2d.h>
 #include <poglib/gfx/glrenderer3d.h>
+#include <poglib/util/spriteatlas.h>
+
+#include "./glcamera.h"
 #include "./workbench/workbench-constants.h"
 #include "./gllight.h"
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
-#include "poglib/application.h"
 #include "poglib/application/window/sdl_window.h"
-#include "poglib/basic/common.h"
-#include "poglib/gfx/gl/shader.h"
-#include "poglib/pipeline/render/common.h"
-#include "poglib/util/assetmanager.h"
-#include "poglib/util/spriteatlas.h"
+#include "poglib/math/common.h"
 
 typedef struct {
 
@@ -22,6 +21,13 @@ typedef struct {
     vec3f_t end;
 
 } line_t;
+
+typedef enum workbench_action_type {
+    WORKBENCH_ACTION_TYPE_CAMERA_DRAG_LOOK    = 0,
+    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN      = 1,
+    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT     = 2,
+    WORKBENCH_ACTION_TYPE_COUNT
+} workbench_action_type;
 
 typedef struct {
 
@@ -48,18 +54,20 @@ typedef struct {
 
     list_t lightsources;
 
+    commandqueue_t commandqueue;
+
 } workbench_t;
 
 workbench_t workbench_init(arena_t * const arena);
+void        workbench_sync_commandqueue(workbench_t *const self);
+void        workbench_update(workbench_t *const self, const f32 dt);
 
-void        workbench_update_player_camera_position(workbench_t *self, const vec3f_t pos);
 void        workbench_pass_line(workbench_t *self, const line_t line);
 void        workbench_track_lightsource(workbench_t *self, const gllight_t *light);
 void        workbench_toggle_wireframe_mode(workbench_t *self);
 void        workbench_toggle_gui(workbench_t *self);
-void        workbench_update_world_camera(workbench_t * const self, const f32 dt);
 
-void        workbench_render_push_cube(workbench_t * const self, const vec3f_t translation, const vec3f_t scale, const vec4f_t color, const bool override_wireframe);
+void        workbench_render_cube(workbench_t * const self, const vec3f_t translation, const vec3f_t scale, const vec4f_t color, const bool override_wireframe);
 void        workbench_render(workbench_t *self);
 
 void        workbench_destroy(workbench_t *self);
@@ -142,20 +150,34 @@ workbench_t workbench_init(arena_t * const arena)
                     .height = global_window->height
             }),
             .enable = true
-        }
+        },
+        .commandqueue = commandqueue(arena, (commandregistry_t){
+            .count = WORKBENCH_ACTION_TYPE_COUNT,
+            .registry = {
+                [WORKBENCH_ACTION_TYPE_CAMERA_DRAG_LOOK] = {
+                    .type = COMMANDINPUTKEY_TYPE_MOUSE,
+                    .sdl_mouse = {
+                        .key        = SDL_MOUSEBUTTON_LEFT,
+                        .trigger    = SDL_MOUSESTATE_DRAG,
+                    }
+                },
+                [WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN] = {
+                    .type = COMMANDINPUTKEY_TYPE_MOUSE,
+                    .sdl_mouse.wheel = SDL_MOUSEWHEEL_UP,
+                },
+                [WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT] = {
+                    .type = COMMANDINPUTKEY_TYPE_MOUSE,
+                    .sdl_mouse.wheel = SDL_MOUSEWHEEL_DOWN,
+                }
+            },
+        })
     };
 
     assetmanager_load_all_primitives(&global_poggen->systems.assets);
 
-    glcamera_set_scroll_speed(&o.world_camera, 100.0f);
     gui_set_composition(&o.gui.handle, (ui_composition)workbench_compose_ui);
 
     return o;
-}
-
-void workbench_update_player_camera_position(workbench_t *self, const vec3f_t pos)
-{
-    self->player_camera_position = pos;
 }
 
 void workbench_pass_line(workbench_t *self, const line_t line) 
@@ -454,10 +476,45 @@ void workbench_render(workbench_t *self)
     list_clear(&self->draw_lines);
 }
 
-void workbench_update_world_camera(workbench_t * const self, const f32 dt)
+void workbench__internal_update_world_camera(workbench_t * const self, const f32 dt) 
 {
     ASSERT(self);
-    glcamera_process_input(&self->world_camera, dt);
+
+   const u16 bitmask = commandqueue_get_commands_as_bitmask(&self->commandqueue);
+   if (!bitmask) return;
+
+   const bool drag_look = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_DRAG_LOOK);
+   const bool zoom_in   = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN);
+   const bool zoom_out  = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT);
+
+   const f32 drag_sensitivity = 0.3f;
+   const f32 zoom_sensitivity = 50.0f;
+
+   vec2f_t euler_angle  = {0};
+   f32 z_offset         = 0.f;
+
+   if (drag_look) {
+       printf("dragged\n");
+       const vec2i_t mouse_pos_delta = window_mouse_get_relative_position(global_window);
+       euler_angle.x = radians((f32)mouse_pos_delta.y * drag_sensitivity);
+       euler_angle.y = radians((f32)mouse_pos_delta.x * drag_sensitivity);
+   }
+
+   if (zoom_in) {
+       printf("zoom in\n");
+       z_offset = zoom_sensitivity * dt;
+   }
+
+   if(zoom_out) {
+       printf("zoom out\n");
+       z_offset = -1.f * zoom_sensitivity * dt;
+   }
+
+    glcamera_update(
+        &self->world_camera,
+        z_offset,
+        euler_angle
+    );
 }
 
 void workbench__internal_update_ui(workbench_t * const self)
@@ -467,7 +524,7 @@ void workbench__internal_update_ui(workbench_t * const self)
     gui_update(&self->gui.handle, self->world_camera.position);
 }
 
-void workbench_render_push_cube(
+void workbench_render_cube(
     workbench_t * const self,
     const vec3f_t translation,
     const vec3f_t scale,
@@ -490,10 +547,15 @@ void workbench_render_push_cube(
         .uv = spriteatlas_get_sprite(&self->primitives.atlas, PROTOTYPE_SPRITE_CHECKERED_DARK_GRAY),
     };
 
+    gpu_mesh_t * const mesh = assetmanager_get_gpu_loaded_primitive_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE);
+    if(!mesh) {
+        return;
+    }
+
     rendercommand_t rendercommand = {
         .enable_wireframe = override_wireframe || self->render_config.wireframe_mode,
         .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
-        .mesh = assetmanager_get_gpu_loaded_primitive_asset(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE),
+        .mesh = mesh,
         .instance = {
             .raw_data = {0},
             .size = sizeof(rendercommand_instance_t)
@@ -528,4 +590,16 @@ void workbench_render_push_cube(
     renderqueue_pass_command(renderqueue, rendercommand);
 }
 
+void workbench_update(workbench_t *const self, const f32 dt)
+{
+    ASSERT(self);
+    workbench__internal_update_world_camera(self, dt);
+
+    commandqueue_flush(&self->commandqueue);
+}
+
+void workbench_sync_commandqueue(workbench_t *const self)
+{
+    commandqueue_sync(&self->commandqueue);
+}
 

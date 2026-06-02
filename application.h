@@ -49,7 +49,7 @@ typedef struct application_t {
     } handle;
 
     void (*init)(struct application_t *const);
-    void (*sync)(struct application_t *const);
+    void (*tick)(struct application_t *const);
     void (*update)(struct application_t *const, const f32 fixed_dt);
     void (*render)(struct application_t *const, const f32 raw_dt);
     void (*destroy)(struct application_t *const);
@@ -164,13 +164,14 @@ void application_run(application_t * const app)
         stopwatch_update(&timer);
 
         //Sync systems that pools from the hardware / network
-        app->sync(app);
+        app->tick(app);
 
         //Physics / Logic / Input handling
         while(timer.accumulator >= FIXED_DT)
         {
             app->update(app, FIXED_DT);
             timer.accumulator -= FIXED_DT;
+            window_flush_transient_data(win);
         }
 
         const f32 alpha = timer.accumulator / FIXED_DT;
