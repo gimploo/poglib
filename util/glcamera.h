@@ -24,6 +24,11 @@ typedef struct glcamera_t {
 } glcamera_t ;
 
 glcamera_t      glcamera_perspective(const vec3f_t pos, const vec2f_t theta);
+void            glcamera_set(
+                    glcamera_t *const self, 
+                    const vec3f_t absolute_position, 
+                    const vec2f_t absolute_orientation
+                );
 void            glcamera_update(
                     glcamera_t *const self, 
                     const f32 z_offset,
@@ -38,20 +43,16 @@ void            glcamera_lookat(glcamera_t *const self, const vec3f_t target);
 -----------------------------------------------------------------------------*/
 #ifndef IGNORE_GL_CAMERA_IMPLEMENTATION
 
-void glcamera__internal_update_directions(glcamera_t *self, const vec2f_t delta_rot)
+void glcamera__internal_update_directions(glcamera_t *self)
 {
-    // 1. Accumulate the frame deltas into absolute angles
-    self->euler_angle.x += delta_rot.x; // Pitch
-    self->euler_angle.y += delta_rot.y; // Yaw
-
-    // 2. Correctly clamp the Pitch (X axis) using min/max
+    //Correctly clamp the Pitch (X axis) using min/max
     const f32 pitch_limit = radians(89.0f);
     self->euler_angle.x = fmaxf(-pitch_limit, fminf(self->euler_angle.x, pitch_limit));
 
-    // 3. Keep Yaw (Y axis) wrapped inside 0 to 2PI range to prevent variable overflow
+    //Keep Yaw (Y axis) wrapped inside 0 to 2PI range to prevent variable overflow
     self->euler_angle.y = fmodf(self->euler_angle.y, 2.0f * PI);
 
-    // 4. Calculate vectors cleanly from absolute angles (eliminates drift/stutter)
+    //Calculate vectors cleanly from absolute angles (eliminates drift/stutter)
     vec3f_t new_front = {
         .x = cosf(self->euler_angle.y) * cosf(self->euler_angle.x),
         .y = sinf(self->euler_angle.x),
@@ -61,6 +62,23 @@ void glcamera__internal_update_directions(glcamera_t *self, const vec2f_t delta_
     self->direction.front = glms_normalize(new_front);
     self->direction.right = glms_normalize(glms_cross(self->direction.front, GL_CAMERA_DIRECTION_UP));
     self->direction.up    = glms_cross(self->direction.right, self->direction.front);
+}
+
+
+void glcamera_set(
+    glcamera_t *const self, 
+    const vec3f_t aboslute_position,         //NOTE: this needs to account in delta time also
+    const vec2f_t absolute_orientation
+) {
+    self->position      = aboslute_position;
+    self->euler_angle   = absolute_orientation;
+
+    glcamera__internal_update_directions(self);
+
+#ifndef DISABLE_CAMERA_LOGGING
+    logging("Camera Pos: "VEC3F_FMT " | " "Delta Angle: " VEC2F_FMT, 
+            VEC3F_ARG(self->position), VEC2F_ARG(self->euler_angle));
+#endif
 }
 
 
@@ -77,7 +95,10 @@ void glcamera_update(
         )
     );
 
-    glcamera__internal_update_directions(self, delta_rot);
+    self->euler_angle.x += delta_rot.x; // Pitch
+    self->euler_angle.y += delta_rot.y; // Yaw
+
+    glcamera__internal_update_directions(self);
 
 #ifndef DISABLE_CAMERA_LOGGING
     logging("Camera Pos: "VEC3F_FMT " | " "Delta Angle: " VEC2F_FMT, 
@@ -119,7 +140,7 @@ glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t radians)
         },
     };
 
-    glcamera__internal_update_directions(&o, radians);
+    glcamera_update(&o, pos.z, radians);
 
     logging("[CAMERA] left click look around and wasd to move the camera\n");
     return o;

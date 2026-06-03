@@ -15,32 +15,30 @@ ecs_componentmanager_t  ecs_componentmanager(arena_t *arena);
 void                    ecs_componentmanager_add(ecs_componentmanager_t * const self, const u32 entityId, const ecs_componentbundle_t component_config);
 void                    ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 entity_id, const ecs_component_type type);
 void                    ecs_componentmanager_removeall(ecs_componentmanager_t * const self, const u32 entity_id);
-
 ecs_component_entry_t   ecs_componentmanager_get_component(const ecs_componentmanager_t * const self, const u32 entity_id, const ecs_component_type cmp_type);
-ecs_entity_view_t       ecs_componentmanager_query_components(const ecs_componentmanager_t * const self, const u32 entity_id, const u32 component_signature);
 
 
 #ifndef IGNORE_ECS_COMPONENT_IMPLEMENTATION
 
-u16 ecs_component__internal_get_componenttype_size(ecs_component_type type)
+u16 ecs_component__internal_get_componenttype_size(const ecs_component_type type)
 {
     switch(type)
     {
-        case ECS_CMP_TRANSFORM:
-            return sizeof(ecs_component_transform_t);
-        break;
-        case ECS_CMP_MODEL:
-            return sizeof(ecs_component_model_t);
-        break;
-        case ECS_CMP_INPUT:
-            return sizeof(ecs_component_input_t);
-        break;
-        case ECS_CMP_MATERIAL:
-            return sizeof(ecs_component_material_t);
-        break;
-        case ECS_CMP_CAMERA:
-            return sizeof(ecs_component_camera_t);
+        case ECS_CMP_TRANSFORM:         return sizeof(ecs_component_transform_t);
+        case ECS_CMP_MODEL:             return sizeof(ecs_component_model_t);
+        case ECS_CMP_INPUT:             return sizeof(ecs_component_input_t);
+        case ECS_CMP_MATERIAL:          return sizeof(ecs_component_material_t);
+        case ECS_CMP_CAMERA:            return sizeof(ecs_component_camera_t);
         default: eprint("missing component type - not implemented");
+    }
+}
+
+u32 ecs_componentmanager__internal_get_pool_capacity(const ecs_component_type type)
+{
+    switch(type)
+    {
+        case ECS_CMP_CAMERA:            return 10;
+        default:                        return ECS_ENTITY_MAX_COUNT / 2;
     }
 }
 
@@ -70,7 +68,7 @@ ecs_componentmanager_t ecs_componentmanager(arena_t *arena)
         // u32      / <cmp_size>
         // [ entity_id ][ component data ]
         *packedcmp_slot = slot_init(
-            ECS_ENTITY_MAX_COUNT, 
+            ecs_componentmanager__internal_get_pool_capacity(componenttype),
             sizeof(u32) + ecs_component__internal_get_componenttype_size(componenttype), 
             arena
         );
@@ -218,7 +216,7 @@ ecs_component_entry_t ecs_componentmanager_get_component(const ecs_componentmana
 
 }
 
-ecs_entity_view_t ecs_componentmanager_query_components(const ecs_componentmanager_t * const self, const u32 entity_id, const u32 component_signature)
+ecs_entity_view_t ecs_componentmanager__internal_query_components(const ecs_componentmanager_t * const self, const u32 entity_id, const u32 component_signature)
 {
     ASSERT(self);
     ASSERT(entity_id >= 0);
@@ -226,12 +224,16 @@ ecs_entity_view_t ecs_componentmanager_query_components(const ecs_componentmanag
 
     ecs_entity_view_t result = {0};
 
-    i16 *cmp_idx_buffer = hashtable_get_value(&self->entity2components_lookup, (hashtable_key_t){ .u32 = entity_id });
+    const i16 *const cmp_idx_buffer = hashtable_get_value(&self->entity2components_lookup, (hashtable_key_t){ .u32 = entity_id });
 
     for (u16 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
     {
-        if (cmp_idx_buffer[cmp_idx] != ECS_CMP_INVALID_IDX && (component_signature & (1 << cmp_idx)) == 0)
+        if (!(component_signature & (1 << cmp_idx)))
             continue;
+
+        if (cmp_idx_buffer[cmp_idx] == ECS_CMP_INVALID_IDX) 
+            eprint("Trying to query unavailble component type idx `%i` from entity id `%i`", cmp_idx, entity_id);
+
 
         const slot_t *const pool = slot_get_value(&self->componentpool_slots, cmp_idx);
         result.entity_cmp_data[cmp_idx] = ecs_componentmanager__internal_get_cmpdata_from_pooldata(

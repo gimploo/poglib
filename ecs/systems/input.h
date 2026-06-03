@@ -5,7 +5,7 @@
 #include "poglib/basic/ds/slot.h"
 #include "poglib/poggen.h"
 
-void ecs_system_input(ecs_componentmanager_t *const cmp_manager)
+void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
     ASSERT(global_poggen);
 
@@ -16,7 +16,7 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager)
         ecs_component_input_t *const input_cmp          = (ecs_component_input_t *)entry->entity_cmpdata;
         const u16 bitmask                               = (u16)commandqueue_get_commands_as_bitmask(&global_poggen->current_scene->commandqueue);
 
-        input_cmp->state = (ecs_component_input_state_t){0};
-        input_cmp->input_behavior(&input_cmp->state, bitmask, APPLICATION_UPDATE_FIXED_TIME_STEP);
+        input_cmp->internal.state = (ecs_component_input_state_t){0};
+        input_cmp->input_behavior(&input_cmp->internal.state, bitmask, APPLICATION_UPDATE_FIXED_TIME_STEP);
     }
 }
