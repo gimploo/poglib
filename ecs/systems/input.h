@@ -4,14 +4,12 @@
 #include "poglib/application.h"
 #include "poglib/basic/ds/slot.h"
 #include "poglib/poggen.h"
-#include "poglib/poggen/input/commandqueue.h"
 
 void ecs_system_input(ecs_componentmanager_t *const cmp_manager)
 {
     ASSERT(global_poggen);
-    (void)cmp_manager;
 
-    slot_t * const pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_INPUT_IDX);
+    slot_t *const pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_INPUT_IDX);
     slot_iterator(pool, iter)
     {
         const ecs_component_poolentry_t * const entry   = iter;

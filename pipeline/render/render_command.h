@@ -20,7 +20,7 @@ struct rendercommand_instance_t {
 typedef struct rendercommand_t rendercommand_t;
 struct rendercommand_t {
 
-    gpu_mesh_t *mesh;
+    gpu_mesh_t *const mesh;
     struct {
         struct {
             gluniforms_t uniforms;

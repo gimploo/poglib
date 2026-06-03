@@ -26,10 +26,11 @@ typedef struct glcamera_t {
 glcamera_t      glcamera_perspective(const vec3f_t pos, const vec2f_t theta);
 void            glcamera_update(
                     glcamera_t *const self, 
-                    const f32 z_offset,     //NOTE: this needs to account in delta time also
-                    const vec2f_t euler_angle
+                    const f32 z_offset,
+                    const vec2f_t delta_rot
                 );
 matrix4f_t      glcamera_getview(const glcamera_t *const self);
+void            glcamera_lookat(glcamera_t *const self, const vec3f_t target);
 
 
 /*-----------------------------------------------------------------------------
@@ -51,10 +52,11 @@ void glcamera__internal_update_directions(glcamera_t *self, const vec2f_t delta_
     self->euler_angle.y = fmodf(self->euler_angle.y, 2.0f * PI);
 
     // 4. Calculate vectors cleanly from absolute angles (eliminates drift/stutter)
-    vec3f_t new_front;
-    new_front.x = cosf(self->euler_angle.y) * cosf(self->euler_angle.x);
-    new_front.y = sinf(self->euler_angle.x);
-    new_front.z = sinf(self->euler_angle.y) * cosf(self->euler_angle.x);
+    vec3f_t new_front = {
+        .x = cosf(self->euler_angle.y) * cosf(self->euler_angle.x),
+        .y = sinf(self->euler_angle.x),
+        .z = sinf(self->euler_angle.y) * cosf(self->euler_angle.x),
+    };
 
     self->direction.front = glms_normalize(new_front);
     self->direction.right = glms_normalize(glms_cross(self->direction.front, GL_CAMERA_DIRECTION_UP));
@@ -93,6 +95,16 @@ matrix4f_t glcamera_getview(const glcamera_t *const self)
         ), 
         self->direction.up
     );
+}
+
+void glcamera_lookat(glcamera_t *const self, const vec3f_t target)
+{
+    self->direction.front = glms_normalize(glms_vec3_sub(target, self->position));
+    self->direction.right = glms_normalize(glms_cross(self->direction.front, GL_CAMERA_DIRECTION_UP));
+    self->direction.up    = glms_cross(self->direction.right, self->direction.front);
+
+    self->euler_angle.x = asinf(self->direction.front.y);
+    self->euler_angle.y = atan2f(self->direction.front.z, self->direction.front.x);
 }
 
 glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t radians)
