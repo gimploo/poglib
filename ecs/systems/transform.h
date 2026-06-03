@@ -8,19 +8,21 @@ void ecs_system_transfrom__internal_source_manual(
         ecs_component_transform_t *const transform,
         ecs_component_input_t *const input
 ) {
-    transform->translation.x += input->state.move_dir.x * input->state.speed.x;
-    transform->translation.y += input->state.move_dir.y * input->state.speed.y;
-    transform->translation.z += input->state.move_dir.z * input->state.speed.z;
+    if (input == NULL) eprint("missing input component");
+
+    transform->translation  = glms_vec3_add(input->internal.state.translation_offset, transform->translation);
+    transform->rotation     = glms_vec3_add(input->internal.state.orientation_offset, transform->rotation);
 }
 
-void ecs_system_transform(ecs_componentmanager_t *const cmp_manager)
+void ecs_system_transform(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
     slot_t *const pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_TRANSFORM_IDX);
+
     slot_iterator(pool, iter)
     {
         ecs_component_poolentry_t *const entry = iter;
         ecs_component_transform_t *transform = (ecs_component_transform_t *)entry->entity_cmpdata;
-        const ecs_entity_view_t view = ecs_componentmanager_query_components(
+        const ecs_entity_view_t view = ecs_componentmanager__internal_query_components(
             cmp_manager, 
             entry->entity_id, 
             ECS_CMP_INPUT);

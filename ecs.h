@@ -5,11 +5,14 @@
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
 
-ecs_t        ecs_init(void);
-void         ecs_update(ecs_t *const self);
-u32             ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config);
-void            ecs_entity_remove(ecs_t * const self, const u32 entityId);
-void         ecs_destroy(ecs_t * const self);
+ecs_t           ecs_init(void);
+u32                 ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config);
+void                ecs_entity_remove(ecs_t * const self, const u32 entityId);
+ecs_entity_view_t   ecs_entity_query_components(ecs_t *const self, const u32 entity_id, const u32 component_signature);
+void                ecs_set_active_camera(ecs_t *const self, const u32 entity_id);
+glcamera_t *        ecs_get_active_camera(ecs_t *const self);
+void            ecs_update(ecs_t *const self);
+void            ecs_destroy(ecs_t * const self);
 
 #ifndef IGNORE_ECS_IMPLEMENTATION
 
@@ -21,6 +24,7 @@ ecs_t ecs_init(void)
     ecs_t result = {
         .internal = {
             .entity_generator_counter = ECS_ENTITY_INVALID_ID,
+            .active_camera = NULL,
         },
         .managers = {
             .entitymanager = ecs_entitymanager(&arena),
@@ -32,7 +36,23 @@ ecs_t ecs_init(void)
     return result;
 }
 
-u32 ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config)
+
+glcamera_t * ecs_get_active_camera(ecs_t *const self)
+{
+    ASSERT(self->internal.active_camera);
+    return self->internal.active_camera;
+}
+
+void ecs_set_active_camera(ecs_t *const self, const u32 entity_id)
+{
+    const ecs_entity_view_t view = ecs_entity_query_components(self, entity_id, ECS_CMP_CAMERA);
+    ecs_component_camera_t *const camera = view.entity_cmp_data[ECS_CMP_CAMERA_IDX];
+    ASSERT(camera);
+
+    self->internal.active_camera = &camera->camera;
+}
+
+u32 ecs_entity_add(ecs_t *const self, const ecs_componentbundle_t component_config)
 {
     const ecs_entity_t new_entity = {
         .id = ++self->internal.entity_generator_counter,
@@ -71,9 +91,17 @@ void ecs_update(ecs_t *const self)
             continue;
 
         manager->systems[idx].callback(
-            &self->managers.componentmanager
+            &self->managers.componentmanager,
+            (ecs_system_ctx_t) {
+                .active_camera = self->internal.active_camera
+            }
         );
     }
+}
+
+ecs_entity_view_t ecs_entity_query_components(ecs_t *const self, const u32 entity_id, const u32 component_signature)
+{
+    return ecs_componentmanager__internal_query_components(&self->managers.componentmanager, entity_id, component_signature);
 }
 
 

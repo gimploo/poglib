@@ -13,7 +13,12 @@
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
 #include "poglib/application/window/sdl_window.h"
+#include "poglib/ecs.h"
+#include "poglib/ecs/common.h"
+#include "poglib/ecs/component.h"
+#include "poglib/ecs/component/types.h"
 #include "poglib/math/common.h"
+#include "poglib/math/la.h"
 
 typedef struct {
 
@@ -46,7 +51,6 @@ typedef struct {
     } primitives;
 
     glshader_t shader;
-    glcamera_t world_camera;
     vec3f_t player_camera_position;
 
     // Lines that draws - this clears up after every render
@@ -55,6 +59,11 @@ typedef struct {
     list_t lightsources;
 
     commandqueue_t commandqueue;
+
+    struct {
+        u32 entity_id;
+        glcamera_t *handle;
+    } world_camera;
 
 } workbench_t;
 
@@ -76,9 +85,78 @@ void        workbench_destroy(workbench_t *self);
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0.f, 0.f, 10.f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
 
-workbench_t workbench_init(arena_t * const arena)
+void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t * const state, const u16 command_bitmask, const f32 dt)
+{
+    const u16 bitmask = command_bitmask;
+    if (!bitmask) return;
+
+    const bool drag_look = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_DRAG_LOOK);
+    const bool zoom_in   = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN);
+    const bool zoom_out  = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT);
+
+    const f32 drag_sensitivity = 0.3f;
+    const f32 zoom_sensitivity = 50.0f;
+
+    vec2f_t euler_angle  = {0};
+    f32 z_offset         = 0.f;
+
+    if (drag_look) {
+        const vec2i_t mouse_pos_delta = window_mouse_get_relative_position(global_window);
+        euler_angle.x = radians((f32)mouse_pos_delta.y * drag_sensitivity);
+        euler_angle.y = radians((f32)mouse_pos_delta.x * drag_sensitivity);
+    }
+
+    if (zoom_in) {
+        z_offset = zoom_sensitivity * dt;
+    }
+
+    if(zoom_out) {
+        z_offset = -1.f * zoom_sensitivity * dt;
+    }
+
+    state->orientation_offset = (vec3f_t){ euler_angle.x, euler_angle.y };
+    state->translation_offset = (vec3f_t){ 0.f, 0.f, z_offset };
+}
+
+void workbench_switch_to_world_camera(workbench_t *const self)
+{
+    ecs_set_active_camera(&global_poggen->systems.ecs, self->world_camera.entity_id);
+}
+
+void workbench__internal_ecs_create_world_camera(workbench_t *const self)
+{
+    const u32 world_camera_entity_id  = ecs_entity_add(
+        &global_poggen->systems.ecs, 
+        (ecs_componentbundle_t) {
+            .signature = ECS_CMP_TRANSFORM | ECS_CMP_CAMERA | ECS_CMP_INPUT,
+            .component = {
+                [ECS_CMP_TRANSFORM_IDX].transform = {0},
+                [ECS_CMP_CAMERA_IDX].camera = (ecs_component_camera_t){
+                    .camera = glcamera_perspective((vec3f_t){2.0f, 4.f, -4.0f}, (vec2f_t){-0.32f, 1.59f}),
+                    .mode = ECS_CMP_CAMERA_MODE_FREE_FLY,
+                },
+                [ECS_CMP_INPUT_IDX].input = (ecs_component_input_t){
+                    .input_behavior = workbench__internal_worldcamera_input_handler
+                }
+            }
+        }
+    );
+
+    const ecs_entity_view_t view = ecs_entity_query_components(
+        &global_poggen->systems.ecs, world_camera_entity_id, ECS_CMP_CAMERA);
+    ASSERT(view.entity_cmp_data[ECS_CMP_CAMERA_IDX]);
+    self->world_camera.handle = &((ecs_component_camera_t *)view.entity_cmp_data[ECS_CMP_CAMERA_IDX])->camera;
+    self->world_camera.entity_id = world_camera_entity_id;
+}
+
+workbench_t workbench_init(arena_t *const arena)
 {
     ASSERT(global_poggen);
+
+    if (!global_poggen->config.enable_ecs) {
+        eprint("ECS required to use workbench");
+    }
+
     workbench_t o = {
         .shader = glshader_init(
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.vs"), 
@@ -131,10 +209,6 @@ workbench_t workbench_init(arena_t * const arena)
             ),
             .atlas = spriteatlas_init(str(POGLIB_ROOT_DIR"/res/sprites/prototype.png"), 8, 4, arena),
         },
-        .world_camera = glcamera_perspective(
-            WORKBENCH_CAMERA_DEFAULT_POSITION,
-            WORKBENCH_CAMERA_DEFAULT_ROTATION 
-        ),
         .player_camera_position = vec3f(0.f),
         .draw_lines = list_init(line_t),
         .lightsources = list_init(gllight_t *),
@@ -173,11 +247,19 @@ workbench_t workbench_init(arena_t * const arena)
         })
     };
 
+    workbench__internal_ecs_create_world_camera(&o);
+
     assetmanager_load_all_primitives(&global_poggen->systems.assets);
 
     gui_set_composition(&o.gui.handle, (ui_composition)workbench_compose_ui);
 
     return o;
+}
+
+matrix4f_t workbench__internal_get_camera_view(const workbench_t *const self)
+{
+    glcamera_t *camera = ecs_get_active_camera(&global_poggen->systems.ecs);
+    return glcamera_getview(camera);
 }
 
 void workbench_pass_line(workbench_t *self, const line_t line) 
@@ -244,7 +326,7 @@ void workbench__internal_render_lightsources(workbench_t *self)
                                 .data = {
                                     [0] = {
                                         .name = str_lit("view"),
-                                        .value = glcamera_getview(&self->world_camera)
+                                        .value = workbench__internal_get_camera_view(self)
                                     },
                                     [1] = {
                                         .name = str_lit("projection"),
@@ -321,7 +403,7 @@ void workbench__internal_render_batch_lines(workbench_t *self)
                             .data = {
                                 [0] = {
                                     .name = str_lit("view"),
-                                    .value = glcamera_getview(&self->world_camera)
+                                    .value = workbench__internal_get_camera_view(self)
                                 },
                                 [1] = {
                                     .name = str_lit("projection"),
@@ -373,7 +455,7 @@ void workbench__internal_render_batch_lines(workbench_t *self)
                             .data = {
                                 [0] = {
                                     .name = str_lit("view"),
-                                    .value = glcamera_getview(&self->world_camera)
+                                    .value = workbench__internal_get_camera_view(self)
                                 },
                                 [1] = {
                                     .name = str_lit("projection"),
@@ -407,7 +489,7 @@ void workbench__internal_render_batch_lines(workbench_t *self)
                             .data = {
                                 [0] = {
                                     .name = str_lit("view"),
-                                    .value = glcamera_getview(&self->world_camera)
+                                    .value = workbench__internal_get_camera_view(self)
                                 },
                                 [1] = {
                                     .name = str_lit("projection"),
@@ -449,20 +531,20 @@ void workbench__internal_render_batch_lines(workbench_t *self)
     });
 }
 
-void workbench__internal_update_ui(workbench_t * const self);
+void workbench__internal_update_ui(workbench_t * const self, const vec3f_t worlcamera_position);
 
 void workbench_render(workbench_t *self)
 {
-    workbench__internal_update_ui(self);
+    workbench__internal_update_ui(self, self->world_camera.handle->position);
 
     workbench__internal_render_grid(
         &self->shader,
-        glcamera_getview(&self->world_camera),
+        workbench__internal_get_camera_view(self),
         glms_perspective(
             radians(45), 
             global_poggen->handle.app->window.aspect_ratio, 
             1.0f, 1000.0f),
-        self->world_camera.position
+        self->world_camera.handle->position
     );
 
     workbench__internal_render_batch_lines(self);
@@ -476,49 +558,16 @@ void workbench_render(workbench_t *self)
     list_clear(&self->draw_lines);
 }
 
-void workbench__internal_update_world_camera(workbench_t * const self, const f32 dt) 
+void workbench__internal_update_world_camera(workbench_t *const self, const f32 dt) 
 {
-    ASSERT(self);
-
-   const u16 bitmask = commandqueue_get_commands_as_bitmask(&self->commandqueue);
-   if (!bitmask) return;
-
-   const bool drag_look = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_DRAG_LOOK);
-   const bool zoom_in   = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN);
-   const bool zoom_out  = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT);
-
-   const f32 drag_sensitivity = 0.3f;
-   const f32 zoom_sensitivity = 50.0f;
-
-   vec2f_t euler_angle  = {0};
-   f32 z_offset         = 0.f;
-
-   if (drag_look) {
-       const vec2i_t mouse_pos_delta = window_mouse_get_relative_position(global_window);
-       euler_angle.x = radians((f32)mouse_pos_delta.y * drag_sensitivity);
-       euler_angle.y = radians((f32)mouse_pos_delta.x * drag_sensitivity);
-   }
-
-   if (zoom_in) {
-       z_offset = zoom_sensitivity * dt;
-   }
-
-   if(zoom_out) {
-       z_offset = -1.f * zoom_sensitivity * dt;
-   }
-
-    glcamera_update(
-        &self->world_camera,
-        z_offset,
-        euler_angle
-    );
+    
 }
 
-void workbench__internal_update_ui(workbench_t * const self)
+void workbench__internal_update_ui(workbench_t * const self, const vec3f_t world_camera_position)
 {
     if (!self->gui.enable) return;
 
-    gui_update(&self->gui.handle, self->world_camera.position);
+    gui_update(&self->gui.handle, world_camera_position);
 }
 
 void workbench_render_cube(
@@ -575,7 +624,7 @@ void workbench_render_cube(
                        },
                        [1] = {
                            .name = str("view"),
-                           .value = glcamera_getview(&self->world_camera)
+                           .value = workbench__internal_get_camera_view(self)
                        }
                     }
                 }
@@ -590,7 +639,9 @@ void workbench_render_cube(
 void workbench_update(workbench_t *const self, const f32 dt)
 {
     ASSERT(self);
-    workbench__internal_update_world_camera(self, dt);
+
+    //NOTE: add command queue dependent logic here
+    //...
 
     commandqueue_flush(&self->commandqueue);
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include "poglib/util/glcamera.h"
 #include <poglib/basic.h>
 #include <poglib/ecs/component/types.h>
 
@@ -51,11 +52,10 @@ typedef struct ecs_system_t ecs_system_t;
 typedef struct ecs_systemmanager_t ecs_systemmanager_t;
 typedef struct ecs_system_ctx_t ecs_system_ctx_t;
 
-typedef void (*ecs_system_callback)(ecs_componentmanager_t *const cmp_manager);
+typedef void (*ecs_system_callback)(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx);
 
 struct ecs_system_ctx_t {
-    slot_t *pools[ECS_CMP_COUNT];
-    u32 entity_count;
+    glcamera_t *active_camera;
 };
 
 struct ecs_system_t {
@@ -82,6 +82,7 @@ struct ecs_t {
 
     struct {
         u32 entity_generator_counter;
+        glcamera_t *active_camera;
     } internal;
 };
 

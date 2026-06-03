@@ -7,22 +7,22 @@
 
 typedef enum {
 
-    ECS_CMP_TRANSFORM_IDX   = 0,
-    ECS_CMP_MODEL_IDX       = 1,
-    ECS_CMP_INPUT_IDX       = 2,
-    ECS_CMP_MATERIAL_IDX    = 3,
-    ECS_CMP_CAMERA_IDX      = 4,
+    ECS_CMP_TRANSFORM_IDX       = 0,
+    ECS_CMP_MODEL_IDX           = 1,
+    ECS_CMP_INPUT_IDX           = 2,
+    ECS_CMP_MATERIAL_IDX        = 3,
+    ECS_CMP_CAMERA_IDX          = 4,
     ECS_CMP_COUNT
 
 } ecs_component_storage_index;
 
 typedef enum {
 
-    ECS_CMP_TRANSFORM   = 1 << ECS_CMP_TRANSFORM_IDX,
-    ECS_CMP_MODEL       = 1 << ECS_CMP_MODEL_IDX,
-    ECS_CMP_INPUT       = 1 << ECS_CMP_INPUT_IDX,
-    ECS_CMP_MATERIAL    = 1 << ECS_CMP_MATERIAL_IDX,
-    ECS_CMP_CAMERA      = 1 << ECS_CMP_CAMERA_IDX,
+    ECS_CMP_TRANSFORM           = 1 << ECS_CMP_TRANSFORM_IDX,
+    ECS_CMP_MODEL               = 1 << ECS_CMP_MODEL_IDX,
+    ECS_CMP_INPUT               = 1 << ECS_CMP_INPUT_IDX,
+    ECS_CMP_MATERIAL            = 1 << ECS_CMP_MATERIAL_IDX,
+    ECS_CMP_CAMERA              = 1 << ECS_CMP_CAMERA_IDX,
 
 } ecs_component_type;
 
@@ -54,13 +54,15 @@ typedef struct ecs_component_input_t        ecs_component_input_t;
 typedef struct ecs_component_input_state_t  ecs_component_input_state_t;
 
 struct ecs_component_input_state_t {
-    vec3f_t     move_dir;
-    vec3f_t     speed;
+    vec3f_t     translation_offset;
+    vec3f_t     orientation_offset;
 };
 
 struct ecs_component_input_t {
-    ecs_component_input_state_t state; 
     void (*input_behavior)(ecs_component_input_state_t * const state, const u16 command_bitmask, const f32 dt);
+    struct {
+        ecs_component_input_state_t state; 
+    } internal;
 };
 
 /* =========================== MATERIAL ================================== */
@@ -73,7 +75,19 @@ struct ecs_component_material_t {
 
 /* =========================== CAMERA ================================== */
 
-typedef glcamera_t * ecs_component_camera_t;
+typedef enum ecs_component_camera_mode {
+    ECS_CMP_CAMERA_MODE_FREE_FLY    = 0,
+    ECS_CMP_CAMERA_MODE_FOLLOW      = 1,
+} ecs_component_camera_mode;
+
+typedef struct ecs_component_camera_t {
+    glcamera_t camera;
+    ecs_component_camera_mode mode;
+    struct {
+        vec3f_t offset;
+        u32 track_entity_id;
+    } follow;
+} ecs_component_camera_t;
 
 
 /* =========================== MISC ==========================================*/
