@@ -494,19 +494,16 @@ void workbench__internal_update_world_camera(workbench_t * const self, const f32
    f32 z_offset         = 0.f;
 
    if (drag_look) {
-       printf("dragged\n");
        const vec2i_t mouse_pos_delta = window_mouse_get_relative_position(global_window);
        euler_angle.x = radians((f32)mouse_pos_delta.y * drag_sensitivity);
        euler_angle.y = radians((f32)mouse_pos_delta.x * drag_sensitivity);
    }
 
    if (zoom_in) {
-       printf("zoom in\n");
        z_offset = zoom_sensitivity * dt;
    }
 
    if(zoom_out) {
-       printf("zoom out\n");
        z_offset = -1.f * zoom_sensitivity * dt;
    }
 
