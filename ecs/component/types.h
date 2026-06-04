@@ -1,4 +1,5 @@
 #pragma once
+#include "poglib/input/commandqueue.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <poglib/util/glcamera.h>
@@ -31,8 +32,8 @@ typedef enum {
 typedef struct ecs_component_transform_t ecs_component_transform_t;
 struct ecs_component_transform_t {
 
-    vec3f_t translation;
-    vec3f_t rotation;
+    vec3f_t position;
+    vec3f_t orientation;
     vec3f_t scale;
     enum {
         ECS_CMP_TRANSFORM_SOURCE_MANUAL,
@@ -54,13 +55,14 @@ typedef struct ecs_component_input_t        ecs_component_input_t;
 typedef struct ecs_component_input_state_t  ecs_component_input_state_t;
 
 struct ecs_component_input_state_t {
-    vec3f_t     translation_offset;
-    vec3f_t     orientation_offset;
+    vec3f_t     movement;
+    vec3f_t     rotation;
 };
 
 struct ecs_component_input_t {
     void (*input_behavior)(ecs_component_input_state_t * const state, const u16 command_bitmask, const f32 dt);
     struct {
+        commandqueue_t *commandqueue;
         ecs_component_input_state_t state; 
     } internal;
 };
@@ -84,7 +86,7 @@ typedef struct ecs_component_camera_t {
     glcamera_t camera;
     ecs_component_camera_mode mode;
     struct {
-        vec3f_t offset;
+        vec3f_t offset; //FIXME: not used may need for orbiting camera around the player
         u32 track_entity_id;
     } follow;
 } ecs_component_camera_t;
@@ -94,9 +96,11 @@ typedef struct ecs_component_camera_t {
 
 typedef struct NOPADDING ecs_component_poolentry_t  ecs_component_poolentry_t;
 typedef struct ecs_componentbundle_t                ecs_componentbundle_t;
+typedef struct ecs_cmp_patch_payload_t              ecs_cmp_patch_payload_t;
 
 struct ecs_component_poolentry_t {
     u32 entity_id;
+    bool is_active;
     u8 entity_cmpdata[];
 };
 
@@ -115,3 +119,13 @@ struct ecs_componentbundle_t {
     } component[ECS_CMP_COUNT];
 
 };
+
+struct ecs_cmp_patch_payload_t
+{
+    enum {
+        ECS_PATCH_CMP_ACTIVE_FIELD = 0,
+    } type;
+    u32 patch_cmp_signature;
+    bool is_active;
+};
+

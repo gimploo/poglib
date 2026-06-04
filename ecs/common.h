@@ -56,6 +56,7 @@ typedef void (*ecs_system_callback)(ecs_componentmanager_t *const cmp_manager, c
 
 struct ecs_system_ctx_t {
     glcamera_t *active_camera;
+    commandqueue_t *active_commandqueue;
 };
 
 struct ecs_system_t {
@@ -83,6 +84,7 @@ struct ecs_t {
     struct {
         u32 entity_generator_counter;
         glcamera_t *active_camera;
+        commandqueue_t *active_commandqueue;
     } internal;
 };
 

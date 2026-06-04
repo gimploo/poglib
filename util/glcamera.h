@@ -67,10 +67,10 @@ void glcamera__internal_update_directions(glcamera_t *self)
 
 void glcamera_set(
     glcamera_t *const self, 
-    const vec3f_t aboslute_position,         //NOTE: this needs to account in delta time also
+    const vec3f_t absolute_position,         //NOTE: this needs to account in delta time also
     const vec2f_t absolute_orientation
 ) {
-    self->position      = aboslute_position;
+    self->position      = absolute_position;
     self->euler_angle   = absolute_orientation;
 
     glcamera__internal_update_directions(self);
