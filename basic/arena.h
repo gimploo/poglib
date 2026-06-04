@@ -220,7 +220,7 @@ void * arena_store(arena_t * const self, const void * const mem, const u64 mem_s
 
 bool arena_is_init(const arena_t * const self)
 {
-    return self->memory == NULL || self->capacity > 0;
+    return self->memory != NULL || self->capacity > 0;
 }
 
 #endif
