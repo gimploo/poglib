@@ -4,13 +4,22 @@
 #include "./ecs/component.h"
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
+#include "poglib/input/commandqueue.h"
 
 ecs_t           ecs_init(void);
+
 u32                 ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config);
 void                ecs_entity_remove(ecs_t * const self, const u32 entityId);
+
 ecs_entity_view_t   ecs_entity_query_components(ecs_t *const self, const u32 entity_id, const u32 component_signature);
+
 void                ecs_set_active_camera(ecs_t *const self, const u32 entity_id);
 glcamera_t *        ecs_get_active_camera(ecs_t *const self);
+
+void                ecs_set_active_commandqueue(ecs_t *const self, commandqueue_t *const commandqueue);
+
+void                ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
+
 void            ecs_update(ecs_t *const self);
 void            ecs_destroy(ecs_t * const self);
 
@@ -25,6 +34,7 @@ ecs_t ecs_init(void)
         .internal = {
             .entity_generator_counter = ECS_ENTITY_INVALID_ID,
             .active_camera = NULL,
+            .active_commandqueue = NULL,
         },
         .managers = {
             .entitymanager = ecs_entitymanager(&arena),
@@ -50,6 +60,21 @@ void ecs_set_active_camera(ecs_t *const self, const u32 entity_id)
     ASSERT(camera);
 
     self->internal.active_camera = &camera->camera;
+}
+
+void ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request)
+{
+    ecs_componentmanager_patch_entity_components(
+        &self->managers.componentmanager, 
+        entity_id,
+        request
+    );
+}
+
+void ecs_set_active_commandqueue(ecs_t *const self, commandqueue_t *const commandqueue)
+{
+    ASSERT(commandqueue);
+    self->internal.active_commandqueue = commandqueue;
 }
 
 u32 ecs_entity_add(ecs_t *const self, const ecs_componentbundle_t component_config)
@@ -93,7 +118,8 @@ void ecs_update(ecs_t *const self)
         manager->systems[idx].callback(
             &self->managers.componentmanager,
             (ecs_system_ctx_t) {
-                .active_camera = self->internal.active_camera
+                .active_camera = self->internal.active_camera,
+                .active_commandqueue = self->internal.active_commandqueue
             }
         );
     }
@@ -103,7 +129,6 @@ ecs_entity_view_t ecs_entity_query_components(ecs_t *const self, const u32 entit
 {
     return ecs_componentmanager__internal_query_components(&self->managers.componentmanager, entity_id, component_signature);
 }
-
 
 void ecs_destroy(ecs_t * const self)
 {

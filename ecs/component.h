@@ -11,11 +11,11 @@
 
 
 ecs_componentmanager_t  ecs_componentmanager(arena_t *arena);
-
 void                    ecs_componentmanager_add(ecs_componentmanager_t * const self, const u32 entityId, const ecs_componentbundle_t component_config);
 void                    ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 entity_id, const ecs_component_type type);
 void                    ecs_componentmanager_removeall(ecs_componentmanager_t * const self, const u32 entity_id);
 ecs_component_entry_t   ecs_componentmanager_get_component(const ecs_componentmanager_t * const self, const u32 entity_id, const ecs_component_type cmp_type);
+void                    ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
 
 
 #ifndef IGNORE_ECS_COMPONENT_IMPLEMENTATION
@@ -65,11 +65,11 @@ ecs_componentmanager_t ecs_componentmanager(arena_t *arena)
         slot_t * const packedcmp_slot          = slot_get_value(&o.componentpool_slots, comp_idx);
 
         //NOTE: pool data - since cmp_size is dynamic, we cant have struct to encapulate this easily
-        // u32      / <cmp_size>
-        // [ entity_id ][ component data ]
+        // u32          / bool      / <cmp_size>
+        // [ entity_id ][is_active][ component data ]
         *packedcmp_slot = slot_init(
             ecs_componentmanager__internal_get_pool_capacity(componenttype),
-            sizeof(u32) + ecs_component__internal_get_componenttype_size(componenttype), 
+            sizeof(u32) + sizeof(bool) + ecs_component__internal_get_componenttype_size(componenttype), 
             arena
         );
     }
@@ -116,9 +116,15 @@ void ecs_componentmanager_add(ecs_componentmanager_t * const self, const u32 ent
         const u16 cmp_size                  = ecs_component__internal_get_componenttype_size(cmp_type);
 
         buffer(WORD) buf = {0};
+
+        //NOTE: sets the entity id
         memcpy(buf.raw_data, &entity_id, sizeof(entity_id));
-        memcpy((u8 *)buf.raw_data + sizeof(entity_id) , &config.component[cmp_idx_count], cmp_size);
-        slot_insert(pool, pool->len, buf.raw_data, sizeof(u32) + cmp_size);
+        //NOTE: sets active flag
+        *(buf.raw_data + sizeof(u32)) = true;
+        //NOTE: sets compnent data
+        memcpy(buf.raw_data + sizeof(bool) + sizeof(entity_id) , &config.component[cmp_idx_count], cmp_size);
+
+        slot_insert(pool, pool->len, buf.raw_data, sizeof(u32) + sizeof(bool) + cmp_size);
     }
 
     hashtable_insert(
@@ -135,7 +141,7 @@ u32 ecs_componentmanager__internal_get_entity_id_from_pooldata(const void * cons
 
 void * ecs_componentmanager__internal_get_cmpdata_from_pooldata(const void * const data)
 {
-    void * const pooldata = (u8 *)data + sizeof(u32);
+    void * const pooldata = (u8 *)data + sizeof(u32) + sizeof(bool);
     return pooldata;
 }
 
@@ -172,7 +178,7 @@ void ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 
     cmp_buf[get_index_from_bitflag(type)]   = index_of_cmp_to_remove;
     hashtable_insert(&self->entity2components_lookup, (hashtable_key_t){ .u32 = moved_entity_id }, cmp_buf);
 
-    const u32 full_allocation_size          = sizeof(u32) + ecs_component__internal_get_componenttype_size(type);
+    const u32 full_allocation_size          = sizeof(u32) + sizeof(bool) + ecs_component__internal_get_componenttype_size(type);
     slot_insert(componentpool, index_of_cmp_to_remove, last_element_data, full_allocation_size);
     slot_delete(componentpool, last_element_data_idx);
 }
@@ -242,6 +248,38 @@ ecs_entity_view_t ecs_componentmanager__internal_query_components(const ecs_comp
     }
 
     return result;
+}
+
+void ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request)
+{
+    ASSERT(self);
+    ASSERT(entity_id >= 0);
+    ASSERT(request.patch_cmp_signature > 0);
+
+    const i16 *const cmp_idx_buffer = hashtable_get_value(&self->entity2components_lookup, (hashtable_key_t){ .u32 = entity_id });
+
+    for (u16 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
+    {
+        if (!(request.patch_cmp_signature & (1 << cmp_idx)))
+            continue;
+
+        if (cmp_idx_buffer[cmp_idx] == ECS_CMP_INVALID_IDX) 
+            eprint("Trying to query unavailble component type idx `%i` from entity id `%i`", cmp_idx, entity_id);
+
+
+        const slot_t *const pool = slot_get_value(&self->componentpool_slots, cmp_idx);
+
+        ecs_component_poolentry_t *const entry = slot_get_value(pool, cmp_idx_buffer[cmp_idx]);
+        ASSERT(entry);
+
+        switch(request.type)
+        {
+            case ECS_PATCH_CMP_ACTIVE_FIELD:
+                entry->is_active = false;
+            break;
+            default: eprint("invalid patch request type");
+        }
+    }
 }
 
 

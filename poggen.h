@@ -49,7 +49,7 @@ typedef struct poggen_t {
 
 } poggen_t ;
 
-global poggen_t     *global_poggen = NULL;
+global poggen_t *global_poggen = NULL;
 
 poggen_t *                          poggen_init(application_t * const app, const poggen_config_t config);
 #define                             poggen_add_scene(PGEN, SCENE_NAME)                          poggen__internal_add_scene((PGEN), scene__internal_init(SCENE_NAME))
@@ -57,7 +57,7 @@ void                                poggen_remove_scene(poggen_t *self, str_t la
 void                                poggen_change_scene(poggen_t *self, str_t scene_label);
 
 void                                poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt_rules_config_t config);
-commandqueue_t  *                   poggen_get_active_commandqueue(const poggen_t *const self);
+commandqueue_t  *                   poggen_get_scene_commandqueue(const poggen_t *const self);
 window_t *                          poggen_get_window(const poggen_t *self);
 physics_sys_jolt_event_queue_t *    poggen_get_physics_collision_events(const poggen_t * const self);
 ecs_t *                             poggen_get_ecs_handle(poggen_t * const self);
@@ -253,7 +253,7 @@ ecs_t * poggen_get_ecs_handle(poggen_t * const self)
     return &self->systems.ecs;
 }
 
-commandqueue_t * poggen_get_active_commandqueue(const poggen_t *const self)
+commandqueue_t * poggen_get_scene_commandqueue(const poggen_t *const self)
 {
     ASSERT(self);
     ASSERT(self->current_scene);

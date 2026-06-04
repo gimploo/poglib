@@ -2,7 +2,6 @@
 #include "../component/types.h"
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
-#include "poglib/external/cglm/struct/io.h"
 
 void ecs_system_transfrom__internal_source_manual(
         ecs_component_transform_t *const transform,
@@ -10,8 +9,26 @@ void ecs_system_transfrom__internal_source_manual(
 ) {
     if (input == NULL) eprint("missing input component");
 
-    transform->translation  = glms_vec3_add(input->internal.state.translation_offset, transform->translation);
-    transform->rotation     = glms_vec3_add(input->internal.state.orientation_offset, transform->rotation);
+    const vec3f_t movement = input->internal.state.movement;
+    const vec3s r = transform->orientation;
+    const vec3s forward = {
+        .x = cosf(r.y) * cosf(r.x),
+        .y = sinf(r.x),
+        .z = sinf(r.y) * cosf(r.x),
+    };
+    const vec3s right = {
+        .x = cosf(r.y + M_PI_2) * cosf(r.x),
+        .z = sinf(r.y + M_PI_2) * cosf(r.x),
+    };
+    const vec3s up = glms_vec3_cross(right, forward);
+
+    vec3s delta = {0};
+    delta = glms_vec3_add(delta, glms_vec3_scale(forward, movement.z));
+    delta = glms_vec3_add(delta, glms_vec3_scale(right,   movement.x));
+    delta = glms_vec3_add(delta, glms_vec3_scale(up,      movement.y));
+
+    transform->position     = glms_vec3_add(delta, transform->position);
+    transform->orientation  = glms_vec3_add(input->internal.state.rotation, transform->orientation);
 }
 
 void ecs_system_transform(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)

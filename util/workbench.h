@@ -1,5 +1,4 @@
 #pragma once
-#include <poglib/poggen.h>
 #include <poglib/gui.h>
 #include <poglib/input/commandqueue.h>
 #include <poglib/input/commandregistry.h>
@@ -15,7 +14,6 @@
 #include "poglib/application/window/sdl_window.h"
 #include "poglib/ecs.h"
 #include "poglib/ecs/common.h"
-#include "poglib/ecs/component.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/math/common.h"
 #include "poglib/math/la.h"
@@ -35,6 +33,8 @@ typedef enum workbench_action_type {
 } workbench_action_type;
 
 typedef struct {
+
+    bool is_active;
 
     struct {
         bool wireframe_mode;
@@ -68,13 +68,13 @@ typedef struct {
 } workbench_t;
 
 workbench_t workbench_init(arena_t * const arena);
-void        workbench_sync_commandqueue(workbench_t *const self);
+void        workbench_tick(workbench_t *const self);
 void        workbench_update(workbench_t *const self, const f32 dt);
+
+void        workbench_toggle(workbench_t *const self);
 
 void        workbench_pass_line(workbench_t *self, const line_t line);
 void        workbench_track_lightsource(workbench_t *self, const gllight_t *light);
-void        workbench_toggle_wireframe_mode(workbench_t *self);
-void        workbench_toggle_gui(workbench_t *self);
 
 void        workbench_render_cube(workbench_t * const self, const vec3f_t translation, const vec3f_t scale, const vec4f_t color, const bool override_wireframe);
 void        workbench_render(workbench_t *self);
@@ -114,13 +114,8 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
         z_offset = -1.f * zoom_sensitivity * dt;
     }
 
-    state->orientation_offset = (vec3f_t){ euler_angle.x, euler_angle.y };
-    state->translation_offset = (vec3f_t){ 0.f, 0.f, z_offset };
-}
-
-void workbench_switch_to_world_camera(workbench_t *const self)
-{
-    ecs_set_active_camera(&global_poggen->systems.ecs, self->world_camera.entity_id);
+    state->rotation = (vec3f_t){ euler_angle.x, euler_angle.y };
+    state->movement = (vec3f_t){ 0.f, 0.f, z_offset };
 }
 
 void workbench__internal_ecs_create_world_camera(workbench_t *const self)
@@ -158,6 +153,7 @@ workbench_t workbench_init(arena_t *const arena)
     }
 
     workbench_t o = {
+        .is_active = true,
         .shader = glshader_init(
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.vs"), 
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.fs"),
@@ -272,16 +268,6 @@ void workbench_track_lightsource(workbench_t *self, const gllight_t *light)
     list_append_ptr(&self->lightsources, light);
 }
 
-void workbench_toggle_wireframe_mode(workbench_t *self)
-{
-    self->render_config.wireframe_mode = !self->render_config.wireframe_mode;
-    //gui_set_wireframe_mode(self->gui.handle, self->render_config.wireframe_mode);
-}
-
-void workbench_toggle_gui(workbench_t *self)
-{
-    self->gui.enable = !self->gui.enable;
-}
 
 void workbench__internal_render_ui(workbench_t *self)
 {
@@ -558,11 +544,6 @@ void workbench_render(workbench_t *self)
     list_clear(&self->draw_lines);
 }
 
-void workbench__internal_update_world_camera(workbench_t *const self, const f32 dt) 
-{
-    
-}
-
 void workbench__internal_update_ui(workbench_t * const self, const vec3f_t world_camera_position)
 {
     if (!self->gui.enable) return;
@@ -636,18 +617,35 @@ void workbench_render_cube(
     renderqueue_pass_command(renderqueue, rendercommand);
 }
 
+void workbench_tick(workbench_t *const self)
+{
+    if (!self->is_active) return;
+
+    commandqueue_sync(&self->commandqueue);
+}
+
 void workbench_update(workbench_t *const self, const f32 dt)
 {
-    ASSERT(self);
+    if (!self->is_active) return;
 
-    //NOTE: add command queue dependent logic here
-    //...
-
+    //NOTE:keep commandqueue flush at the end
     commandqueue_flush(&self->commandqueue);
 }
 
-void workbench_sync_commandqueue(workbench_t *const self)
+void workbench_toggle(workbench_t *const self)
 {
-    commandqueue_sync(&self->commandqueue);
+    self->is_active = !self->is_active;
+    if (!self->is_active) return;
+
+    ecs_set_active_camera(
+        &global_poggen->systems.ecs, 
+        self->world_camera.entity_id
+    );
+
+    ecs_set_active_commandqueue(
+        &global_poggen->systems.ecs, 
+        &self->commandqueue
+    );
 }
+
 

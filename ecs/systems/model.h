@@ -17,6 +17,7 @@
 void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
     ASSERT(global_poggen);
+    ASSERT(ctx.active_camera);
 
     slot_t *primary_pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_MODEL_IDX);
 
@@ -89,7 +90,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                                     },
                                     [2] = {
                                         .name = str_lit("transform"),
-                                        .value = glms_translate_make(transform->translation)
+                                        .value = glms_translate_make(transform->position)
                                     },
                                     [3] = {
                                         .name = str_lit("material.color"),
