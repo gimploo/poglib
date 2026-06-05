@@ -19,8 +19,17 @@ void ecs_system_transfrom__internal_source_manual(
     delta = glms_vec3_add(delta, glms_vec3_scale(right,   movement.x));
     delta = glms_vec3_add(delta, glms_vec3_scale(up,      movement.y));
 
-    transform->position     = glms_vec3_add(delta, transform->position);
-    transform->orientation  = glms_vec3_add(input->internal.state.rotation, transform->orientation);
+    transform->position = glms_vec3_add(delta, transform->position);
+
+    const vec3f_t rot = input->internal.state.rotation;
+    if (rot.x != 0.0f || rot.y != 0.0f) {
+        vec3f_t right = glms_quat_rotatev(transform->orientation, (vec3f_t){1, 0, 0});
+        versors pitch_q = glms_quatv(rot.x, right);
+        versors yaw_q = glms_quatv(rot.y, (vec3f_t){0, 1, 0});
+        transform->orientation = glms_quat_normalize(
+            glms_quat_mul(yaw_q, glms_quat_mul(pitch_q, transform->orientation))
+        );
+    }
 }
 
 void ecs_system_transform(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)

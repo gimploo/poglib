@@ -125,7 +125,7 @@ void workbench__internal_ecs_create_world_camera(workbench_t *const self)
         (ecs_componentbundle_t) {
             .signature = ECS_CMP_TRANSFORM | ECS_CMP_CAMERA | ECS_CMP_INPUT,
             .component = {
-                [ECS_CMP_TRANSFORM_IDX].transform = {0},
+                [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .orientation = GLMS_QUAT_IDENTITY_INIT },
                 [ECS_CMP_CAMERA_IDX].camera = (ecs_component_camera_t){
                     .camera = glcamera_perspective((vec3f_t){2.0f, 4.f, -4.0f}, (vec2f_t){-0.32f, 1.59f}),
                     .mode = ECS_CMP_CAMERA_MODE_FREE_FLY,
@@ -208,9 +208,10 @@ workbench_t workbench_init(arena_t *const arena)
         .player_camera_position = vec3f(0.f),
         .draw_lines = list_init(line_t),
         .lightsources = list_init(gllight_t *),
-        .render_config = {
-            .wireframe_mode = false
-        },
+    .render_config = {
+        .wireframe_mode = false
+    },
+    .world_camera = {0},
         .gui = {
             .handle = gui_init(
                 arena, 
@@ -554,7 +555,7 @@ void workbench__internal_update_ui(workbench_t * const self, const vec3f_t world
 void workbench_render_camera(
     workbench_t * const self,
     const vec3f_t position,
-    const vec3f_t orientation
+    const versors orientation
 ) {
     renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
     const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
@@ -567,7 +568,7 @@ void workbench_render_camera(
 
     const rendercommand_instance_t instance = {
         .translation = { position.x, position.y, position.z, 0.f },
-        .orientation = { orientation.x, orientation.y, orientation.z, 0.f }, 
+        .orientation = { orientation.x, orientation.y, orientation.z, orientation.w }, 
         .scale = vec4f(0.5f),
         .color = COLOR_GRAY,
     };
@@ -636,7 +637,7 @@ void workbench_render_marker(
     const rendercommand_instance_t instance = {
         .translation = { translation.x, translation.y, translation.z, 0.f },
         .scale = vec4f(0.05f),
-        .orientation = vec4f(0.f),
+        .orientation = {0.f, 0.f, 0.f, 1.f},
         .color = color,
         .uv = spriteatlas_get_sprite(&self->primitives.atlas, PROTOTYPE_SPRITE_YELLOW_T),
     };
@@ -704,7 +705,7 @@ void workbench_render_cube(
     const rendercommand_instance_t instance = {
         .translation = { translation.x, translation.y, translation.z, 0.f },
         .scale = { scale.x, scale.y, scale.z, 0.f },
-        .orientation = vec4f(0.f),
+        .orientation = {0.f, 0.f, 0.f, 1.f},
         .color = color,
         .uv = spriteatlas_get_sprite(&self->primitives.atlas, PROTOTYPE_SPRITE_CHECKERED_DARK_GRAY),
     };
