@@ -57,9 +57,15 @@ typedef struct ecs_component_input_state_t  ecs_component_input_state_t;
 struct ecs_component_input_state_t {
     vec3f_t     movement;
     vec3f_t     rotation;
+    vec3f_t     front;
+    vec3f_t     right;
 };
 
 struct ecs_component_input_t {
+    enum {
+        ECS_CMP_INPUT_DIRECTION_SOURCE_ENTITY,
+        ECS_CMP_INPUT_DIRECTION_SOURCE_CAMERA,
+    } direction_source;
     void (*input_behavior)(ecs_component_input_state_t * const state, const u16 command_bitmask, const f32 dt);
     struct {
         commandqueue_t *commandqueue;

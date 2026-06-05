@@ -20,6 +20,30 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
 
         if (!entry->is_active) continue;
 
+        switch (input_cmp->direction_source) 
+        {
+            case ECS_CMP_INPUT_DIRECTION_SOURCE_CAMERA:
+                input_cmp->internal.state.front     = ctx.active_camera->direction.front;
+                input_cmp->internal.state.right     = ctx.active_camera->direction.right;
+            break;
+            case ECS_CMP_INPUT_DIRECTION_SOURCE_ENTITY: {
+                const ecs_component_entry_t tf = ecs_componentmanager_get_component(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM);
+                const ecs_component_transform_t *t = tf.data;
+                const vec3f_t r = t->orientation;
+                input_cmp->internal.state.front = (vec3f_t){
+                    cosf(r.y) * cosf(r.x), 
+                    sinf(r.x), 
+                    sinf(r.y) * cosf(r.x)
+                };
+                input_cmp->internal.state.right =  (vec3f_t){
+                    cosf(r.y + M_PI_2) * cosf(r.x), 
+                    0, 
+                    sinf(r.y + M_PI_2) * cosf(r.x)
+                };
+            } break;
+            default: eprint("Input direction source not found");
+        }
+
         input_cmp->input_behavior(
             &input_cmp->internal.state, 
             commandqueue_get_commands_as_bitmask(ctx.active_commandqueue), 
