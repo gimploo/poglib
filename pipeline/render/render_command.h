@@ -14,6 +14,7 @@ struct rendercommand_instance_t {
     box_t uv;
     vec4f_t color;
     vec4f_t translation;
+    vec4f_t orientation;
     vec4f_t scale;
 };
 
