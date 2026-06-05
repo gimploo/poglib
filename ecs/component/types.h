@@ -79,14 +79,15 @@ struct ecs_component_material_t {
 
 typedef enum ecs_component_camera_mode {
     ECS_CMP_CAMERA_MODE_FREE_FLY    = 0,
-    ECS_CMP_CAMERA_MODE_FOLLOW      = 1,
+    ECS_CMP_CAMERA_MODE_ORBIT_FOLLOW      = 1,
 } ecs_component_camera_mode;
 
 typedef struct ecs_component_camera_t {
     glcamera_t camera;
     ecs_component_camera_mode mode;
     struct {
-        vec3f_t offset; //FIXME: not used may need for orbiting camera around the player
+        f32 orbit_radius;
+        vec3f_t center_offset;
         u32 track_entity_id;
     } follow;
 } ecs_component_camera_t;

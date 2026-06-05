@@ -551,6 +551,140 @@ void workbench__internal_update_ui(workbench_t * const self, const vec3f_t world
     gui_update(&self->gui.handle, world_camera_position);
 }
 
+void workbench_render_camera(
+    workbench_t * const self,
+    const vec3f_t position,
+    const vec3f_t orientation
+) {
+    renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
+    const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
+    const matrix4f_t perspective_projection  = glms_perspective(
+        radians(45), 
+        global_poggen->handle.app->window.aspect_ratio, 
+        1.0f, 
+        10000.0f
+    );
+
+    const rendercommand_instance_t instance = {
+        .translation = { position.x, position.y, position.z, 0.f },
+        .orientation = { orientation.x, orientation.y, orientation.z, 0.f }, 
+        .scale = vec4f(0.5f),
+        .color = COLOR_GRAY,
+    };
+
+    gpu_mesh_t * const mesh = assetmanager_get_gpu_loaded_primitive_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAMERA);
+    if(!mesh) {
+        return;
+    }
+
+    rendercommand_t rendercommand = {
+        .enable_wireframe = true,
+        .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
+        .mesh = mesh,
+        .instance = {
+            .raw_data = {0},
+            .size = sizeof(rendercommand_instance_t)
+        },
+        .material = {
+            .textures = {0},
+            .shader = {
+                .data = &self->primitives.shader,
+                .uniforms = {
+                    .count = 2,
+                    .data = {
+                       [0] = {
+                           .name = str("projection"),
+                           .value = perspective_projection
+                       },
+                       [1] = {
+                           .name = str("view"),
+                           .value = workbench__internal_get_camera_view(self)
+                       }
+                    }
+                }
+            }
+        },
+    };
+
+    memcpy(rendercommand.instance.raw_data, &instance, sizeof(instance));
+    renderqueue_pass_command(renderqueue, rendercommand);
+}
+
+void workbench_render_line(
+    workbench_t * const self,
+    const vec3f_t starting_pos,
+    const vec3f_t ending_pos
+) {
+    
+}
+
+
+void workbench_render_marker(
+    workbench_t * const self,
+    const vec3f_t translation,
+    const vec4f_t color
+) {
+    renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
+    const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
+    const matrix4f_t perspective_projection  = glms_perspective(
+        radians(45), 
+        global_poggen->handle.app->window.aspect_ratio, 
+        1.0f, 
+        10000.0f
+    );
+
+    const rendercommand_instance_t instance = {
+        .translation = { translation.x, translation.y, translation.z, 0.f },
+        .scale = vec4f(0.05f),
+        .orientation = vec4f(0.f),
+        .color = color,
+        .uv = spriteatlas_get_sprite(&self->primitives.atlas, PROTOTYPE_SPRITE_YELLOW_T),
+    };
+
+    gpu_mesh_t * const mesh = assetmanager_get_gpu_loaded_primitive_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE);
+    if(!mesh) {
+        return;
+    }
+
+    rendercommand_t rendercommand = {
+        .enable_wireframe = self->render_config.wireframe_mode,
+        .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
+        .mesh = mesh,
+        .instance = {
+            .raw_data = {0},
+            .size = sizeof(rendercommand_instance_t)
+        },
+        .material = {
+            .textures = {
+                .count = 1,
+                .ids = {
+                    self->primitives.atlas.texture.id
+                }
+            },
+            .shader = {
+                .data = &self->primitives.shader,
+                .uniforms = {
+                    .count = 2,
+                    .data = {
+                       [0] = {
+                           .name = str("projection"),
+                           .value = perspective_projection
+                       },
+                       [1] = {
+                           .name = str("view"),
+                           .value = workbench__internal_get_camera_view(self)
+                       }
+                    }
+                }
+            }
+        },
+    };
+
+    memcpy(rendercommand.instance.raw_data, &instance, sizeof(instance));
+    renderqueue_pass_command(renderqueue, rendercommand);
+}
+
+
 void workbench_render_cube(
     workbench_t * const self,
     const vec3f_t translation,
@@ -570,6 +704,7 @@ void workbench_render_cube(
     const rendercommand_instance_t instance = {
         .translation = { translation.x, translation.y, translation.z, 0.f },
         .scale = { scale.x, scale.y, scale.z, 0.f },
+        .orientation = vec4f(0.f),
         .color = color,
         .uv = spriteatlas_get_sprite(&self->primitives.atlas, PROTOTYPE_SPRITE_CHECKERED_DARK_GRAY),
     };

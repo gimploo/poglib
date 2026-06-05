@@ -2,19 +2,34 @@
 #include "../common.h"
 #include "poglib/ecs/component.h"
 #include "poglib/ecs/component/types.h"
+#include "poglib/external/cglm/struct/vec3.h"
 #include "poglib/util/glcamera.h"
 
 void ecs_system_camera__internal_update_follow_camera(
     ecs_componentmanager_t *const cmp_manager,
     ecs_component_camera_t *const camera,
-    const ecs_component_entry_t camera_transform_entry
+    ecs_entity_view_t camera_view
 ) {
-    const ecs_component_transform_t *const cam_tf       = camera_transform_entry.data;
-    const vec2f_t orbit                                 = (vec2f_t){ cam_tf->orientation.x, cam_tf->orientation.y };
-    const ecs_component_entry_t player                  = ecs_componentmanager_get_component(cmp_manager, camera->follow.track_entity_id, ECS_CMP_TRANSFORM);
-    const ecs_component_transform_t *const player_tf    = player.data;
+    ecs_component_transform_t *const cam_tf = camera_view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+    const ecs_component_entry_t player = ecs_componentmanager_get_component(
+            cmp_manager, camera->follow.track_entity_id, ECS_CMP_TRANSFORM);
+    const ecs_component_transform_t *const player_tf = player.data;
 
-    glcamera_set(&camera->camera, glms_vec3_add(player_tf->position, camera->follow.offset), orbit);
+    const vec3f_t center    = glms_vec3_add(player_tf->position, camera->follow.center_offset);
+    const f32 orbit_dist    = camera->follow.orbit_radius;
+    const f32 pitch         = cam_tf->orientation.x;
+    const f32 yaw           = cam_tf->orientation.y;
+
+    const vec3f_t dir = {
+        .x = cosf(pitch) * sinf(yaw),
+        .y = sinf(pitch),
+        .z = cosf(pitch) * cosf(yaw),
+    };
+    cam_tf->position = glms_vec3_add(center, glms_vec3_scale(dir, orbit_dist));
+
+    camera->camera.position = cam_tf->position;
+    glcamera_lookat(&camera->camera, center);
+
 }
 
 void ecs_system_camera__internal_update_free_fly_camera(glcamera_t *const camera, const ecs_component_entry_t transform_entry)
@@ -51,11 +66,11 @@ void ecs_system_camera(ecs_componentmanager_t *const cmp_manager, const ecs_syst
                     ecs_componentmanager_get_component(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM)
                 );
             break;
-            case ECS_CMP_CAMERA_MODE_FOLLOW:
+            case ECS_CMP_CAMERA_MODE_ORBIT_FOLLOW:
                 ecs_system_camera__internal_update_follow_camera(
                     cmp_manager,
                     camera, 
-                    ecs_componentmanager_get_component(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM)
+                    ecs_componentmanager__internal_query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM)
                 );
             break;
             default: eprint("camera mode not implemented");

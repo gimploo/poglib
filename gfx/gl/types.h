@@ -116,6 +116,7 @@ typedef struct glmesh_t {
 typedef enum glmesh_primitive_type {
     GL_MESH_PRIMITIVE_TYPE_CUBE = 0,
     GL_MESH_PRIMITIVE_TYPE_CAPSULE = 1,
+    GL_MESH_PRIMITIVE_TYPE_CAMERA = 2,
     GL_MESH_PRIMITVE_TYPE_COUNT
 } glmesh_primitive_type;
 

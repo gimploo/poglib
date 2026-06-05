@@ -4,7 +4,9 @@
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
 #include "poglib/ecs/component/types.h"
+#include "poglib/external/cglm/struct/euler.h"
 #include "poglib/external/cglm/struct/io.h"
+#include "poglib/external/cglm/struct/mat4.h"
 #include "poglib/gfx/model/assimp.h"
 #include "poglib/math/la.h"
 #include "poglib/pipeline/render/common.h"
@@ -90,7 +92,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                                     },
                                     [2] = {
                                         .name = str_lit("transform"),
-                                        .value = glms_translate_make(transform->position)
+                                        .value = glms_mat4_mul(glms_translate_make(transform->position), glms_euler_xyz(transform->orientation))
                                     },
                                     [3] = {
                                         .name = str_lit("material.color"),
