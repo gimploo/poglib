@@ -92,7 +92,13 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                                     },
                                     [2] = {
                                         .name = str_lit("transform"),
-                                        .value = glms_mat4_mul(glms_translate_make(transform->position), glms_euler_xyz(transform->orientation))
+                                        .value = glms_mat4_mul(
+                                            glms_translate_make(transform->position),
+                                            glms_mat4_mul(
+                                                glms_euler_xyz(transform->orientation),
+                                                glms_scale_make(transform->scale)
+                                            )
+                                        )
                                     },
                                     [3] = {
                                         .name = str_lit("material.color"),

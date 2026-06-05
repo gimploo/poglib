@@ -9,18 +9,10 @@ void ecs_system_transfrom__internal_source_manual(
 ) {
     if (input == NULL) eprint("missing input component");
 
-    const vec3f_t movement = input->internal.state.movement;
-    const vec3s r = transform->orientation;
-    const vec3s forward = {
-        .x = cosf(r.y) * cosf(r.x),
-        .y = sinf(r.x),
-        .z = sinf(r.y) * cosf(r.x),
-    };
-    const vec3s right = {
-        .x = cosf(r.y + M_PI_2) * cosf(r.x),
-        .z = sinf(r.y + M_PI_2) * cosf(r.x),
-    };
-    const vec3s up = glms_vec3_cross(right, forward);
+    const vec3f_t movement  = input->internal.state.movement;
+    const vec3f_t forward   = input->internal.state.front;
+    const vec3f_t right     = input->internal.state.right;
+    const vec3f_t up        = glms_vec3_cross(right, forward);
 
     vec3s delta = {0};
     delta = glms_vec3_add(delta, glms_vec3_scale(forward, movement.z));

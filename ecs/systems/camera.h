@@ -10,25 +10,25 @@ void ecs_system_camera__internal_update_follow_camera(
     ecs_component_camera_t *const camera,
     ecs_entity_view_t camera_view
 ) {
+
     ecs_component_transform_t *const cam_tf = camera_view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-    const ecs_component_entry_t player = ecs_componentmanager_get_component(
-            cmp_manager, camera->follow.track_entity_id, ECS_CMP_TRANSFORM);
+    const ecs_component_entry_t player      = ecs_componentmanager_get_component(cmp_manager, camera->follow.track_entity_id, ECS_CMP_TRANSFORM);
     const ecs_component_transform_t *const player_tf = player.data;
 
-    const vec3f_t center    = glms_vec3_add(player_tf->position, camera->follow.center_offset);
-    const f32 orbit_dist    = camera->follow.orbit_radius;
-    const f32 pitch         = cam_tf->orientation.x;
-    const f32 yaw           = cam_tf->orientation.y;
+    const vec3f_t players_center    = glms_vec3_add(player_tf->position, camera->follow.center_offset);
+    const f32 orbit_dist            = camera->follow.orbit_radius;
+    const f32 pitch                 = cam_tf->orientation.x;
+    const f32 yaw                   = cam_tf->orientation.y;
 
     const vec3f_t dir = {
         .x = cosf(pitch) * sinf(yaw),
         .y = sinf(pitch),
         .z = cosf(pitch) * cosf(yaw),
     };
-    cam_tf->position = glms_vec3_add(center, glms_vec3_scale(dir, orbit_dist));
+    cam_tf->position = glms_vec3_add(players_center, glms_vec3_scale(dir, orbit_dist));
 
     camera->camera.position = cam_tf->position;
-    glcamera_lookat(&camera->camera, center);
+    glcamera_lookat(&camera->camera, players_center);
 
 }
 
