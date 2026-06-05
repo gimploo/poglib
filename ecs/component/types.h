@@ -33,7 +33,7 @@ typedef struct ecs_component_transform_t ecs_component_transform_t;
 struct ecs_component_transform_t {
 
     vec3f_t position;
-    vec3f_t orientation;
+    versors orientation;
     vec3f_t scale;
     enum {
         ECS_CMP_TRANSFORM_SOURCE_MANUAL,

@@ -29,14 +29,16 @@ void main()
     uv = data.uv.xy + (v_uv * data.uv.zw);
     color = data.color;
 
-    float cx = cos(data.rotation.x), sx = sin(data.rotation.x);
-    float cy = cos(data.rotation.y), sy = sin(data.rotation.y);
-    float cz = cos(data.rotation.z), sz = sin(data.rotation.z);
+    vec4 q = data.rotation;
+    float tx = 2.0 * q.x, ty = 2.0 * q.y, tz = 2.0 * q.z;
+    float twx = tx * q.w, twy = ty * q.w, twz = tz * q.w;
+    float txx = tx * q.x, txy = ty * q.x, txz = tz * q.x;
+    float tyy = ty * q.y, tyz = tz * q.y, tzz = tz * q.z;
 
     mat3 rot = mat3(
-        cy*cz,  cz*sx*sy - cx*sz,  cx*cz*sy + sx*sz,
-        cy*sz,  cx*cz + sx*sy*sz, -cz*sx + cx*sy*sz,
-        -sy,     cy*sx,             cy*cx
+        1.0 - (tyy + tzz), txy - twz, txz + twy,
+        txy + twz, 1.0 - (txx + tzz), tyz - twx,
+        txz - twy, tyz + twx, 1.0 - (txx + tyy)
     );
 
     vec3 transformed_pos = (rot * (v_vtx * data.scale.xyz)) + data.translation.xyz;

@@ -4,7 +4,6 @@
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
 #include "poglib/ecs/component/types.h"
-#include "poglib/external/cglm/struct/euler.h"
 #include "poglib/external/cglm/struct/io.h"
 #include "poglib/external/cglm/struct/mat4.h"
 #include "poglib/gfx/model/assimp.h"
@@ -95,7 +94,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                                         .value = glms_mat4_mul(
                                             glms_translate_make(transform->position),
                                             glms_mat4_mul(
-                                                glms_euler_xyz(transform->orientation),
+                                                glms_quat_mat4(transform->orientation),
                                                 glms_scale_make(transform->scale)
                                             )
                                         )
