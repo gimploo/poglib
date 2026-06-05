@@ -153,7 +153,7 @@ workbench_t workbench_init(arena_t *const arena)
     }
 
     workbench_t o = {
-        .is_active = true,
+        .is_active = false,
         .shader = glshader_init(
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.vs"), 
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.fs"),
@@ -635,6 +635,17 @@ void workbench_update(workbench_t *const self, const f32 dt)
 void workbench_toggle(workbench_t *const self)
 {
     self->is_active = !self->is_active;
+
+    ecs_patch_entity(
+        &global_poggen->systems.ecs, 
+        self->world_camera.entity_id, 
+        (ecs_cmp_patch_payload_t){
+            .patch_type = ECS_PATCH_CMP_ACTIVE_FIELD,
+            .signature = ECS_CMP_CAMERA | ECS_CMP_INPUT | ECS_CMP_TRANSFORM,
+            .is_active = self->is_active
+        }
+    );
+
     if (!self->is_active) return;
 
     ecs_set_active_camera(
@@ -647,5 +658,4 @@ void workbench_toggle(workbench_t *const self)
         &self->commandqueue
     );
 }
-
 

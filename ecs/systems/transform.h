@@ -44,6 +44,8 @@ void ecs_system_transform(ecs_componentmanager_t *const cmp_manager, const ecs_s
             entry->entity_id, 
             ECS_CMP_INPUT);
 
+        if (!entry->is_active) continue;
+
         switch(transform->source)
         {
             case ECS_CMP_TRANSFORM_SOURCE_MANUAL:

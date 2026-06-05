@@ -124,8 +124,8 @@ struct ecs_cmp_patch_payload_t
 {
     enum {
         ECS_PATCH_CMP_ACTIVE_FIELD = 0,
-    } type;
-    u32 patch_cmp_signature;
+    } patch_type;
+    u32 signature;
     bool is_active;
 };
 
