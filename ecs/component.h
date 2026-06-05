@@ -254,13 +254,13 @@ void ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const 
 {
     ASSERT(self);
     ASSERT(entity_id >= 0);
-    ASSERT(request.patch_cmp_signature > 0);
+    ASSERT(request.signature >= 0);
 
     const i16 *const cmp_idx_buffer = hashtable_get_value(&self->entity2components_lookup, (hashtable_key_t){ .u32 = entity_id });
 
     for (u16 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
     {
-        if (!(request.patch_cmp_signature & (1 << cmp_idx)))
+        if (!(request.signature & (1 << cmp_idx)))
             continue;
 
         if (cmp_idx_buffer[cmp_idx] == ECS_CMP_INVALID_IDX) 
@@ -272,10 +272,10 @@ void ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const 
         ecs_component_poolentry_t *const entry = slot_get_value(pool, cmp_idx_buffer[cmp_idx]);
         ASSERT(entry);
 
-        switch(request.type)
+        switch(request.patch_type)
         {
             case ECS_PATCH_CMP_ACTIVE_FIELD:
-                entry->is_active = false;
+                entry->is_active = request.is_active;
             break;
             default: eprint("invalid patch request type");
         }

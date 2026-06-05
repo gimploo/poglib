@@ -6,7 +6,7 @@ uniform vec3 cameraPos;
 uniform vec4 color;
 
 void main() {
-    float gridFadeDist = 80.0; // Distance where grid starts disappearing
+    float gridFadeDist = 1000.0; // Distance where grid starts disappearing
     float dist = length(WorldPos.xz - cameraPos.xz); // Distance on the floor plane
     float alpha = 1.0 - smoothstep(gridFadeDist * 0.5, gridFadeDist, dist);
 

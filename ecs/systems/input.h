@@ -16,9 +16,10 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
         const ecs_component_poolentry_t * const entry   = iter;
         ecs_component_input_t *const input_cmp          = (ecs_component_input_t *)entry->entity_cmpdata;
 
+        input_cmp->internal.state = (ecs_component_input_state_t){0};
+
         if (!entry->is_active) continue;
 
-        input_cmp->internal.state = (ecs_component_input_state_t){0};
         input_cmp->input_behavior(
             &input_cmp->internal.state, 
             commandqueue_get_commands_as_bitmask(ctx.active_commandqueue), 
