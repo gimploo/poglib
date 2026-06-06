@@ -1,7 +1,6 @@
 #pragma once
 #include <poglib/basic.h>
 #define CGLM_USE_ANONYMOUS_STRUCT 1
-#define CGLM_CLIP_CONTROL_RH_NO // for opengl
 #include <poglib/external/cglm/struct.h>
 
 //NOTE: Find the operation / transformation u need from here

@@ -16,7 +16,12 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
         const ecs_component_poolentry_t * const entry   = iter;
         ecs_component_input_t *const input_cmp          = (ecs_component_input_t *)entry->entity_cmpdata;
 
-        input_cmp->internal.state = (ecs_component_input_state_t){0};
+        input_cmp->internal.state = (ecs_component_input_state_t){
+            .movement = {0},
+            .rotation_delta = {0.0f, 0.0f, 0.0f, 1.0f},
+            .front = {0},
+            .right = {0},
+        };
 
         if (!entry->is_active) continue;
 
