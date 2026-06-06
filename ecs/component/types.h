@@ -1,5 +1,4 @@
 #pragma once
-#include <stddef.h>
 #include "poglib/input/commandqueue.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
@@ -57,7 +56,7 @@ typedef struct ecs_component_input_state_t  ecs_component_input_state_t;
 
 struct ecs_component_input_state_t {
     vec3f_t     movement;
-    float       rotation_delta[4];
+    versors     rotation_delta;
     vec3f_t     front;
     vec3f_t     right;
 };
@@ -102,15 +101,14 @@ typedef struct ecs_component_camera_t {
 
 /* =========================== MISC ==========================================*/
 
-typedef struct NOPADDING ecs_component_poolentry_t  ecs_component_poolentry_t;
-typedef struct ecs_componentbundle_t                ecs_componentbundle_t;
-typedef struct ecs_cmp_patch_payload_t              ecs_cmp_patch_payload_t;
+typedef struct ecs_component_poolentry_t    ecs_component_poolentry_t;
+typedef struct ecs_componentbundle_t        ecs_componentbundle_t;
+typedef struct ecs_cmp_patch_payload_t      ecs_cmp_patch_payload_t;
 
 struct ecs_component_poolentry_t {
     u32 entity_id;
     bool is_active;
-    u8 __reserved[11];
-    u8 entity_cmpdata[];
+    alignas(16) u8 entity_cmpdata[];
 };
 
 #define ECS_CMP_POOL_HEADER_SIZE offsetof(ecs_component_poolentry_t, entity_cmpdata)

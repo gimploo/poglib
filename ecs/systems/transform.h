@@ -20,11 +20,8 @@ void ecs_system_transfrom__internal_source_manual(
     delta = glms_vec3_add(delta, glms_vec3_scale(up,      movement.y));
 
     transform->position = glms_vec3_add(delta, transform->position);
-
-    versors rd;
-    memcpy(&rd, input->internal.state.rotation_delta, sizeof(versors));
     transform->orientation = glms_quat_normalize(
-        glms_quat_mul(rd, transform->orientation)
+        glms_quat_mul(input->internal.state.rotation_delta, transform->orientation)
     );
 }
 
