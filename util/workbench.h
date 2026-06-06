@@ -114,7 +114,7 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
         z_offset = -1.f * zoom_sensitivity * dt;
     }
 
-    state->rotation_delta = glms_quat_mul(
+    state->orientation_delta = glms_quat_mul(
         glms_quatv(euler_angle.y, (vec3f_t){0, 1, 0}),
         glms_quatv(euler_angle.x, state->right)
     );
