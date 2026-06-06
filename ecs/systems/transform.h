@@ -9,23 +9,8 @@ void ecs_system_transfrom__internal_source_manual(
 ) {
     if (input == NULL) eprint("missing input component");
 
-    const vec3f_t movement  = input->internal.state.movement;
-    const vec3f_t forward   = input->internal.state.front;
-    const vec3f_t right     = input->internal.state.right;
-    const vec3f_t up        = glms_vec3_cross(right, forward);
-
-    vec3s delta = {0};
-    delta = glms_vec3_add(delta, glms_vec3_scale(forward, movement.z));
-    delta = glms_vec3_add(delta, glms_vec3_scale(right,   movement.x));
-    delta = glms_vec3_add(delta, glms_vec3_scale(up,      movement.y));
-
-    transform->position     = glms_vec3_add(delta, transform->position);
-    transform->orientation  = glms_quat_normalize(
-        glms_quat_mul(
-            input->internal.state.orientation_delta, 
-            transform->orientation
-        )
-    );
+    transform->position     = input->internal.state.current_position;
+    transform->orientation  = glms_quat_normalize(input->internal.state.current_orientation);
 }
 
 void ecs_system_transform(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
