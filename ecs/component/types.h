@@ -56,7 +56,7 @@ typedef struct ecs_component_input_state_t  ecs_component_input_state_t;
 
 struct ecs_component_input_state_t {
     vec3f_t     movement;
-    versors     rotation_delta;
+    versors     orientation_delta;
     vec3f_t     front;
     vec3f_t     right;
 };

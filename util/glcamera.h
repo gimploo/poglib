@@ -81,10 +81,9 @@ void glcamera_set(
 #endif
 }
 
-
 void glcamera_update(
     glcamera_t *const self, 
-    const f32 z_offset,         //NOTE: this needs to account in delta time also
+    const f32 z_offset,                     //NOTE: this needs to account in delta time also
     const vec2f_t delta_rot
 ) {
     self->position = glms_vec3_add(

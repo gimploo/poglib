@@ -3,6 +3,7 @@
 #include "../component/types.h"
 #include "poglib/application.h"
 #include "poglib/basic/ds/slot.h"
+#include "poglib/external/cglm/quat.h"
 #include "poglib/poggen.h"
 
 void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
@@ -18,7 +19,7 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
 
         input_cmp->internal.state = (ecs_component_input_state_t){
             .movement = {0},
-            .rotation_delta = {0.0f, 0.0f, 0.0f, 1.0f},
+            .orientation_delta = GLM_QUAT_IDENTITY_INIT,
             .front = {0},
             .right = {0},
         };
