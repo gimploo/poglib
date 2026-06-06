@@ -69,7 +69,7 @@ ecs_componentmanager_t ecs_componentmanager(arena_t *arena)
         // [ entity_id ][is_active][ component data ]
         *packedcmp_slot = slot_init(
             ecs_componentmanager__internal_get_pool_capacity(componenttype),
-            sizeof(u32) + sizeof(bool) + ecs_component__internal_get_componenttype_size(componenttype), 
+            ECS_CMP_POOL_HEADER_SIZE + ecs_component__internal_get_componenttype_size(componenttype), 
             arena
         );
     }
@@ -122,9 +122,9 @@ void ecs_componentmanager_add(ecs_componentmanager_t * const self, const u32 ent
         //NOTE: sets active flag
         *(buf.raw_data + sizeof(u32)) = true;
         //NOTE: sets compnent data
-        memcpy(buf.raw_data + sizeof(bool) + sizeof(entity_id) , &config.component[cmp_idx_count], cmp_size);
+        memcpy(buf.raw_data + ECS_CMP_POOL_HEADER_SIZE , &config.component[cmp_idx_count], cmp_size);
 
-        slot_insert(pool, pool->len, buf.raw_data, sizeof(u32) + sizeof(bool) + cmp_size);
+        slot_insert(pool, pool->len, buf.raw_data, ECS_CMP_POOL_HEADER_SIZE + cmp_size);
     }
 
     hashtable_insert(
@@ -141,7 +141,7 @@ u32 ecs_componentmanager__internal_get_entity_id_from_pooldata(const void * cons
 
 void * ecs_componentmanager__internal_get_cmpdata_from_pooldata(const void * const data)
 {
-    void * const pooldata = (u8 *)data + sizeof(u32) + sizeof(bool);
+    void * const pooldata = (u8 *)data + ECS_CMP_POOL_HEADER_SIZE;
     return pooldata;
 }
 
@@ -178,7 +178,7 @@ void ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 
     cmp_buf[get_index_from_bitflag(type)]   = index_of_cmp_to_remove;
     hashtable_insert(&self->entity2components_lookup, (hashtable_key_t){ .u32 = moved_entity_id }, cmp_buf);
 
-    const u32 full_allocation_size          = sizeof(u32) + sizeof(bool) + ecs_component__internal_get_componenttype_size(type);
+    const u32 full_allocation_size          = ECS_CMP_POOL_HEADER_SIZE + ecs_component__internal_get_componenttype_size(type);
     slot_insert(componentpool, index_of_cmp_to_remove, last_element_data, full_allocation_size);
     slot_delete(componentpool, last_element_data_idx);
 }
