@@ -49,6 +49,14 @@ global physics_sys_jolt_t *global_physics_sys_jolt_instance = NULL;
 
 #define MAX_COLLISION_INTERACTABILITY_ENTRIES       32 
 
+typedef enum {
+    PHY_BP_STATIC = 0,
+    PHY_BP_DYNAMIC = 1,
+    PHY_BP_SENSORS = 2,
+    PHY_BP_DEBRIS = 3,
+    PHY_BP_COUNT
+} broadphase_type;
+
 typedef struct {
     u16 objectlayer_type;
     u16 broadphase_type;
@@ -90,6 +98,15 @@ matrix4f_t              physics_sys_get_world_transform(physics_sys_jolt_t *self
 void                    physics_sys_jolt_update(physics_sys_jolt_t *self, const f32 dt);
 void                    physics_sys_jolt_destroy(physics_sys_jolt_t *self);
 
+JPH_CharacterVirtual *  physics_sys_jolt_character_create(
+                            physics_sys_jolt_t *self,
+                            JPH_PhysicsSystem *system,
+                            const vec3f_t position,
+                            const f32 half_height,
+                            const f32 radius,
+                            const JPH_ObjectLayer layer);
+void                    physics_sys_jolt_character_destroy(JPH_CharacterVirtual *character);
+void                    physics_sys_jolt_destroy_body(JPH_BodyID body_id);
 
 #ifndef IGNORE_JOLT_WRAPPER_IMPLEMENTATION
 
@@ -161,20 +178,27 @@ void physics_sys_jolt_set_interaction_rules(physics_sys_jolt_t * const self, con
 
     JPH_ObjectLayerPairFilter* objectLayerPairFilterTable = JPH_ObjectLayerPairFilterTable_Create(config.count * 2);
 
-    struct {
-        u16 count;
-        struct {
-            bool is_occupied;
-            collision_objectlayer_broadphase_config_t config;
-        } data[sizeof(u16)];
-    } objectlayer_configs  = {0};
+    u8 max_objectlayer_type = 0;
+    u8 max_broadphase_type = 0;
+    for (u32 i = 0; i < config.count; i++) {
+        for (u8 j = 0; j < 2; j++) {
+            if (config.data[i][j].objectlayer_type > max_objectlayer_type)
+                max_objectlayer_type = config.data[i][j].objectlayer_type;
+            if (config.data[i][j].broadphase_type > max_broadphase_type)
+                max_broadphase_type = config.data[i][j].broadphase_type;
+        }
+    }
 
     struct {
-        u16 count;
-        struct {
-            bool is_occupied;
-        } data[sizeof(u16)];
-    } broadphase_types  = {0};
+        bool is_occupied;
+        collision_objectlayer_broadphase_config_t config;
+    } objectlayer_configs[max_objectlayer_type + 1];
+    memset(objectlayer_configs, 0, sizeof(objectlayer_configs));
+    u16 objectlayer_count = 0;
+
+    bool broadphase_types[max_broadphase_type + 1];
+    memset(broadphase_types, 0, sizeof(broadphase_types));
+    u16 broadphase_count = 0;
 
     for (u32 index = 0; index < config.count; index++)
     {
@@ -193,42 +217,41 @@ void physics_sys_jolt_set_interaction_rules(physics_sys_jolt_t * const self, con
         {
             const u8 config_object_type = config.data[index][objectlayer_config_index].objectlayer_type;
             const u8 config_broadphase_type = config.data[index][objectlayer_config_index].broadphase_type;
-            const bool conflicting_broadphase_type = objectlayer_configs.data[config_object_type].config.broadphase_type == config_broadphase_type;
+            const bool same_broadphase = objectlayer_configs[config_object_type].config.broadphase_type == config_broadphase_type;
 
-            if(objectlayer_configs.data[config_object_type].is_occupied && !conflicting_broadphase_type)
+            if (objectlayer_configs[config_object_type].is_occupied && same_broadphase)
                 continue;
 
-            if (objectlayer_configs.data[config_object_type].is_occupied && conflicting_broadphase_type)
+            if (objectlayer_configs[config_object_type].is_occupied && !same_broadphase)
                 eprint("Broadphase mismatch - check the registeration again");
 
-            objectlayer_configs.data[config_object_type].is_occupied = true;
-            objectlayer_configs.data[config_object_type].config = config.data[index][objectlayer_config_index];
-            objectlayer_configs.count++;
+            objectlayer_configs[config_object_type].is_occupied = true;
+            objectlayer_configs[config_object_type].config = config.data[index][objectlayer_config_index];
+            objectlayer_count++;
 
-            const u8 broadphase_type = config.data[index][objectlayer_config_index].broadphase_type;
-            if (broadphase_types.data[config_broadphase_type].is_occupied)
+            if (broadphase_types[config_broadphase_type])
                 continue;
 
-            broadphase_types.data[config_broadphase_type].is_occupied = true;
-            broadphase_types.count++;
+            broadphase_types[config_broadphase_type] = true;
+            broadphase_count++;
         }
     }
 
-    JPH_BroadPhaseLayerInterface* router = JPH_BroadPhaseLayerInterfaceTable_Create(objectlayer_configs.count, broadphase_types.count);
-    for (u8 index = 0; index < objectlayer_configs.count; index++)
+    JPH_BroadPhaseLayerInterface* router = JPH_BroadPhaseLayerInterfaceTable_Create(objectlayer_count, broadphase_count);
+    for (u8 index = 0; index < objectlayer_count; index++)
     {
         JPH_BroadPhaseLayerInterfaceTable_MapObjectToBroadPhaseLayer(
                 router, 
-                objectlayer_configs.data[index].config.objectlayer_type, 
-                objectlayer_configs.data[index].config.broadphase_type);
+                objectlayer_configs[index].config.objectlayer_type, 
+                objectlayer_configs[index].config.broadphase_type);
     }
 
 
     JPH_ObjectVsBroadPhaseLayerFilter* objectVsBroadPhaseLayerFilter = JPH_ObjectVsBroadPhaseLayerFilterTable_Create(
         router,
-        broadphase_types.count, 
+        broadphase_count, 
         objectLayerPairFilterTable, 
-        objectlayer_configs.count);
+        objectlayer_count);
 
     self->objectvsbroadphaselayerfilter = objectVsBroadPhaseLayerFilter;
     self->objectlayerpairfilter_table = objectLayerPairFilterTable;
@@ -415,6 +438,65 @@ matrix4f_t physics_sys_get_world_transform(physics_sys_jolt_t *self, JPH_BodyID 
 physics_sys_jolt_event_queue_t * physics_sys_get_collision_event_queue(const physics_sys_jolt_t * const self)
 {
     return self->internal.double_buffer_event_queue.read_queue;
+}
+
+JPH_CharacterVirtual * physics_sys_jolt_character_create(
+    physics_sys_jolt_t *self,
+    JPH_PhysicsSystem *system,
+    const vec3f_t position,
+    const f32 half_height,
+    const f32 radius,
+    const JPH_ObjectLayer layer)
+{
+    (void)self;
+
+    JPH_CapsuleShape *shape = JPH_CapsuleShape_Create(half_height, radius);
+
+    JPH_CharacterVirtualSettings settings = {0};
+    JPH_CharacterVirtualSettings_Init(&settings);
+    settings.base.shape = (JPH_Shape *)shape;
+    settings.base.up = (JPH_Vec3){0, 1, 0};
+    settings.base.maxSlopeAngle = radians(45.0f);
+    settings.base.enhancedInternalEdgeRemoval = true;
+    settings.base.supportingVolume = (JPH_Plane){{0, 1, 0}, -0.1f};
+    settings.mass = 80.0f;
+    settings.maxStrength = 100.0f;
+    settings.shapeOffset = (JPH_Vec3){0, 0, 0};
+    settings.backFaceMode = JPH_BackFaceMode_IgnoreBackFaces;
+    settings.predictiveContactDistance = 0.1f;
+    settings.maxCollisionIterations = 5;
+    settings.maxConstraintIterations = 15;
+    settings.minTimeRemaining = 1.0e-4f;
+    settings.collisionTolerance = JPH_DEFAULT_COLLISION_TOLERANCE;
+    settings.characterPadding = 0.02f;
+    settings.maxNumHits = 256;
+    settings.hitReductionCosMaxAngle = 0.999f;
+    settings.penetrationRecoverySpeed = 1.0f;
+    settings.innerBodyShape = NULL;
+    settings.innerBodyLayer = layer;
+
+    JPH_CharacterVirtual *character = JPH_CharacterVirtual_Create(
+        &settings,
+        (JPH_RVec3 *)&position,
+        NULL,
+        0,
+        system);
+
+    JPH_Shape_Destroy((JPH_Shape *)shape);
+
+    return character;
+}
+
+void physics_sys_jolt_character_destroy(JPH_CharacterVirtual *character)
+{
+    JPH_CharacterBase_Destroy((JPH_CharacterBase *)character);
+}
+
+void physics_sys_jolt_destroy_body(JPH_BodyID body_id)
+{
+    JPH_BodyInterface_RemoveAndDestroyBody(
+        global_physics_sys_jolt_instance->bodyinterface,
+        body_id);
 }
 
 #endif

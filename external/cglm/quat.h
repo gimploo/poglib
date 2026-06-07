@@ -83,7 +83,7 @@ CGLM_INLINE void glm_quat_normalize(versor q);
  */
 
 #define GLM_QUAT_IDENTITY_INIT  {0.0f, 0.0f, 0.0f, 1.0f}
-#define GLM_QUAT_IDENTITY       ((versor)GLM_QUAT_IDENTITY_INIT)
+#define GLM_QUAT_IDENTITY       ((versors)GLM_QUAT_IDENTITY_INIT)
 
 /*!
  * @brief makes given quat to identity

@@ -119,7 +119,7 @@ glrendercall_t glskybox_get_render_config(
                     },
                     [2] = {
                         .name = str_lit("transform"),
-                        .value.mat4 = glms_scale_make(vec3f(50.0f))
+                        .value.mat4 = glms_scale_make(vec3f(250.0f))
                     }
                 }
             }

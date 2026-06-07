@@ -18,13 +18,6 @@
 #include "poglib/math/common.h"
 #include "poglib/math/la.h"
 
-typedef struct {
-
-    vec3f_t start;
-    vec3f_t end;
-
-} line_t;
-
 typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_CAMERA_DRAG_LOOK    = 0,
     WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN      = 1,
@@ -53,9 +46,6 @@ typedef struct {
     glshader_t shader;
     vec3f_t player_camera_position;
 
-    // Lines that draws - this clears up after every render
-    list_t draw_lines;
-
     list_t lightsources;
 
     commandqueue_t commandqueue;
@@ -73,10 +63,8 @@ void        workbench_update(workbench_t *const self, const f32 dt);
 
 void        workbench_toggle(workbench_t *const self);
 
-void        workbench_pass_line(workbench_t *self, const line_t line);
 void        workbench_track_lightsource(workbench_t *self, const gllight_t *light);
 
-void        workbench_render_cube(workbench_t * const self, const vec3f_t translation, const vec3f_t scale, const vec4f_t color, const bool override_wireframe);
 void        workbench_render(workbench_t *self);
 
 void        workbench_destroy(workbench_t *self);
@@ -97,13 +85,13 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
     const f32 drag_sensitivity = 0.3f;
     const f32 zoom_sensitivity = 50.0f;
 
-    vec2f_t euler_angle  = {0};
+    vec2f_t mouse_delta = {0};
     f32 z_offset         = 0.f;
 
     if (drag_look) {
         const vec2i_t mouse_pos_delta = window_mouse_get_relative_position(global_window);
-        euler_angle.x = radians((f32)mouse_pos_delta.y * drag_sensitivity);
-        euler_angle.y = radians((f32)mouse_pos_delta.x * drag_sensitivity);
+        mouse_delta.x = radians((f32)mouse_pos_delta.y * drag_sensitivity);
+        mouse_delta.y = radians((f32)mouse_pos_delta.x * drag_sensitivity);
     }
 
     if (zoom_in) {
@@ -114,12 +102,15 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
         z_offset = -1.f * zoom_sensitivity * dt;
     }
 
+    f32 pitch = 2.f * atan2f(state->current_orientation.x, state->current_orientation.w) + mouse_delta.x;
+    f32 yaw   = 2.f * atan2f(state->current_orientation.y, state->current_orientation.w) + mouse_delta.y;
+
+    if (pitch > GLM_PI_2f - 0.001f) pitch = GLM_PI_2f - 0.001f;
+    if (pitch < -GLM_PI_2f + 0.001f) pitch = -GLM_PI_2f + 0.001f;
+
     state->current_orientation = glms_quat_mul(
-        state->current_orientation, 
-        glms_quat_mul(
-            glms_quatv(euler_angle.y, (vec3f_t){0, 1, 0}),
-            glms_quatv(euler_angle.x, state->right)
-        )
+        glms_quatv(yaw,   (vec3f_t){0, 1, 0}),
+        glms_quatv(pitch, (vec3f_t){1, 0, 0})
     );
 
     state->current_position = glms_vec3_add(state->current_position, glms_vec3_scale(state->front, z_offset));
@@ -132,7 +123,10 @@ void workbench__internal_ecs_create_world_camera(workbench_t *const self)
         (ecs_componentbundle_t) {
             .signature = ECS_CMP_TRANSFORM | ECS_CMP_CAMERA | ECS_CMP_INPUT,
             .component = {
-                [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .orientation = GLMS_QUAT_IDENTITY_INIT },
+                [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){
+                    .orientation = GLMS_QUAT_IDENTITY_INIT,
+                    .source = ECS_CMP_TRANSFORM_SOURCE_MANUAL,
+                },
                 [ECS_CMP_CAMERA_IDX].camera = (ecs_component_camera_t){
                     .camera = glcamera_perspective((vec3f_t){2.0f, 4.f, -4.0f}, (vec2f_t){-0.32f, 1.59f}),
                     .mode = ECS_CMP_CAMERA_MODE_FREE_FLY,
@@ -213,7 +207,6 @@ workbench_t workbench_init(arena_t *const arena)
             .atlas = spriteatlas_init(str(POGLIB_ROOT_DIR"/res/sprites/prototype.png"), 8, 4, arena),
         },
         .player_camera_position = vec3f(0.f),
-        .draw_lines = list_init(line_t),
         .lightsources = list_init(gllight_t *),
     .render_config = {
         .wireframe_mode = false
@@ -264,11 +257,6 @@ matrix4f_t workbench__internal_get_camera_view(const workbench_t *const self)
 {
     glcamera_t *camera = ecs_get_active_camera(&global_poggen->systems.ecs);
     return glcamera_getview(camera);
-}
-
-void workbench_pass_line(workbench_t *self, const line_t line) 
-{
-    list_append(&self->draw_lines, line);
 }
 
 void workbench_track_lightsource(workbench_t *self, const gllight_t *light)
@@ -354,176 +342,11 @@ void workbench_destroy(workbench_t *self)
     glshader_destroy(&self->shader);
     glshader_destroy(&self->primitives.shader);
     spriteatlas_destroy(&self->primitives.atlas);
-    list_destroy(&self->draw_lines);
     list_destroy(&self->lightsources);
     gui_destroy(&self->gui.handle);
 }
 
-void workbench__internal_render_batch_lines(workbench_t *self)
-{
-    if(!self->draw_lines.len) {
-        return;
-    }
-    glrenderer3d_draw((glrendererconfig_t){
-        .calls = {
-            .count = 3,
-            .call = {
-                //camera
-                [0] = {
-                    .is_wireframe = true || self->render_config.wireframe_mode,
-                    .textures = {0},
-                    .idx = {
-                        .data = (u8 *)&CAMERA_INDICES,
-                        .nmemb = ARRAY_LEN(CAMERA_INDICES)
-                    },
-                    .vtx = (buffer_t){
-                        .raw_data = (u8 *)&CAMERA_VERTICES,
-                        .size = sizeof(CAMERA_VERTICES)
-                    },
-                    .textures = {0},
-                    .attrs = {
-                        .count = 1,
-                        .attr = {
-                        [0] = {
-                            .ncmp = 3, 
-                            .interleaved = {0}
-                        }
-                    },
-                    },
-                    .shader_config = {
-                        .shader = &self->shader,
-                        .uniforms = {
-                            .count = 4,
-                            .data = {
-                                [0] = {
-                                    .name = str_lit("view"),
-                                    .value = workbench__internal_get_camera_view(self)
-                                },
-                                [1] = {
-                                    .name = str_lit("projection"),
-                                    .value = glms_perspective(
-                                            radians(45), global_poggen->handle.app->window.aspect_ratio, 1.0f, 1000.0f
-                                    )
-                                },
-                                [2] = {
-                                    .name = str_lit("color"),
-                                    .value.vec4 = COLOR_BLACK
-                                },
-                                [3] = {
-                                    .name = str_lit("transform"),
-                                    .value = glms_mat4_mul(
-                                            glms_translate_make(self->player_camera_position),
-                                            glms_scale_make((vec3f_t){10.f, 10.f, 10.f})
-                                    ),
-                                },
-                            }
-                        },
-                    }
-                },
-                //platform
-                [1] = {
-                    .is_wireframe = self->render_config.wireframe_mode,
-                    .textures = {0},
-                    .idx = {
-                        .data = (u8 *)&DEFAULT_CUBE_INDICES_8,
-                        .nmemb = ARRAY_LEN(DEFAULT_CUBE_INDICES_8)
-                    },
-                    .vtx = (buffer_t){
-                        .raw_data = (u8 *)&DEFAULT_CUBE_VERTICES_8,
-                        .size = sizeof(DEFAULT_CUBE_VERTICES_8)
-                    },
-                    .textures = {0},
-                    .attrs = {
-                        .count = 1,
-                        .attr = {
-                            [0] = {
-                                .ncmp = 3, 
-                                .interleaved = {0}
-                            }
-                        },
-                    },
-                    .shader_config = {
-                        .shader = &self->shader,
-                        .uniforms = {
-                            .count = 4,
-                            .data = {
-                                [0] = {
-                                    .name = str_lit("view"),
-                                    .value = workbench__internal_get_camera_view(self)
-                                },
-                                [1] = {
-                                    .name = str_lit("projection"),
-                                    .value = glms_perspective(
-                                        radians(45), 
-                                        global_poggen->handle.app->window.aspect_ratio, 
-                                        1.0f, 1000.0f
-                                    )
-                                },
-                                [2] = {
-                                    .name = str_lit("transform"),
-                                    .value = glms_scale(MATRIX4F_IDENTITY, (vec3f_t){1000.0f, 1.0f, 1000.0f}),
-                                },
-                                [3] = {
-                                    .name = str_lit("color"),
-                                    .value.vec4 = COLOR_DARK_GRAY
-                                },
-                            }
-                        } 
-                    }
-                },
-                // lines
-                [2] = {
-                    .draw_mode = GL_LINE,
-                    .is_wireframe = self->render_config.wireframe_mode,
-                    .textures = {0},
-                    .shader_config = {
-                        .shader = &self->shader,
-                        .uniforms = {
-                            .count = 4,
-                            .data = {
-                                [0] = {
-                                    .name = str_lit("view"),
-                                    .value = workbench__internal_get_camera_view(self)
-                                },
-                                [1] = {
-                                    .name = str_lit("projection"),
-                                    .value = glms_perspective(
-                                        radians(45), 
-                                        global_poggen->handle.app->window.aspect_ratio, 
-                                        1.0f, 1000.0f
-                                    )
-                                },
-                                [2] = {
-                                    .name = str_lit("transform"),
-                                    .value = MATRIX4F_IDENTITY
-                                },
-                                [3] = {
-                                    .name = str_lit("color"),
-                                    .value.vec4 = COLOR_BLUE
-                                },
-                            }
-                        } 
-                    },
-                    .idx = {0},
-                    .vtx = (buffer_t){
-                        .raw_data = list_get_buffer(&self->draw_lines),
-                        .size = list_get_size(&self->draw_lines),
-                    },
-                    .attrs = {
-                        .count = 1,
-                        .attr = {
-                            // position
-                            [0] = {
-                                .ncmp = 3,
-                                .interleaved = {0},
-                            },
-                        }
-                    }
-                }
-            },
-        },
-    });
-}
+
 
 void workbench__internal_update_ui(workbench_t * const self, const vec3f_t worlcamera_position);
 
@@ -541,15 +364,11 @@ void workbench_render(workbench_t *self)
         self->world_camera.handle->position
     );
 
-    workbench__internal_render_batch_lines(self);
-
     workbench__internal_render_lightsources(self);
 
     if (self->gui.enable) {
         workbench__internal_render_ui(self);
     }
-
-    list_clear(&self->draw_lines);
 }
 
 void workbench__internal_update_ui(workbench_t * const self, const vec3f_t world_camera_position)
@@ -618,13 +437,6 @@ void workbench_render_camera(
     renderqueue_pass_command(renderqueue, rendercommand);
 }
 
-void workbench_render_line(
-    workbench_t * const self,
-    const vec3f_t starting_pos,
-    const vec3f_t ending_pos
-) {
-    
-}
 
 
 void workbench_render_marker(
@@ -698,7 +510,8 @@ void workbench_render_cube(
     const vec3f_t translation,
     const vec3f_t scale,
     const vec4f_t color,
-    const bool override_wireframe
+    const bool override_wireframe,
+    const prototype_texture_type type
 ) {
     renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
     const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
@@ -714,10 +527,10 @@ void workbench_render_cube(
         .scale = { scale.x, scale.y, scale.z, 0.f },
         .orientation = {0.f, 0.f, 0.f, 1.f},
         .color = color,
-        .uv = spriteatlas_get_sprite(&self->primitives.atlas, PROTOTYPE_SPRITE_CHECKERED_DARK_GRAY),
+        .uv = spriteatlas_get_sprite(&self->primitives.atlas, type),
     };
 
-    gpu_mesh_t * const mesh = assetmanager_get_gpu_loaded_primitive_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE);
+    gpu_mesh_t *const mesh = assetmanager_get_gpu_loaded_primitive_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE);
     if(!mesh) {
         return;
     }
@@ -737,6 +550,68 @@ void workbench_render_cube(
                     self->primitives.atlas.texture.id
                 }
             },
+            .shader = {
+                .data = &self->primitives.shader,
+                .uniforms = {
+                    .count = 2,
+                    .data = {
+                       [0] = {
+                           .name = str("projection"),
+                           .value = perspective_projection
+                       },
+                       [1] = {
+                           .name = str("view"),
+                           .value = workbench__internal_get_camera_view(self)
+                       }
+                    }
+                }
+            }
+        },
+    };
+
+    memcpy(rendercommand.instance.raw_data, &instance, sizeof(instance));
+    renderqueue_pass_command(renderqueue, rendercommand);
+}
+
+void workbench_render_capsule(
+    workbench_t * const self,
+    const vec3f_t position,
+    const versors orientation,
+    const f32 half_height,
+    const f32 radius
+) {
+    renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
+    const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
+    const matrix4f_t perspective_projection = glms_perspective(
+        radians(45),
+        global_poggen->handle.app->window.aspect_ratio,
+        1.0f,
+        10000.0f
+    );
+
+    const f32 capsule_center = position.y + half_height + radius;
+    const rendercommand_instance_t instance = {
+        .translation = { position.x, capsule_center, position.z, 0.f },
+        .scale = { radius, (half_height + radius) / 2.f, radius, 0.f },
+        .orientation = { orientation.x, orientation.y, orientation.z, orientation.w },
+        .color = COLOR_BLUE,
+    };
+
+    gpu_mesh_t * const mesh = assetmanager_get_gpu_loaded_primitive_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAPSULE);
+    if (!mesh) {
+        return;
+    }
+
+    rendercommand_t rendercommand = {
+        .enable_wireframe = true,
+        .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
+        .mesh = mesh,
+        .instance = {
+            .raw_data = {0},
+            .size = sizeof(rendercommand_instance_t)
+        },
+        .material = {
+            .textures = {0},
             .shader = {
                 .data = &self->primitives.shader,
                 .uniforms = {

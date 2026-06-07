@@ -29,6 +29,8 @@ u16 ecs_component__internal_get_componenttype_size(const ecs_component_type type
         case ECS_CMP_INPUT:             return sizeof(ecs_component_input_t);
         case ECS_CMP_MATERIAL:          return sizeof(ecs_component_material_t);
         case ECS_CMP_CAMERA:            return sizeof(ecs_component_camera_t);
+        case ECS_CMP_CHARACTER:         return sizeof(ecs_component_character_t);
+        case ECS_CMP_STATIC_COLLIDER:   return sizeof(ecs_component_static_collider_t);
         default: eprint("missing component type - not implemented");
     }
 }

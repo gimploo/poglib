@@ -412,6 +412,20 @@ glmodel_t glmodel_init(const char *filepath)
     //debug_assimp_vertex_bones(scene);
     assimp__internal_glmesh_processScene(&o, scene);
 
+    {
+        f32 min_y = INFINITY, max_y = -INFINITY;
+        list_iterator(&o.meshes, mesh_iter)
+        {
+            glmesh_t *m = mesh_iter;
+            slot_iterator(&m->vtx, vtx_iter)
+            {
+                glvertex3d_t *v = (glvertex3d_t *)vtx_iter;
+                if (v->pos.y < min_y) min_y = v->pos.y;
+                if (v->pos.y > max_y) max_y = v->pos.y;
+            }
+        }
+        fprintf(stderr, "MODEL BOUNDS: min_y=%.3f max_y=%.3f height=%.3f center=%.3f\n", min_y, max_y, max_y - min_y, (min_y + max_y) * 0.5f);
+    }
     //load all animations
     animator_load_all_animations(&o.animator, scene);
 
