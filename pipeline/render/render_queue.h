@@ -124,6 +124,7 @@ bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const que
             : NULL;
 
         if (!first_render_command)                                                  continue;
+        if (command.mesh->vao_id != first_render_command->mesh->vao_id)             continue;
         if (command.draw_mode != first_render_command->draw_mode)                   continue;
         if (command.enable_wireframe != first_render_command->enable_wireframe)     continue;
 
