@@ -84,7 +84,7 @@ list_t __impl_list_init(const u64 capacity, const char *elem_type, const u64 ele
 
     bool flag = false;
     u32 len = strlen(elem_type);
-    if (elem_type[len] > 15) eprint("variable name is too big, exceeded the 16 limit threshold\n");
+    if (len > MAX_TYPE_CHARACTER_LENGTH - 1) eprint("variable name is too big, exceeded the 16 limit threshold\n");
     if (elem_type[len - 1] == '*') flag = true;
 
     list_t o = {
@@ -99,8 +99,9 @@ list_t __impl_list_init(const u64 capacity, const char *elem_type, const u64 ele
         .__are_values_pointers = flag,
     };
 
-    if (!flag)  memcpy(o.__elem_type, elem_type, MAX_TYPE_CHARACTER_LENGTH);
-    else        memcpy(o.__elem_type, elem_type, len - 1);
+    u32 copy_len = flag ? (len - 1) : len;
+    if (copy_len >= MAX_TYPE_CHARACTER_LENGTH) copy_len = MAX_TYPE_CHARACTER_LENGTH - 1;
+    memcpy(o.__elem_type, elem_type, copy_len);
 
     return o;
 }

@@ -303,8 +303,8 @@ static void * _debug_malloc(const size_t size, const char *file_path, const size
     info.value = malloc_mem;
     info.linenum = line_num;
     info.bytes = size;
-    memcpy(info.filename, file_path, sizeof(info.funcname));
-    memcpy(info.funcname, func_name, sizeof(info.funcname));
+    strcpy(info.filename, file_path);
+    strcpy(info.funcname, func_name);
 
     __dbg_set_stacktraces(&info);
 
@@ -386,8 +386,8 @@ void * _debug_realloc(void *pointer, const char *pointer_name, const size_t size
     info.value = realloc_mem;
     info.linenum = line_num;
     info.bytes = size;
-    memcpy(info.filename, file_path, sizeof(info.funcname));
-    memcpy(info.funcname, func_name, sizeof(info.funcname));
+    strcpy(info.filename, file_path);
+    strcpy(info.funcname, func_name);
     __dbg_set_stacktraces(&info);
 
     node_t *node = node_init(&info, sizeof(info));
