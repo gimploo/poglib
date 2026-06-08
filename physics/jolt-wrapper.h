@@ -75,28 +75,22 @@ void                    physics_sys_jolt_set_interaction_rules(
                         );
 void                    physics_sys_jolt_start_simulation(physics_sys_jolt_t *self);
 
-u32 physics_sys_jolt_create_box(
-                        physics_sys_jolt_t *self, 
-                        const vec3f_t position, 
-                        const vec3f_t half_extents, 
-                        const JPH_MotionType motion_type, 
-                        const JPH_ObjectLayer layer,
-                        const JPH_Activation isActivationMode );
+u32                     physics_sys_jolt_create_box(
+                            physics_sys_jolt_t *self, 
+                            const vec3f_t position, 
+                            const vec3f_t half_extents, 
+                            const JPH_MotionType motion_type, 
+                            const JPH_ObjectLayer layer,
+                            const JPH_Activation isActivationMode );
 
-u32 physics_sys_jolt_create_capsule(
-                        physics_sys_jolt_t *self, 
-                        const vec3f_t position, 
-                        const f32 halfHeightOfCylinder,
-                        const f32 radius,
-                        const JPH_MotionType motion_type, 
-                        const JPH_ObjectLayer layer,
-                        const JPH_Activation isActivationMode);
-
-physics_sys_jolt_event_queue_t * physics_sys_get_collision_event_queue(const physics_sys_jolt_t * const self);
-
-matrix4f_t              physics_sys_get_world_transform(physics_sys_jolt_t *self, JPH_BodyID body_id);
-void                    physics_sys_jolt_update(physics_sys_jolt_t *self, const f32 dt);
-void                    physics_sys_jolt_destroy(physics_sys_jolt_t *self);
+u32                     physics_sys_jolt_create_capsule(
+                            physics_sys_jolt_t *self, 
+                            const vec3f_t position, 
+                            const f32 halfHeightOfCylinder,
+                            const f32 radius,
+                            const JPH_MotionType motion_type, 
+                            const JPH_ObjectLayer layer,
+                            const JPH_Activation isActivationMode);
 
 JPH_CharacterVirtual *  physics_sys_jolt_character_create(
                             physics_sys_jolt_t *self,
@@ -105,8 +99,17 @@ JPH_CharacterVirtual *  physics_sys_jolt_character_create(
                             const f32 half_height,
                             const f32 radius,
                             const JPH_ObjectLayer layer);
+
+
+
+physics_sys_jolt_event_queue_t * physics_sys_get_collision_event_queue(const physics_sys_jolt_t * const self);
+
+
+void                    physics_sys_jolt_update(physics_sys_jolt_t *self, const f32 dt);
+void                    physics_sys_jolt_destroy(physics_sys_jolt_t *self);
 void                    physics_sys_jolt_character_destroy(JPH_CharacterVirtual *character);
 void                    physics_sys_jolt_destroy_body(JPH_BodyID body_id);
+
 
 #ifndef IGNORE_JOLT_WRAPPER_IMPLEMENTATION
 
@@ -192,12 +195,10 @@ void physics_sys_jolt_set_interaction_rules(physics_sys_jolt_t * const self, con
     struct {
         bool is_occupied;
         collision_objectlayer_broadphase_config_t config;
-    } objectlayer_configs[max_objectlayer_type + 1];
-    memset(objectlayer_configs, 0, sizeof(objectlayer_configs));
+    } objectlayer_configs[MAX_COLLISION_INTERACTABILITY_ENTRIES] = {0};
     u16 objectlayer_count = 0;
 
-    bool broadphase_types[max_broadphase_type + 1];
-    memset(broadphase_types, 0, sizeof(broadphase_types));
+    bool broadphase_types[MAX_COLLISION_INTERACTABILITY_ENTRIES] = {0};
     u16 broadphase_count = 0;
 
     for (u32 index = 0; index < config.count; index++)
@@ -307,19 +308,23 @@ void physics_sys_jolt_start_simulation(physics_sys_jolt_t *self)
 	self->systemsettings.numBodyMutexes = 0;
 	self->systemsettings.maxBodyPairs = 65536;
 	self->systemsettings.maxContactConstraints = 65536;
-	self->systemsettings.broadPhaseLayerInterface = self->broadphaselayerinterface_table;
-	self->systemsettings.objectLayerPairFilter = self->objectlayerpairfilter_table;
-	self->systemsettings.objectVsBroadPhaseLayerFilter = self->objectvsbroadphaselayerfilter;
 
-	self->physics_system = JPH_PhysicsSystem_Create(&self->systemsettings);
-	self->bodyinterface = JPH_PhysicsSystem_GetBodyInterface(self->physics_system);
+	self->systemsettings.objectVsBroadPhaseLayerFilter  = self->objectvsbroadphaselayerfilter;
+	self->systemsettings.broadPhaseLayerInterface       = self->broadphaselayerinterface_table;
+	self->systemsettings.objectLayerPairFilter          = self->objectlayerpairfilter_table;
 
-    physics_sys_jolt__internal_register_contact_listener(self, (JPH_ContactListener_Procs ) {
+	self->physics_system    = JPH_PhysicsSystem_Create(&self->systemsettings);
+	self->bodyinterface     = JPH_PhysicsSystem_GetBodyInterface(self->physics_system);
+
+    physics_sys_jolt__internal_register_contact_listener(
+        self, 
+        (JPH_ContactListener_Procs ) {
             .OnContactAdded = physics_sys_jolt__internal_on_contact_added,
             .OnContactPersisted = NULL,
             .OnContactRemoved = NULL,
             .OnContactValidate = NULL
-        });
+        }
+    );
 }
 
 // Example function to add to your wrapper
@@ -422,19 +427,6 @@ void physics_sys_jolt_update(physics_sys_jolt_t *self, const f32 dt) {
     self->internal.double_buffer_event_queue.write_queue->count = 0;
 }
 
-matrix4f_t physics_sys_get_world_transform(physics_sys_jolt_t *self, JPH_BodyID body_id)
-{
-    JPH_RMat4 matrix;
-    JPH_BodyInterface_GetWorldTransform(
-            self->bodyinterface, 
-            body_id, 
-            &matrix);
-
-    matrix4f_t result = {0};
-    memcpy(&result, &matrix, sizeof(matrix4f_t));
-    return result;
-}
-
 physics_sys_jolt_event_queue_t * physics_sys_get_collision_event_queue(const physics_sys_jolt_t * const self)
 {
     return self->internal.double_buffer_event_queue.read_queue;
@@ -448,8 +440,6 @@ JPH_CharacterVirtual * physics_sys_jolt_character_create(
     const f32 radius,
     const JPH_ObjectLayer layer)
 {
-    (void)self;
-
     JPH_CapsuleShape *shape = JPH_CapsuleShape_Create(half_height, radius);
 
     JPH_CharacterVirtualSettings settings = {0};
