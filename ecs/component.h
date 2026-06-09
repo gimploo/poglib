@@ -9,7 +9,6 @@
 #include "poglib/basic/ds/slot.h"
 #include "poglib/basic/util.h"
 #include "poglib/ecs/component/colliderbatchqueue.h"
-#include "poglib/external/cglm/quat.h"
 
 
 ecs_componentmanager_t          ecs_componentmanager(arena_t *arena);
@@ -22,6 +21,8 @@ void                            ecs_componentmanager_patch_entity_components(ecs
 
 
 #ifndef IGNORE_ECS_COMPONENT_IMPLEMENTATION
+
+void ecs_componentmanager__internal_cmp_cleanup(const ecs_component_type type, const ecs_component_poolentry_t *poolentry);
 
 u16 ecs_component__internal_get_componenttype_size(const ecs_component_type type)
 {
@@ -217,9 +218,7 @@ void ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 
     const u32 cmp_idx           = get_index_from_bitflag(type);
     slot_t *const componentpool = slot_get_value(&self->componentpool_slots, cmp_idx);
 
-    if (!hashtable_has_key(&self->entity2components_lookup, (hashtable_key_t){ .u32 = entity_id })) {
-        return;
-    }
+    if (!hashtable_has_key(&self->entity2components_lookup, (hashtable_key_t){ .u32 = entity_id })) return;
 
     i16 *cmp_idx_buffer = (i16 *)hashtable_get_value(
         &self->entity2components_lookup, 
@@ -229,7 +228,9 @@ void ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 
     const u16 index_of_cmp_to_remove                = cmp_idx_buffer[cmp_idx];
     const bool is_last_element                      = index_of_cmp_to_remove == (componentpool->len - 1);
     cmp_idx_buffer[cmp_idx]                         = ECS_CMP_INVALID_IDX;
+    ecs_component_poolentry_t *entry                = slot_get_value(componentpool, index_of_cmp_to_remove);
 
+    ecs_componentmanager__internal_cmp_cleanup(entry, type);
     slot_delete(componentpool, index_of_cmp_to_remove);
 
     if (is_last_element) {
@@ -238,14 +239,14 @@ void ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 
 
     //NOTE: swaps last item to deleted item's index
 
-    const u32 last_element_data_idx         = componentpool->len - 1;
-    void *last_element_data                 = slot_get_value(componentpool, last_element_data_idx);
-    const u32 moved_entity_id               = ecs_componentmanager__internal_get_entity_id_from_pooldata(last_element_data);
-    i16 *const cmp_buf                      = hashtable_get_value(&self->entity2components_lookup, (hashtable_key_t){ .u32 = moved_entity_id });
-    cmp_buf[get_index_from_bitflag(type)]   = index_of_cmp_to_remove;
+    const u32 last_element_data_idx                 = componentpool->len - 1;
+    ecs_component_poolentry_t *last_element_data    = slot_get_value(componentpool, last_element_data_idx);
+    const u32 moved_entity_id                       = ecs_componentmanager__internal_get_entity_id_from_pooldata(last_element_data);
+    i16 *const cmp_buf                              = hashtable_get_value(&self->entity2components_lookup, (hashtable_key_t){ .u32 = moved_entity_id });
+    cmp_buf[get_index_from_bitflag(type)]           = index_of_cmp_to_remove;
     hashtable_insert(&self->entity2components_lookup, (hashtable_key_t){ .u32 = moved_entity_id }, cmp_buf);
 
-    const u32 full_allocation_size          = ECS_CMP_POOL_HEADER_SIZE + ecs_component__internal_get_componenttype_size(type);
+    const u32 full_allocation_size = ECS_CMP_POOL_HEADER_SIZE + ecs_component__internal_get_componenttype_size(type);
     slot_insert(componentpool, index_of_cmp_to_remove, last_element_data, full_allocation_size);
     slot_delete(componentpool, last_element_data_idx);
 }
@@ -317,6 +318,18 @@ ecs_entity_query_t ecs_componentmanager__internal_query_components(const ecs_com
     return result;
 }
 
+void ecs_componentmanager__internal_update_cmpdata(const ecs_cmp_patch_payload_t request, const ecs_component_type cmp_type, const ecs_component_poolentry_t *entry)
+{
+    switch(cmp_type)
+    {
+        case ECS_CMP_COLLIDER: {
+            const ecs_component_collider_t *const collider = (ecs_component_collider_t *)entry->entity_cmpdata;
+            if (!request.is_active)     JPH_BodyInterface_RemoveBody(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id);
+            else                        JPH_BodyInterface_AddBody(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, JPH_Activation_Activate);
+        } break;
+    }
+}
+
 void ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request)
 {
     ASSERT(self);
@@ -346,12 +359,26 @@ void ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const 
             break;
             default: eprint("invalid patch request type");
         }
+
+        ecs_componentmanager__internal_update_cmpdata(request, 1 << cmp_idx, entry);
     }
 }
 
 void ecs_componentmanager_update(ecs_componentmanager_t *const self)
 {
     colliderbatchqueue_upload_to_jolt(&self->internal.colliderbatch);
+}
+
+void ecs_componentmanager__internal_cmp_cleanup(const ecs_component_type type, const ecs_component_poolentry_t *poolentry)
+{
+    switch(type)
+    {
+        case ECS_CMP_COLLIDER: {
+            const ecs_component_collider_t *collider = (ecs_component_collider_t *)poolentry->entity_cmpdata;
+            if (collider->internal.body_id)                 JPH_BodyInterface_RemoveAndDestroyBody(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id);
+            else if (collider->internal.kinematic_body)     JPH_CharacterBase_Destroy((JPH_CharacterBase *)collider->internal.kinematic_body);
+        } break;
+    }
 }
 
 #endif

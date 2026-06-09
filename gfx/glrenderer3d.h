@@ -314,7 +314,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                 .usage = GL_STATIC_DRAW,
                 .chunks = {
                     [VBO_STREAM_TYPE_GEOMETRY] = {
-                        .vertex_count = config.calls.call[call_idx].idx.nmemb, 
+                        .index_count = config.calls.call[call_idx].idx.nmemb, 
                         .buffer = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_GEOMETRY]
                     },
                     [VBO_STREAM_TYPE_INSTANCE] = enable_instancing ? (vbo_stream_t){ 
@@ -343,7 +343,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                 .usage = GL_STATIC_DRAW,
                 .chunks = {
                     [VBO_STREAM_TYPE_GEOMETRY] = {
-                        .vertex_count = total_geometry_count, 
+                        .index_count = total_geometry_count, 
                         .buffer = config.calls.call[call_idx].vtx[VBO_STREAM_TYPE_GEOMETRY]
                     },
                     [VBO_STREAM_TYPE_INSTANCE] = enable_instancing ? (vbo_stream_t){ 
