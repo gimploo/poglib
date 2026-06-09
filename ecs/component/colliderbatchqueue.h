@@ -11,7 +11,7 @@ typedef struct {
 
 
 colliderbatchqueue_t        colliderbatchqueue(arena_t *const arena);
-void                        colliderbatchqueue_add(colliderbatchqueue_t *const self, const ecs_component_collider_t *collider);
+void                        colliderbatchqueue_add(colliderbatchqueue_t *const self, const ecs_component_collider_t *const collider);
 void                        colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self);
 
 
@@ -26,7 +26,7 @@ colliderbatchqueue_t colliderbatchqueue(arena_t *const arena)
 }
 
 
-void colliderbatchqueue_add(colliderbatchqueue_t *const self, const ecs_component_collider_t *collider)
+void colliderbatchqueue_add(colliderbatchqueue_t *const self, const ecs_component_collider_t *const collider)
 {
     ASSERT(self);
     queue_put(&self->queue, collider);
