@@ -1,6 +1,7 @@
 #pragma once
 #include <poglib/physics/jolt-wrapper.h>
 #include "./types.h"
+#include "poglib/external/joltc/include/joltc.h"
 
 typedef struct {
 
@@ -31,7 +32,6 @@ void colliderbatchqueue_add(colliderbatchqueue_t *const self, const ecs_componen
     queue_put(&self->queue, collider);
 }
 
-
 i32 colliderbatchqueue__internal_qsort_compare(const void *const x, const void *const y)
 {
     const ecs_component_collider_t *c1 = *(ecs_component_collider_t **)x;
@@ -54,7 +54,6 @@ i32 colliderbatchqueue__internal_qsort_compare(const void *const x, const void *
     return memcmp(&c1->dim, &c2->dim, sizeof(collider_shape_dimension_t));
 }
 
-
 void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
 {
     if (!self->queue.len) return;
@@ -76,6 +75,11 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
         const bool diff_shape_type = prev_shape_type != collider->shape_type;
         const bool diff_shape_dim = memcmp(&prev_shape_dimension, &collider->dim, sizeof(collider_shape_dimension_t)) != 0;
         const bool diff_motion_type = prev_motion_type != collider->motion_type;
+
+        //NOTE: we club all static motion types together before moving on to other motion types, using that behavior we can
+        //know when to optimize the broadphase i.e. after all static types are completely done
+        bool optimize_broadphase = (diff_motion_type && prev_motion_type == JPH_MotionType_Static) 
+            || (!self->queue.len && prev_motion_type == JPH_MotionType_Static);
 
         if (diff_shape_type) {
 
@@ -126,6 +130,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     JPH_CharacterVirtualSettings_Init(&settings);
                     settings.base.shape = shape;
                 break;
+                default: eprint("Unknown motion type");
             }
         }
 
@@ -155,6 +160,10 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
         prev_shape_type         = collider->shape_type;
         prev_shape_dimension    = collider->dim;
         prev_motion_type        = collider->motion_type;
+
+        if (optimize_broadphase) {
+            JPH_PhysicsSystem_OptimizeBroadPhase(global_physics_sys_jolt_instance->physics_system);
+        }
     }
 
     if (body_settings)  JPH_BodyCreationSettings_Destroy(body_settings);

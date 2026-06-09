@@ -201,7 +201,7 @@ void assetmanager__internal_upload_model_to_gpu(
                         .raw_data = cpu_mesh->vtx.data,
                         .size = slot_get_size(&cpu_mesh->vtx),
                     }, 
-                    .vertex_count = cpu_mesh->idx.len
+                    .index_count = cpu_mesh->idx.len
                 },
                 [VBO_STREAM_TYPE_INSTANCE] = {0},
             }
@@ -282,7 +282,7 @@ void assetmanager__internal_upload_cube_to_gpu(assetmanager_t * const self)
                     .raw_data = (u8 *)DEFAULT_CUBE_VERTICES_WITH_NORMALS_AND_UVS_24,
                     .size = sizeof(DEFAULT_CUBE_VERTICES_WITH_NORMALS_AND_UVS_24),
                 }, 
-                .vertex_count = ARRAY_LEN(DEFAULT_CUBE_INDICES_24)
+                .index_count = ARRAY_LEN(DEFAULT_CUBE_INDICES_24)
             },
             [VBO_STREAM_TYPE_INSTANCE] = {0},
         }
@@ -371,7 +371,7 @@ void assetmanager__internal_upload_capsule_to_gpu(assetmanager_t * const self)
                     .raw_data = (u8 *)DEFAULT_CAPSULE_VERTICES_WITH_NORMALS,
                     .size = sizeof(DEFAULT_CAPSULE_VERTICES_WITH_NORMALS),
                 }, 
-                .vertex_count = ARRAY_LEN(DEFAULT_CAPSULE_INDICES)
+                .index_count = ARRAY_LEN(DEFAULT_CAPSULE_INDICES)
             },
             [VBO_STREAM_TYPE_INSTANCE] = {0},
         }
@@ -463,7 +463,7 @@ void assetmanager__internal_upload_camera_model(assetmanager_t * const self)
                     .raw_data = (u8 *)CAMERA_VERTICES,
                     .size = sizeof(CAMERA_INDICES),
                 }, 
-                .vertex_count = ARRAY_LEN(CAMERA_INDICES)
+                .index_count = ARRAY_LEN(CAMERA_INDICES)
             },
             [VBO_STREAM_TYPE_INSTANCE] = {0},
         }

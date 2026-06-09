@@ -13,7 +13,7 @@ typedef struct {
 
 typedef struct {
     union {
-        u32  vertex_count;
+        u32  index_count;
         u32  instance_count;
     };
     buffer_t    buffer;
@@ -96,7 +96,7 @@ vbo_t vbo_static_init(
         .usage = GL_STATIC_DRAW,
         .chunks = {
             [VBO_STREAM_TYPE_GEOMETRY] = {
-                .vertex_count = vertex_count,
+                .index_count = vertex_count,
                 .buffer = {
                     .raw_data = (u8 *)vertices,
                     .size = vsize,
@@ -252,7 +252,7 @@ void vao_draw_with_vbo_in_mode_instanced(const vao_t *vao, const vbo_t *vbo, u64
 {
     if (vao == NULL) eprint("vao_draw: vao argument is null");
 
-    const u32 vtx_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].vertex_count;
+    const u32 vtx_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].index_count;
     const u32 instance_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].instance_count;
 
     if (!vtx_count) eprint("vao_draw: vbo`s vertex_count is %lu", vtx_count);
@@ -261,8 +261,8 @@ void vao_draw_with_vbo_in_mode_instanced(const vao_t *vao, const vbo_t *vbo, u64
     GL_CHECK(glDrawArraysInstanced(
                 gldraw_mode, 
                 0, 
-                vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].vertex_count,
-                vbo->internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].vertex_count));
+                vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].index_count,
+                vbo->internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].index_count));
 
     GL_CHECK(glBindVertexArray(0));
 }
@@ -271,7 +271,7 @@ void __impl_vao_draw_with_vbo(const vao_t *vao, const vbo_t *vbo, u64 gldraw_mod
 {
     if (vao == NULL) eprint("vao_draw: vao argument is null");
 
-    const u32 vtx_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].vertex_count;
+    const u32 vtx_count = vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].index_count;
 
     if (!vtx_count) eprint("vao_draw: vbo`s vertex_count is %lu", vtx_count);
 
