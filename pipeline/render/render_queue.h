@@ -172,8 +172,8 @@ i32 renderqueue__internal_qsort_compare(const void *x, const void *y)
         ? 0
         : cmd_b->material.shader.data->id;
 
-    if (shaderid_a < shaderid_b) return -1;
-    if (shaderid_a > shaderid_b) return 1;
+    if (shaderid_a < shaderid_b) return 1;
+    if (shaderid_a > shaderid_b) return -1;
     return 0;
 }
 

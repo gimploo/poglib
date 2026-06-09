@@ -20,7 +20,7 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
 
         if (!entry->is_active) continue;
 
-        const ecs_entity_view_t view                = ecs_componentmanager__internal_query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM);
+        const ecs_entity_query_t view                = ecs_componentmanager__internal_query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM);
         const ecs_component_transform_t *transform  = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
 
         input_cmp->internal.state = (ecs_component_input_state_t){
@@ -35,6 +35,8 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
             case ECS_CMP_INPUT_DIRECTION_SOURCE_CAMERA:
                 input_cmp->internal.state.front     = ctx.active_camera->direction.front;
                 input_cmp->internal.state.right     = ctx.active_camera->direction.right;
+                //glms_vec3_print(input_cmp->internal.state.current_position, stdout);
+                //glms_versor_print(input_cmp->internal.state.current_orientation, stdout);
             break;
             case ECS_CMP_INPUT_DIRECTION_SOURCE_ENTITY: {
                 vec3f_t front = glms_quat_rotatev(transform->orientation, (vec3f_t){0, 0, -1});

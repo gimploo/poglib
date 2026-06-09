@@ -1,4 +1,5 @@
 #pragma once
+#include "poglib/ecs/component/colliderbatchqueue.h"
 #include "poglib/util/glcamera.h"
 #include <poglib/basic.h>
 #include <poglib/ecs/component/types.h>
@@ -20,9 +21,9 @@ struct ecs_entitymanager_t {
 
 typedef struct ecs_componentmanager_t ecs_componentmanager_t;
 typedef struct ecs_component_entry_t ecs_component_entry_t;
-typedef struct ecs_entity_view_t ecs_entity_view_t;
+typedef struct ecs_entity_query_t ecs_entity_query_t;
 
-struct ecs_entity_view_t {
+struct ecs_entity_query_t {
     void *entity_cmp_data[ECS_CMP_COUNT];
 };
 
@@ -34,6 +35,9 @@ struct ecs_componentmanager_t {
 
     hashtable_t entity2components_lookup;                   //NOTE: tracks each index of an entity's component in the component 
                                                             //pool together packed into an array of `ECS_CMP_COUNT` size
+    struct {
+        colliderbatchqueue_t colliderbatch;
+    } internal;
 };
 
 struct ecs_component_entry_t {

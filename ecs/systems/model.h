@@ -46,7 +46,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
         }
 
         const u32 entity_id = entry->entity_id;
-        const ecs_entity_view_t view = ecs_componentmanager__internal_query_components(
+        const ecs_entity_query_t view = ecs_componentmanager__internal_query_components(
                 cmp_manager, 
                 entity_id, 
                 ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM);

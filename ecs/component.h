@@ -8,14 +8,17 @@
 #include "poglib/basic/ds/hashtable.h"
 #include "poglib/basic/ds/slot.h"
 #include "poglib/basic/util.h"
+#include "poglib/ecs/component/colliderbatchqueue.h"
+#include "poglib/external/cglm/quat.h"
 
 
-ecs_componentmanager_t  ecs_componentmanager(arena_t *arena);
-void                    ecs_componentmanager_add(ecs_componentmanager_t * const self, const u32 entityId, const ecs_componentbundle_t component_config);
-void                    ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 entity_id, const ecs_component_type type);
-void                    ecs_componentmanager_removeall(ecs_componentmanager_t * const self, const u32 entity_id);
-ecs_component_entry_t   ecs_componentmanager_get_component(const ecs_componentmanager_t * const self, const u32 entity_id, const ecs_component_type cmp_type);
-void                    ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
+ecs_componentmanager_t          ecs_componentmanager(arena_t *arena);
+void                            ecs_componentmanager_update(ecs_componentmanager_t * const self);
+void                            ecs_componentmanager_add(ecs_componentmanager_t * const self, const u32 entityId, const ecs_componentbundle_t component_config);
+void                            ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 entity_id, const ecs_component_type type);
+void                            ecs_componentmanager_removeall(ecs_componentmanager_t * const self, const u32 entity_id);
+ecs_component_entry_t           ecs_componentmanager_get_component(const ecs_componentmanager_t * const self, const u32 entity_id, const ecs_component_type cmp_type);
+void                            ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
 
 
 #ifndef IGNORE_ECS_COMPONENT_IMPLEMENTATION
@@ -29,8 +32,7 @@ u16 ecs_component__internal_get_componenttype_size(const ecs_component_type type
         case ECS_CMP_INPUT:             return sizeof(ecs_component_input_t);
         case ECS_CMP_MATERIAL:          return sizeof(ecs_component_material_t);
         case ECS_CMP_CAMERA:            return sizeof(ecs_component_camera_t);
-        case ECS_CMP_CHARACTER:         return sizeof(ecs_component_character_t);
-        case ECS_CMP_STATIC_COLLIDER:   return sizeof(ecs_component_static_collider_t);
+        case ECS_CMP_COLLIDER:          return sizeof(ecs_component_collider_t);
         default: eprint("missing component type - not implemented");
     }
 }
@@ -57,6 +59,9 @@ ecs_componentmanager_t ecs_componentmanager(arena_t *arena)
             },
             arena
         ),
+        .internal = {
+            .colliderbatch = colliderbatchqueue(arena)
+        }
     };
 
     slot_fill_empty(&o.componentpool_slots);
@@ -89,7 +94,57 @@ u32 ecs_componentmanager__internal_get_component_count(u32 signature) {
 }
 
 
-void ecs_componentmanager_add(ecs_componentmanager_t * const self, const u32 entity_id, const ecs_componentbundle_t config)
+void ecs_component__internal_bundle_validate_and_initalize_internals(ecs_componentbundle_t *const config)
+{
+    i32 idx = ECS_CMP_INVALID_IDX;
+    while(true)
+    {
+        if (++idx == ECS_CMP_COUNT)
+            break;
+
+        const ecs_component_type cmp_type = 1 << idx;
+        if (!(config->signature & cmp_type))
+            continue;
+
+        switch(cmp_type)
+        {
+            case ECS_CMP_TRANSFORM: {
+                if (config->component[ECS_CMP_TRANSFORM_IDX].transform.orientation.w == 0) {
+                    config->component[ECS_CMP_TRANSFORM_IDX].transform.orientation = GLM_QUAT_IDENTITY;
+                }
+                if (config->component[ECS_CMP_TRANSFORM_IDX].transform.source == ECS_CMP_TRANSFORM_SOURCE_PHYSICS) {
+                    ASSERT(config->signature & ECS_CMP_COLLIDER);
+                }
+            } break;
+            case ECS_CMP_COLLIDER: {
+                ASSERT(config->signature & (ECS_CMP_TRANSFORM));
+                const ecs_component_transform_t t = config->component[ECS_CMP_TRANSFORM_IDX].transform;
+                config->component[ECS_CMP_COLLIDER_IDX].collider.internal.orientation = t.orientation;
+                config->component[ECS_CMP_COLLIDER_IDX].collider.internal.position = t.position;
+            } break;
+
+            case ECS_CMP_MODEL: 
+                ASSERT(config->signature & (ECS_CMP_TRANSFORM));
+                ASSERT(config->signature & (ECS_CMP_MATERIAL));
+            break;
+            case ECS_CMP_INPUT:
+                ASSERT(config->signature & (ECS_CMP_TRANSFORM));
+                if (config->component[ECS_CMP_CAMERA_IDX].camera.mode == ECS_CMP_CAMERA_MODE_ORBIT_FOLLOW) {
+                    ASSERT(config->signature & (ECS_CMP_CAMERA));
+                }
+            break;
+            case ECS_CMP_MATERIAL:
+                ASSERT(config->signature & (ECS_CMP_TRANSFORM));
+            break;
+            case ECS_CMP_CAMERA :
+                ASSERT(config->signature & (ECS_CMP_TRANSFORM));
+            break;
+        }
+    }
+}
+
+
+void ecs_componentmanager_add(ecs_componentmanager_t * const self, const u32 entity_id, ecs_componentbundle_t config)
 {
     const u32 cmp_count = ecs_componentmanager__internal_get_component_count(config.signature);
     ASSERT(cmp_count > 0);
@@ -103,6 +158,9 @@ void ecs_componentmanager_add(ecs_componentmanager_t * const self, const u32 ent
     else                ARRAY_FILL(cmp_idx_buffer, ECS_CMP_INVALID_IDX);
 
     i16 cmp_idx_count = ECS_CMP_INVALID_IDX;
+
+    ecs_component__internal_bundle_validate_and_initalize_internals(&config);
+
     while(true)
     {
         if (++cmp_idx_count == ECS_CMP_COUNT)
@@ -126,7 +184,14 @@ void ecs_componentmanager_add(ecs_componentmanager_t * const self, const u32 ent
         //NOTE: sets compnent data
         memcpy(buf.raw_data + ECS_CMP_POOL_HEADER_SIZE , &config.component[cmp_idx_count], cmp_size);
 
-        slot_insert(pool, pool->len, buf.raw_data, ECS_CMP_POOL_HEADER_SIZE + cmp_size);
+        ecs_component_poolentry_t *const entry = slot_insert(pool, pool->len, buf.raw_data, ECS_CMP_POOL_HEADER_SIZE + cmp_size);
+
+        switch(cmp_type)
+        {
+            case ECS_CMP_COLLIDER:
+                colliderbatchqueue_add(&self->internal.colliderbatch, (ecs_component_collider_t *)entry->entity_cmpdata);
+            break;
+        }
     }
 
     hashtable_insert(
@@ -224,13 +289,13 @@ ecs_component_entry_t ecs_componentmanager_get_component(const ecs_componentmana
 
 }
 
-ecs_entity_view_t ecs_componentmanager__internal_query_components(const ecs_componentmanager_t * const self, const u32 entity_id, const u32 component_signature)
+ecs_entity_query_t ecs_componentmanager__internal_query_components(const ecs_componentmanager_t * const self, const u32 entity_id, const u32 component_signature)
 {
     ASSERT(self);
     ASSERT(entity_id >= 0);
     ASSERT(component_signature > 0);
 
-    ecs_entity_view_t result = {0};
+    ecs_entity_query_t result = {0};
 
     const i16 *const cmp_idx_buffer = hashtable_get_value(&self->entity2components_lookup, (hashtable_key_t){ .u32 = entity_id });
 
@@ -284,6 +349,10 @@ void ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const 
     }
 }
 
+void ecs_componentmanager_update(ecs_componentmanager_t *const self)
+{
+    colliderbatchqueue_upload_to_jolt(&self->internal.colliderbatch);
+}
 
 #endif
 
