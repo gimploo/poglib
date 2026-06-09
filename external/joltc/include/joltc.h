@@ -160,6 +160,7 @@ typedef enum JPH_BodyType {
 } JPH_BodyType;
 
 typedef enum JPH_MotionType {
+	JPH_MotionType_None = -1,
 	JPH_MotionType_Static = 0,
 	JPH_MotionType_Kinematic = 1,
 	JPH_MotionType_Dynamic = 2,

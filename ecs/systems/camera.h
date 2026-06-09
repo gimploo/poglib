@@ -8,7 +8,7 @@
 void ecs_system_camera__internal_update_follow_camera(
     ecs_componentmanager_t *const cmp_manager,
     ecs_component_camera_t *const camera,
-    ecs_entity_view_t camera_view
+    ecs_entity_query_t camera_view
 ) {
     ecs_component_transform_t *const cam_tf = camera_view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
     const ecs_component_entry_t player      = ecs_componentmanager_get_component(cmp_manager, camera->follow.track_entity_id, ECS_CMP_TRANSFORM);

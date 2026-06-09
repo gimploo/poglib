@@ -1,0 +1,57 @@
+#pragma once
+#include "../common.h"
+#include "../component/types.h"
+#include "poglib/application.h"
+#include "poglib/external/joltc/include/joltc.h"
+#include "poglib/physics/jolt-wrapper.h"
+#include "../component.h"
+
+void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
+{
+    (void)ctx;
+    slot_t *pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_COLLIDER_IDX);
+    slot_iterator(pool, iter)
+    {
+        ecs_component_poolentry_t *entry = iter;
+        if (!entry->is_active) continue;
+
+        ecs_component_collider_t *const collider    = (ecs_component_collider_t *)entry->entity_cmpdata;
+        ecs_entity_query_t query                    = ecs_componentmanager__internal_query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM);
+        ecs_component_transform_t *transform        = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+
+        switch(collider->motion_type)
+        {
+            case JPH_MotionType_Kinematic:
+                ASSERT(collider->internal.kinematic_body);
+                JPH_CharacterVirtual_SetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->position);
+                JPH_CharacterVirtual_SetRotation(collider->internal.kinematic_body, (JPH_Quat *)&transform->orientation);
+                JPH_CharacterVirtual_Update(
+                    collider->internal.kinematic_body, 
+                    APPLICATION_UPDATE_FIXED_TIME_STEP, 
+                    collider->object_layer_type,
+                    global_physics_sys_jolt_instance->physics_system,
+                    NULL,
+                    NULL
+                );
+                JPH_CharacterVirtual_GetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&collider->internal.position);
+                JPH_CharacterVirtual_GetRotation(collider->internal.kinematic_body, (JPH_Quat *)&collider->internal.orientation);
+
+                //TODO: we may need to pull this out to somewhere else if a fine grain control is required to interpolate collided 
+                //position to transform position
+                transform->position     = collider->internal.position;
+                transform->orientation  = collider->internal.orientation;
+            break;
+
+            case JPH_MotionType_Dynamic:
+                ASSERT(collider->internal.body_id);
+                JPH_BodyInterface_GetPositionAndRotation(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Vec3 *)&collider->internal.position, (JPH_Quat *)&collider->internal.orientation);
+                transform->position     = collider->internal.position;
+                transform->orientation  = collider->internal.orientation;
+            break;
+
+            case JPH_MotionType_Static: 
+            break;
+            default: eprint("motion type not accounted for");
+        }
+    }
+}

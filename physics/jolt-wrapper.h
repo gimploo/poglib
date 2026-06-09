@@ -68,47 +68,20 @@ typedef struct {
 } physics_sys_jolt_rules_config_t;
 
 
-physics_sys_jolt_t *    physics_sys_jolt_init(arena_t * const arena);
-void                    physics_sys_jolt_set_interaction_rules(
-                            physics_sys_jolt_t * const self, 
-                            const physics_sys_jolt_rules_config_t config
-                        );
-void                    physics_sys_jolt_start_simulation(physics_sys_jolt_t *self);
+physics_sys_jolt_t *                physics_sys_jolt_init(arena_t * const arena);
+void                                physics_sys_jolt_set_interaction_rules(
+                                        physics_sys_jolt_t * const self, 
+                                        const physics_sys_jolt_rules_config_t config
+                                    );
+void                                physics_sys_jolt_start_simulation(physics_sys_jolt_t *self);
 
-u32                     physics_sys_jolt_create_box(
-                            physics_sys_jolt_t *self, 
-                            const vec3f_t position, 
-                            const vec3f_t half_extents, 
-                            const JPH_MotionType motion_type, 
-                            const JPH_ObjectLayer layer,
-                            const JPH_Activation isActivationMode );
+void                                physics_sys_jolt_update(physics_sys_jolt_t *self, const f32 dt);
+physics_sys_jolt_event_queue_t *    physics_sys_get_collision_event_queue(const physics_sys_jolt_t * const self);
 
-u32                     physics_sys_jolt_create_capsule(
-                            physics_sys_jolt_t *self, 
-                            const vec3f_t position, 
-                            const f32 halfHeightOfCylinder,
-                            const f32 radius,
-                            const JPH_MotionType motion_type, 
-                            const JPH_ObjectLayer layer,
-                            const JPH_Activation isActivationMode);
+void                                physics_sys_jolt_destroy(physics_sys_jolt_t *self);
 
-JPH_CharacterVirtual *  physics_sys_jolt_character_create(
-                            physics_sys_jolt_t *self,
-                            JPH_PhysicsSystem *system,
-                            const vec3f_t position,
-                            const f32 half_height,
-                            const f32 radius,
-                            const JPH_ObjectLayer layer);
-
-
-
-physics_sys_jolt_event_queue_t * physics_sys_get_collision_event_queue(const physics_sys_jolt_t * const self);
-
-
-void                    physics_sys_jolt_update(physics_sys_jolt_t *self, const f32 dt);
-void                    physics_sys_jolt_destroy(physics_sys_jolt_t *self);
-void                    physics_sys_jolt_character_destroy(JPH_CharacterVirtual *character);
-void                    physics_sys_jolt_destroy_body(JPH_BodyID body_id);
+void                                physics_sys_jolt_character_destroy(JPH_CharacterVirtual *character);
+void                                physics_sys_jolt_body_destroy(JPH_BodyID body_id);
 
 
 #ifndef IGNORE_JOLT_WRAPPER_IMPLEMENTATION
@@ -327,94 +300,6 @@ void physics_sys_jolt_start_simulation(physics_sys_jolt_t *self)
     );
 }
 
-// Example function to add to your wrapper
-u32 physics_sys_jolt_create_box(
-    physics_sys_jolt_t *self, 
-    const vec3f_t position, 
-    //NOTE: he distance from the center of a 3D box, shape, or collider 
-    //to its outer edges or boundaries, representing half the total size in each dimension
-    const vec3f_t half_extents, 
-    const JPH_MotionType motion_type, 
-    const JPH_ObjectLayer layer,
-    //NOTE: 
-    //inActivationMode: Determines the initial state of the body:
-    //* JPH_Activation_Activate:        The body starts "awake" and is simulated immediately.
-    //* JPH_Activation_DontActivate:    The body starts "asleep" and won't move until something hits it or you manually wake it up.
-    const JPH_Activation isActivationMode 
-) {
-    // 1. Create the Shape directly
-    // JPH_DEFAULT_CONVEX_RADIUS is defined as 0.05f in your header
-    JPH_BoxShape* box_shape = JPH_BoxShape_Create(
-            (JPH_Vec3*)&half_extents, 
-            JPH_DEFAULT_CONVEX_RADIUS);
-
-    // 2. Setup Body Creation Settings
-    // Note: We use Create3 because it takes a JPH_Shape* directly
-    JPH_BodyCreationSettings* body_settings = JPH_BodyCreationSettings_Create3(
-        (JPH_Shape*)box_shape, 
-        (JPH_Vec3*)&position, 
-        &(JPH_Quat){ 0, 0, 0, 1 }, 
-        motion_type, 
-        layer
-    );
-
-    // 3. Add to system
-    JPH_BodyID body_id = JPH_BodyInterface_CreateAndAddBody(
-        self->bodyinterface, 
-        body_settings, 
-        isActivationMode
-    );
-
-    // 4. Cleanup temporary settings
-    // The Body now has a reference to the shape, so we can destroy our local handles
-    JPH_BodyCreationSettings_Destroy(body_settings);
-    JPH_Shape_Destroy((JPH_Shape*)box_shape); 
-
-    return body_id;
-}
-
-// Example function to add to your wrapper
-u32 physics_sys_jolt_create_capsule(
-    physics_sys_jolt_t *self, 
-    const vec3f_t position, 
-    const f32 halfHeightOfCylinder,
-    const f32 radius, //INFO: not the convex radius!
-    const JPH_MotionType motion_type, 
-    const JPH_ObjectLayer layer,
-    const JPH_Activation isActivationMode 
-) {
-
-    // 1. Create the Shape directly
-    // JPH_DEFAULT_CONVEX_RADIUS is defined as 0.05f in your header
-    JPH_CapsuleShape* capsule_shape = JPH_CapsuleShape_Create(
-            halfHeightOfCylinder,
-            radius);
-
-    // 2. Setup Body Creation Settings
-    // Note: We use Create3 because it takes a JPH_Shape* directly
-    JPH_BodyCreationSettings* body_settings = JPH_BodyCreationSettings_Create3(
-        (JPH_Shape*)capsule_shape, 
-        (JPH_Vec3*)&position, 
-        &(JPH_Quat){ 0, 0, 0, 1 }, 
-        motion_type, 
-        layer
-    );
-
-    // 3. Add to system
-    JPH_BodyID body_id = JPH_BodyInterface_CreateAndAddBody(
-        self->bodyinterface, 
-        body_settings, 
-        isActivationMode
-    );
-
-    // 4. Cleanup temporary settings
-    // The Body now has a reference to the shape, so we can destroy our local handles
-    JPH_BodyCreationSettings_Destroy(body_settings);
-    JPH_Shape_Destroy((JPH_Shape*)capsule_shape); 
-
-    return body_id;
-}
-
 void physics_sys_jolt_update(physics_sys_jolt_t *self, const f32 dt) {
 
     JPH_PhysicsSystem_Update(self->physics_system, dt, 1, self->jobsystem);
@@ -432,57 +317,12 @@ physics_sys_jolt_event_queue_t * physics_sys_get_collision_event_queue(const phy
     return self->internal.double_buffer_event_queue.read_queue;
 }
 
-JPH_CharacterVirtual * physics_sys_jolt_character_create(
-    physics_sys_jolt_t *self,
-    JPH_PhysicsSystem *system,
-    const vec3f_t position,
-    const f32 half_height,
-    const f32 radius,
-    const JPH_ObjectLayer layer)
-{
-    JPH_CapsuleShape *shape = JPH_CapsuleShape_Create(half_height, radius);
-
-    JPH_CharacterVirtualSettings settings = {0};
-    JPH_CharacterVirtualSettings_Init(&settings);
-    settings.base.shape = (JPH_Shape *)shape;
-    settings.base.up = (JPH_Vec3){0, 1, 0};
-    settings.base.maxSlopeAngle = radians(45.0f);
-    settings.base.enhancedInternalEdgeRemoval = true;
-    settings.base.supportingVolume = (JPH_Plane){{0, 1, 0}, -0.1f};
-    settings.mass = 80.0f;
-    settings.maxStrength = 100.0f;
-    settings.shapeOffset = (JPH_Vec3){0, 0, 0};
-    settings.backFaceMode = JPH_BackFaceMode_IgnoreBackFaces;
-    settings.predictiveContactDistance = 0.1f;
-    settings.maxCollisionIterations = 5;
-    settings.maxConstraintIterations = 15;
-    settings.minTimeRemaining = 1.0e-4f;
-    settings.collisionTolerance = JPH_DEFAULT_COLLISION_TOLERANCE;
-    settings.characterPadding = 0.02f;
-    settings.maxNumHits = 256;
-    settings.hitReductionCosMaxAngle = 0.999f;
-    settings.penetrationRecoverySpeed = 1.0f;
-    settings.innerBodyShape = NULL;
-    settings.innerBodyLayer = layer;
-
-    JPH_CharacterVirtual *character = JPH_CharacterVirtual_Create(
-        &settings,
-        (JPH_RVec3 *)&position,
-        NULL,
-        0,
-        system);
-
-    JPH_Shape_Destroy((JPH_Shape *)shape);
-
-    return character;
-}
-
-void physics_sys_jolt_character_destroy(JPH_CharacterVirtual *character)
+void physics_sys_jolt_character_destroy(JPH_CharacterVirtual *const character)
 {
     JPH_CharacterBase_Destroy((JPH_CharacterBase *)character);
 }
 
-void physics_sys_jolt_destroy_body(JPH_BodyID body_id)
+void physics_sys_jolt_body_destroy(const JPH_BodyID body_id)
 {
     JPH_BodyInterface_RemoveAndDestroyBody(
         global_physics_sys_jolt_instance->bodyinterface,

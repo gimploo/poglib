@@ -1,4 +1,5 @@
 #pragma once
+#include "poglib/external/joltc/include/joltc.h"
 #include "poglib/input/commandqueue.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
@@ -14,8 +15,7 @@ typedef enum {
     ECS_CMP_INPUT_IDX           = 2,
     ECS_CMP_MATERIAL_IDX        = 3,
     ECS_CMP_CAMERA_IDX          = 4,
-    ECS_CMP_CHARACTER_IDX       = 5,
-    ECS_CMP_STATIC_COLLIDER_IDX = 6,
+    ECS_CMP_COLLIDER_IDX        = 5,
     ECS_CMP_COUNT
 
 } ecs_component_storage_index;
@@ -27,8 +27,7 @@ typedef enum {
     ECS_CMP_INPUT               = 1 << ECS_CMP_INPUT_IDX,
     ECS_CMP_MATERIAL            = 1 << ECS_CMP_MATERIAL_IDX,
     ECS_CMP_CAMERA              = 1 << ECS_CMP_CAMERA_IDX,
-    ECS_CMP_CHARACTER           = 1 << ECS_CMP_CHARACTER_IDX,
-    ECS_CMP_STATIC_COLLIDER     = 1 << ECS_CMP_STATIC_COLLIDER_IDX,
+    ECS_CMP_COLLIDER            = 1 << ECS_CMP_COLLIDER_IDX
 
 } ecs_component_type;
 
@@ -40,12 +39,10 @@ struct ecs_component_transform_t {
     vec3f_t position;
     versors orientation;
     vec3f_t scale;
-    // controls which system writes to this transform: NONE (externally set), MANUAL (from input), PHYSICS (from physics engine)
     enum {
         ECS_CMP_TRANSFORM_SOURCE_NONE,
-        ECS_CMP_TRANSFORM_SOURCE_MANUAL,
+        ECS_CMP_TRANSFORM_SOURCE_INPUT,
         ECS_CMP_TRANSFORM_SOURCE_PHYSICS,
-        ECS_CMP_TRANSFORM_SOURCE_ANIMATION,
     } source;
 };
 
@@ -66,7 +63,6 @@ struct ecs_component_input_state_t {
     vec3f_t     current_position;
     vec3f_t     front;
     vec3f_t     right;
-    vec3f_t     desired_velocity;    // set by input_behavior for movement systems to consume
 };
 
 struct ecs_component_input_t {
@@ -92,8 +88,8 @@ struct ecs_component_material_t {
 /* =========================== CAMERA ================================== */
 
 typedef enum ecs_component_camera_mode {
-    ECS_CMP_CAMERA_MODE_FREE_FLY    = 0,
-    ECS_CMP_CAMERA_MODE_ORBIT_FOLLOW      = 1,
+    ECS_CMP_CAMERA_MODE_FREE_FLY            = 0,
+    ECS_CMP_CAMERA_MODE_ORBIT_FOLLOW        = 1,
 } ecs_component_camera_mode;
 
 typedef struct ecs_component_camera_t {
@@ -106,55 +102,56 @@ typedef struct ecs_component_camera_t {
     } follow;
 } ecs_component_camera_t;
 
-/* =========================== COLLISION TYPES =============================== */
+/* =========================== COLLIDERS ================================== */
+
+typedef struct ecs_component_collider_t ecs_component_collider_t;
 
 typedef enum {
-    PHYS_COLLIDER_TYPE_CAPSULE = 1,
-    PHYS_COLLIDER_TYPE_SPHERE = 2,
-    PHYS_COLLIDER_TYPE_CUBE = 3,
-    PHYS_COLLIDER_TYPE_COUNT,
-} collider_type;
+    COLLIDER_SHAPE_TYPE_NONE    = 0,
+    COLLIDER_SHAPE_TYPE_CAPSULE = 1,
+    COLLIDER_SHAPE_TYPE_SPHERE  = 2,
+    COLLIDER_SHAPE_TYPE_CUBE    = 3,
+    COLLIDER_SHAPE_TYPE_COUNT,
+} collider_shape_type;
 
 typedef union {
-    vec3f_t dim;
     struct {
-        f32 height;
+        f32 half_width;
+        f32 half_height;
+        f32 half_depth;
+    } cube;
+    struct {
         f32 radius;
-    };
-} collider_dimension_t;
+    } sphere;
+    struct {
+        f32 half_height;
+        f32 radius;
+    } capsule;
+} collider_shape_dimension_t;
 
-/* =========================== COLLISION ================================== */
-
-typedef struct ecs_component_character_t ecs_component_character_t;
-struct ecs_component_character_t {
-    JPH_CharacterVirtual *character;           // Jolt character controller (NULL until lazy init)
-    u16 object_layer;                          // Jolt object layer for collision filtering
-    f32 half_height;                           // capsule half-height
-    f32 radius;                                // capsule radius
-    f32 stick_to_floor_distance;               // max step-down distance to stay on ground
-    f32 walk_stairs_step;                      // max step-up height for stairs
+struct ecs_component_collider_t {
+    collider_shape_type             shape_type;
+    JPH_MotionType                  motion_type;
+    JPH_ObjectLayer                 object_layer_type;
+    collider_shape_dimension_t      dim;
+    struct {
+        JPH_BodyID                  body_id;
+        JPH_CharacterVirtual        *kinematic_body;
+        vec3f_t                     position;
+        versors                     orientation;
+    } internal;
 };
-
-/* =========================== STATIC COLLIDER ============================= */
-
-typedef struct ecs_component_static_collider_t ecs_component_static_collider_t;
-struct ecs_component_static_collider_t {
-    JPH_BodyID body_id;                        // Jolt body ID (0 until lazy init in character-collision system)
-    collider_type type;                        // shape type (CUBE, CAPSULE, etc.)
-    JPH_ObjectLayer layer;                     // Jolt object layer for collision filtering
-    collider_dimension_t dimension;            // shape dimensions (union of vec3f_t dim or {height, radius})
-};
-
 
 /* =========================== MISC ==========================================*/
 
-typedef struct ecs_component_poolentry_t    ecs_component_poolentry_t;
-typedef struct ecs_componentbundle_t        ecs_componentbundle_t;
-typedef struct ecs_cmp_patch_payload_t      ecs_cmp_patch_payload_t;
+typedef struct ecs_component_poolentry_t    ecs_component_poolentry_t;  //NOTE: used to iterate over a component pool
+typedef struct ecs_componentbundle_t        ecs_componentbundle_t;      //NOTE: used to configure an entity during init
+typedef struct ecs_cmp_patch_payload_t      ecs_cmp_patch_payload_t;    //NOTE: used to patch an component held by an entity
 
 struct ecs_component_poolentry_t {
     u32 entity_id;
     bool is_active;
+    //NOTE: 11 bytes of empty space use for future usecases
     alignas(16) u8 entity_cmpdata[];
 };
 
@@ -162,24 +159,21 @@ struct ecs_component_poolentry_t {
 
 struct ecs_componentbundle_t {
 
-    //NOTE: this holds the bitmask of all compnents configured for the entity
-    u32 signature;
+    u32 signature; //NOTE: this holds the bitmask of all compnents configured for the entity
     struct {
         union {
-            ecs_component_transform_t   transform;
-            ecs_component_model_t       model;
-            ecs_component_input_t       input;
-            ecs_component_material_t    material;
-            ecs_component_camera_t          camera;
-            ecs_component_character_t       character;
-            ecs_component_static_collider_t static_collider;
+            ecs_component_transform_t transform;
+            ecs_component_model_t     model;
+            ecs_component_input_t     input;
+            ecs_component_material_t  material;
+            ecs_component_camera_t    camera;
+            ecs_component_collider_t  collider;
         };
     } component[ECS_CMP_COUNT];
 
 };
 
-struct ecs_cmp_patch_payload_t
-{
+struct ecs_cmp_patch_payload_t {
     enum {
         ECS_PATCH_CMP_ACTIVE_FIELD = 0,
     } patch_type;

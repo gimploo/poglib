@@ -11,7 +11,7 @@ ecs_t           ecs_init(void);
 u32                 ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config);
 void                ecs_entity_remove(ecs_t * const self, const u32 entityId);
 
-ecs_entity_view_t   ecs_entity_query_components(ecs_t *const self, const u32 entity_id, const u32 component_signature);
+ecs_entity_query_t   ecs_entity_query_components(ecs_t *const self, const u32 entity_id, const u32 component_signature);
 
 void                ecs_set_active_camera(ecs_t *const self, const u32 entity_id);
 glcamera_t *        ecs_get_active_camera(ecs_t *const self);
@@ -55,7 +55,7 @@ glcamera_t * ecs_get_active_camera(ecs_t *const self)
 
 void ecs_set_active_camera(ecs_t *const self, const u32 entity_id)
 {
-    const ecs_entity_view_t view = ecs_entity_query_components(self, entity_id, ECS_CMP_CAMERA);
+    const ecs_entity_query_t view = ecs_entity_query_components(self, entity_id, ECS_CMP_CAMERA);
     ecs_component_camera_t *const camera = view.entity_cmp_data[ECS_CMP_CAMERA_IDX];
     ASSERT(camera);
 
@@ -109,6 +109,8 @@ void ecs_update(ecs_t *const self)
 {
     ASSERT(self);
 
+    ecs_componentmanager_update(&self->managers.componentmanager);
+
     const ecs_systemmanager_t * const manager = &self->managers.systemmanager;
     for (u8 idx = 0; idx < ECS_SYSTEM_MAX_COUNT; idx++)
     {
@@ -125,7 +127,7 @@ void ecs_update(ecs_t *const self)
     }
 }
 
-ecs_entity_view_t ecs_entity_query_components(ecs_t *const self, const u32 entity_id, const u32 component_signature)
+ecs_entity_query_t ecs_entity_query_components(ecs_t *const self, const u32 entity_id, const u32 component_signature)
 {
     return ecs_componentmanager__internal_query_components(&self->managers.componentmanager, entity_id, component_signature);
 }

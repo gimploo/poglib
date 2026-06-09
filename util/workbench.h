@@ -125,7 +125,7 @@ void workbench__internal_ecs_create_world_camera(workbench_t *const self)
             .component = {
                 [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){
                     .orientation = GLMS_QUAT_IDENTITY_INIT,
-                    .source = ECS_CMP_TRANSFORM_SOURCE_MANUAL,
+                    .source = ECS_CMP_TRANSFORM_SOURCE_INPUT,
                 },
                 [ECS_CMP_CAMERA_IDX].camera = (ecs_component_camera_t){
                     .camera = glcamera_perspective((vec3f_t){2.0f, 4.f, -4.0f}, (vec2f_t){-0.32f, 1.59f}),
@@ -138,7 +138,7 @@ void workbench__internal_ecs_create_world_camera(workbench_t *const self)
         }
     );
 
-    const ecs_entity_view_t view = ecs_entity_query_components(
+    const ecs_entity_query_t view = ecs_entity_query_components(
         &global_poggen->systems.ecs, world_camera_entity_id, ECS_CMP_CAMERA);
     ASSERT(view.entity_cmp_data[ECS_CMP_CAMERA_IDX]);
     self->world_camera.handle = &((ecs_component_camera_t *)view.entity_cmp_data[ECS_CMP_CAMERA_IDX])->camera;
