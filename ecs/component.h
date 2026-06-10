@@ -230,7 +230,7 @@ void ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 
     cmp_idx_buffer[cmp_idx]                         = ECS_CMP_INVALID_IDX;
     ecs_component_poolentry_t *entry                = slot_get_value(componentpool, index_of_cmp_to_remove);
 
-    ecs_componentmanager__internal_cmp_cleanup(entry, type);
+    ecs_componentmanager__internal_cmp_cleanup(type, entry);
     slot_delete(componentpool, index_of_cmp_to_remove);
 
     if (is_last_element) {
