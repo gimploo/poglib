@@ -8,12 +8,17 @@
 #include <stdio.h>
 #include <string.h>
 
+typedef enum WORKBENCH_GUI_BUTTON_IDS {
+    WB_COLLIDER_TOGGLE = 1,
+} WORKBENCH_GUI_BUTTON_IDS;
+
+
 void    workbench_render_ui(gui_t *self);
 
 
 #ifndef IGNORE_WORKBENCH_GUI_RENDER
 
-void workbench_compose_ui(gui_t *gui, vec3f_t camera_pos)
+void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
 {
     const u32 window_width = global_window->width;
     char tempbuffer[32] = {0};
@@ -27,8 +32,8 @@ void workbench_compose_ui(gui_t *gui, vec3f_t camera_pos)
             .base = COLOR_BLACK,
         },
         .dim = {
-            .height = 30,
-            .width = 80 
+            .min_height = 30,
+            .mid_width = 80 
         },
         .padding = {4,4,4,4},
         .margin = {
@@ -47,8 +52,8 @@ void workbench_compose_ui(gui_t *gui, vec3f_t camera_pos)
                 .base = COLOR_OFFWHITE,
             },
             .dim = {
-                .height = 40,
-                .width = 40 
+                .min_height = 40,
+                .mid_width = 40 
             },
             .padding = {0},
             .margin = {0},
@@ -67,8 +72,8 @@ void workbench_compose_ui(gui_t *gui, vec3f_t camera_pos)
             .base = COLOR_BLACK,
         },
         .dim = {
-            .height = 30,
-            .width = 140 
+            .min_height = 30,
+            .mid_width = 140 
         },
         .padding = {8,4,4,4},
         .margin = {
@@ -88,8 +93,8 @@ void workbench_compose_ui(gui_t *gui, vec3f_t camera_pos)
                 .base = COLOR_SOFT_WHITE,
             },
             .dim = {
-                .height = 20,
-                .width = 100 
+                .min_height = 20,
+                .mid_width = 100 
             },
             .padding = {0},
             .margin = {2,2,2,2},
@@ -106,8 +111,8 @@ void workbench_compose_ui(gui_t *gui, vec3f_t camera_pos)
                 .base = COLOR_SOFT_WHITE,
             },
             .dim = {
-                .height = 20,
-                .width = 100 
+                .min_height = 20,
+                .mid_width = 100 
             },
             .padding = {0},
             .margin = {0},
@@ -126,8 +131,8 @@ void workbench_compose_ui(gui_t *gui, vec3f_t camera_pos)
             .base = COLOR_BLACK,
         },
         .dim = {
-            .height = 30,
-            .width = 200 
+            .min_height = 30,
+            .mid_width = 200 
         },
         .padding = {8,4,4,4},
         .margin = {
@@ -147,8 +152,8 @@ void workbench_compose_ui(gui_t *gui, vec3f_t camera_pos)
                 .base = COLOR_SOFT_WHITE,
             },
             .dim = {
-                .height = 40,
-                .width = 80 
+                .min_height = 40,
+                .mid_width = 80 
             },
             .padding = {0},
             .margin = {0},
@@ -163,10 +168,10 @@ void workbench_compose_ui(gui_t *gui, vec3f_t camera_pos)
             .styles = UI_STYLE_ROUNDED_CORNERS,
             .traits = UI_BEHAVIOR_CLICKABLE | UI_BEHAVIOR_HOVERABLE
         },
-        .id = 1,
+        .id = WB_COLLIDER_TOGGLE,
         .dim = {
-            .height = 30,
-            .width = 70,
+            .min_height = 30,
+            .mid_width = 120,
         },
         .color = {
             .base = COLOR_WHITE,
@@ -186,23 +191,19 @@ void workbench_compose_ui(gui_t *gui, vec3f_t camera_pos)
         }
     });{
         gui_ui_compose_begin(gui, (ui_config_t) {
+            .id = WB_COLLIDER_TOGGLE,
             .composition = {0},
             .dim = {
-                .height = 40,
-                .width = 40,
+                .min_height = 40,
+                .mid_width = 40,
             },
             .color = {
                 .base = COLOR_BLACK,
                 .highlight = COLOR_BLUE
             },
-            .label = str("collider"),
+            .label = str("show colliders"),
         });
         gui_ui_compose_end(gui);
-
-        if (gui_ui_isclicked(gui, 1)) {
-            printf("toggled collider view\n");
-        }
-
     }
     gui_ui_compose_end(gui);
 }
@@ -225,8 +226,8 @@ void workbench__internal_compose_ui__test(const application_t * const app, gui_t
             .highlight = COLOR_RED,
         },
         .dim = {
-            .height = 100,
-            .width = 100 
+            .min_height = 100,
+            .mid_width = 100 
         },
         .padding = {
             10, 10, 10, 10
@@ -245,8 +246,8 @@ void workbench__internal_compose_ui__test(const application_t * const app, gui_t
                 .highlight = COLOR_CYAN,
             },
             .dim = {
-                .height = 40,
-                .width = 80 
+                .min_height = 40,
+                .mid_width = 80 
             },
             .padding = {0},
             .margin = {0},
@@ -266,8 +267,8 @@ void workbench__internal_compose_ui__test(const application_t * const app, gui_t
                 .highlight = COLOR_RED,
             },
             .dim = {
-                .height = 50,
-                .width = 50
+                .min_height = 50,
+                .mid_width = 50
             },
             .padding = {0},
             .margin = {
@@ -286,8 +287,8 @@ void workbench__internal_compose_ui__test(const application_t * const app, gui_t
                     .highlight = COLOR_BLACK,
                 },
                 .dim = {
-                    .height = 10,
-                    .width = 10
+                    .min_height = 10,
+                    .mid_width = 10
                 },
                 .padding = {0},
                 .margin = {

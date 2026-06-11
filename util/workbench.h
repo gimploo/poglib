@@ -22,12 +22,14 @@ typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_CAMERA_DRAG_LOOK    = 0,
     WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN      = 1,
     WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT     = 2,
+    WORKBENCH_ACTION_TYPE_TOGGLED_COLLIDER    = 3,
     WORKBENCH_ACTION_TYPE_COUNT
 } workbench_action_type;
 
 typedef struct {
 
     bool is_active;
+    bool enable_collider;
 
     struct {
         bool wireframe_mode;
@@ -72,6 +74,8 @@ void        workbench_destroy(workbench_t *self);
 
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0.f, 0.f, 10.f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
+
+void workbench__internal_show_colliders(workbench_t *const self);
 
 void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t * const state, const u16 command_bitmask, const f32 dt)
 {
@@ -646,6 +650,12 @@ void workbench_update(workbench_t *const self, const f32 dt)
 {
     if (!self->is_active) return;
 
+    const u32 bitmask = commandqueue_get_commands_as_bitmask(&self->commandqueue);
+    if (gui_ui_ishovered(&self->gui.handle, WB_COLLIDER_TOGGLE))
+    {
+        workbench__internal_show_colliders(self);
+    }
+
     //NOTE:keep commandqueue flush at the end
     commandqueue_flush(&self->commandqueue);
 }
@@ -675,5 +685,47 @@ void workbench_toggle(workbench_t *const self)
         &global_poggen->systems.ecs, 
         &self->commandqueue
     );
+}
+
+void workbench__internal_show_colliders(workbench_t *const self)
+{
+    ASSERT(global_poggen);
+    self->enable_collider = !self->enable_collider;
+
+    //TODO: currently colliders are shown on hover, it need to be on click
+    //if (!self->enable_collider) return;
+
+    slot_t *sc_pool = slot_get_value(&global_poggen->systems.ecs.managers.componentmanager.componentpool_slots, ECS_CMP_COLLIDER_IDX);
+    slot_iterator(sc_pool, sc_iter)
+    {
+        ecs_component_poolentry_t *sc_entry = sc_iter;
+        if (!sc_entry->is_active) continue;
+
+        ecs_component_collider_t *sc = (ecs_component_collider_t *)sc_entry->entity_cmpdata;
+        switch(sc->shape_type)
+        {
+            case COLLIDER_SHAPE_TYPE_CUBE:
+                workbench_render_cube(
+                    self,
+                    sc->internal.position,
+                    *(vec3f_t *)&sc->dim.cube,
+                    COLOR_CRIMSON,
+                    true,
+                    PROTOTYPE_SPRITE_WHITE
+                );
+            break;
+            case COLLIDER_SHAPE_TYPE_CAPSULE:
+                workbench_render_capsule(
+                    self,
+                    sc->internal.position,
+                    sc->internal.orientation,
+                    sc->dim.capsule.half_height,
+                    sc->dim.capsule.radius
+                );
+            break;
+            default: eprint("collider shape type not accounted for ");
+        }
+
+    }
 }
 

@@ -62,8 +62,8 @@ typedef struct {
     } padding, margin, border, corners;
 
     struct {
-        u32 width;
-        u32 height;
+        u32 mid_width;
+        u32 min_height;
     } dim;
 
     u32 id;
@@ -137,8 +137,10 @@ bool    gui_ui_ishovered(gui_t *const self, const u32 id);
 bool    gui_ui_isclicked(gui_t *const self, const u32 id);
 
 #define gui_update(SELF, ...) do {\
+    gui__internal_reset_state(SELF);\
     ((SELF)->callback((SELF), __VA_ARGS__));\
 } while(0);
+
 
 void    gui_render(gui_t *self);
 void    gui_destroy(gui_t *self);
@@ -237,7 +239,7 @@ void gui__internal_ui_pop_cursor_layout(gui_t *gui)
     --gui->internal.layout_cursor_stack.top;
 }
 
-vec2f_t __get_active_cursor(gui_t *gui)
+vec2f_t gui__internal_get_active_cursor(gui_t *gui)
 {
     return gui->internal
         .layout_cursor_stack
@@ -251,8 +253,8 @@ void gui_ui_compose_end(gui_t *gui)
 
 void gui__internal_ui_validate_config(ui_config_t config)
 {
-    ASSERT(config.dim.height > 0);
-    ASSERT(config.dim.width > 0);
+    ASSERT(config.dim.min_height > 0);
+    ASSERT(config.dim.mid_width > 0);
     if (config.composition.traits & UI_BEHAVIOR_CLICKABLE) {
         ASSERT(config.id != 0);
     }
@@ -265,17 +267,21 @@ ui_region_t gui__internal_ui_add_child(gui_t *gui, const ui_config_t config)
         .buffer[gui->internal.layout_cursor_stack.top];
 
     const ui_region_t parent_region = parent_layout.region;
+    const u32 width_enclosed_by_child_region = config.margin.left + config.dim.mid_width + config.margin.right;
 
-    const vec2f_t current_cursor = __get_active_cursor(gui);
+    //1. Does child fit in parent's region
+    //2. Extend size of parent to encapsulate the child
+    //3. Have this behavior be configurable
+
+    const vec2f_t current_cursor = gui__internal_get_active_cursor(gui);
 
     ui_region_t child_region = {
         .cursor.x = current_cursor.x + config.margin.left,
         .cursor.y = current_cursor.y + config.margin.top,
-        .width  = config.dim.width,
-        .height = config.dim.height
+        .width  = config.dim.mid_width,
+        .height = config.dim.min_height
     };
 
-    const u32 width_enclosed_by_child_region = config.margin.left + config.dim.width + config.margin.right;
     const u32 next_active_cursor_x = current_cursor.x + width_enclosed_by_child_region;
 
     const bool is_child_region_at_end_parent_layout_width = next_active_cursor_x > 
@@ -288,7 +294,7 @@ ui_region_t gui__internal_ui_add_child(gui_t *gui, const ui_config_t config)
         };
     }
 
-    const u32 row_height_inclosed_by_child_region = config.margin.top + config.margin.bottom + config.dim.height;
+    const u32 row_height_inclosed_by_child_region = config.margin.top + config.margin.bottom + config.dim.min_height;
 
     gui__internal_ui_push_cursor_layout(
         gui, 
@@ -330,7 +336,7 @@ ui_region_t gui__internal_ui_add_child(gui_t *gui, const ui_config_t config)
 void gui__internal_ui_create_text_internal(gui_t * const gui, const ui_region_t child_region, const ui_config_t config)
 {
     vec2f_t starting_pos = child_region.cursor;
-    const f32 offset = config.dim.width / config.label.len;
+    const f32 offset = config.dim.mid_width / config.label.len;
     for (u32 i = 0; i < config.label.len; i++)
     {
         const box_t quad = glfreetypefont_generate_uv_for_char(
@@ -412,7 +418,6 @@ void gui_render(gui_t *self)
     }
 
     gui__internal_reset_layout_cursor(self);
-    gui__internal_reset_state(self);
 
     const matrix4f_t ortho_ndc = glms_ortho(0.0f, global_window->width, global_window->height, 0.0f, -2.0f, 2.0f);
 
