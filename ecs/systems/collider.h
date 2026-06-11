@@ -36,8 +36,10 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
                 JPH_CharacterVirtual_GetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&collider->internal.position);
                 JPH_CharacterVirtual_GetRotation(collider->internal.kinematic_body, (JPH_Quat *)&collider->internal.orientation);
 
-                //TODO: we may need to pull this out to somewhere else if a fine grain control is required to interpolate collided 
-                //position to transform position
+                //TODO: we may need to pull this out to somewhere else if a 
+                //fine grain control is required to interpolate transform position to 
+                //collided position 
+
                 transform->position     = collider->internal.position;
                 transform->orientation  = collider->internal.orientation;
             break;
