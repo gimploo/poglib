@@ -27,11 +27,11 @@ typedef struct stack_t {
 void *              stack_peek(const stack_t * const self);
 #define             stack_push(PSTACK, ELEM)\
                         stack__internal_push((PSTACK), (void *)&(ELEM), sizeof(ELEM))
-void *              stack_pop(stack_t *);
+void                stack_pop(stack_t *);
 #define             stack_is_empty(pstack)\
                         ((pstack)->__top == -1 ? true : false)
 #define             stack_is_full(pstack)\
-                        ((pstack)->top == ((pstack)->capacity - 1) ? true : false)
+                        ((pstack)->__top == ((pstack)->capacity - 1) ? true : false)
 void                stack_print(stack_t *stack, void (*print_elem)(void *));
 void                stack_destroy(stack_t *);
 
@@ -84,17 +84,13 @@ void stack__internal_push(stack_t *stack, void *elem_ref, u64 elem_size)
 
 }
 
-void * stack_pop(stack_t *stack)
+void stack_pop(stack_t *stack)
 {
     if (stack == NULL) eprint("stack argument is null");
     if (stack->__top == -1) eprint("underflow");
 
-    u8 *elem_pos = (u8 *)stack->__data + stack->__top * stack->__elem_size;
-    stack->len = --stack->__top - 1;
-
-    if (stack->__are_values_pointers) return *(void **)elem_pos;
-
-    return elem_pos;
+    --stack->__top;
+    --stack->len;
 }
 
 
