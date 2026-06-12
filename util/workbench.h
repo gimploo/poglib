@@ -12,11 +12,13 @@
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
 #include "poglib/application/window/sdl_window.h"
+#include "poglib/basic/arena.h"
 #include "poglib/ecs.h"
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/math/common.h"
 #include "poglib/math/la.h"
+#include "poglib/util/assetmanager.h"
 
 typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_CAMERA_DRAG_LOOK    = 0,
@@ -41,14 +43,12 @@ typedef struct {
     } gui;
 
     struct {
-        spriteatlas_t atlas;
-        glshader_t shader;
+        u32 atlas_id;
+        u32 shader_id;
     } primitives;
 
     glshader_t shader;
     vec3f_t player_camera_position;
-
-    list_t lightsources;
 
     commandqueue_t commandqueue;
 
@@ -59,18 +59,17 @@ typedef struct {
 
 } workbench_t;
 
-workbench_t workbench_init(arena_t * const arena);
-void        workbench_tick(workbench_t *const self);
-void        workbench_update(workbench_t *const self, const f32 dt);
+workbench_t *   workbench_init(arena_t * const arena);
+void            workbench_tick(void);
+void            workbench_update(const f32 dt);
+void            workbench_render(void);
+void            workbench_destroy(void);
 
-void        workbench_toggle(workbench_t *const self);
-
+void        workbench_toggle(void);
 void        workbench_track_lightsource(workbench_t *self, const gllight_t *light);
 
-void        workbench_render(workbench_t *self);
 
-void        workbench_destroy(workbench_t *self);
-
+global workbench_t *global_workbench = NULL;
 
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0.f, 0.f, 10.f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
@@ -149,13 +148,16 @@ void workbench__internal_ecs_create_world_camera(workbench_t *const self)
     self->world_camera.entity_id = world_camera_entity_id;
 }
 
-workbench_t workbench_init(arena_t *const arena)
+workbench_t * workbench_init(arena_t *const arena)
 {
     ASSERT(global_poggen);
+    ASSERT(!global_workbench);
 
     if (!global_poggen->config.enable_ecs) {
         eprint("ECS required to use workbench");
     }
+
+    assetmanager_t *const assetmanager = &global_poggen->systems.assets;
 
     workbench_t o = {
         .is_active = false,
@@ -190,7 +192,8 @@ workbench_t workbench_init(arena_t *const arena)
             arena
         ),
         .primitives = {
-            .shader  = glshader_init(
+            .shader_id = assetmanager_load_glsl_shader(
+                assetmanager,
                 str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-vtx.glsl"),
                 str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-frag.glsl"),
                 (gluniform_registry_t){ 
@@ -205,17 +208,15 @@ workbench_t workbench_init(arena_t *const arena)
                             .type = GL_UNIFORM_TYPE_MATRIX4F
                         },
                     }
-                },
-                arena
+                }
             ),
-            .atlas = spriteatlas_init(str(POGLIB_ROOT_DIR"/res/sprites/prototype.png"), 8, 4, arena),
+            .atlas_id = assetmanager_load_spriteatlas(assetmanager, str(POGLIB_ROOT_DIR"/res/sprites/prototype.png"), 8, 4),
         },
         .player_camera_position = vec3f(0.f),
-        .lightsources = list_init(gllight_t *),
-    .render_config = {
-        .wireframe_mode = false
-    },
-    .world_camera = {0},
+        .render_config = {
+            .wireframe_mode = false
+        },
+        .world_camera = {0},
         .gui = {
             .handle = gui_init(
                 arena, 
@@ -254,7 +255,8 @@ workbench_t workbench_init(arena_t *const arena)
 
     gui_set_composition(&o.gui.handle, (ui_composition)workbench_compose_ui);
 
-    return o;
+    global_workbench = arena_store(arena, &o, sizeof(o));
+    return global_workbench;
 }
 
 matrix4f_t workbench__internal_get_camera_view(const workbench_t *const self)
@@ -263,23 +265,16 @@ matrix4f_t workbench__internal_get_camera_view(const workbench_t *const self)
     return glcamera_getview(camera);
 }
 
-void workbench_track_lightsource(workbench_t *self, const gllight_t *light)
-{
-    list_append_ptr(&self->lightsources, light);
-}
-
 
 void workbench__internal_render_ui(workbench_t *self)
 {
     gui_render(&self->gui.handle);
 }
 
+#if 0
 void workbench__internal_render_lightsources(workbench_t *self)
 {
-    if (self->lightsources.len == 0) 
-        return;
-
-    const list_t *lights = &self->lightsources;
+    const list_t *lights = {0};
     list_iterator(lights, iter) {
         glrenderer3d_draw((glrendererconfig_t) {
             .calls = {
@@ -340,22 +335,28 @@ void workbench__internal_render_lightsources(workbench_t *self)
 
     }
 }
+#endif
 
-void workbench_destroy(workbench_t *self)
+void workbench_destroy(void)
 {
+    ASSERT(global_workbench);
+    workbench_t *self = global_workbench;
+
     glshader_destroy(&self->shader);
-    glshader_destroy(&self->primitives.shader);
-    spriteatlas_destroy(&self->primitives.atlas);
-    list_destroy(&self->lightsources);
     gui_destroy(&self->gui.handle);
+
+    global_workbench = NULL;
 }
 
 
 
 void workbench__internal_update_ui(workbench_t * const self, const vec3f_t worlcamera_position);
 
-void workbench_render(workbench_t *self)
+void workbench_render(void)
 {
+    ASSERT(global_workbench);
+    workbench_t *self = global_workbench;
+
     workbench__internal_update_ui(self, self->world_camera.handle->position);
 
     workbench__internal_render_grid(
@@ -368,7 +369,7 @@ void workbench_render(workbench_t *self)
         self->world_camera.handle->position
     );
 
-    workbench__internal_render_lightsources(self);
+//    workbench__internal_render_lightsources(self);
 
     if (self->gui.enable) {
         workbench__internal_render_ui(self);
@@ -383,10 +384,10 @@ void workbench__internal_update_ui(workbench_t * const self, const vec3f_t world
 }
 
 void workbench_render_camera(
-    workbench_t * const self,
     const vec3f_t position,
     const versors orientation
 ) {
+    ASSERT(global_workbench);
     renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
     const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
     const matrix4f_t perspective_projection  = glms_perspective(
@@ -403,15 +404,16 @@ void workbench_render_camera(
         .color = COLOR_GRAY,
     };
 
-    gpu_mesh_t * const mesh = assetmanager_get_gpu_loaded_primitive_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAMERA);
-    if(!mesh) {
+    gpu_asset_t * const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAMERA);
+    if(!asset) {
         return;
     }
+    ASSERT(asset->meshes.count);
 
     rendercommand_t rendercommand = {
         .enable_wireframe = true,
         .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
-        .mesh = mesh,
+        .mesh = asset->meshes.data,
         .instance = {
             .raw_data = {0},
             .size = sizeof(rendercommand_instance_t)
@@ -419,7 +421,7 @@ void workbench_render_camera(
         .material = {
             .textures = {0},
             .shader = {
-                .data = &self->primitives.shader,
+                .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.shader_id),
                 .uniforms = {
                     .count = 2,
                     .data = {
@@ -429,7 +431,7 @@ void workbench_render_camera(
                        },
                        [1] = {
                            .name = str("view"),
-                           .value = workbench__internal_get_camera_view(self)
+                           .value = workbench__internal_get_camera_view(global_workbench)
                        }
                     }
                 }
@@ -444,10 +446,11 @@ void workbench_render_camera(
 
 
 void workbench_render_marker(
-    workbench_t * const self,
     const vec3f_t translation,
     const vec4f_t color
 ) {
+    ASSERT(global_workbench);
+    workbench_t *const self = global_workbench;
     renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
     const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
     const matrix4f_t perspective_projection  = glms_perspective(
@@ -457,23 +460,26 @@ void workbench_render_marker(
         10000.0f
     );
 
+    spriteatlas_t *atlas = (spriteatlas_t *)assetmanager_get_assetresource(
+        assetmanager, ASSET_TYPE_TEXTURE_SPRITE_ATLAS, self->primitives.atlas_id);
+
     const rendercommand_instance_t instance = {
         .translation = { translation.x, translation.y, translation.z, 0.f },
         .scale = vec4f(0.05f),
         .orientation = {0.f, 0.f, 0.f, 1.f},
         .color = color,
-        .uv = spriteatlas_get_sprite(&self->primitives.atlas, PROTOTYPE_SPRITE_YELLOW_T),
+        .uv = spriteatlas_get_sprite(atlas, PROTOTYPE_SPRITE_YELLOW_T),
     };
 
-    gpu_mesh_t * const mesh = assetmanager_get_gpu_loaded_primitive_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE);
-    if(!mesh) {
+    gpu_asset_t * const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE);
+    if(!asset) {
         return;
     }
 
     rendercommand_t rendercommand = {
         .enable_wireframe = self->render_config.wireframe_mode,
         .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
-        .mesh = mesh,
+        .mesh = asset->meshes.data,
         .instance = {
             .raw_data = {0},
             .size = sizeof(rendercommand_instance_t)
@@ -482,11 +488,11 @@ void workbench_render_marker(
             .textures = {
                 .count = 1,
                 .ids = {
-                    self->primitives.atlas.texture.id
+                    atlas->texture.id
                 }
             },
             .shader = {
-                .data = &self->primitives.shader,
+                .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, self->primitives.shader_id),
                 .uniforms = {
                     .count = 2,
                     .data = {
@@ -510,13 +516,14 @@ void workbench_render_marker(
 
 
 void workbench_render_cube(
-    workbench_t * const self,
     const vec3f_t translation,
     const vec3f_t scale,
     const vec4f_t color,
     const bool override_wireframe,
     const prototype_texture_type type
 ) {
+    ASSERT(global_workbench);
+    workbench_t *const self = global_workbench;
     renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
     const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
     const matrix4f_t perspective_projection  = glms_perspective(
@@ -526,23 +533,26 @@ void workbench_render_cube(
         10000.0f
     );
 
+    const spriteatlas_t *atlas = (spriteatlas_t *)assetmanager_get_assetresource(
+        assetmanager, ASSET_TYPE_TEXTURE_SPRITE_ATLAS, self->primitives.atlas_id);
+
     const rendercommand_instance_t instance = {
         .translation = { translation.x, translation.y, translation.z, 0.f },
         .scale = { scale.x, scale.y, scale.z, 0.f },
         .orientation = {0.f, 0.f, 0.f, 1.f},
         .color = color,
-        .uv = spriteatlas_get_sprite(&self->primitives.atlas, type),
+        .uv = spriteatlas_get_sprite(atlas, type),
     };
 
-    gpu_mesh_t *const mesh = assetmanager_get_gpu_loaded_primitive_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE);
-    if(!mesh) {
+    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAMERA);
+    if(!asset) {
         return;
     }
 
     rendercommand_t rendercommand = {
         .enable_wireframe = override_wireframe || self->render_config.wireframe_mode,
         .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
-        .mesh = mesh,
+        .mesh = asset->meshes.data,
         .instance = {
             .raw_data = {0},
             .size = sizeof(rendercommand_instance_t)
@@ -551,11 +561,11 @@ void workbench_render_cube(
             .textures = {
                 .count = 1,
                 .ids = {
-                    self->primitives.atlas.texture.id
+                    atlas->texture.id
                 }
             },
             .shader = {
-                .data = &self->primitives.shader,
+                .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, self->primitives.shader_id),
                 .uniforms = {
                     .count = 2,
                     .data = {
@@ -578,12 +588,14 @@ void workbench_render_cube(
 }
 
 void workbench_render_capsule(
-    workbench_t * const self,
     const vec3f_t position,
     const versors orientation,
     const f32 half_height,
     const f32 radius
 ) {
+    ASSERT(global_workbench);
+    workbench_t *const self = global_workbench;
+
     renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
     const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
     const matrix4f_t perspective_projection = glms_perspective(
@@ -601,15 +613,15 @@ void workbench_render_capsule(
         .color = COLOR_BLUE,
     };
 
-    gpu_mesh_t * const mesh = assetmanager_get_gpu_loaded_primitive_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAPSULE);
-    if (!mesh) {
+    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAPSULE);
+    if (!asset) {
         return;
     }
 
     rendercommand_t rendercommand = {
         .enable_wireframe = true,
         .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
-        .mesh = mesh,
+        .mesh = asset->meshes.data,
         .instance = {
             .raw_data = {0},
             .size = sizeof(rendercommand_instance_t)
@@ -617,7 +629,7 @@ void workbench_render_capsule(
         .material = {
             .textures = {0},
             .shader = {
-                .data = &self->primitives.shader,
+                .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, self->primitives.shader_id),
                 .uniforms = {
                     .count = 2,
                     .data = {
@@ -639,29 +651,34 @@ void workbench_render_capsule(
     renderqueue_pass_command(renderqueue, rendercommand);
 }
 
-void workbench_tick(workbench_t *const self)
+void workbench_tick(void)
 {
-    if (!self->is_active) return;
+    ASSERT(global_workbench);
 
-    commandqueue_sync(&self->commandqueue);
+    if (!global_workbench->is_active) return;
+
+    commandqueue_sync(&global_workbench->commandqueue);
 }
 
-void workbench_update(workbench_t *const self, const f32 dt)
+void workbench_update(const f32 dt)
 {
-    if (!self->is_active) return;
+    if (!global_workbench->is_active) return;
 
-    const u32 bitmask = commandqueue_get_commands_as_bitmask(&self->commandqueue);
-    if (gui_ui_ishovered(&self->gui.handle, WB_COLLIDER_TOGGLE))
+    const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_workbench->commandqueue);
+    if (gui_ui_ishovered(&global_workbench->gui.handle, WB_COLLIDER_TOGGLE))
     {
-        workbench__internal_show_colliders(self);
+        workbench__internal_show_colliders(global_workbench);
     }
 
     //NOTE:keep commandqueue flush at the end
-    commandqueue_flush(&self->commandqueue);
+    commandqueue_flush(&global_workbench->commandqueue);
 }
 
-void workbench_toggle(workbench_t *const self)
+void workbench_toggle(void)
 {
+    ASSERT(global_workbench);
+    workbench_t *self = global_workbench;
+
     self->is_active = !self->is_active;
 
     ecs_patch_entity(
@@ -706,7 +723,6 @@ void workbench__internal_show_colliders(workbench_t *const self)
         {
             case COLLIDER_SHAPE_TYPE_CUBE:
                 workbench_render_cube(
-                    self,
                     sc->internal.position,
                     *(vec3f_t *)&sc->dim.cube,
                     COLOR_CRIMSON,
@@ -716,7 +732,6 @@ void workbench__internal_show_colliders(workbench_t *const self)
             break;
             case COLLIDER_SHAPE_TYPE_CAPSULE:
                 workbench_render_capsule(
-                    self,
                     sc->internal.position,
                     sc->internal.orientation,
                     sc->dim.capsule.half_height,

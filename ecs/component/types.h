@@ -16,6 +16,7 @@ typedef enum {
     ECS_CMP_MATERIAL_IDX        = 3,
     ECS_CMP_CAMERA_IDX          = 4,
     ECS_CMP_COLLIDER_IDX        = 5,
+    ECS_CMP_MESH_IDX            = 6,
     ECS_CMP_COUNT
 
 } ecs_component_storage_index;
@@ -27,7 +28,8 @@ typedef enum {
     ECS_CMP_INPUT               = 1 << ECS_CMP_INPUT_IDX,
     ECS_CMP_MATERIAL            = 1 << ECS_CMP_MATERIAL_IDX,
     ECS_CMP_CAMERA              = 1 << ECS_CMP_CAMERA_IDX,
-    ECS_CMP_COLLIDER            = 1 << ECS_CMP_COLLIDER_IDX
+    ECS_CMP_COLLIDER            = 1 << ECS_CMP_COLLIDER_IDX,
+    ECS_CMP_MESH                = 1 << ECS_CMP_MESH_IDX
 
 } ecs_component_type;
 
@@ -46,10 +48,17 @@ struct ecs_component_transform_t {
     } source;
 };
 
-/*========================= MODEL/MESH ====================================== */
+/*========================= MODEL ====================================== */
 
 typedef struct ecs_component_model_t ecs_component_model_t;
 struct ecs_component_model_t {
+    u32 asset_id;
+};
+
+/*========================= MESH ====================================== */
+
+typedef struct ecs_component_mesh_t ecs_component_mesh_t;
+struct ecs_component_mesh_t {
     u32 asset_id;
 };
 
@@ -162,12 +171,13 @@ struct ecs_componentbundle_t {
     u32 signature; //NOTE: this holds the bitmask of all compnents configured for the entity
     struct {
         union {
-            ecs_component_transform_t transform;
-            ecs_component_model_t     model;
-            ecs_component_input_t     input;
-            ecs_component_material_t  material;
-            ecs_component_camera_t    camera;
-            ecs_component_collider_t  collider;
+            ecs_component_transform_t   transform;
+            ecs_component_model_t       model;
+            ecs_component_mesh_t        mesh;
+            ecs_component_input_t       input;
+            ecs_component_material_t    material;
+            ecs_component_camera_t      camera;
+            ecs_component_collider_t    collider;
         };
     } component[ECS_CMP_COUNT];
 

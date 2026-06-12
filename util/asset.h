@@ -6,7 +6,7 @@ typedef enum asset_type {
     ASSET_TYPE_MODEL                = 0,
     ASSET_TYPE_GLSL_SHADER          = 1,
     ASSET_TYPE_TEXTURE              = 2,
-    ASSET_TYPE_PRIMITIVE_MESH       = 3,
+    ASSET_TYPE_TEXTURE_SPRITE_ATLAS = 3,
     ASSET_TYPE_COUNT
 } asset_type;
 
@@ -31,13 +31,12 @@ struct gpu_asset__internal_upload_task_t {
     void        *processed_data;
 };
 
-
-#define INVALID_ASSET_ID        0
+#define INVALID_ASSET_ID 0
 
 const bool ASSET_ASYNC_LOADING_SUPPORT[ASSET_TYPE_COUNT] = {
     [ASSET_TYPE_MODEL]                  = true,
     [ASSET_TYPE_GLSL_SHADER]            = false, //Requires opengl to compile shaders
     [ASSET_TYPE_TEXTURE]                = false,
-    [ASSET_TYPE_PRIMITIVE_MESH]         = false,
+    [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = false,
 };
 

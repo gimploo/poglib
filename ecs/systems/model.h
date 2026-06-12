@@ -1,10 +1,8 @@
 #pragma once
 #include <poglib/poggen.h>
-#include "poglib/ecs.h"
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
 #include "poglib/ecs/component/types.h"
-#include "poglib/external/cglm/struct/io.h"
 #include "poglib/external/cglm/struct/mat4.h"
 #include "poglib/gfx/model/assimp.h"
 #include "poglib/math/la.h"
