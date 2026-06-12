@@ -3,10 +3,7 @@
 #include "poglib/application/window/sdl_window.h"
 #include "poglib/basic/color.h"
 #include "poglib/basic/str.h"
-#include "poglib/poggen.h"
 #include <poglib/gui.h>
-#include <stdio.h>
-#include <string.h>
 
 typedef enum WORKBENCH_GUI_BUTTON_IDS {
     WB_COLLIDER_TOGGLE = 1,

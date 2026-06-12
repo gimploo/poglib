@@ -51,6 +51,8 @@ typedef struct poggen_t {
 
 global poggen_t *global_poggen = NULL;
 
+#include "poglib/util/workbench.h"
+
 poggen_t *                          poggen_init(application_t * const app, const poggen_config_t config);
 #define                             poggen_add_scene(PGEN, SCENE_NAME)                          poggen__internal_add_scene((PGEN), scene__internal_init(SCENE_NAME))
 void                                poggen_remove_scene(poggen_t *self, str_t label);
@@ -113,6 +115,8 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
 
     global_poggen  = output;
 
+    workbench_init(&arena);
+
     return global_poggen;
 }
 
@@ -163,6 +167,7 @@ void poggen_change_scene(poggen_t *self, const str_t scene_label)
 void poggen_render(poggen_t *self, const f32 dt)
 {
     ASSERT(self);
+    workbench_render();
     self->current_scene->__render(self->current_scene, dt);
     renderqueue_dispatch(&self->systems.renderqueue);
 }
@@ -172,6 +177,7 @@ void poggen_tick(poggen_t *const self)
     ASSERT(self);
     ASSERT(self->current_scene);
 
+    workbench_tick();
     scene__internal_tick(self->current_scene);
 }
 
@@ -198,6 +204,7 @@ void poggen_update(poggen_t *self, const f32 dt)
         ecs_update(&self->systems.ecs);
     }
 
+    workbench_update(dt);
     scene__internal_update(current_scene, dt);
 }
 
@@ -220,6 +227,7 @@ void poggen_destroy(poggen_t *self)
     if (self->config.enable_ecs)
         ecs_destroy(&self->systems.ecs);
 
+    workbench_destroy();
     arena_destroy(&self->arena);
 
     self->current_scene = NULL;

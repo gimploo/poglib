@@ -30,6 +30,7 @@ u16 ecs_component__internal_get_componenttype_size(const ecs_component_type type
     {
         case ECS_CMP_TRANSFORM:         return sizeof(ecs_component_transform_t);
         case ECS_CMP_MODEL:             return sizeof(ecs_component_model_t);
+        case ECS_CMP_MESH:              return sizeof(ecs_component_mesh_t);
         case ECS_CMP_INPUT:             return sizeof(ecs_component_input_t);
         case ECS_CMP_MATERIAL:          return sizeof(ecs_component_material_t);
         case ECS_CMP_CAMERA:            return sizeof(ecs_component_camera_t);
