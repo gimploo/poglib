@@ -450,7 +450,7 @@ glshader_t glshader_init(
     const str_t vtxpath, 
     const str_t fgpath, 
     const gluniform_registry_t uniforms,
-    arena_t * const arena)
+    arena_t *const arena)
 {
     ASSERT(arena);
 

@@ -82,7 +82,7 @@ void assetmanager__internal_assetmaps_destroy(assetmanager_t *const self)
             switch(type)
             {
                 case ASSET_TYPE_MODEL: 
-                    glmodel_destroy(((taskresponse_t *)entry)->resource); 
+                    glmodel_destroy(((taskresponse_t *)entry->value)->resource); 
                 break;
                 case ASSET_TYPE_GLSL_SHADER: 
                     glshader_destroy(entry->value);
