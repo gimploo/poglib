@@ -43,7 +43,8 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
         ASSERT(shader);
         ASSERT(transform);
 
-        spriteatlas_t *atlas = (spriteatlas_t *)assetmanager_get_assetresource(&global_poggen->systems.assets, ASSET_TYPE_TEXTURE_SPRITE_ATLAS, global_workbench->primitives.atlas_id);
+        spriteatlas_t *atlas = (spriteatlas_t *)assetmanager_get_assetresource(
+                &global_poggen->systems.assets, ASSET_TYPE_TEXTURE_SPRITE_ATLAS, global_workbench->primitives.atlas_id);
 
         const matrix4f_t perspective_projection = glms_perspective(
             radians(45), 
@@ -69,6 +70,10 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             },
             .material = {
                 .textures = {
+                    .count = 1,
+                    .ids = {
+                        [0] = atlas->texture.id,
+                    }
                 },
                 .shader = {
                     .data = shader,

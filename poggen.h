@@ -11,9 +11,6 @@
 #include "poglib/pipeline/render/render_queue.h"
 #include "poglib/util/assetmanager.h"
 
-//TODO: collision setup is done during engine init phase - thinking whether we could
-//move this over to local scene - gemini says it would hit performance - need to test and figure out
-
 /*=============================================================================
                              - GAME ENGINE -
 ==============================================================================*/
@@ -115,7 +112,8 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
 
     global_poggen  = output;
 
-    workbench_init(&arena);
+    //FIXME: this is odd, but dont know how to fix this otherwise
+    workbench_init(arena_store(&arena, &arena, sizeof(arena_t)));
 
     return global_poggen;
 }
@@ -228,6 +226,7 @@ void poggen_destroy(poggen_t *self)
         ecs_destroy(&self->systems.ecs);
 
     workbench_destroy();
+    renderqueue_destroy(&self->systems.renderqueue);
     arena_destroy(&self->arena);
 
     self->current_scene = NULL;
@@ -236,7 +235,7 @@ void poggen_destroy(poggen_t *self)
     global_poggen = NULL;
 }
 
-void poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt_rules_config_t config)
+void poggen_register_physics_rules(poggen_t *const self, const physics_sys_jolt_rules_config_t config)
 {
     ASSERT(self->config.enable_physics);
     ASSERT(self->systems.physics.instance);
