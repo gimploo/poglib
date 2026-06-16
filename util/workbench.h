@@ -66,7 +66,6 @@ void workbench__internal_show_colliders(workbench_t *const self);
 
 void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t * const state, const u16 command_bitmask, const f32 dt)
 {
-    printf("%i\n", command_bitmask);
     const u16 bitmask = command_bitmask;
     if (!bitmask) return;
 
