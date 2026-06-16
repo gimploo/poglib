@@ -215,7 +215,7 @@ static rotation_key_t __get_rotation_key(const list_t *rotation_keys, f32 time, 
         if (key->time > time) {
             if (prev) {
                 // Interpolate between prev and key (slerp for quaternions)
-                f32 t = (time - prev->time) / (key->time - prev->time);
+                const f32 t = (time - prev->time) / (key->time - prev->time);
                 result.time = time;
                 result.value = quaternionf_slerp(prev->value, key->value, t);
                 return result;

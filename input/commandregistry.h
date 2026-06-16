@@ -17,7 +17,9 @@ typedef enum {
 typedef struct {
     commandinputkey_type type;
     union {
-        SDL_Scancode sdl_keyboard_key;
+        struct {
+            SDL_Scancode scancode;
+        } sdl_keyboard_key;
         struct {
             sdl_mousebuttontype key;
             sdl_mousewheelstate wheel;
