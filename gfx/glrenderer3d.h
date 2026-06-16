@@ -186,7 +186,7 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
     list_iterator(&model->meshes, iter) 
     {
         glmesh_t *mesh = iter;
-        renderconfig.calls.call[(u64)list_index] = (glrendercall_t ){
+        renderconfig.calls.call[(u64)list_iterator_index] = (glrendercall_t ){
             .is_wireframe = in_wireframe,
             .textures = textures,
             .attrs = {
@@ -251,7 +251,7 @@ void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t 
                     }
                 }
             },
-            .shader_config = common_shader ? config.configs[0] : config.configs[(u64)list_index],
+            .shader_config = common_shader ? config.configs[0] : config.configs[(u64)list_iterator_index],
             .vtx = {
                 [VBO_STREAM_TYPE_GEOMETRY] = {
                     .raw_data = slot_get_buffer(&mesh->vtx),

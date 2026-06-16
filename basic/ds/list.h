@@ -40,7 +40,7 @@ bool            list_is_init(const list_t * const self);
 
 #define         list_get_buffer(PLIST) (PLIST)->data
 void *          list_get_value(const list_t *list, const u64 index);
-#define         list_iterator(PLIST, ITER)                          __impl_list_iterator((PLIST), (ITER), list_index)
+#define         list_iterator(PLIST, ITER)                          __impl_list_iterator((PLIST), (ITER), list_iterator_index)
 
 void            list_destroy(list_t *list);
 

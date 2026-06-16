@@ -252,7 +252,7 @@ void assetmanager__internal_upload_model_to_gpu(
             );
         }
 
-        gpu_asset->meshes.data[(u64)list_index] = (gpu_mesh_t){
+        gpu_asset->meshes.data[(u64)list_iterator_index] = (gpu_mesh_t){
             .vao_id = vao.id,
             .index_count = cpu_mesh->idx.len,
             .attribute_count = vbo.internals.attribute_index + 1

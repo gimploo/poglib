@@ -187,15 +187,16 @@ void arena_destroy(arena_t *self)
 
     mtx_lock(&self->meta.lock); 
     {
-        free_chunks_t *cur = self->freelist.head;
-        while(cur != NULL) {
-            free_chunks_t *chunk = cur;
-            cur = cur->next;
-            free(chunk);
+        if (self->freelist.count) {
+            free_chunks_t *cur = self->freelist.head;
+            while(cur != NULL) {
+                free_chunks_t *chunk = cur;
+                cur = cur->next;
+                free(chunk);
+            }
+            memset(self->memory, 0, self->capacity);
+            free(self->memory);
         }
-        memset(self->memory, 0, self->capacity);
-        free(self->memory);
-
     }
     mtx_unlock(&self->meta.lock);
 

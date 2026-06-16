@@ -77,10 +77,15 @@ typedef struct glmodel_t {
     matrix4f_t global_inverse_transform;
     arena_t arena;
 
+    struct {
+        str_t current_animation;
+    } internal;
+
 } glmodel_t;
 
 glmodel_t       glmodel_init(const char *filepath);
 void            glmodel_set_animation(glmodel_t *self, const char *animation_label, const f32 dt, const bool loop);
+str_t           glmodel_get_current_playing_animation(const glmodel_t *const self);
 void            glmodel_destroy(glmodel_t *self);
 
 #ifndef IGNORE_ASSIMP_IMPLEMENTATION
@@ -222,7 +227,6 @@ i32 assimp__internal_get_bone_id(hashtable_t *bone_name_to_index, const struct a
 
 void assimp__internal_glmesh_process_bones(struct aiMesh *mesh, slot_t *vertices, hashtable_t *bone_name_to_index, list_t *bone_infos)
 {
-    //Parse individual bone
     for (u32 i = 0; i < mesh->mNumBones; i++)
     {
         const struct aiBone *bone = mesh->mBones[i];
@@ -235,11 +239,10 @@ void assimp__internal_glmesh_process_bones(struct aiMesh *mesh, slot_t *vertices
 
         for (u32 weight_count = 0; weight_count < bone->mNumWeights; weight_count++)
         {
-            const struct aiVertexWeight vw = bone->mWeights[weight_count];
+            const struct aiVertexWeight vw  = bone->mWeights[weight_count];
+            glvertex3d_t *const vtx         = (glvertex3d_t *)slot_get_value(vertices, vw.mVertexId);
+            bool found_entry                = false;
 
-            //Update glvertex3d with vertex bone data
-            glvertex3d_t *vtx = (glvertex3d_t *)slot_get_value(vertices, vw.mVertexId);
-            bool found_entry = false;
             for (u32 bone_cmp = 0; bone_cmp < 4; ++bone_cmp) 
             {
                 if (vtx->bone_ids.raw[bone_cmp] == -1) {
@@ -251,7 +254,7 @@ void assimp__internal_glmesh_process_bones(struct aiMesh *mesh, slot_t *vertices
             }
 
             if (!found_entry) {
-                eprint("Serious bug - bone count per vertex exceeded here, check model whether each vertex has less than or equal to 4 bones");
+                eprint("Serious bug - bone count per vertex exceeded here, ether each vertex should only allow 4 bones");
             }
         }
     }
@@ -291,7 +294,7 @@ void assimp__internal_glmodel_set_bone_transforms(glmodel_t *self, const hashtab
 
     list_iterator(&self->bone_infos, iter)
     {
-        boneinfo_t *info = iter;
+        boneinfo_t *const info = iter;
         list_append(&self->transforms[mesh_index], info->transform);
     }
 
@@ -311,7 +314,6 @@ u32 assimp__internal_get_total_bones(const struct aiScene *scene)
 
 void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene *scene) 
 {
-
     //NOTE: Since assimp has mesh bones hold the local vertex id, and since we club together all vertices 
     //in a buffer, we need to translate vertex ids to bone ids - since its the reverse assimp gives us
 
@@ -384,6 +386,7 @@ glmodel_t glmodel_init(const char *filepath)
     o.animator = animator_init();
     o.current_time = 0.0f;
     o.arena = arena_init(NULL, 2 * MB);
+    o.internal.current_animation = (str_t){0};
 
     logging("Loading model %s ...", filepath);
 
@@ -567,6 +570,11 @@ void assimp__internal_process_node_anim(glmodel_t *self, struct aiNode *node, co
     }
 }
 
+str_t glmodel_get_current_playing_animation(const glmodel_t *const self)
+{
+    return self->internal.current_animation;
+}
+
 void glmodel_set_animation(glmodel_t *self, const char *animation_label, const f32 dt, const bool loop)
 {
     if (self->animator.animations.len == 0) {
@@ -582,10 +590,9 @@ void glmodel_set_animation(glmodel_t *self, const char *animation_label, const f
     }
 
     // Track current animation and time to reset time on animation change
-    static const char *last_animation = NULL;
-    if (last_animation != animation_label) {
+    if (!str_cmp(self->internal.current_animation, str__from_cstr(animation_label, strlen(animation_label)))) {
         self->current_time = 0.0f; // Reset time when switching animations
-        last_animation = animation_label;
+        self->internal.current_animation = str__from_cstr(animation_label, strlen(animation_label));
     }
 
     // Increment animation time (convert dt from seconds to ticks)
@@ -624,7 +631,7 @@ gltexturelist_t glmodel_get_texuturelist(const glmodel_t *self)
         .items = {0}
     };
     list_iterator(&self->textures, iter) {
-        list.items[(u64)list_index] = (gltextureitem_t ){
+        list.items[(u64)list_iterator_index] = (gltextureitem_t ){
             .type = GL_TEXTURE_TYPE_NORMAL,
             .source = iter
         };
