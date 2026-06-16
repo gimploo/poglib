@@ -9,10 +9,9 @@
 #include "poglib/ecs/common.h"
 
 typedef enum workbench_action_type {
-    WORKBENCH_ACTION_TYPE_CAMERA_DRAG_LOOK    = 0,
+    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK    = 0,
     WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN      = 1,
     WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT     = 2,
-    WORKBENCH_ACTION_TYPE_TOGGLED_COLLIDER    = 3,
     WORKBENCH_ACTION_TYPE_COUNT
 } workbench_action_type;
 
@@ -69,7 +68,7 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
     const u16 bitmask = command_bitmask;
     if (!bitmask) return;
 
-    const bool drag_look = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_DRAG_LOOK);
+    const bool drag_look = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK);
     const bool zoom_in   = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN);
     const bool zoom_out  = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT);
 
@@ -218,7 +217,7 @@ workbench_t * workbench_init(arena_t *const arena)
         .commandqueue = commandqueue(arena, (commandregistry_t){
             .count = WORKBENCH_ACTION_TYPE_COUNT,
             .registry = {
-                [WORKBENCH_ACTION_TYPE_CAMERA_DRAG_LOOK] = {
+                [WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK] = {
                     .type = COMMANDINPUTKEY_TYPE_MOUSE,
                     .sdl_mouse = {
                         .key        = SDL_MOUSEBUTTON_LEFT,

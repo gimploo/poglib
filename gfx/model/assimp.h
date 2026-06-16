@@ -78,7 +78,8 @@ typedef struct glmodel_t {
     arena_t arena;
 
     struct {
-        str_t current_animation;
+        str_t active_playing_animation;
+        u16 playing_animation_iteration_count;
     } internal;
 
 } glmodel_t;
@@ -386,7 +387,6 @@ glmodel_t glmodel_init(const char *filepath)
     o.animator = animator_init();
     o.current_time = 0.0f;
     o.arena = arena_init(NULL, 2 * MB);
-    o.internal.current_animation = (str_t){0};
 
     logging("Loading model %s ...", filepath);
 
@@ -530,7 +530,8 @@ void debug_assimp_vertex_bones(const struct aiScene *scene) {
 }
 
 // Helper function to process node hierarchy for animation
-void assimp__internal_process_node_anim(glmodel_t *self, struct aiNode *node, const matrix4f_t parent_transform, const list_t *channels, animation_t *current_anim) {
+void assimp__internal_process_node_anim(glmodel_t *self, struct aiNode *node, const matrix4f_t parent_transform, const list_t *channels, animation_t *current_anim) 
+{
     ASSERT(node);
 
     const str_t node_name = str__from_cstr(node->mName.data, node->mName.length);
@@ -572,7 +573,12 @@ void assimp__internal_process_node_anim(glmodel_t *self, struct aiNode *node, co
 
 str_t glmodel_get_current_playing_animation(const glmodel_t *const self)
 {
-    return self->internal.current_animation;
+    return self->internal.active_playing_animation;
+}
+
+bool glmodel_get_playing_animation_iteration_count(const glmodel_t *const self)
+{
+    return self->internal.playing_animation_iteration_count;
 }
 
 void glmodel_set_animation(glmodel_t *self, const char *animation_label, const f32 dt, const bool loop)
@@ -590,15 +596,25 @@ void glmodel_set_animation(glmodel_t *self, const char *animation_label, const f
     }
 
     // Track current animation and time to reset time on animation change
-    if (!str_cmp(self->internal.current_animation, str__from_cstr(animation_label, strlen(animation_label)))) {
+    if (!str_cmp(self->internal.active_playing_animation, str__from_cstr(animation_label, strlen(animation_label)))) {
         self->current_time = 0.0f; // Reset time when switching animations
-        self->internal.current_animation = str__from_cstr(animation_label, strlen(animation_label));
+        self->internal.playing_animation_iteration_count = 0;
+        self->internal.active_playing_animation = str__from_cstr(animation_label, strlen(animation_label));
     }
 
     // Increment animation time (convert dt from seconds to ticks)
     self->current_time += dt * current_anim->ticks_per_second;
     if (loop) {
+        if (self->current_time > current_anim->duration) {
+            self->internal.playing_animation_iteration_count += 1;
+        }
         self->current_time = fmod(self->current_time, current_anim->duration); // Loop animation
+    } else {
+        if (self->current_time > current_anim->duration) {
+            self->internal.active_playing_animation = (str_t){0};
+            self->internal.playing_animation_iteration_count += 1;
+            return;
+        }
     }
 
     // Clear previous transforms

@@ -14,7 +14,6 @@
 typedef struct behaviorautomata_t behaviorautomata_t;
 
 typedef struct {
-    ecs_t   *ecs;
     void    *payload;
 } behaviorautomata_ctx_t;
 
@@ -47,8 +46,6 @@ behaviorautomata_t behaviorautomata_init(arena_t * const arena)
 
 void behaviorautomata_push_state(behaviorautomata_t * const self, behaviorautomata_state_t state)
 {
-    ASSERT(state.ctx.ecs);
-
     stack_push(&self->stack, state);
     state.start(self, &state.ctx);
 }

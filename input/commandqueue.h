@@ -67,7 +67,7 @@ void commandqueue_sync(commandqueue_t * const self)
     //printf("-------------------- NEW BATCH --------------------------------\n");
     for (u16 command_type = 0; command_type < commands->count; command_type++) {
 
-        if (self->registry.registry[command_type].type == COMMANDINPUTKEY_TYPE_KEYBOARD && keyboard_buffer[self->registry.registry[command_type].sdl_keyboard_key]) {
+        if (self->registry.registry[command_type].type == COMMANDINPUTKEY_TYPE_KEYBOARD && keyboard_buffer[self->registry.registry[command_type].sdl_keyboard_key.scancode]) {
 
             self->internal.bitmask |= (1 << command_type);
 
