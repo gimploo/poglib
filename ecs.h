@@ -2,11 +2,14 @@
 #include <poglib/basic.h>
 #include "./ecs/entity.h"
 #include "./ecs/component.h"
+#include "poglib/application.h"
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/input/commandqueue.h"
 
-ecs_t           ecs_init(void);
+ecs_t * global_ecs = NULL;
+
+ecs_t *         ecs_init(void);
 
 u32                 ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config);
 void                ecs_entity_remove(ecs_t * const self, const u32 entityId);
@@ -20,13 +23,16 @@ void                ecs_set_active_commandqueue(ecs_t *const self, commandqueue_
 
 void                ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
 
-void            ecs_update(ecs_t *const self);
+void            ecs_update_fixed_tick(ecs_t *const self);
+void            ecs_update_variable_tick(ecs_t *const self, const f32 dt);
 void            ecs_destroy(ecs_t * const self);
 
 #ifndef IGNORE_ECS_IMPLEMENTATION
 
-ecs_t ecs_init(void)
+ecs_t * ecs_init(void)
 {
+    ASSERT(!global_ecs);
+
     //FIXME: WTF it needs 500 MB ??
     //TODO: Figure out a way to visualize know where memory is distributed in the system 
     arena_t arena = arena_init(NULL, 500 * MB);
@@ -43,7 +49,8 @@ ecs_t ecs_init(void)
         }
     };
     result.arena = arena;
-    return result;
+    global_ecs = arena_store(&arena, &result, sizeof(ecs_t));
+    return global_ecs;
 }
 
 
@@ -105,7 +112,7 @@ void ecs_entity_remove(ecs_t * const self, const u32 entityId)
     );
 }
 
-void ecs_update(ecs_t *const self)
+void ecs_update_fixed_tick(ecs_t *const self)
 {
     ASSERT(self);
 
@@ -114,14 +121,34 @@ void ecs_update(ecs_t *const self)
     const ecs_systemmanager_t * const manager = &self->managers.systemmanager;
     for (u8 idx = 0; idx < ECS_SYSTEM_MAX_COUNT; idx++)
     {
-        if (!manager->count || !manager->systems[idx].callback)
+        if (!manager->count || !manager->systems[idx].callback || !manager->systems[idx].is_fixed_tick)
             continue;
 
         manager->systems[idx].callback(
             &self->managers.componentmanager,
             (ecs_system_ctx_t) {
                 .active_camera = self->internal.active_camera,
-                .active_commandqueue = self->internal.active_commandqueue
+                .active_commandqueue = self->internal.active_commandqueue,
+                .dt = APPLICATION_UPDATE_FIXED_TIME_STEP
+            }
+        );
+    }
+}
+
+void ecs_update_variable_tick(ecs_t *const self, const f32 dt)
+{
+    const ecs_systemmanager_t * const manager = &self->managers.systemmanager;
+    for (u8 idx = 0; idx < ECS_SYSTEM_MAX_COUNT; idx++)
+    {
+        if (!manager->count || !manager->systems[idx].callback || manager->systems[idx].is_fixed_tick)
+            continue;
+
+        manager->systems[idx].callback(
+            &self->managers.componentmanager,
+            (ecs_system_ctx_t) {
+                .active_camera = self->internal.active_camera,
+                .active_commandqueue = self->internal.active_commandqueue,
+                .dt = dt
             }
         );
     }

@@ -1,24 +1,12 @@
 #pragma once
-#include <poglib/gui.h>
-#include <poglib/input/commandqueue.h>
-#include <poglib/input/commandregistry.h>
-#include <poglib/gfx/glrenderer2d.h>
-#include <poglib/gfx/glrenderer3d.h>
-#include <poglib/util/spriteatlas.h>
-
+#include <poglib/poggen.h>
 #include "./glcamera.h"
 #include "./workbench/workbench-constants.h"
 #include "./gllight.h"
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
-#include "poglib/application/window/sdl_window.h"
-#include "poglib/basic/arena.h"
 #include "poglib/ecs.h"
 #include "poglib/ecs/common.h"
-#include "poglib/ecs/component/types.h"
-#include "poglib/math/common.h"
-#include "poglib/math/la.h"
-#include "poglib/util/assetmanager.h"
 
 typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_CAMERA_DRAG_LOOK    = 0,
@@ -78,6 +66,7 @@ void workbench__internal_show_colliders(workbench_t *const self);
 
 void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t * const state, const u16 command_bitmask, const f32 dt)
 {
+    printf("%i\n", command_bitmask);
     const u16 bitmask = command_bitmask;
     if (!bitmask) return;
 
@@ -122,7 +111,7 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
 void workbench__internal_ecs_create_world_camera(workbench_t *const self)
 {
     const u32 world_camera_entity_id  = ecs_entity_add(
-        &global_poggen->systems.ecs, 
+        global_ecs,
         (ecs_componentbundle_t) {
             .signature = ECS_CMP_TRANSFORM | ECS_CMP_CAMERA | ECS_CMP_INPUT,
             .component = {
@@ -142,7 +131,7 @@ void workbench__internal_ecs_create_world_camera(workbench_t *const self)
     );
 
     const ecs_entity_query_t view = ecs_entity_query_components(
-        &global_poggen->systems.ecs, world_camera_entity_id, ECS_CMP_CAMERA);
+        global_ecs, world_camera_entity_id, ECS_CMP_CAMERA);
     ASSERT(view.entity_cmp_data[ECS_CMP_CAMERA_IDX]);
     self->world_camera.handle = &((ecs_component_camera_t *)view.entity_cmp_data[ECS_CMP_CAMERA_IDX])->camera;
     self->world_camera.entity_id = world_camera_entity_id;
@@ -153,7 +142,7 @@ workbench_t * workbench_init(arena_t *const arena)
     ASSERT(global_poggen);
     ASSERT(!global_workbench);
 
-    if (!global_poggen->config.enable_ecs) {
+    if (!global_ecs) {
         eprint("ECS required to use workbench");
     }
 
@@ -261,7 +250,7 @@ workbench_t * workbench_init(arena_t *const arena)
 
 matrix4f_t workbench__internal_get_camera_view(const workbench_t *const self)
 {
-    glcamera_t *camera = ecs_get_active_camera(&global_poggen->systems.ecs);
+    glcamera_t *camera = ecs_get_active_camera(global_ecs);
     return glcamera_getview(camera);
 }
 
@@ -682,7 +671,7 @@ void workbench_toggle(void)
     self->is_active = !self->is_active;
 
     ecs_patch_entity(
-        &global_poggen->systems.ecs, 
+        global_ecs,
         self->world_camera.entity_id, 
         (ecs_cmp_patch_payload_t){
             .patch_type = ECS_PATCH_CMP_ACTIVE_FIELD,
@@ -694,12 +683,12 @@ void workbench_toggle(void)
     if (!self->is_active) return;
 
     ecs_set_active_camera(
-        &global_poggen->systems.ecs, 
+        global_ecs,
         self->world_camera.entity_id
     );
 
     ecs_set_active_commandqueue(
-        &global_poggen->systems.ecs, 
+        global_ecs,
         &self->commandqueue
     );
 }
@@ -712,7 +701,7 @@ void workbench__internal_show_colliders(workbench_t *const self)
     //TODO: currently colliders are shown on hover, it need to be on click
     //if (!self->enable_collider) return;
 
-    slot_t *sc_pool = slot_get_value(&global_poggen->systems.ecs.managers.componentmanager.componentpool_slots, ECS_CMP_COLLIDER_IDX);
+    slot_t *sc_pool = slot_get_value(&global_ecs->managers.componentmanager.componentpool_slots, ECS_CMP_COLLIDER_IDX);
     slot_iterator(sc_pool, sc_iter)
     {
         ecs_component_poolentry_t *sc_entry = sc_iter;
