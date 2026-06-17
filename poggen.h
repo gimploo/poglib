@@ -39,6 +39,7 @@ typedef struct poggen_t {
         poggen__internal_physics_t  physics;
         assetmanager_t              assets;
         renderqueue_t               renderqueue;
+        commandqueue_t              commandqueue;
     } systems;
 
 } poggen_t ;
@@ -51,9 +52,10 @@ void                                poggen_remove_scene(poggen_t *self, str_t la
 void                                poggen_change_scene(poggen_t *self, str_t scene_label);
 
 void                                poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt_rules_config_t config);
-commandqueue_t  *                   poggen_get_scene_commandqueue(const poggen_t *const self);
 window_t *                          poggen_get_window(const poggen_t *self);
 physics_sys_jolt_event_queue_t *    poggen_get_physics_collision_events(const poggen_t * const self);
+
+void                                poggen_update_commandqueue_registry(poggen_t *const self, const commandregistry_t registry);
 
 void                                poggen_tick(poggen_t *const self);
 void                                poggen_update(poggen_t *self, const f32 dt);
@@ -100,6 +102,7 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
                                .phy_simulation_started = false,
                                .instance = physics_sys_jolt_init(&arena)
                            } : (poggen__internal_physics_t){0},
+            .commandqueue = {0},
         },
     };
 
@@ -148,7 +151,7 @@ void poggen_change_scene(poggen_t *self, const str_t scene_label)
 
     scene_t *scene = (scene_t *)hashtable_get_value(table, (hashtable_key_t){scene_label});
     assert(scene);
-    printf("SCENE UPDATED FROM (%s) TO (%s)\n", self->current_scene->label, scene->label);
+    printf("SCENE UPDATED FROM (%s) TO (%s)\n", self->current_scene->label.data, scene->label.data);
     self->current_scene = scene;
 }
 
@@ -163,6 +166,8 @@ void poggen_tick(poggen_t *const self)
 {
     ASSERT(self);
     ASSERT(self->current_scene);
+
+    commandqueue_sync(&self->systems.commandqueue);
     scene__internal_tick(self->current_scene);
 }
 
@@ -182,9 +187,12 @@ void poggen_update(poggen_t *self, const f32 dt)
 
     current_scene->__input(current_scene, dt);
 
-    if (self->systems.physics.phy_simulation_started)   physics_sys_jolt_update(self->systems.physics.instance, dt);
+    if (self->systems.physics.phy_simulation_started)
+        physics_sys_jolt_update(self->systems.physics.instance, dt);
 
     scene__internal_update(current_scene, dt);
+
+    commandqueue_flush(&self->systems.commandqueue);
 }
 
 void poggen_destroy(poggen_t *self)
@@ -231,12 +239,10 @@ physics_sys_jolt_event_queue_t * poggen_get_physics_collision_events(const pogge
     return physics_sys_get_collision_event_queue(self->systems.physics.instance);
 }
 
-commandqueue_t * poggen_get_scene_commandqueue(const poggen_t *const self)
+void poggen_update_commandqueue_registry(poggen_t *const self, const commandregistry_t registry)
 {
     ASSERT(self);
-    ASSERT(self->current_scene);
-
-    return &self->current_scene->commandqueue;
+    commandqueue_update_registry(&self->systems.commandqueue, registry);
 }
 
 #endif

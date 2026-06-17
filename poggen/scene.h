@@ -15,7 +15,6 @@ typedef struct scene_t {
     str_t                label;
     arena_t              arena;
     void                 *content;
-    commandqueue_t       commandqueue;
     bool                 __is_paused;
     bool                 __is_over;
     void                 (*__init)(struct scene_t *);
@@ -33,7 +32,6 @@ void * scene_alloc_content(scene_t * const self, const u64 content_size);
 #define             scene_get_type(PSCENE)                                     (PSCENE)->__enum_id
 #define             scene_get_engine(...)                                      global_poggen
 void *              scene_alloc_content(scene_t * const self, const u64 content_size);
-void                scene_register_input_bindings(scene_t * const self, const commandregistry_t registry);
 
 
 
@@ -49,7 +47,6 @@ void * scene_alloc_content(scene_t * const self, const u64 content_size)
 
 void scene__internal_tick(scene_t *const scene)
 {
-    commandqueue_sync(&scene->commandqueue);
     scene->__tick(scene);
 }
 
@@ -58,7 +55,6 @@ void scene__internal_update(scene_t *const scene, const f32 dt)
     ASSERT(scene);
 
     scene->__update(scene, dt);
-    commandqueue_flush(&scene->commandqueue);
 }
 
 
@@ -90,10 +86,6 @@ void __scene_destroy(scene_t *scene) {
     scene->__render = NULL;
     scene->__destroy = NULL;
     scene->__input = NULL;
-}
-
-void scene_register_input_bindings(scene_t * const self, const commandregistry_t registry) {
-    self->commandqueue = commandqueue(&self->arena, registry);
 }
 
 #endif

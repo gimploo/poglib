@@ -20,8 +20,9 @@ typedef struct {
 } commandqueue_t;
 
 
-commandqueue_t      commandqueue(arena_t * const arena, const commandregistry_t registry);
+commandqueue_t      commandqueue(const commandregistry_t registry);
 void                commandqueue_sync(commandqueue_t * const self);
+void                commandqueue_update_registry(commandqueue_t *const self, const commandregistry_t registry);
 u16                 commandqueue_get_commands_as_bitmask(const commandqueue_t * const self);
 void                commandqueue_flush(commandqueue_t * const self);
 
@@ -30,8 +31,8 @@ void                commandqueue_flush(commandqueue_t * const self);
 
 bool commandqueue__internal_check_mousebutton_trigger(const commandinputbinding_t input);
 
-commandqueue_t commandqueue(arena_t * const arena, const commandregistry_t registry) {
-    ASSERT(arena);
+commandqueue_t commandqueue(const commandregistry_t registry) 
+{
     return(commandqueue_t) {
         .registry = registry,
         .internal = {
@@ -50,7 +51,7 @@ void cq__internal_print_u16_bitmask(uint16_t mask) {
     printf("\n");
 }
 
-void commandqueue_flush(commandqueue_t * const self)
+void commandqueue_flush(commandqueue_t *const self)
 {
     ASSERT(self);
     self->internal.bitmask = 0;
@@ -60,9 +61,6 @@ void commandqueue_sync(commandqueue_t * const self)
 {
     const u8 *keyboard_buffer = SDL_GetKeyboardState(NULL);
     const commandregistry_t *commands = &self->registry;
-
-    //self->internal.bitmask = 0;
-    //queue_clear(&self->commands);
 
     //printf("-------------------- NEW BATCH --------------------------------\n");
     for (u16 command_type = 0; command_type < commands->count; command_type++) {
@@ -103,9 +101,16 @@ bool commandqueue__internal_check_mousebutton_trigger(const commandinputbinding_
 }
 
 
-u16 commandqueue_get_commands_as_bitmask(const commandqueue_t * const self) {
+u16 commandqueue_get_commands_as_bitmask(const commandqueue_t *const self) {
     ASSERT(self);
     return self->internal.bitmask;
+}
+
+void commandqueue_update_registry(commandqueue_t *const self, const commandregistry_t registry)
+{
+    ASSERT(registry.count);
+    self->internal.bitmask = 0;
+    self->registry = registry;
 }
 
 #endif

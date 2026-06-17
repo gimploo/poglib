@@ -150,7 +150,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     &settings,
                     (JPH_RVec3 *)&collider->internal.position,
                     (JPH_Quat *) &collider->internal.orientation,
-                    NULL,
+                    0,
                     global_physics_sys_jolt_instance->physics_system
                 );
             break;

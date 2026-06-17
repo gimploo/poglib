@@ -37,7 +37,7 @@ typedef struct {
     glshader_t shader;
     vec3f_t player_camera_position;
 
-    commandqueue_t commandqueue;
+    commandregistry_t commandregistry;
 
     struct {
         u32 entity_id;
@@ -47,7 +47,6 @@ typedef struct {
 } workbench_t;
 
 workbench_t *   workbench_init(arena_t * const arena);
-void            workbench_tick(void);
 void            workbench_update(const f32 dt);
 void            workbench_render(void);
 void            workbench_destroy(void);
@@ -214,7 +213,7 @@ workbench_t * workbench_init(arena_t *const arena)
             }),
             .enable = true
         },
-        .commandqueue = commandqueue(arena, (commandregistry_t){
+        .commandregistry = (commandregistry_t){
             .count = WORKBENCH_ACTION_TYPE_COUNT,
             .registry = {
                 [WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK] = {
@@ -233,7 +232,7 @@ workbench_t * workbench_init(arena_t *const arena)
                     .sdl_mouse.wheel = SDL_MOUSEWHEEL_DOWN,
                 }
             },
-        })
+        }
     };
 
     workbench__internal_ecs_create_world_camera(&o);
@@ -360,6 +359,10 @@ void workbench_render(void)
 
     if (self->gui.enable) {
         workbench__internal_render_ui(self);
+    }
+
+    if (self->enable_collider) {
+        workbench__internal_show_colliders(self);
     }
 }
 
@@ -638,27 +641,15 @@ void workbench_render_capsule(
     renderqueue_pass_command(renderqueue, rendercommand);
 }
 
-void workbench_tick(void)
-{
-    ASSERT(global_workbench);
-
-    if (!global_workbench->is_active) return;
-
-    commandqueue_sync(&global_workbench->commandqueue);
-}
-
 void workbench_update(const f32 dt)
 {
     if (!global_workbench->is_active) return;
 
-    const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_workbench->commandqueue);
+    const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_poggen->systems.commandqueue);
     if (gui_ui_ishovered(&global_workbench->gui.handle, WB_COLLIDER_TOGGLE))
     {
-        workbench__internal_show_colliders(global_workbench);
+        global_workbench->enable_collider = !global_workbench->enable_collider;
     }
-
-    //NOTE:keep commandqueue flush at the end
-    commandqueue_flush(&global_workbench->commandqueue);
 }
 
 void workbench_toggle(void)
@@ -685,19 +676,12 @@ void workbench_toggle(void)
         self->world_camera.entity_id
     );
 
-    ecs_set_active_commandqueue(
-        global_ecs,
-        &self->commandqueue
-    );
+    poggen_update_commandqueue_registry(global_poggen, self->commandregistry);
 }
 
 void workbench__internal_show_colliders(workbench_t *const self)
 {
     ASSERT(global_poggen);
-    self->enable_collider = !self->enable_collider;
-
-    //TODO: currently colliders are shown on hover, it need to be on click
-    //if (!self->enable_collider) return;
 
     slot_t *sc_pool = slot_get_value(&global_ecs->managers.componentmanager.componentpool_slots, ECS_CMP_COLLIDER_IDX);
     slot_iterator(sc_pool, sc_iter)

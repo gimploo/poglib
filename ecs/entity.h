@@ -35,7 +35,7 @@ void ecs_entitymanager_add(ecs_entitymanager_t * const self, const ecs_entity_t 
 
 void ecs_entitymanager_remove(ecs_entitymanager_t * const self, const u32 entityId)
 {
-    const u32 remove_entity_idx = (u32)hashtable_get_value(&self->lookup, (hashtable_key_t){entityId});
+    const u32 remove_entity_idx = (u32)hashtable_get_value(&self->lookup, (hashtable_key_t){ .u32 = entityId });
     const bool is_entity_at_far_end = remove_entity_idx == (self->entities.len - 1);
 
     hashtable_delete(&self->lookup, (hashtable_key_t){ .u32 = entityId });

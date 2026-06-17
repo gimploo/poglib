@@ -79,6 +79,6 @@ void glinstancebuffer_push(glinstancebuffer_t * const self, const void * const m
 void glinstancebuffer_destroy(glinstancebuffer_t * const self)
 {
     ASSERT(self);
-    GL_CHECK(glDeleteBuffers(1, self->ssbo_id));
+    GL_CHECK(glDeleteBuffers(1, &self->ssbo_id));
     self->mem_offset = NULL;
 }
