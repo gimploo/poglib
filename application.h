@@ -104,12 +104,12 @@ const char *__get_base_dir()
     return exe_dir;
 }
 
-f32 application_get_tick(const application_t *app)
+f32 application_get_tick(const application_t *const app)
 {
     return app->handle.timer->__now;
 }
 
-void application_run(application_t * const app)
+void application_run(application_t *const app)
 {
 #ifdef DEBUG
     dbg_init();

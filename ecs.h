@@ -19,8 +19,6 @@ ecs_entity_query_t   ecs_entity_query_components(ecs_t *const self, const u32 en
 void                ecs_set_active_camera(ecs_t *const self, const u32 entity_id);
 glcamera_t *        ecs_get_active_camera(ecs_t *const self);
 
-void                ecs_set_active_commandqueue(ecs_t *const self, commandqueue_t *const commandqueue);
-
 void                ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
 
 void            ecs_update_fixed_tick(ecs_t *const self);
@@ -40,7 +38,6 @@ ecs_t * ecs_init(void)
         .internal = {
             .entity_generator_counter = ECS_ENTITY_INVALID_ID,
             .active_camera = NULL,
-            .active_commandqueue = NULL,
         },
         .managers = {
             .entitymanager = ecs_entitymanager(&arena),
@@ -76,12 +73,6 @@ void ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patc
         entity_id,
         request
     );
-}
-
-void ecs_set_active_commandqueue(ecs_t *const self, commandqueue_t *const commandqueue)
-{
-    ASSERT(commandqueue);
-    self->internal.active_commandqueue = commandqueue;
 }
 
 u32 ecs_entity_add(ecs_t *const self, const ecs_componentbundle_t component_config)
@@ -128,7 +119,6 @@ void ecs_update_fixed_tick(ecs_t *const self)
             &self->managers.componentmanager,
             (ecs_system_ctx_t) {
                 .active_camera = self->internal.active_camera,
-                .active_commandqueue = self->internal.active_commandqueue,
                 .dt = APPLICATION_UPDATE_FIXED_TIME_STEP
             }
         );
@@ -147,7 +137,6 @@ void ecs_update_variable_tick(ecs_t *const self, const f32 dt)
             &self->managers.componentmanager,
             (ecs_system_ctx_t) {
                 .active_camera = self->internal.active_camera,
-                .active_commandqueue = self->internal.active_commandqueue,
                 .dt = dt
             }
         );

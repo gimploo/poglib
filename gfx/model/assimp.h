@@ -218,7 +218,7 @@ i32 assimp__internal_get_bone_id(hashtable_t *bone_name_to_index, const struct a
     str_t bone_name = str__from_cstr(bone->mName.data, bone->mName.length);
 
     if (hashtable_has_key(bone_name_to_index, (hashtable_key_t){ .str = bone_name })) {
-        bone_id = hashtable_get_value(bone_name_to_index, (hashtable_key_t){ .str = bone_name });
+        bone_id = (u32)hashtable_get_value(bone_name_to_index, (hashtable_key_t){ .str = bone_name });
     } else {
         bone_id = bone_name_to_index->entries.len; //Sets total occupied entries as the index
         hashtable_insert(bone_name_to_index, (hashtable_key_t){bone_name}, bone_id);
@@ -273,7 +273,7 @@ void assimp__internal_glmodel_read_node_heirarchy(const hashtable_t *bone_name_t
     const matrix4f_t global_transform = matrix4f_multiply(parentTransform, node_transform);
 
     if (hashtable_has_key(bone_name_to_index, (hashtable_key_t){node_name})) {
-        const u32 bone_index = hashtable_get_value(bone_name_to_index, (hashtable_key_t){node_name});
+        const u32 bone_index = (u32)hashtable_get_value(bone_name_to_index, (hashtable_key_t){node_name});
         boneinfo_t *boneinfo = (boneinfo_t *)list_get_value(bone_info, bone_index);
         boneinfo->transform = matrix4f_multiply(global_transform, boneinfo->offset);
     }
@@ -551,7 +551,7 @@ void assimp__internal_process_node_anim(glmodel_t *self, struct aiNode *node, co
 
     // Update bone transform if this node is a bone
     if (hashtable_has_key(self->bone_name_to_index, (hashtable_key_t){node_name})) {
-        u32 bone_index = hashtable_get_value(self->bone_name_to_index, (hashtable_key_t){node_name});
+        u32 bone_index = (u32)hashtable_get_value(self->bone_name_to_index, (hashtable_key_t){node_name});
         boneinfo_t *bone_info = (boneinfo_t *)list_get_value(&self->bone_infos, bone_index);
         bone_info->transform = 
             matrix4f_multiply(

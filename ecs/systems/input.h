@@ -1,10 +1,11 @@
 #pragma once
+#include "poglib/ecs/common.h"
+#include "poglib/ecs/component.h"
 #include <poglib/poggen.h>
 
 void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
     ASSERT(global_poggen);
-    ASSERT(ctx.active_commandqueue);
 
     slot_t *const pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_INPUT_IDX);
     slot_iterator(pool, iter)
@@ -42,7 +43,7 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
 
         input_cmp->input_behavior(
             &input_cmp->internal.state, 
-            commandqueue_get_commands_as_bitmask(ctx.active_commandqueue), 
+            commandqueue_get_commands_as_bitmask(&global_poggen->systems.commandqueue),
             APPLICATION_UPDATE_FIXED_TIME_STEP
         );
     }
