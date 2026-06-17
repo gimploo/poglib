@@ -433,6 +433,19 @@ glmodel_t glmodel_init(const char *filepath)
         }
     }
 
+    // Strip root bone translation from all animations — engine controls root position
+    if (o.internal.root_channel_idx >= 0) {
+        list_iterator(&o.animator.animations, iter) {
+            animation_t *anim = iter;
+            node_anim_t *ch = list_get_value(&anim->channels, o.internal.root_channel_idx);
+            if (ch && ch->position_keys.len > 0) {
+                list_clear(&ch->position_keys);
+                position_key_t zero = { .tick = 0.0f, .value = {0} };
+                list_append(&ch->position_keys, zero);
+            }
+        }
+    }
+
     logging("Completed loading model %s ...", filepath);
 
     return o;
