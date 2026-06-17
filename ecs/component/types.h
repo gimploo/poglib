@@ -45,6 +45,7 @@ struct ecs_component_transform_t {
         ECS_CMP_TRANSFORM_SOURCE_NONE,
         ECS_CMP_TRANSFORM_SOURCE_INPUT,
         ECS_CMP_TRANSFORM_SOURCE_PHYSICS,
+        ECS_CMP_TRANSFORM_SOURCE_ANIMATION,
     } source;
 };
 
@@ -53,6 +54,9 @@ struct ecs_component_transform_t {
 typedef struct ecs_component_model_t ecs_component_model_t;
 struct ecs_component_model_t {
     u32 asset_id;
+    struct {
+        glmodel_t *model;
+    } internal;
 };
 
 /*========================= MESH ====================================== */

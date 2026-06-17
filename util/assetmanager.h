@@ -207,12 +207,10 @@ void assetmanager__internal_upload_model_to_gpu(
     const glmodel_t *const model,
     const u32 asset_id
 ) {
-    gpu_asset_t * const gpu_asset = arena_reserve(&self->arena, sizeof(gpu_asset_t));
-    gpu_asset->asset_id = asset_id;
-    gpu_asset->meshes.count = model->meshes.len;
-    gpu_asset->meshes.data = arena_reserve(&self->arena, sizeof(gpu_mesh_t) * gpu_asset->meshes.count);
-
-    const glvtx_attributelist_t attrlist = glmodel_get_attirbutelist(model);
+    gpu_asset_t * const gpu_asset           = arena_reserve(&self->arena, sizeof(gpu_asset_t));
+    gpu_asset->asset_id                     = asset_id;
+    gpu_asset->meshes.count                 = model->meshes.len;
+    gpu_asset->meshes.data                  = arena_reserve(&self->arena, sizeof(gpu_mesh_t) * gpu_asset->meshes.count);
 
     list_iterator(&model->meshes, iter) 
     {
@@ -237,6 +235,7 @@ void assetmanager__internal_upload_model_to_gpu(
 
         ebo_init(&vbo, (u32 *)cpu_mesh->idx.data, cpu_mesh->idx.len);
 
+        const glvtx_attributelist_t attrlist = glmodel_get_attirbutelist();
         for(u16 attr_idx = 0; attr_idx < attrlist.count; attr_idx++)
         {
             vao_set_attributes(

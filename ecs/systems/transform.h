@@ -27,19 +27,20 @@ void ecs_system_transform(ecs_componentmanager_t *const cmp_manager, const ecs_s
 
         switch(transform->source)
         {
-            case ECS_CMP_TRANSFORM_SOURCE_INPUT: {
+            case ECS_CMP_TRANSFORM_SOURCE_INPUT:
                 ecs_system_transfrom__internal_source_manual(
                     transform, 
                     ecs_componentmanager__internal_query_components(
                         cmp_manager, entry->entity_id, ECS_CMP_INPUT
                     ).entity_cmp_data[ECS_CMP_INPUT_IDX]
                 );
-            } break;
-
-            case ECS_CMP_TRANSFORM_SOURCE_NONE:
-            case ECS_CMP_TRANSFORM_SOURCE_PHYSICS: 
-             //NOTE: physics system updates the position and orientation directly 
             break;
+
+            case ECS_CMP_TRANSFORM_SOURCE_ANIMATION:    //NOTE: animation system updates the position and orientation directly 
+            case ECS_CMP_TRANSFORM_SOURCE_PHYSICS:      //NOTE: physics system updates the position and orientation directly 
+            case ECS_CMP_TRANSFORM_SOURCE_NONE:
+            break;
+
             default: eprint("transform source not accounted for");
         }
     }

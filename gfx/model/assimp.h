@@ -80,6 +80,7 @@ typedef struct glmodel_t {
     struct {
         str_t active_playing_animation;
         u16 playing_animation_iteration_count;
+        i64 root_channel_idx;
     } internal;
 
 } glmodel_t;
@@ -87,6 +88,7 @@ typedef struct glmodel_t {
 glmodel_t       glmodel_init(const char *filepath);
 void            glmodel_set_animation(glmodel_t *self, const char *animation_label, const f32 dt, const bool loop);
 str_t           glmodel_get_current_playing_animation(const glmodel_t *const self);
+vec3f_t         glmodel_get_rootnode_position(const glmodel_t *self, const char *animation_label, f32 time);
 void            glmodel_destroy(glmodel_t *self);
 
 #ifndef IGNORE_ASSIMP_IMPLEMENTATION
@@ -156,7 +158,7 @@ glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh) {
         struct aiFace face = mesh->mFaces[i];
         slot_insert_multiple(
             &ind, 
-            (const u8 *)face.mIndices, 
+            (u8 *)face.mIndices, 
             face.mNumIndices,
             sizeof(u32));
     }
@@ -214,11 +216,11 @@ glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh) {
 
 i32 assimp__internal_get_bone_id(hashtable_t *bone_name_to_index, const struct aiBone *bone)
 {
-    i32 bone_id = 0;
+    u64 bone_id = 0;
     str_t bone_name = str__from_cstr(bone->mName.data, bone->mName.length);
 
     if (hashtable_has_key(bone_name_to_index, (hashtable_key_t){ .str = bone_name })) {
-        bone_id = (u32)hashtable_get_value(bone_name_to_index, (hashtable_key_t){ .str = bone_name });
+        bone_id = (u64)hashtable_get_value(bone_name_to_index, (hashtable_key_t){ .str = bone_name });
     } else {
         bone_id = bone_name_to_index->entries.len; //Sets total occupied entries as the index
         hashtable_insert(bone_name_to_index, (hashtable_key_t){bone_name}, bone_id);
@@ -226,7 +228,7 @@ i32 assimp__internal_get_bone_id(hashtable_t *bone_name_to_index, const struct a
     return bone_id;
 }
 
-void assimp__internal_glmesh_process_bones(struct aiMesh *mesh, slot_t *vertices, hashtable_t *bone_name_to_index, list_t *bone_infos)
+void assimp__internal_glmesh_process_bones(struct aiMesh *mesh, const slot_t *const vertices, hashtable_t *bone_name_to_index, list_t *bone_infos)
 {
     for (u32 i = 0; i < mesh->mNumBones; i++)
     {
@@ -261,21 +263,18 @@ void assimp__internal_glmesh_process_bones(struct aiMesh *mesh, slot_t *vertices
     }
 }
 
-void print_u32(void *data)
+void assimp__internal_glmodel_read_node_heirarchy(const hashtable_t *const bone_name_to_index, list_t *const bone_info, const struct aiNode *node, const matrix4f_t parentTransform)
 {
-    printf("%i\n", *(u32 *)data);
-}
+    const matrix4f_t node_transform     = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
+    const matrix4f_t global_transform   = matrix4f_multiply(parentTransform, node_transform);
 
-void assimp__internal_glmodel_read_node_heirarchy(const hashtable_t *bone_name_to_index, list_t *bone_info, const struct aiNode *node, const matrix4f_t parentTransform)
-{
     const str_t node_name = str__from_cstr(node->mName.data, node->mName.length);
-    const matrix4f_t node_transform = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
-    const matrix4f_t global_transform = matrix4f_multiply(parentTransform, node_transform);
+    if (hashtable_has_key(bone_name_to_index, (hashtable_key_t){ .str = node_name })) {
 
-    if (hashtable_has_key(bone_name_to_index, (hashtable_key_t){node_name})) {
-        const u32 bone_index = (u32)hashtable_get_value(bone_name_to_index, (hashtable_key_t){node_name});
-        boneinfo_t *boneinfo = (boneinfo_t *)list_get_value(bone_info, bone_index);
-        boneinfo->transform = matrix4f_multiply(global_transform, boneinfo->offset);
+        const u64 bone_index        = (u64)hashtable_get_value(bone_name_to_index, (hashtable_key_t){ .str = node_name });
+        boneinfo_t *const boneinfo  = (boneinfo_t *)list_get_value(bone_info, bone_index);
+        boneinfo->transform         = matrix4f_multiply(global_transform, boneinfo->offset);
+
     }
 
     for (u32 i = 0; i < node->mNumChildren; i++)
@@ -315,9 +314,6 @@ u32 assimp__internal_get_total_bones(const struct aiScene *scene)
 
 void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene *scene) 
 {
-    //NOTE: Since assimp has mesh bones hold the local vertex id, and since we club together all vertices 
-    //in a buffer, we need to translate vertex ids to bone ids - since its the reverse assimp gives us
-
     //Map all bones to an index for easy lookup
     const u32 total_bones = assimp__internal_get_total_bones(scene);
     if(total_bones) {
@@ -325,7 +321,7 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
         *self->bone_name_to_index = hashtable_init(total_bones, HT_KEY_TYPE_STR, (ht_value_type){ .size = sizeof(i32), .type = HT_STORAGE_BY_VALUE_INLINE }, &self->arena);
     }
 
-    ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL && "Update the transforms list in glmodel_t");
+    ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL);
     for (u32 mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
         struct aiMesh *mesh = scene->mMeshes[mesh_index];
@@ -333,7 +329,7 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
         self->transforms[mesh_index] = list_init(matrix4f_t);
 
         // Process mesh
-        glmesh_t m = assimp__internal_glmesh_processMesh(mesh);
+        const glmesh_t m = assimp__internal_glmesh_processMesh(mesh);
 
         // Process materials
         assimp__internal_glmesh_processMaterial(
@@ -387,14 +383,13 @@ glmodel_t glmodel_init(const char *filepath)
     o.animator = animator_init();
     o.current_time = 0.0f;
     o.arena = arena_init(NULL, 2 * MB);
+    o.internal.root_channel_idx = -1;
 
     logging("Loading model %s ...", filepath);
 
     // Assimp: import model
-    const struct aiScene *scene = aiImportFile(
-        filepath, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_LimitBoneWeights | aiProcess_CalcTangentSpace);
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE ||
-        !scene->mRootNode) {
+    const struct aiScene *scene = aiImportFile(filepath, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_LimitBoneWeights | aiProcess_CalcTangentSpace);
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         eprint("ERROR::ASSIMP:: %s", aiGetErrorString());
     }
 
@@ -402,9 +397,7 @@ glmodel_t glmodel_init(const char *filepath)
 
     //NOTE: This is used to get the vertex in world space back to model space
     o.global_inverse_transform  = glms_mat4_inv(
-        glms_mat4_transpose(
-            *(matrix4f_t *)&scene->mRootNode->mTransformation
-        )
+        glms_mat4_transpose(*(matrix4f_t *)&scene->mRootNode->mTransformation)
     );
 
     assimp__internal_glmodel_load_alltextures(&o, scene);
@@ -412,29 +405,40 @@ glmodel_t glmodel_init(const char *filepath)
     //debug_assimp_vertex_bones(scene);
     assimp__internal_glmesh_processScene(&o, scene);
 
-    {
-        f32 min_y = INFINITY, max_y = -INFINITY;
-        list_iterator(&o.meshes, mesh_iter)
-        {
-            glmesh_t *m = mesh_iter;
-            slot_iterator(&m->vtx, vtx_iter)
-            {
-                glvertex3d_t *v = (glvertex3d_t *)vtx_iter;
-                if (v->pos.y < min_y) min_y = v->pos.y;
-                if (v->pos.y > max_y) max_y = v->pos.y;
-            }
-        }
-        fprintf(stderr, "MODEL BOUNDS: min_y=%.3f max_y=%.3f height=%.3f center=%.3f\n", min_y, max_y, max_y - min_y, (min_y + max_y) * 0.5f);
-    }
     //load all animations
     animator_load_all_animations(&o.animator, scene);
+
+
+    //NOTE: this to cache the root channel idx to get the root position of the model during an animation
+    if (o.bone_name_to_index && scene->mRootNode) 
+    {
+        for (u32 i = 0; i < scene->mRootNode->mNumChildren; i++) 
+        {
+            const str_t name = str__from_cstr(
+                scene->mRootNode->mChildren[i]->mName.data,
+                scene->mRootNode->mChildren[i]->mName.length
+            );
+
+            if (hashtable_has_key(o.bone_name_to_index, (hashtable_key_t){ .str = name })) 
+            {
+                animation_t *first = list_get_value(&o.animator.animations, 0);
+                list_iterator(&first->channels, iter) {
+                    if (strcmp(((node_anim_t *)iter)->node_name, name.data) == 0) {
+                        o.internal.root_channel_idx = (i64)list_iterator_index;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
 
     logging("Completed loading model %s ...", filepath);
 
     return o;
 }
 
-void glmodel_destroy(glmodel_t *self) 
+void glmodel_destroy(glmodel_t *const self) 
 {
     for (u32 i = 0; i < self->meshes.len; i++) 
         list_destroy(&self->transforms[i]);
@@ -530,12 +534,12 @@ void debug_assimp_vertex_bones(const struct aiScene *scene) {
 }
 
 // Helper function to process node hierarchy for animation
-void assimp__internal_process_node_anim(glmodel_t *self, struct aiNode *node, const matrix4f_t parent_transform, const list_t *channels, animation_t *current_anim) 
+void assimp__internal_process_node_anim(glmodel_t *self, struct aiNode *node, const matrix4f_t parent_transform, const list_t *channels, const animation_t *const current_anim) 
 {
     ASSERT(node);
 
-    const str_t node_name = str__from_cstr(node->mName.data, node->mName.length);
-    matrix4f_t node_transform = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
+    const str_t node_name       = str__from_cstr(node->mName.data, node->mName.length);
+    matrix4f_t node_transform   = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
 
     // Find animation channel for this node
     list_iterator(channels, iter) {
@@ -550,14 +554,13 @@ void assimp__internal_process_node_anim(glmodel_t *self, struct aiNode *node, co
     const matrix4f_t global_transform = matrix4f_multiply(parent_transform, node_transform);
 
     // Update bone transform if this node is a bone
-    if (hashtable_has_key(self->bone_name_to_index, (hashtable_key_t){node_name})) {
-        u32 bone_index = (u32)hashtable_get_value(self->bone_name_to_index, (hashtable_key_t){node_name});
-        boneinfo_t *bone_info = (boneinfo_t *)list_get_value(&self->bone_infos, bone_index);
-        bone_info->transform = 
-            matrix4f_multiply(
-                self->global_inverse_transform,
-                matrix4f_multiply(global_transform, bone_info->offset)
-            );
+    if (hashtable_has_key(self->bone_name_to_index, (hashtable_key_t){ .str = node_name })) {
+        const u64 bone_index        = (u64)hashtable_get_value(self->bone_name_to_index, (hashtable_key_t){ .str = node_name });
+        boneinfo_t *const bone_info = (boneinfo_t *)list_get_value(&self->bone_infos, bone_index);
+        bone_info->transform = matrix4f_multiply(
+            self->global_inverse_transform,
+            matrix4f_multiply(global_transform, bone_info->offset)
+        );
 
         // Assign to transforms array for each mesh
         for (u32 mesh_idx = 0; mesh_idx < self->meshes.len; mesh_idx++) {
@@ -589,14 +592,14 @@ void glmodel_set_animation(glmodel_t *self, const char *animation_label, const f
     }
 
     // Get the specified animation
-    animation_t *current_anim = animator_get_animation(&self->animator, animation_label);
+    const animation_t *const current_anim = animator_get_animation(&self->animator, animation_label);
     if (!current_anim || current_anim->ticks_per_second == 0.0f) {
         logging("Invalid animation or ticks per second is zero");
         return;
     }
 
     // Track current animation and time to reset time on animation change
-    if (!str_cmp(self->internal.active_playing_animation, str__from_cstr(animation_label, strlen(animation_label)))) {
+    if (str_cmp(self->internal.active_playing_animation, str__from_cstr(animation_label, strlen(animation_label))) == 0) {
         self->current_time = 0.0f; // Reset time when switching animations
         self->internal.playing_animation_iteration_count = 0;
         self->internal.active_playing_animation = str__from_cstr(animation_label, strlen(animation_label));
@@ -655,7 +658,7 @@ gltexturelist_t glmodel_get_texuturelist(const glmodel_t *self)
     return list;
 }
 
-glvtx_attributelist_t glmodel_get_attirbutelist(const glmodel_t *const self)
+glvtx_attributelist_t glmodel_get_attirbutelist(void)
 {
     return (glvtx_attributelist_t) {
         .count = 7,
@@ -719,6 +722,20 @@ glvtx_attributelist_t glmodel_get_attirbutelist(const glmodel_t *const self)
             }
         }
     };
+}
+
+vec3f_t glmodel_get_rootnode_position(const glmodel_t *self, const char *animation_label, f32 time) 
+{
+    if (self->internal.root_channel_idx < 0) eprint("root channel idx is -1");
+
+    const animation_t *anim = animator_get_animation(&self->animator, animation_label);
+    if (!anim) eprint("animation not found");
+
+    const node_anim_t *ch = list_get_value(&anim->channels, self->internal.root_channel_idx);
+    if (!ch) eprint("root channel not found in animation channel");
+
+    const matrix4f_t m = compute_node_transform(ch, time, anim->duration);
+    return (vec3f_t){ m.raw[3][0], m.raw[3][1], m.raw[3][2] };
 }
 
 #endif

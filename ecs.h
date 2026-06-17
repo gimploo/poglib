@@ -5,7 +5,6 @@
 #include "poglib/application.h"
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
-#include "poglib/input/commandqueue.h"
 
 ecs_t * global_ecs = NULL;
 
