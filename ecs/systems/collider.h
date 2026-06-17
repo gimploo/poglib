@@ -19,12 +19,18 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
         ecs_entity_query_t query                    = ecs_componentmanager__internal_query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM);
         ecs_component_transform_t *transform        = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
 
+        //NOTE: is this good ? - who tf knows - keep this till i get smarter :p
+        if (transform->source == ECS_CMP_TRANSFORM_SOURCE_ANIMATION)
+            break;
+
         switch(collider->motion_type)
         {
             case JPH_MotionType_Kinematic:
                 ASSERT(collider->internal.kinematic_body);
+
                 JPH_CharacterVirtual_SetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->position);
                 JPH_CharacterVirtual_SetRotation(collider->internal.kinematic_body, (JPH_Quat *)&transform->orientation);
+
                 JPH_CharacterVirtual_Update(
                     collider->internal.kinematic_body, 
                     APPLICATION_UPDATE_FIXED_TIME_STEP, 
@@ -36,12 +42,9 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
                 JPH_CharacterVirtual_GetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&collider->internal.position);
                 JPH_CharacterVirtual_GetRotation(collider->internal.kinematic_body, (JPH_Quat *)&collider->internal.orientation);
 
-                //TODO: we may need to pull this out to somewhere else if a 
-                //fine grain control is required to interpolate transform position to 
-                //collided position 
-
-                transform->position     = collider->internal.position;
                 transform->orientation  = collider->internal.orientation;
+                transform->position     = collider->internal.position;
+
             break;
 
             case JPH_MotionType_Dynamic:

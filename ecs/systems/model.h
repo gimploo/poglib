@@ -23,21 +23,24 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
     slot_iterator(primary_pool, ITER)
     {
         const ecs_component_poolentry_t * const entry = ITER;
-        const u32 assetid = ((ecs_component_model_t *)entry->entity_cmpdata)->asset_id;
+        ecs_component_model_t *cmp_model = (ecs_component_model_t *)entry->entity_cmpdata;
 
-        const glmodel_t *model = (glmodel_t *)assetmanager_get_assetresource(
-            &global_poggen->systems.assets, 
-            ASSET_TYPE_MODEL,
-            assetid
-        );
+        if (!cmp_model->internal.model) {
+            cmp_model->internal.model = (glmodel_t *)assetmanager_get_assetresource(
+                &global_poggen->systems.assets, 
+                ASSET_TYPE_MODEL,
+                (cmp_model)->asset_id
+            );
+        }
 
-        if (!model) {
+
+        if (!cmp_model->internal.model) {
             continue;
         }
 
         const gpu_asset_t *gpu_loaded_asset = (gpu_asset_t *)assetmanager_get_gpu_loaded_asset_async(
             &global_poggen->systems.assets, 
-            assetid
+            cmp_model->asset_id
         );
         if (!gpu_loaded_asset) {
             continue;
@@ -62,6 +65,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
             1.0f, 1000.0f
         );
 
+        const glmodel_t *model = cmp_model->internal.model;
         ASSERT(gpu_loaded_asset->meshes.count == model->meshes.len);
         for (u8 idx = 0; idx < model->meshes.len; idx++)
         {
