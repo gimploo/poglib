@@ -136,14 +136,14 @@ void workbench__internal_ecs_create_world_camera(workbench_t *const self)
 
 workbench_t * workbench_init(arena_t *const arena)
 {
-    ASSERT(global_poggen);
+    ASSERT(global_engine);
     ASSERT(!global_workbench);
 
     if (!global_ecs) {
         eprint("ECS required to use workbench");
     }
 
-    assetmanager_t *const assetmanager = &global_poggen->systems.assets;
+    assetmanager_t *const assetmanager = &global_engine->systems.assets;
 
     workbench_t o = {
         .is_active = false,
@@ -237,7 +237,7 @@ workbench_t * workbench_init(arena_t *const arena)
 
     workbench__internal_ecs_create_world_camera(&o);
 
-    assetmanager_load_all_primitives(&global_poggen->systems.assets);
+    assetmanager_load_all_primitives(&global_engine->systems.assets);
 
     gui_set_composition(&o.gui.handle, (ui_composition)workbench_compose_ui);
 
@@ -350,7 +350,7 @@ void workbench_render(void)
         workbench__internal_get_camera_view(self),
         glms_perspective(
             radians(45), 
-            global_poggen->handle.app->window.aspect_ratio, 
+            global_engine->handle.app->window.aspect_ratio, 
             1.0f, 1000.0f),
         self->world_camera.handle->position
     );
@@ -378,11 +378,11 @@ void workbench_render_camera(
     const versors orientation
 ) {
     ASSERT(global_workbench);
-    renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
-    const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
+    renderqueue_t * const renderqueue = &global_engine->systems.renderqueue;
+    const assetmanager_t * const assetmanager = &global_engine->systems.assets;
     const matrix4f_t perspective_projection  = glms_perspective(
         radians(45), 
-        global_poggen->handle.app->window.aspect_ratio, 
+        global_engine->handle.app->window.aspect_ratio, 
         1.0f, 
         10000.0f
     );
@@ -441,11 +441,11 @@ void workbench_render_marker(
 ) {
     ASSERT(global_workbench);
     workbench_t *const self = global_workbench;
-    renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
-    const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
+    renderqueue_t * const renderqueue = &global_engine->systems.renderqueue;
+    const assetmanager_t * const assetmanager = &global_engine->systems.assets;
     const matrix4f_t perspective_projection  = glms_perspective(
         radians(45), 
-        global_poggen->handle.app->window.aspect_ratio, 
+        global_engine->handle.app->window.aspect_ratio, 
         1.0f, 
         10000.0f
     );
@@ -514,11 +514,11 @@ void workbench_render_cube(
 ) {
     ASSERT(global_workbench);
     workbench_t *const self = global_workbench;
-    renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
-    const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
+    renderqueue_t * const renderqueue = &global_engine->systems.renderqueue;
+    const assetmanager_t * const assetmanager = &global_engine->systems.assets;
     const matrix4f_t perspective_projection  = glms_perspective(
         radians(45), 
-        global_poggen->handle.app->window.aspect_ratio, 
+        global_engine->handle.app->window.aspect_ratio, 
         1.0f, 
         10000.0f
     );
@@ -586,11 +586,11 @@ void workbench_render_capsule(
     ASSERT(global_workbench);
     workbench_t *const self = global_workbench;
 
-    renderqueue_t * const renderqueue = &global_poggen->systems.renderqueue;
-    const assetmanager_t * const assetmanager = &global_poggen->systems.assets;
+    renderqueue_t * const renderqueue = &global_engine->systems.renderqueue;
+    const assetmanager_t * const assetmanager = &global_engine->systems.assets;
     const matrix4f_t perspective_projection = glms_perspective(
         radians(45),
-        global_poggen->handle.app->window.aspect_ratio,
+        global_engine->handle.app->window.aspect_ratio,
         1.0f,
         10000.0f
     );
@@ -645,7 +645,7 @@ void workbench_update(const f32 dt)
 {
     if (!global_workbench->is_active) return;
 
-    const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_poggen->systems.commandqueue);
+    const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
     if (gui_ui_ishovered(&global_workbench->gui.handle, WB_COLLIDER_TOGGLE))
     {
         global_workbench->enable_collider = !global_workbench->enable_collider;
@@ -676,12 +676,12 @@ void workbench_toggle(void)
         self->world_camera.entity_id
     );
 
-    poggen_update_commandqueue_registry(global_poggen, self->commandregistry);
+    poggen_update_commandqueue_registry(global_engine, self->commandregistry);
 }
 
 void workbench__internal_show_colliders(workbench_t *const self)
 {
-    ASSERT(global_poggen);
+    ASSERT(global_engine);
 
     slot_t *sc_pool = slot_get_value(&global_ecs->managers.componentmanager.componentpool_slots, ECS_CMP_COLLIDER_IDX);
     slot_iterator(sc_pool, sc_iter)

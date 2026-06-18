@@ -44,7 +44,7 @@ typedef struct poggen_t {
 
 } poggen_t ;
 
-global poggen_t *global_poggen = NULL;
+global poggen_t *global_engine = NULL;
 
 poggen_t *                          poggen_init(application_t * const app, const poggen_config_t config);
 #define                             poggen_add_scene(PGEN, SCENE_NAME)                          poggen__internal_add_scene((PGEN), scene__internal_init(SCENE_NAME))
@@ -80,7 +80,7 @@ window_t * poggen_get_window(const poggen_t *self)
 poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
 {
     if (!global_window)     eprint("A window is required to run poggen\n");
-    if (global_poggen)      eprint("Trying to initialize a second `poggen` in the same instance");
+    if (global_engine)      eprint("Trying to initialize a second `poggen` in the same instance");
 
     poggen_t *output = (poggen_t *)calloc(1, sizeof(poggen_t ));
     ASSERT(output);
@@ -106,9 +106,9 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
         },
     };
 
-    global_poggen  = output;
+    global_engine  = output;
 
-    return global_poggen;
+    return global_engine;
 }
 
 void poggen__internal_add_scene(poggen_t *const self, const scene_t scene_config)
@@ -217,7 +217,7 @@ void poggen_destroy(poggen_t *self)
     self->current_scene = NULL;
     free(self);
     self = NULL;
-    global_poggen = NULL;
+    global_engine = NULL;
 }
 
 void poggen_register_physics_rules(poggen_t *const self, const physics_sys_jolt_rules_config_t config)
@@ -229,7 +229,7 @@ void poggen_register_physics_rules(poggen_t *const self, const physics_sys_jolt_
     physics_sys_jolt_start_simulation(self->systems.physics.instance);
 }
 
-physics_sys_jolt_event_queue_t * poggen_get_physics_collision_events(const poggen_t * const self)
+physics_sys_jolt_event_queue_t * poggen_get_physics_collision_events(const poggen_t *const self)
 {
     if (!self->config.enable_physics) {
         eprint("Enable physics first, to use this");
