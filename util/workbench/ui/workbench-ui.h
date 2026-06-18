@@ -42,7 +42,7 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         }
     }); 
     {
-        const f32 fps = application_get_fps(global_poggen->handle.app);
+        const f32 fps = application_get_fps(global_engine->handle.app);
         snprintf(tempbuffer, sizeof(tempbuffer), "FPS: %d", (int)fps);
         gui_ui_compose_begin(gui, (ui_config_t){ 
             .composition = {0},
