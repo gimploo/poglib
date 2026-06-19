@@ -361,9 +361,6 @@ void workbench_render(void)
         workbench__internal_render_ui(self);
     }
 
-    if (self->enable_collider) {
-        workbench__internal_show_colliders(self);
-    }
 }
 
 void workbench__internal_update_ui(workbench_t * const self, const vec3f_t world_camera_position)
@@ -534,7 +531,7 @@ void workbench_render_cube(
         .uv = spriteatlas_get_sprite(atlas, type),
     };
 
-    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAMERA);
+    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE);
     if(!asset) {
         return;
     }
@@ -595,9 +592,8 @@ void workbench_render_capsule(
         10000.0f
     );
 
-    const f32 capsule_center = position.y + half_height + radius;
     const rendercommand_instance_t instance = {
-        .translation = { position.x, capsule_center, position.z, 0.f },
+        .translation = { position.x, position.y + half_height + radius, position.z, 0.f },
         .scale = { radius, (half_height + radius) / 2.f, radius, 0.f },
         .orientation = { orientation.x, orientation.y, orientation.z, orientation.w },
         .color = COLOR_BLUE,
@@ -650,6 +646,13 @@ void workbench_update(const f32 dt)
     {
         global_workbench->enable_collider = !global_workbench->enable_collider;
     }
+
+    //WARN: is this even good - update has now does a render also - introducing the renderqueue simplified complexity quite a bit
+    //but also forces to issue those in the update loop rather than in render loop due to the nature of how these calls are ran.
+    //fixed vs variable dt.
+    if (global_workbench->enable_collider) {
+        workbench__internal_show_colliders(global_workbench);
+    }
 }
 
 void workbench_toggle(void)
@@ -698,7 +701,7 @@ void workbench__internal_show_colliders(workbench_t *const self)
                     *(vec3f_t *)&sc->dim.cube,
                     COLOR_CRIMSON,
                     true,
-                    PROTOTYPE_SPRITE_WHITE
+                    PROTOTYPE_SPRITE_BASIC_WHITE
                 );
             break;
             case COLLIDER_SHAPE_TYPE_CAPSULE:

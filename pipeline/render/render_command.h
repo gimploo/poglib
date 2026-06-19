@@ -1,5 +1,4 @@
 #pragma once
-#include "poglib/gfx/gl/renderconfig.h"
 #include "poglib/gfx/glrenderer2d.h"
 #include "poglib/pipeline/render/common.h"
 #include "poglib/util/asset.h"

@@ -73,7 +73,7 @@ void scene__internal_update(scene_t *const scene, const f32 dt)
         .__destroy      = SCENE_NAME##_destroy,\
    }
 
-void __scene_destroy(scene_t *scene) {
+void scene__internal_destroy(scene_t *scene) {
     assert(scene);
 
     scene->__destroy(scene);

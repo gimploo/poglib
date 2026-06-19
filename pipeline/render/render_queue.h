@@ -1,6 +1,5 @@
 #pragma once
 #include <poglib/gfx/glrenderer3d.h>
-#include "poglib/basic/arena.h"
 #include "poglib/basic/common.h"
 #include "poglib/basic/dbg.h"
 #include "poglib/basic/ds/list.h"
@@ -25,22 +24,18 @@ void rendercommand__internal_shader_upload_uniforms(const rendercommand_t * cons
 
 renderqueue_t renderqueue_init(void)
 {
-    arena_t arena = arena_init(NULL, 3 * MB);
     return (renderqueue_t) {
-        .bucket_ready_count = 0,
         .buckets = {0},
         .internal = {
-            .arena = arena, 
             .instancebuffer = glinstancebuffer_init(2 * MB),
         }
     };
 }
 
-void renderqueue__internal_bucket_init_and_add_command(renderqueue_t *const self, const rendercommand_t command)
+void renderqueue__internal_bucket_init_and_add_command(renderqueue_t *const self, const rendercommand_t command, const u16 idx)
 {
-    self->buckets[self->bucket_ready_count] = list_init(rendercommand_t);
-    list_append(&self->buckets[self->bucket_ready_count], command);
-    self->bucket_ready_count++;
+    self->buckets[idx] = list_init(rendercommand_t);
+    list_append(&self->buckets[idx], command);
 }
 
 void renderqueue_pass_command(renderqueue_t *const self, rendercommand_t command)
@@ -57,11 +52,11 @@ void renderqueue_pass_command(renderqueue_t *const self, rendercommand_t command
     for (u8 idx = 0; idx < ARRAY_LEN(self->buckets); idx++)
     {
         if (!list_is_init(&self->buckets[idx])) {
-            renderqueue__internal_bucket_init_and_add_command(self, command);
+            renderqueue__internal_bucket_init_and_add_command(self, command, idx);
             return;
         }
 
-        if (!self->buckets[idx].len) {
+        if (self->buckets[idx].len == 0) {
             renderqueue__internal_add_to_bucket(&self->buckets[idx], command);
             return;
         }
@@ -79,7 +74,6 @@ void renderqueue_destroy(renderqueue_t * const self)
 
         list_destroy(&self->buckets[idx]);
     }
-    arena_destroy(&self->internal.arena);
     glinstancebuffer_destroy(&self->internal.instancebuffer);
 }
 
@@ -113,11 +107,11 @@ void renderqueue__internal_add_to_bucket(list_t * const render_commands, const r
 
 bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const queue, rendercommand_t command)
 {
-    for (u8 idx = 0; idx < queue->bucket_ready_count; idx++)
+    for (u8 idx = 0; idx < MAX_RENDER_BUCKETS_ALLOWED; idx++)
     {
         list_t *const commands = &queue->buckets[idx];
-        if (!list_is_init(&queue->buckets[idx]))
-            continue;
+
+        if (!list_is_init(commands)) continue;
 
         const rendercommand_t * const first_render_command = commands->len
             ? list_get_value(commands, 0)
@@ -157,6 +151,7 @@ i32 renderqueue__internal_qsort_compare(const void *x, const void *y)
 
     bool has_a = bucket_a->len > 0;
     bool has_b = bucket_b->len > 0;
+
     if (!has_a && !has_b) return 0;
     if (!has_a) return 1;
     if (!has_b) return -1;
@@ -200,18 +195,15 @@ void renderqueue__internal_render_all_meshes_in_bucket(const list_t * const buck
 
 void renderqueue_dispatch(renderqueue_t *const self)
 {
-    if (!self->bucket_ready_count) return;
-    ASSERT(self->bucket_ready_count < MAX_DRAW_CALLS_PER_FRAME_COUNT);
-
     qsort(self->buckets, ARRAY_LEN(self->buckets), sizeof(list_t), renderqueue__internal_qsort_compare);
 
     u32 binded_shader_id = 0;
     u32 instance_starting_offset = 0;
 
-    for (u8 idx = 0; idx < self->bucket_ready_count; idx++)
+    for (u8 idx = 0; idx < MAX_DRAW_CALLS_PER_FRAME_COUNT; idx++)
     {
         const list_t *bucket_commands = &self->buckets[idx];
-        if (!bucket_commands->len) continue;
+        if (!bucket_commands->len)          continue;
 
         const rendercommand_t *first_command = list_get_value(bucket_commands, 0);
         ASSERT(first_command->mesh->vao_id);
@@ -274,13 +266,13 @@ void renderqueue_dispatch(renderqueue_t *const self)
     glinstancebuffer_unbind(&self->internal.instancebuffer);
 }
 
-void renderqueue_flush(renderqueue_t * const self)
+void renderqueue_flush(renderqueue_t *const self)
 {
-    for (u8 idx = 0; idx < self->bucket_ready_count; idx++)
+    for (u8 idx = 0; idx < MAX_RENDER_BUCKETS_ALLOWED; idx++)
     {
-        list_clear(&self->buckets[idx]);
+        if (list_is_init(&self->buckets[idx]))
+            list_clear(&self->buckets[idx]);
     }
-    arena_clear(&self->internal.arena);
 }
 
 #endif

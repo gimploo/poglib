@@ -306,13 +306,13 @@ void physics_sys_jolt_update(physics_sys_jolt_t *self, const f32 dt) {
 
     //NOTE: no need to lock to swap the buffer as per gemini since no contention 
     //happens here as its post `JPH_PhysicsSystem_Update` call
-    physics_sys_jolt_event_queue_t* temp = self->internal.double_buffer_event_queue.read_queue;
+    physics_sys_jolt_event_queue_t *const temp = self->internal.double_buffer_event_queue.read_queue;
     self->internal.double_buffer_event_queue.read_queue = self->internal.double_buffer_event_queue.write_queue;
     self->internal.double_buffer_event_queue.write_queue = temp;
     self->internal.double_buffer_event_queue.write_queue->count = 0;
 }
 
-physics_sys_jolt_event_queue_t * physics_sys_get_collision_event_queue(const physics_sys_jolt_t * const self)
+physics_sys_jolt_event_queue_t * physics_sys_get_collision_event_queue(const physics_sys_jolt_t *const self)
 {
     return self->internal.double_buffer_event_queue.read_queue;
 }

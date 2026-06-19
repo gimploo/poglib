@@ -50,7 +50,7 @@ typedef struct application_t {
 
     void (*init)(struct application_t *const);
     void (*tick)(struct application_t *const);
-    void (*update)(struct application_t *const, const f32 fixed_dt);
+    void (*update)(struct application_t *const);
     void (*render)(struct application_t *const, const f32 raw_dt);
     void (*destroy)(struct application_t *const);
 
@@ -106,7 +106,7 @@ const char *__get_base_dir()
 
 f32 application_get_tick(const application_t *const app)
 {
-    return app->handle.timer->__now;
+    return app->handle.timer->now;
 }
 
 void application_run(application_t *const app)
@@ -163,20 +163,23 @@ void application_run(application_t *const app)
     {
         stopwatch_update(&timer);
 
-        //Sync systems that pools from the hardware / network
         app->tick(app);
 
-        //Physics / Logic / Input handling
         while(timer.accumulator >= FIXED_DT)
         {
-            app->update(app, FIXED_DT);
+            app->update(app);
             timer.accumulator -= FIXED_DT;
             window_flush_transient_data(win);
         }
 
-        const f32 alpha = timer.accumulator / FIXED_DT;
+        //TODO: this is used to interpolate bw frames like adjusting transforms of an object from one frame moving into the other. 
+        //right now we arent using it in anything meaninful, eariler code was using it as raw_dt which is incorrect. To better use 
+        //this in systems in place, we could try to bring something that holds this data.
+        //
+        //const f32 alpha = timer.accumulator / FIXED_DT;
+
         window_gl_render_begin(win);
-            app->render(app, alpha);
+            app->render(app, timer.raw_dt);
         window_gl_render_end(win);
 
         //INFO: Smooth the FPS value so it doesn't flicker
