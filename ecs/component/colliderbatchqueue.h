@@ -1,11 +1,13 @@
 #pragma once
 #include <poglib/physics/jolt-wrapper.h>
 #include "./types.h"
+#include "poglib/basic/arena.h"
 #include "poglib/external/joltc/include/joltc.h"
 
 typedef struct {
 
     queue_t queue;
+    arena_t arena;
 
 } colliderbatchqueue_t;
 
@@ -22,6 +24,7 @@ colliderbatchqueue_t colliderbatchqueue(arena_t *const arena)
     ASSERT(arena);
     colliderbatchqueue_t result = {0};
     result.queue = queue_init(10, ecs_component_collider_t *, arena);
+    result.arena = arena_init(arena, KB);
     return result;
 }
 
@@ -129,6 +132,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                 case JPH_MotionType_Kinematic:
                     JPH_CharacterVirtualSettings_Init(&settings);
                     settings.base.shape = shape;
+                    settings.shapeOffset = (JPH_Vec3){ 0, collider->dim.capsule.half_height + collider->dim.capsule.radius, 0 };
                 break;
                 default: eprint("Unknown motion type");
             }
@@ -143,6 +147,23 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     global_physics_sys_jolt_instance->bodyinterface, 
                     body_settings, 
                     true
+                );
+
+                //WARN: keeping it here like this so as to keep it easy to make the futher 
+                //expansion of `ecs_collider_jolt_userdata_t` whenever we may need to
+
+                const ecs_collider_jolt_userdata_t userdata = {
+                    .objectlayertype = collider->object_layer_type,
+#ifdef DEBUG
+                    .internal = {
+                        .ecs_collider = collider
+                    }
+                };
+#endif
+                JPH_BodyInterface_SetUserData(
+                    global_physics_sys_jolt_instance->bodyinterface,
+                    collider->internal.body_id,
+                    (u64)arena_store(&self->arena, &userdata, sizeof(userdata))
                 );
             break;
             case JPH_MotionType_Kinematic:

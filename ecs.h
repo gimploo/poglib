@@ -20,8 +20,7 @@ glcamera_t *        ecs_get_active_camera(ecs_t *const self);
 
 void                ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
 
-void            ecs_update_fixed_tick(ecs_t *const self);
-void            ecs_update_variable_tick(ecs_t *const self, const f32 dt);
+void            ecs_update(ecs_t *const self);
 void            ecs_destroy(ecs_t * const self);
 
 #ifndef IGNORE_ECS_IMPLEMENTATION
@@ -102,7 +101,7 @@ void ecs_entity_remove(ecs_t * const self, const u32 entityId)
     );
 }
 
-void ecs_update_fixed_tick(ecs_t *const self)
+void ecs_update(ecs_t *const self)
 {
     ASSERT(self);
 
@@ -111,7 +110,7 @@ void ecs_update_fixed_tick(ecs_t *const self)
     const ecs_systemmanager_t * const manager = &self->managers.systemmanager;
     for (u8 idx = 0; idx < ECS_SYSTEM_MAX_COUNT; idx++)
     {
-        if (!manager->count || !manager->systems[idx].callback || !manager->systems[idx].is_fixed_tick)
+        if (!manager->count || !manager->systems[idx].callback)
             continue;
 
         manager->systems[idx].callback(
@@ -119,24 +118,6 @@ void ecs_update_fixed_tick(ecs_t *const self)
             (ecs_system_ctx_t) {
                 .active_camera = self->internal.active_camera,
                 .dt = APPLICATION_UPDATE_FIXED_TIME_STEP
-            }
-        );
-    }
-}
-
-void ecs_update_variable_tick(ecs_t *const self, const f32 dt)
-{
-    const ecs_systemmanager_t * const manager = &self->managers.systemmanager;
-    for (u8 idx = 0; idx < ECS_SYSTEM_MAX_COUNT; idx++)
-    {
-        if (!manager->count || !manager->systems[idx].callback || manager->systems[idx].is_fixed_tick)
-            continue;
-
-        manager->systems[idx].callback(
-            &self->managers.componentmanager,
-            (ecs_system_ctx_t) {
-                .active_camera = self->internal.active_camera,
-                .dt = dt
             }
         );
     }

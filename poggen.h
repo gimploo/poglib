@@ -58,7 +58,7 @@ physics_sys_jolt_event_queue_t *    poggen_get_physics_collision_events(const po
 void                                poggen_update_commandqueue_registry(poggen_t *const self, const commandregistry_t registry);
 
 void                                poggen_tick(poggen_t *const self);
-void                                poggen_update(poggen_t *self, const f32 dt);
+void                                poggen_update(poggen_t *const self);
 void                                poggen_render(poggen_t *self, const f32 dt);
 
 void                                poggen_destroy(poggen_t *self);
@@ -171,10 +171,10 @@ void poggen_tick(poggen_t *const self)
     scene__internal_tick(self->current_scene);
 }
 
-void poggen_update(poggen_t *self, const f32 dt)
+void poggen_update(poggen_t *const self)
 {
+    const f32 dt = APPLICATION_UPDATE_FIXED_TIME_STEP;
     assert(self);
-    renderqueue_flush(&self->systems.renderqueue);
 
     if (self->config.enable_physics && self->systems.physics.instance && !self->systems.physics.phy_simulation_started)
         eprint("Missed to register physics interaction rules, else DISABLE physics in config passed to engine");
@@ -191,8 +191,6 @@ void poggen_update(poggen_t *self, const f32 dt)
         physics_sys_jolt_update(self->systems.physics.instance, dt);
 
     scene__internal_update(current_scene, dt);
-
-    commandqueue_flush(&self->systems.commandqueue);
 }
 
 void poggen_destroy(poggen_t *self)
@@ -202,7 +200,7 @@ void poggen_destroy(poggen_t *self)
     assetmanager_destroy(&self->systems.assets);
     hashtable_iterator(&self->scenes, tableentry) {
         hashtable_entry_t *entry = tableentry;
-        __scene_destroy(entry->value);
+        scene__internal_destroy(entry->value);
         mem_free(entry->value, sizeof(scene_t));
     }
     hashtable_destroy(&self->scenes);

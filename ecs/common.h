@@ -64,7 +64,6 @@ struct ecs_system_ctx_t {
 };
 
 struct ecs_system_t {
-    bool is_fixed_tick;
     ecs_system_callback callback;
 };
 

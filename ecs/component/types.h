@@ -1,6 +1,7 @@
 #pragma once
 #include "poglib/external/joltc/include/joltc.h"
 #include "poglib/input/commandqueue.h"
+#include "poglib/util/workbench/workbench-constants.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <poglib/physics/jolt-wrapper.h>
@@ -64,6 +65,7 @@ struct ecs_component_model_t {
 typedef struct ecs_component_mesh_t ecs_component_mesh_t;
 struct ecs_component_mesh_t {
     u32 asset_id;
+    prototype_texture_type prototype_sprite_type; 
 };
 
 /*========================= INPUT ====================================== */
@@ -118,6 +120,7 @@ typedef struct ecs_component_camera_t {
 /* =========================== COLLIDERS ================================== */
 
 typedef struct ecs_component_collider_t ecs_component_collider_t;
+typedef struct ecs_collider_jolt_userdata_t ecs_collider_jolt_userdata_t;
 
 typedef enum {
     COLLIDER_SHAPE_TYPE_NONE    = 0,
@@ -129,8 +132,8 @@ typedef enum {
 
 typedef union {
     struct {
-        f32 half_width;
         f32 half_height;
+        f32 half_width;
         f32 half_depth;
     } cube;
     struct {
@@ -154,6 +157,21 @@ struct ecs_component_collider_t {
         versors                     orientation;
     } internal;
 };
+
+//NOTE: Jolt stores a u64 value / reference, as per requirement we would need to 
+//pass an heap allocated refernce to `ecs_collider_jolt_userdata_t` if we begin to 
+//expand this struct further
+struct ecs_collider_jolt_userdata_t {
+    JPH_ObjectLayer objectlayertype;
+
+#ifdef DEBUG
+    struct {
+        ecs_component_collider_t *ecs_collider;
+    } internal;
+#endif
+
+};
+
 
 /* =========================== MISC ==========================================*/
 

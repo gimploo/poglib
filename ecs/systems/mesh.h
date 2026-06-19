@@ -21,10 +21,10 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
     slot_iterator(primary_pool, ITER)
     {
         const ecs_component_poolentry_t * const entry = ITER;
-        const u32 assetid = ((ecs_component_model_t *)entry->entity_cmpdata)->asset_id;
+        const ecs_component_mesh_t *const mesh = (ecs_component_mesh_t *)entry->entity_cmpdata;
         const gpu_asset_t *gpu_loaded_asset = (gpu_asset_t *)assetmanager_get_gpu_loaded_asset_async(
             &global_engine->systems.assets, 
-            assetid
+            mesh->asset_id
         );
         if (!gpu_loaded_asset) {
             continue;
@@ -57,7 +57,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             .scale = (vec4f_t) { transform->scale.x, transform->scale.y,  transform->scale.z,  0.f },
             .orientation = *(vec4f_t *)&transform->orientation,
             .color = COLOR_WHITE,
-            .uv = spriteatlas_get_sprite(atlas, PROTOTYPE_SPRITE_CHECKERED_GRAY),
+            .uv = spriteatlas_get_sprite(atlas, mesh->prototype_sprite_type),
         };
 
         rendercommand_t command = {

@@ -29,7 +29,7 @@ typedef struct list_t {
 #define         list_append(PLIST, VALUE)                       __impl_list_append((PLIST), &(VALUE), sizeof(VALUE)) 
 #define         list_append_ptr(PLIST, PVALUE)                   __impl_list_append((PLIST), PVALUE, sizeof(void *)) 
 void            list_delete(list_t *list, const u64 index);
-#define         list_clear(PLIST)                               __impl_list_clear(PLIST)
+void            list_clear(list_t *const list);
 void            list_combine(list_t *dest, const list_t *src);
 #define         list_get_size(PLIST)                             ((PLIST)->__elem_size * (PLIST)->len)
 #define         list_append_multiple(PLIST, ARRAY)              __impl_list_append_multiple((PLIST), (u8*)(ARRAY), sizeof((ARRAY)), sizeof((*ARRAY)))
@@ -68,7 +68,7 @@ void * list_get_value(const list_t *list, const u64 index)
         return (list->data + index * list->__elem_size);
 }
 
-void __impl_list_clear(list_t *list)
+void list_clear(list_t *const list)
 {
     assert(list);
     list->__top = -1;
@@ -235,7 +235,7 @@ void __impl_list_append_multiple(
 }
 
 
-bool list_is_init(const list_t * const self)
+bool list_is_init(const list_t *const self)
 {
     return self->__original_capacity > 0;
 }

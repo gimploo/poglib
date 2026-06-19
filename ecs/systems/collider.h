@@ -8,7 +8,6 @@
 
 void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
-    (void)ctx;
     slot_t *pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_COLLIDER_IDX);
     slot_iterator(pool, iter)
     {
@@ -19,13 +18,13 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
         ecs_entity_query_t query                    = ecs_componentmanager__internal_query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM);
         ecs_component_transform_t *transform        = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
 
-        //NOTE: is this good ? - who tf knows - keep this till i get smarter :p
+        //HACK: is this good ? - who tf knows - keep this till i get smarter :p
         if (transform->source == ECS_CMP_TRANSFORM_SOURCE_ANIMATION)
             break;
 
         switch(collider->motion_type)
         {
-            case JPH_MotionType_Kinematic:
+            case JPH_MotionType_Kinematic: {
                 ASSERT(collider->internal.kinematic_body);
 
                 JPH_CharacterVirtual_SetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->position);
@@ -45,7 +44,7 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
                 transform->orientation  = collider->internal.orientation;
                 transform->position     = collider->internal.position;
 
-            break;
+            } break;
 
             case JPH_MotionType_Dynamic:
                 ASSERT(collider->internal.body_id);

@@ -6,10 +6,8 @@
 #else
 #include <SDL2/SDL.h>
 #endif
+#include <poglib/basic.h>
 
-#include "../basic.h"
-#include <math.h>
-#include <limits.h>
 
 /*=============================================================================
                         -- STOP WATCH (TIMER) --
@@ -17,10 +15,9 @@
 
 typedef struct stopwatch_t {
 
-    f32 __now;
-    f32 __last;
+    f32 now;
+    f32 last;
     f32 accumulator;
-
     f32 raw_dt; // delta time in seconds
     f32 fps;
 
@@ -64,7 +61,7 @@ void stopwatch_delay(const f32 ms)
 stopwatch_t stopwatch(void)
 {
     stopwatch_t output = {0};
-    output.__now = stopwatch_get_tick();
+    output.now = stopwatch_get_tick();
     output.raw_dt = 0.01f;
     return output;
 }
@@ -73,11 +70,11 @@ void stopwatch_update(stopwatch_t *timer)
 {
     if (timer == NULL) eprint("timer argument is null");
 
-    timer->__last = timer->__now;
-    timer->__now  = stopwatch_get_tick();
+    timer->last = timer->now;
+    timer->now  = stopwatch_get_tick();
 
     // Calculate raw delta in seconds
-    f32 delta = (timer->__now - timer->__last) / 1000.0f;
+    f32 delta = (timer->now - timer->last) / 1000.0f;
 
     //INFO: The 'MAX_ACCUMULATOR' (0.25s) caps the amount of "catch-up" work the CPU 
     //does if a frame takes too long. This prevents the engine from freezing 

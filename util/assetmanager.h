@@ -82,7 +82,8 @@ void assetmanager__internal_assetmaps_destroy(assetmanager_t *const self)
             switch(type)
             {
                 case ASSET_TYPE_MODEL: 
-                    glmodel_destroy(((taskresponse_t *)entry->value)->resource); 
+                    //FIXME: this doesnt work!
+                    //glmodel_destroy(((taskresponse_t *)entry->value)->resource); 
                 break;
                 case ASSET_TYPE_GLSL_SHADER: 
                     glshader_destroy(entry->value);
@@ -497,7 +498,7 @@ void assetmanager__internal_upload_camera_model(assetmanager_t *const self)
     vao_unbind();
 
 
-    gpu_mesh_t * const gpu_mesh = arena_store(
+    gpu_mesh_t *const gpu_mesh = arena_store(
         &self->arena, 
         &(gpu_mesh_t) {
             .vao_id = vao.id,
@@ -506,7 +507,7 @@ void assetmanager__internal_upload_camera_model(assetmanager_t *const self)
         },
         sizeof(gpu_mesh_t));
 
-    gpu_asset_t * const gpu_asset = arena_store(
+    const gpu_asset_t *const gpu_asset = arena_store(
         &self->arena, 
         &(gpu_asset_t) {
             .asset_id = asset_id,

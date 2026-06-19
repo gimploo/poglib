@@ -270,7 +270,7 @@ bool window_mouse_wheel_is_scroll_left(const window_t *const w)
 
 #define __impl_window_gl_render_begin(PWINDOW) do {\
 \
-    u32 dw, dh; \
+    i32 dw, dh; \
     SDL_GL_GetDrawableSize((PWINDOW)->__sdl_window, &dw, &dh); \
     GL_CHECK(glViewport(0, 0, dw, dh));\
     GL_CHECK(glClearColor(\
