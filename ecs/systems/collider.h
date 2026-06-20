@@ -54,7 +54,10 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
             break;
 
             case JPH_MotionType_Static: 
+                transform->position     = collider->internal.position;
+                transform->orientation  = collider->internal.orientation;
             break;
+
             default: eprint("motion type not accounted for");
         }
     }
