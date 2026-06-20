@@ -132,16 +132,16 @@ typedef enum {
 
 typedef union {
     struct {
-        f32 half_height;
         f32 half_width;
+        f32 half_height;
         f32 half_depth;
     } cube;
     struct {
         f32 radius;
     } sphere;
     struct {
-        f32 half_height;
         f32 radius;
+        f32 half_height;
     } capsule;
 } collider_shape_dimension_t;
 

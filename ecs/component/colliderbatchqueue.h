@@ -158,8 +158,8 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     .internal = {
                         .ecs_collider = collider
                     }
-                };
 #endif
+                };
                 JPH_BodyInterface_SetUserData(
                     global_physics_sys_jolt_instance->bodyinterface,
                     collider->internal.body_id,
