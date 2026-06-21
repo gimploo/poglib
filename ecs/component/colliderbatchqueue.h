@@ -84,15 +84,17 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
         bool optimize_broadphase = (diff_motion_type && prev_motion_type == JPH_MotionType_Static) 
             || (!self->queue.len && prev_motion_type == JPH_MotionType_Static);
 
-        if (diff_shape_type) {
+
+        if (diff_shape_type || diff_motion_type || diff_shape_dim) {
+            JPH_BodyCreationSettings_Destroy(body_settings);
+            body_settings = NULL;
+        }
+
+        if (diff_shape_type || diff_shape_dim) {
 
             if (shape) {
                 JPH_Shape_Destroy(shape); 
                 shape = NULL;
-            }
-            if (body_settings) {
-                JPH_BodyCreationSettings_Destroy(body_settings);
-                body_settings = NULL;
             }
 
             switch(collider->shape_type)
@@ -112,11 +114,6 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
         }
 
         if(diff_shape_dim || diff_motion_type) {
-
-            if (body_settings) {
-                JPH_BodyCreationSettings_Destroy(body_settings);
-                body_settings = NULL;
-            }
 
             switch(collider->motion_type) {
                 case JPH_MotionType_Static:
@@ -146,7 +143,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                 collider->internal.body_id = JPH_BodyInterface_CreateAndAddBody(
                     global_physics_sys_jolt_instance->bodyinterface, 
                     body_settings, 
-                    true
+                    JPH_Activation_Activate
                 );
 
                 //WARN: keeping it here like this so as to keep it easy to make the futher 
