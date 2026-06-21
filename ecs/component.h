@@ -117,12 +117,18 @@ void ecs_component__internal_bundle_validate_and_initalize_internals(ecs_compone
                 if (config->component[ECS_CMP_TRANSFORM_IDX].transform.source == ECS_CMP_TRANSFORM_SOURCE_PHYSICS) {
                     ASSERT(config->signature & ECS_CMP_COLLIDER);
                 }
+
+                if (config->component[ECS_CMP_TRANSFORM_IDX].transform.source == ECS_CMP_TRANSFORM_SOURCE_ANIMATION) {
+                    if(config->signature & ECS_CMP_COLLIDER) {
+                        eprint("configuring transform source as animation and also setting phy collider to that entity - is not a supported use case");
+                    }
+                }
             } break;
             case ECS_CMP_COLLIDER: {
                 ASSERT(config->signature & (ECS_CMP_TRANSFORM));
                 const ecs_component_transform_t t = config->component[ECS_CMP_TRANSFORM_IDX].transform;
-                config->component[ECS_CMP_COLLIDER_IDX].collider.internal.orientation = t.orientation;
-                config->component[ECS_CMP_COLLIDER_IDX].collider.internal.position = t.position;
+                config->component[ECS_CMP_COLLIDER_IDX].collider.internal.orientation   = t.orientation;
+                config->component[ECS_CMP_COLLIDER_IDX].collider.internal.position      = t.position;
             } break;
 
             case ECS_CMP_MODEL: 

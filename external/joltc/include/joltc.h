@@ -935,7 +935,10 @@ typedef struct JPH_CharacterVirtualSettings {
 	JPH_CharacterID						ID;
 	float								mass;
 	float								maxStrength;
+
+	//NOTE: this is offset from the shapes center to transform position of an entity
 	JPH_Vec3							shapeOffset;
+
 	JPH_BackFaceMode					backFaceMode;
 	float								predictiveContactDistance;
 	uint32_t							maxCollisionIterations;

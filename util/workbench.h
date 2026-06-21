@@ -5,6 +5,7 @@
 #include "./gllight.h"
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
+#include "./workbench/workbench-debug-renderer.h"
 #include "poglib/ecs.h"
 #include "poglib/ecs/common.h"
 
@@ -19,6 +20,7 @@ typedef struct {
 
     bool is_active;
     bool enable_collider;
+    bool disable_grid;
 
     struct {
         bool wireframe_mode;
@@ -33,6 +35,8 @@ typedef struct {
         u32 atlas_id;
         u32 shader_id;
     } primitives;
+
+    workbench_debug_renderer_t debug_renderer;
 
     glshader_t shader;
     vec3f_t player_camera_position;
@@ -242,6 +246,9 @@ workbench_t * workbench_init(arena_t *const arena)
     gui_set_composition(&o.gui.handle, (ui_composition)workbench_compose_ui);
 
     global_workbench = arena_store(arena, &o, sizeof(o));
+
+    workbench_debug_renderer_init(&global_workbench->debug_renderer, arena);
+
     return global_workbench;
 }
 
@@ -328,6 +335,7 @@ void workbench_destroy(void)
     ASSERT(global_workbench);
     workbench_t *self = global_workbench;
 
+    workbench_debug_renderer_destroy(&self->debug_renderer);
     glshader_destroy(&self->shader);
     gui_destroy(&self->gui.handle);
 
@@ -345,17 +353,23 @@ void workbench_render(void)
 
     workbench__internal_update_ui(self, self->world_camera.handle->position);
 
-    workbench__internal_render_grid(
-        &self->shader,
-        workbench__internal_get_camera_view(self),
-        glms_perspective(
-            radians(45), 
-            global_engine->handle.app->window.aspect_ratio, 
-            1.0f, 1000.0f),
-        self->world_camera.handle->position
-    );
+    if (!self->disable_grid) {
+        workbench__internal_render_grid(
+            &self->shader,
+            workbench__internal_get_camera_view(self),
+            glms_perspective(
+                radians(45), 
+                global_engine->handle.app->window.aspect_ratio, 
+                1.0f, 1000.0f),
+            self->world_camera.handle->position
+        );
+    }
 
 //    workbench__internal_render_lightsources(self);
+
+    if (self->enable_collider) {
+        workbench__internal_show_colliders(self);
+    }
 
     if (self->gui.enable) {
         workbench__internal_render_ui(self);
@@ -502,156 +516,14 @@ void workbench_render_marker(
 }
 
 
-void workbench_render_cube(
-    const vec3f_t translation,
-    const vec3f_t scale,
-    const vec4f_t color,
-    const bool override_wireframe,
-    const prototype_texture_type type
-) {
-    ASSERT(global_workbench);
-    workbench_t *const self = global_workbench;
-    renderqueue_t * const renderqueue = &global_engine->systems.renderqueue;
-    const assetmanager_t * const assetmanager = &global_engine->systems.assets;
-    const matrix4f_t perspective_projection  = glms_perspective(
-        radians(45), 
-        global_engine->handle.app->window.aspect_ratio, 
-        1.0f, 
-        10000.0f
-    );
-
-    const spriteatlas_t *atlas = (spriteatlas_t *)assetmanager_get_assetresource(
-        assetmanager, ASSET_TYPE_TEXTURE_SPRITE_ATLAS, self->primitives.atlas_id);
-
-    const rendercommand_instance_t instance = {
-        .translation = { translation.x, translation.y, translation.z, 0.f },
-        .scale = { scale.x, scale.y, scale.z, 0.f },
-        .orientation = {0.f, 0.f, 0.f, 1.f},
-        .color = color,
-        .uv = spriteatlas_get_sprite(atlas, type),
-    };
-
-    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE);
-    if(!asset) {
-        return;
-    }
-
-    rendercommand_t rendercommand = {
-        .enable_wireframe = override_wireframe || self->render_config.wireframe_mode,
-        .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
-        .mesh = asset->meshes.data,
-        .instance = {
-            .raw_data = {0},
-            .size = sizeof(rendercommand_instance_t)
-        },
-        .material = {
-            .textures = {
-                .count = 1,
-                .ids = {
-                    atlas->texture.id
-                }
-            },
-            .shader = {
-                .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, self->primitives.shader_id),
-                .uniforms = {
-                    .count = 2,
-                    .data = {
-                       [0] = {
-                           .name = str("projection"),
-                           .value = perspective_projection
-                       },
-                       [1] = {
-                           .name = str("view"),
-                           .value = workbench__internal_get_camera_view(self)
-                       }
-                    }
-                }
-            }
-        },
-    };
-
-    memcpy(rendercommand.instance.raw_data, &instance, sizeof(instance));
-    renderqueue_pass_command(renderqueue, rendercommand);
-}
-
-void workbench_render_capsule(
-    const vec3f_t position,
-    const versors orientation,
-    const f32 half_height,
-    const f32 radius
-) {
-    ASSERT(global_workbench);
-    workbench_t *const self = global_workbench;
-
-    renderqueue_t * const renderqueue = &global_engine->systems.renderqueue;
-    const assetmanager_t * const assetmanager = &global_engine->systems.assets;
-    const matrix4f_t perspective_projection = glms_perspective(
-        radians(45),
-        global_engine->handle.app->window.aspect_ratio,
-        1.0f,
-        10000.0f
-    );
-
-    const rendercommand_instance_t instance = {
-        .translation = { position.x, position.y + half_height + radius, position.z, 0.f },
-        .scale = { radius, (half_height + radius) / 2.f, radius, 0.f },
-        .orientation = { orientation.x, orientation.y, orientation.z, orientation.w },
-        .color = COLOR_BLUE,
-    };
-
-    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAPSULE);
-    if (!asset) {
-        return;
-    }
-
-    rendercommand_t rendercommand = {
-        .enable_wireframe = true,
-        .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
-        .mesh = asset->meshes.data,
-        .instance = {
-            .raw_data = {0},
-            .size = sizeof(rendercommand_instance_t)
-        },
-        .material = {
-            .textures = {0},
-            .shader = {
-                .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, self->primitives.shader_id),
-                .uniforms = {
-                    .count = 2,
-                    .data = {
-                       [0] = {
-                           .name = str("projection"),
-                           .value = perspective_projection
-                       },
-                       [1] = {
-                           .name = str("view"),
-                           .value = workbench__internal_get_camera_view(self)
-                       }
-                    }
-                }
-            }
-        },
-    };
-
-    memcpy(rendercommand.instance.raw_data, &instance, sizeof(instance));
-    renderqueue_pass_command(renderqueue, rendercommand);
-}
-
 void workbench_update(const f32 dt)
 {
     if (!global_workbench->is_active) return;
 
     const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
-    if (gui_ui_ishovered(&global_workbench->gui.handle, WB_COLLIDER_TOGGLE))
+    if (gui_ui_ishovered(&global_workbench->gui.handle, WB_COLLIDER_TOGGLE) && (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK)))
     {
         global_workbench->enable_collider = !global_workbench->enable_collider;
-    }
-
-    //WARN: is this even good - update has now does a render also - introducing the renderqueue simplified complexity quite a bit
-    //but also forces to issue those in the update loop rather than in render loop due to the nature of how these calls are ran.
-    //fixed vs variable dt.
-    if (global_workbench->enable_collider) {
-        workbench__internal_show_colliders(global_workbench);
     }
 }
 
@@ -685,6 +557,22 @@ void workbench_toggle(void)
 void workbench__internal_show_colliders(workbench_t *const self)
 {
     ASSERT(global_engine);
+    ASSERT(global_physics_sys_jolt_instance);
+
+    if (!global_workbench->enable_collider) return;
+
+    JPH_DrawSettings draw_settings;
+    JPH_DrawSettings_InitDefault(&draw_settings);
+    draw_settings.drawShape = true;
+    draw_settings.drawShapeWireframe = true;
+    draw_settings.drawShapeColor = JPH_BodyManager_ShapeColor_InstanceColor;
+
+    JPH_PhysicsSystem_DrawBodies(
+        global_physics_sys_jolt_instance->physics_system,
+        &draw_settings,
+        self->debug_renderer.jolt_handle,
+        NULL
+    );
 
     slot_t *sc_pool = slot_get_value(&global_ecs->managers.componentmanager.componentpool_slots, ECS_CMP_COLLIDER_IDX);
     slot_iterator(sc_pool, sc_iter)
@@ -693,28 +581,53 @@ void workbench__internal_show_colliders(workbench_t *const self)
         if (!sc_entry->is_active) continue;
 
         ecs_component_collider_t *sc = (ecs_component_collider_t *)sc_entry->entity_cmpdata;
-        switch(sc->shape_type)
-        {
-            case COLLIDER_SHAPE_TYPE_CUBE:
-                workbench_render_cube(
-                    sc->internal.position,
-                    *(vec3f_t *)&sc->dim.cube,
-                    COLOR_CRIMSON,
-                    true,
-                    PROTOTYPE_SPRITE_BASIC_WHITE
-                );
-            break;
-            case COLLIDER_SHAPE_TYPE_CAPSULE:
-                workbench_render_capsule(
-                    sc->internal.position,
-                    sc->internal.orientation,
-                    sc->dim.capsule.half_height,
-                    sc->dim.capsule.radius
-                );
-            break;
-            default: eprint("collider shape type not accounted for ");
-        }
+        if (sc->motion_type != JPH_MotionType_Kinematic) continue;
+        if (!sc->internal.kinematic_body) continue;
 
+        const JPH_Shape *shape = JPH_CharacterBase_GetShape((JPH_CharacterBase *)sc->internal.kinematic_body);
+        if (!shape) continue;
+
+        JPH_Vec3 shape_offset;
+        JPH_CharacterVirtual_GetShapeOffset(sc->internal.kinematic_body, &shape_offset);
+
+        JPH_Vec3 draw_pos;
+        draw_pos.x = sc->internal.position.x + shape_offset.x;
+        draw_pos.y = sc->internal.position.y + shape_offset.y;
+        draw_pos.z = sc->internal.position.z + shape_offset.z;
+
+        JPH_Mat4 transform;
+        JPH_Mat4_RotationTranslation(
+            &transform,
+            (JPH_Quat *)&sc->internal.orientation,
+            &draw_pos
+        );
+
+        const JPH_Vec3 scale = {1.0f, 1.0f, 1.0f};
+        JPH_Shape_Draw(
+            shape,
+            self->debug_renderer.jolt_handle,
+            &transform,
+            &scale,
+            0xFFFFFFFF,
+            false,
+            true
+        );
     }
+
+    const matrix4f_t view = workbench__internal_get_camera_view(self);
+    const matrix4f_t proj = glms_perspective(
+        radians(45),
+        global_engine->handle.app->window.aspect_ratio,
+        1.0f,
+        10000.0f
+    );
+
+    workbench_debug_renderer_flush(
+        &self->debug_renderer,
+        &self->shader,
+        view,
+        proj,
+        self->world_camera.handle->position
+    );
 }
 

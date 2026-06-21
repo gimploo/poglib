@@ -335,8 +335,10 @@ JPH_RayCastResult physics_sys_jolt_raycast(const vec3f_t ray_pos, const vec3f_t 
     ASSERT(global_physics_sys_jolt_instance);
     const JPH_NarrowPhaseQuery* npq = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_physics_sys_jolt_instance->physics_system);
     JPH_RayCastResult hit = {0};
-    JPH_NarrowPhaseQuery_CastRay(npq, (JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, &hit, NULL, NULL, NULL);
-    return hit;
+    if (JPH_NarrowPhaseQuery_CastRay(npq, (JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, &hit, NULL, NULL, NULL)) {
+        return hit;
+    }
+    return (JPH_RayCastResult){0};
 }
 
 #endif
