@@ -597,7 +597,7 @@ bool glmodel_get_playing_animation_iteration_count(const glmodel_t *const self)
     return self->internal.playing_animation_iteration_count;
 }
 
-void glmodel_set_animation(glmodel_t *self, const char *animation_label, const f32 dt, const bool loop)
+void glmodel_set_animation(glmodel_t *const self, const char *animation_label, const f32 dt, const bool loop)
 {
     if (self->animator.animations.len == 0) {
         logging("No animations to process");

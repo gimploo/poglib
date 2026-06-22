@@ -10,9 +10,10 @@
 #include "poglib/ecs/common.h"
 
 typedef enum workbench_action_type {
-    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK    = 0,
-    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN      = 1,
-    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT     = 2,
+    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG         = 0,
+    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED = 1,
+    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN                = 2,
+    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT               = 3,
     WORKBENCH_ACTION_TYPE_COUNT
 } workbench_action_type;
 
@@ -71,7 +72,7 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
     const u16 bitmask = command_bitmask;
     if (!bitmask) return;
 
-    const bool drag_look = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK);
+    const bool drag_look = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG);
     const bool zoom_in   = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN);
     const bool zoom_out  = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT);
 
@@ -95,16 +96,43 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
         z_offset = -1.f * zoom_sensitivity * dt;
     }
 
-    f32 pitch = 2.f * atan2f(state->current_orientation.x, state->current_orientation.w) + mouse_delta.x;
-    f32 yaw   = 2.f * atan2f(state->current_orientation.y, state->current_orientation.w) + mouse_delta.y;
-
-    if (pitch > GLM_PI_2f - 0.001f) pitch = GLM_PI_2f - 0.001f;
-    if (pitch < -GLM_PI_2f + 0.001f) pitch = -GLM_PI_2f + 0.001f;
-
+    // -- Yaw: rotate mouse X around world Y axis --
     state->current_orientation = glms_quat_mul(
-        glms_quatv(yaw,   (vec3f_t){0, 1, 0}),
-        glms_quatv(pitch, (vec3f_t){1, 0, 0})
+        glms_quatv(mouse_delta.y, (vec3f_t){0, 1, 0}),
+        state->current_orientation
     );
+
+    // -- Pitch: rotate mouse Y around local X axis --
+    state->current_orientation = glms_quat_mul(
+        state->current_orientation,
+        glms_quatv(mouse_delta.x, (vec3f_t){1, 0, 0})
+    );
+
+    // -- Clamp pitch to [-89, 89] degrees to prevent gimbal lock --
+    vec3f_t front = glms_quat_rotatev(state->current_orientation, (vec3f_t){0, 0, -1});
+    f32 pitch = asinf(glms_vec3_norm(front) > 0.f ? front.y / glms_vec3_norm(front) : front.y);
+    if (pitch > GLM_PI_2f - radians(1.f)) {
+
+        pitch = GLM_PI_2f - radians(1.f);
+
+        // reconstruct quaternion with clamped pitch
+        vec3f_t flat_front = glms_vec3_normalize((vec3f_t){front.x, 0, front.z});
+        f32 yaw = atan2f(flat_front.z, flat_front.x);
+
+        state->current_orientation = glms_quat_mul(
+            glms_quatv(yaw, (vec3f_t){0, 1, 0}),
+            glms_quatv(pitch, (vec3f_t){1, 0, 0})
+        );
+    } else if (pitch < -GLM_PI_2f + radians(1.f)) {
+        pitch = -GLM_PI_2f + radians(1.f);
+        vec3f_t flat_front = glms_vec3_normalize((vec3f_t){front.x, 0, front.z});
+        f32 yaw = atan2f(flat_front.z, flat_front.x);
+
+        state->current_orientation = glms_quat_mul(
+            glms_quatv(yaw, (vec3f_t){0, 1, 0}),
+            glms_quatv(pitch, (vec3f_t){1, 0, 0})
+        );
+    }
 
     state->current_position = glms_vec3_add(state->current_position, glms_vec3_scale(state->front, z_offset));
 }
@@ -220,11 +248,18 @@ workbench_t * workbench_init(arena_t *const arena)
         .commandregistry = (commandregistry_t){
             .count = WORKBENCH_ACTION_TYPE_COUNT,
             .registry = {
-                [WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK] = {
+                [WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG] = {
                     .type = COMMANDINPUTKEY_TYPE_MOUSE,
                     .sdl_mouse = {
                         .key        = SDL_MOUSEBUTTON_LEFT,
                         .trigger    = SDL_MOUSESTATE_DRAG,
+                    }
+                },
+                [WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED] = {
+                    .type = COMMANDINPUTKEY_TYPE_MOUSE,
+                    .sdl_mouse = {
+                        .key        = SDL_MOUSEBUTTON_LEFT,
+                        .trigger    = SDL_MOUSESTATE_JUST_PRESSED,
                     }
                 },
                 [WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN] = {
@@ -234,7 +269,7 @@ workbench_t * workbench_init(arena_t *const arena)
                 [WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT] = {
                     .type = COMMANDINPUTKEY_TYPE_MOUSE,
                     .sdl_mouse.wheel = SDL_MOUSEWHEEL_DOWN,
-                }
+                },
             },
         }
     };
@@ -521,7 +556,7 @@ void workbench_update(const f32 dt)
     if (!global_workbench->is_active) return;
 
     const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
-    if (gui_ui_ishovered(&global_workbench->gui.handle, WB_COLLIDER_TOGGLE) && (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK)))
+    if (gui_ui_ishovered(&global_workbench->gui.handle, WB_COLLIDER_TOGGLE) && (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED)))
     {
         global_workbench->enable_collider = !global_workbench->enable_collider;
     }

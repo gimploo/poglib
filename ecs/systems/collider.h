@@ -30,6 +30,17 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
                 JPH_CharacterVirtual_SetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->position);
                 JPH_CharacterVirtual_SetRotation(collider->internal.kinematic_body, (JPH_Quat *)&transform->orientation);
 
+                //NOTE: It was initially recommended to use JPH_CharacterVirtualExtendedUpdate to handle gravity but there
+                //are so many unknowns in that its better not tackling them now but later.
+
+                const JPH_GroundState ground = JPH_CharacterBase_GetGroundState((JPH_CharacterBase *)collider->internal.kinematic_body);
+                if (ground != JPH_GroundState_OnGround) {
+                    transform->velocity.y += -9.81f * APPLICATION_UPDATE_FIXED_TIME_STEP;
+                } else {
+                    transform->velocity = (vec3f_t){0};
+                }
+
+                JPH_CharacterVirtual_SetLinearVelocity(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->velocity);
                 JPH_CharacterVirtual_Update(
                     collider->internal.kinematic_body, 
                     APPLICATION_UPDATE_FIXED_TIME_STEP, 

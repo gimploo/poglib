@@ -42,6 +42,7 @@ struct ecs_component_transform_t {
     vec3f_t position;
     versors orientation;
     vec3f_t scale;
+    vec3f_t velocity;
     enum {
         ECS_CMP_TRANSFORM_SOURCE_NONE,
         ECS_CMP_TRANSFORM_SOURCE_INPUT,
