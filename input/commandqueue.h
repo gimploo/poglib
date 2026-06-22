@@ -95,8 +95,9 @@ bool commandqueue__internal_check_mousebutton_trigger(const commandinputbinding_
 {
     switch(input.sdl_mouse.trigger)
     {
-        case SDL_MOUSESTATE_DRAG:   return window_mouse_button_is_dragged(global_window, input.sdl_mouse.key);
-        default:                    return window_mouse_button_is_pressed(global_window, input.sdl_mouse.key);
+        case SDL_MOUSESTATE_DRAG:           return window_mouse_button_is_dragged(global_window, input.sdl_mouse.key);
+        case SDL_MOUSESTATE_JUST_PRESSED:   return window_mouse_button_just_pressed(global_window, input.sdl_mouse.key);
+        default:                            return window_mouse_button_is_pressed(global_window, input.sdl_mouse.key);
     }
 }
 
