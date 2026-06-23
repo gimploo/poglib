@@ -84,7 +84,7 @@ poggen_t * poggen_init(application_t *const app, const poggen_config_t config)
 
     poggen_t *output = (poggen_t *)calloc(1, sizeof(poggen_t ));
     ASSERT(output);
-    arena_t arena = arena_init(&app->handle.arena, 5 * MB);
+    arena_t arena = arena_init(NULL, 32 * MB);
     *output = (poggen_t ){
         .config             = config,
         .scenes             = hashtable_init(MAX_SCENES_ALLOWED, HT_KEY_TYPE_STR, (ht_value_type){ .size = sizeof(scene_t), .type = HT_STORAGE_BY_REFERENCE }, &app->handle.arena),

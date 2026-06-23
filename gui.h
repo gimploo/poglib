@@ -167,8 +167,7 @@ gui_t gui_init(arena_t * const arena, const ui_region_t starting_region)
         arena
     );
     o.freetypefont = glfreetypefont_init(DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH, 14, true);
-    o.arena = arena_init(arena, 1 * MB);
-    o.gfx.instanced_attrs = list_init(ui_attr_t, &o.arena);
+    o.gfx.instanced_attrs = list_init(ui_attr_t, arena);
     o.internal.layout_cursor_stack.top = 0;
     o.internal.layout_cursor_stack.buffer[0] = (layout_ctx_t){
         .max_row_height = 0,

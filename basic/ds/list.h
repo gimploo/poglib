@@ -18,13 +18,12 @@ typedef struct list_t {
         u64     capacity;
         i64     top;
         u64     elem_size;
-        char    elem_type[MAX_TYPE_CHARACTER_LENGTH];
         u64     original_capacity;
     } internal;
 
 } list_t ;
 
-#define DEFAULT_LIST_STARTING_CAPACITY 4
+#define DEFAULT_LIST_STARTING_CAPACITY 4 
 
 #define         list_init(TYPE, ARENA)                               list__internal__init(DEFAULT_LIST_STARTING_CAPACITY, #TYPE, sizeof(TYPE), ARENA)
 
@@ -75,7 +74,7 @@ void list_clear(list_t *const list)
     memset(list->data, 0, list->internal.elem_size * list->internal.capacity);
 }
 
-list_t list__internal__init(const u64 capacity, const char *elem_type, const u64 elem_size, arena_t *arena) 
+list_t list__internal__init(const u64 capacity, const char *elem_type, const u64 elem_size, arena_t *const arena) 
 {
     assert(elem_type);
     assert(elem_size > 0);
@@ -85,20 +84,15 @@ list_t list__internal__init(const u64 capacity, const char *elem_type, const u64
 
     list_t o = {
         .len = 0,
-        .data = arena ? (u8 *)arena_reserve(arena, capacity * elem_size) : (u8 *)calloc(capacity, elem_size),
+        .data = (u8 *)arena_reserve(arena, capacity * elem_size),
         .arena = arena,
         .internal = {
             .capacity = capacity,
             .top = -1,
             .elem_size = elem_size,
-            .elem_type = {0},
             .original_capacity = capacity,
         },
     };
-
-    u32 copy_len = len;
-    if (copy_len >= MAX_TYPE_CHARACTER_LENGTH) copy_len = MAX_TYPE_CHARACTER_LENGTH - 1;
-    memcpy(o.internal.elem_type, elem_type, copy_len);
 
     return o;
 }
@@ -112,13 +106,9 @@ void list__internal__append(list_t *list, const void *value_addr, u64 value_size
     if (list->internal.top == (i64)(list->internal.capacity - 1)) {
 
         u64 new_capacity = list->internal.capacity * 2;
-        if (list->arena) {
-            u8 *new_data = arena_reserve(list->arena, new_capacity * list->internal.elem_size);
-            memcpy(new_data, list->data, list->internal.capacity * list->internal.elem_size);
-            list->data = new_data;
-        } else {
-            list->data = (u8 *)realloc(list->data, new_capacity * list->internal.elem_size);
-        }
+        u8 *new_data = arena_reserve(list->arena, new_capacity * list->internal.elem_size);
+        memcpy(new_data, list->data, list->internal.capacity * list->internal.elem_size);
+        list->data = new_data;
         list->internal.capacity = new_capacity;
     }
 
@@ -145,14 +135,6 @@ void list_delete(list_t *list, const u64 index)
 
     list->len = --list->internal.top + 1;
 
-    if (!list->arena
-            && (list->internal.capacity != list->internal.original_capacity) 
-            && (list->internal.top == (i64)((list->internal.capacity / 2) - 1))) { 
-
-        list->internal.capacity = list->internal.capacity / 2;
-        list->data = (u8 *)realloc(list->data, list->internal.capacity * list->internal.elem_size);
-        printf("Shrunk from %ld to %ld\n", list->internal.capacity * 2, list->internal.capacity);
-    }
 } 
 
 void list_print(const list_t *list, void (*print)(void*))
@@ -192,21 +174,18 @@ void list_dump(const list_t *list)
 
 void list_destroy(list_t *list)
 {
-    if (!list->arena) {
-        free(list->data);
-    }
     list->data = NULL;
     list->internal.capacity = 0;
     list->internal.top = -1;
     list->len = 0;
     list->internal.elem_size = 0;
+
+    arena_destroy(list->arena);
 }
 
 void list_combine(list_t *dest, const list_t *src)
 {
-    if (strcmp(dest->internal.elem_type, src->internal.elem_type) != 0)
-        eprint("destination (%s) and src (%s) types are different", 
-                dest->internal.elem_type, src->internal.elem_type);
+    ASSERT(dest->internal.elem_size == src->internal.elem_size);
 
     list_iterator(src, iter)
         list__internal__append(dest, iter, dest->internal.elem_size);
