@@ -96,7 +96,7 @@ poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
         },
         .systems = {
             .assets      = assetmanager_init(&output->bg_task_manager),
-            .renderqueue = renderqueue_init(),
+            .renderqueue = renderqueue_init(&arena),
             .physics     = config.enable_physics 
                            ? (poggen__internal_physics_t){
                                .phy_simulation_started = false,
