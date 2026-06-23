@@ -48,21 +48,15 @@ void workbench_editor_pick_entity(void)
     u32 picked = 0;
     f32 closest_dist = 5.f;
 
-    JPH_RayCastResult hit = physics_sys_jolt_raycast(cam->position, dir);
-    if (hit.bodyID) {
-        picked = ecs_entity_get_id_by_body_id(hit.bodyID);
-    }
-
-    if (!picked) {
-        ecs_entity_foreach(eid) {
-            const ecs_entity_query_t q = ecs_entity_query_components(global_ecs, eid, ECS_CMP_TRANSFORM);
-            ecs_component_transform_t *t = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-            if (!t) continue;
-            f32 d = workbench_editor_closest_point_on_ray(cam->position, dir, t->position);
-            if (d < closest_dist) {
-                closest_dist = d;
-                picked = eid;
-            }
+    ecs_entity_foreach(ent_iter) {
+        ecs_entity_t *e = ent_iter;
+        ecs_entity_query_t q = ecs_entity_query_components(global_ecs, e->id, ECS_CMP_TRANSFORM);
+        ecs_component_transform_t *t = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+        if (!t) continue;
+        f32 d = workbench_editor_closest_point_on_ray(cam->position, dir, t->position);
+        if (d < closest_dist) {
+            closest_dist = d;
+            picked = e->id;
         }
     }
 
