@@ -18,8 +18,7 @@
 #include <poglib/external/assimp/include/assimp/postprocess.h>
 #include <poglib/external/assimp/include/assimp/scene.h>
 
-//TODO: materials implementation is fucked - need to learn how do this 
-//TODO: arena support
+//TODO: materials implementation is fucked - need to learn how do this
 
 #define MAX_BONES 128
 
@@ -326,7 +325,7 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
     {
         struct aiMesh *mesh = scene->mMeshes[mesh_index];
 
-        self->transforms[mesh_index] = list_init(matrix4f_t);
+        self->transforms[mesh_index] = list_init(matrix4f_t, &self->arena);
 
         // Process mesh
         const glmesh_t m = assimp__internal_glmesh_processMesh(mesh);
@@ -376,13 +375,13 @@ glmodel_t glmodel_init(const char *filepath)
     ASSERT(strlen(filepath) < ARRAY_LEN(o.filepath));
     memcpy(o.filepath, filepath, strlen(filepath));
     o.directory_path = str_get_directory_path(filepath);
-    o.meshes = list_init(glmesh_t);
-    o.textures = list_init(gltexture2d_t);
-    o.colors = list_init(vec4f_t);
-    o.bone_infos = list_init(boneinfo_t);
+    o.arena = arena_init(NULL, 2 * MB);
+    o.meshes = list_init(glmesh_t, &o.arena);
+    o.textures = list_init(gltexture2d_t, &o.arena);
+    o.colors = list_init(vec4f_t, &o.arena);
+    o.bone_infos = list_init(boneinfo_t, &o.arena);
     o.animator = animator_init();
     o.current_time = 0.0f;
-    o.arena = arena_init(NULL, 2 * MB);
     o.internal.root_channel_idx = -1;
 
     logging("Loading model %s ...", filepath);
