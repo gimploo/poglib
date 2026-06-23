@@ -90,14 +90,15 @@ typedef struct window_t {
         bool     is_held[SDL_NUM_SCANCODES];
     } keyboard;
 
+    //NOTE: tracks connected game controller state (buttons and analog axes)
     struct {
-        bool                is_connected;
-        SDL_GameController  *handle;
-        SDL_JoystickID      instance_id;
-        bool                button_just_pressed[SDL_CONTROLLER_BUTTON_MAX];
-        bool                button_is_held[SDL_CONTROLLER_BUTTON_MAX];
-        bool                button_released[SDL_CONTROLLER_BUTTON_MAX];
-        i16                 axis[SDL_CONTROLLER_AXIS_MAX];
+        bool                is_connected;                                   // whether a controller is currently connected
+        SDL_GameController  *handle;                                        // SDL game controller handle
+        SDL_JoystickID      instance_id;                                    // unique id for hotplug detection
+        bool                button_just_pressed[SDL_CONTROLLER_BUTTON_MAX]; // set on press, cleared after one frame
+        bool                button_is_held[SDL_CONTROLLER_BUTTON_MAX];      // set while button is held down
+        bool                button_released[SDL_CONTROLLER_BUTTON_MAX];     // set on release, cleared after one frame
+        i16                 axis[SDL_CONTROLLER_AXIS_MAX];                  // raw axis values (-32768 to 32767)
     } controller;
 
     struct {
@@ -267,32 +268,38 @@ bool window_mouse_wheel_is_scroll_left(const window_t *const w)
     return w->mouse.wheel.state == SDL_MOUSEWHEEL_LEFT;
 }
 
+// returns true if a game controller is currently connected
 bool window_controller_is_connected(window_t *window)
 {
     return window->controller.is_connected;
 }
 
+// returns true only on the frame the button was first pressed
 bool window_controller_button_just_pressed(window_t *window, SDL_GameControllerButton button)
 {
     return window->controller.button_just_pressed[button];
 }
 
+// returns true while a button is held down (after the first frame)
 bool window_controller_button_is_held(window_t *window, SDL_GameControllerButton button)
 {
     return window->controller.button_is_held[button];
 }
 
+// returns true if the button is either just pressed or held
 bool window_controller_button_is_pressed(window_t *window, SDL_GameControllerButton button)
 {
     return window->controller.button_just_pressed[button]
         || window->controller.button_is_held[button];
 }
 
+// returns the raw analog axis value (-32768 to 32767)
 i16 window_controller_get_axis_value(window_t *window, SDL_GameControllerAxis axis)
 {
     return window->controller.axis[axis];
 }
 
+// tracks controller button state machine: JUST_PRESSED -> HELD -> RELEASED
 INTERNAL void __controller_handle_button(window_t *window, SDL_GameControllerButton button, bool down)
 {
     if (down) {
@@ -486,8 +493,10 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     WinFlags = SDL_WINDOW_OPENGL;
 #endif
 
+    //NOTE: SDL_INIT_EVERYTHING includes game controller subsystem
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
 
+    //NOTE: try to open the first available game controller at startup
     {
         int num_joysticks = SDL_NumJoysticks();
         if (num_joysticks > 0) {
@@ -958,11 +967,13 @@ void window_poll_input_events(window_t *window)
                 __keyboard_update_buffers(window, SDL_KEYUP, event->key.keysym.scancode);
             break;
 
+            //NOTE: a new controller was plugged in
             case SDL_CONTROLLERDEVICEADDED:
             {
                 SDL_GameController *ctrl = SDL_GameControllerOpen(event->cdevice.which);
                 if (ctrl) {
                     if (window->controller.is_connected) {
+                        // already have one, ignore extras
                         SDL_GameControllerClose(ctrl);
                     } else {
                         window->controller.handle = ctrl;
@@ -974,6 +985,7 @@ void window_poll_input_events(window_t *window)
                 }
             } break;
 
+            //NOTE: a controller was unplugged
             case SDL_CONTROLLERDEVICEREMOVED:
             {
                 if (window->controller.is_connected &&
@@ -988,6 +1000,7 @@ void window_poll_input_events(window_t *window)
                 }
             } break;
 
+            //NOTE: a controller button was pressed (transition to JUST_PRESSED or HELD)
             case SDL_CONTROLLERBUTTONDOWN:
             {
                 if (window->controller.is_connected) {
@@ -995,6 +1008,7 @@ void window_poll_input_events(window_t *window)
                 }
             } break;
 
+            //NOTE: a controller button was released (transition to RELEASED state)
             case SDL_CONTROLLERBUTTONUP:
             {
                 if (window->controller.is_connected) {
@@ -1002,6 +1016,7 @@ void window_poll_input_events(window_t *window)
                 }
             } break;
 
+            //NOTE: an analog axis moved (left stick, right stick, triggers)
             case SDL_CONTROLLERAXISMOTION:
             {
                 if (window->controller.is_connected) {
@@ -1100,6 +1115,7 @@ void window_destroy(void)
         window->subwindow.is_active = false;
     }
 
+    //NOTE: close game controller before quitting SDL
     if (window->controller.is_connected && window->controller.handle) {
         SDL_GameControllerClose(window->controller.handle);
         window->controller.handle = NULL;
@@ -1122,6 +1138,7 @@ void window_flush_transient_data(window_t *const self)
     self->mouse.rel = (vec2i_t){0};
     self->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
 
+    //NOTE: clear one-shot controller button states so they don't persist across frames
     for (int i = 0; i < SDL_CONTROLLER_BUTTON_MAX; i++) {
         self->controller.button_just_pressed[i] = false;
         self->controller.button_released[i] = false;

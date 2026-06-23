@@ -88,10 +88,13 @@ void commandqueue_sync(commandqueue_t * const self)
 
             //printf("MS Tracked %i\n", b->command);
 
+        //NOTE: controller input (button or axis-as-button with deadzone)
         } else if (b->type == COMMANDINPUTKEY_TYPE_CONTROLLER) {
 
             bool triggered = false;
 
+            //NOTE: if deadzone is set, treat as axis-as-button binding
+            //      example: left stick pushed past 8000 units triggers walk forward
             if (b->sdl_controller.axis_as_button.deadzone != 0 && window_controller_is_connected(global_window)) {
                 i16 val = window_controller_get_axis_value(global_window, b->sdl_controller.axis_as_button.axis);
                 triggered = b->sdl_controller.axis_as_button.positive
@@ -99,6 +102,7 @@ void commandqueue_sync(commandqueue_t * const self)
                     : val < -b->sdl_controller.axis_as_button.deadzone;
             }
 
+            //NOTE: fall back to regular button check if axis didn't trigger (deadzone == 0)
             if (!triggered && window_controller_is_connected(global_window)) {
                 triggered = window_controller_button_is_pressed(global_window, b->sdl_controller.button);
             }
