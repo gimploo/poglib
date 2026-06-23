@@ -45,7 +45,7 @@ void                animator_destroy(animator_t *self);
 animator_t animator_init(void)
 {
     return (animator_t ){
-        .animations = list_init(animation_t)
+        .animations = list_init(animation_t, NULL)
     };
 }
 
@@ -74,7 +74,7 @@ animation_t __animation_init(const char *name, const f32 duration, const f32 tic
         .name = name,
         .duration = duration,
         .ticks_per_second = ticks_per_second,
-        .channels = list_init(node_anim_t)
+        .channels = list_init(node_anim_t, NULL)
     };
 }
 
@@ -143,9 +143,9 @@ void __load_channels(const struct aiAnimation *animation, animation_t *self)
         const struct aiNodeAnim *node = animation->mChannels[i];
         node_anim_t n = {
             .node_name = node->mNodeName.data,
-            .position_keys = list_init(position_key_t),
-            .rotation_keys = list_init(rotation_key_t),
-            .scaling_keys = list_init(scaling_key_t),
+            .position_keys = list_init(position_key_t, NULL),
+            .rotation_keys = list_init(rotation_key_t, NULL),
+            .scaling_keys = list_init(scaling_key_t, NULL),
         };
 
         __load_channel_positions(node, &n.position_keys);

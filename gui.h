@@ -169,7 +169,7 @@ gui_t gui_init(arena_t * const arena, const ui_region_t starting_region)
         .freetypefont = glfreetypefont_init(DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH, 14, true),
         .arena = arena_init(arena, 1 * MB),
         .gfx = {
-            .instanced_attrs = list_init(ui_attr_t),
+            .instanced_attrs = list_init(ui_attr_t, NULL),
         },
         .internal = {
             .layout_cursor_stack = {

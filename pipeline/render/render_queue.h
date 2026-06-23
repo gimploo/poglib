@@ -34,7 +34,7 @@ renderqueue_t renderqueue_init(void)
 
 void renderqueue__internal_bucket_init_and_add_command(renderqueue_t *const self, const rendercommand_t command, const u16 idx)
 {
-    self->buckets[idx] = list_init(rendercommand_t);
+    self->buckets[idx] = list_init(rendercommand_t, NULL);
     list_append(&self->buckets[idx], command);
 }
 
