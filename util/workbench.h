@@ -567,7 +567,8 @@ void workbench_update(const f32 dt)
     }
 
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED)) {
-        if (global_workbench->gui.handle.state.hovered_ui_id == 0) {
+        const bool ui_element_hovered = global_workbench->gui.handle.state.hovered_ui_id != 0;
+        if (!ui_element_hovered) {
             workbench_editor_pick_entity();
         }
     }
