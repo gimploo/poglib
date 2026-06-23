@@ -151,6 +151,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
 
                 const ecs_collider_jolt_userdata_t userdata = {
                     .objectlayertype = collider->object_layer_type,
+                    .dimension = collider->dim,
 #ifdef DEBUG
                     .internal = {
                         .ecs_collider = collider
