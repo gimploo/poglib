@@ -1,7 +1,8 @@
 #pragma once
 #include "dbg.h"
 #include "common.h"
-#include "threads.h"
+#include <stdatomic.h>
+#include <threads.h>
 #include <stdint.h>
 
 /*================================================================================
@@ -26,7 +27,7 @@ struct arena_t {
         u32 count;
     } freelist;
     struct {
-        mtx_t lock;
+        atomic_flag lock;
         struct arena_t *lifetime_owner;
     } meta;
 };
@@ -55,7 +56,7 @@ arena_t arena_init(arena_t *arena, u64 capacity)
             .lifetime_owner = arena,
         }
     };
-    mtx_init(&o.meta.lock, mtx_plain);
+    atomic_flag_clear(&o.meta.lock);
     return o;
 }
 
@@ -99,7 +100,7 @@ void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const
     const u64 align = 16;
     void *mem = NULL;
 
-    mtx_lock(&self->meta.lock);
+    while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
     {
         const u64 current_ptr = (u64)self->memory + self->size;
         const u64 aligned_ptr = (current_ptr + (align - 1)) & ~(align - 1);
@@ -109,14 +110,14 @@ void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const
         if ((offset + memory_size) > self->capacity)
         {
             eprint("Arena is full");
-            mtx_unlock(&self->meta.lock);
+            atomic_flag_clear(&self->meta.lock);
             return NULL;
         }
 
         void *res_memory = arena__internal_check_in_freelist(self, memory_size);
         if (res_memory) {
             memset(res_memory, 0, memory_size);
-            mtx_unlock(&self->meta.lock);
+            atomic_flag_clear(&self->meta.lock);
             return res_memory;
         }
 
@@ -125,7 +126,7 @@ void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const
 
         self->size = offset + memory_size;
     }
-    mtx_unlock(&self->meta.lock);
+    atomic_flag_clear(&self->meta.lock);
 
     ASSERT(mem);
     if(((u64)(mem) & (16 - 1)) != 0) {
@@ -136,9 +137,9 @@ void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const
 
 void arena_clear(arena_t *self)
 {
-    mtx_lock(&self->meta.lock);
+    while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
         self->size = 0;
-    mtx_unlock(&self->meta.lock);
+    atomic_flag_clear(&self->meta.lock);
 }
 
 
@@ -149,7 +150,7 @@ void arena_giveback(arena_t *self, const void *ptr, const u64 size)
     ASSERT(size > 0);
     ASSERT(arena_is_init(self));
 
-    mtx_lock(&self->meta.lock);
+    while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
     {
         free_chunks_t *chunk = self->freelist.head;
         while(chunk != NULL && chunk->next != NULL) {
@@ -174,18 +175,17 @@ void arena_giveback(arena_t *self, const void *ptr, const u64 size)
         }
         self->freelist.count++;
     }
-    mtx_unlock(&self->meta.lock);
+    atomic_flag_clear(&self->meta.lock);
 }
 
 void arena_destroy(arena_t *self)
 {
     if (self->meta.lifetime_owner) {
         arena_giveback(self->meta.lifetime_owner, self->memory, self->capacity);
-        mtx_destroy(&self->meta.lock);
         return;
     }
 
-    mtx_lock(&self->meta.lock); 
+    while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
     {
         if (self->freelist.count) {
             free_chunks_t *cur = self->freelist.head;
@@ -198,9 +198,7 @@ void arena_destroy(arena_t *self)
             free(self->memory);
         }
     }
-    mtx_unlock(&self->meta.lock);
-
-    mtx_destroy(&self->meta.lock);
+    atomic_flag_clear(&self->meta.lock);
 }
 
 void * arena_reserve(arena_t *self, u64 memory_size)
