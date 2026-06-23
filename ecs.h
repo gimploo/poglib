@@ -20,7 +20,6 @@ glcamera_t *        ecs_get_active_camera(ecs_t *const self);
 
 void                ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
 
-u32                 ecs_entity_get_id_by_body_id(const u32 body_id);
 void                ecs_set_entity_transform(ecs_t *const self, const u32 entity_id, const vec3f_t position, const versors orientation, const vec3f_t scale);
 
 void            ecs_update(ecs_t *const self);
@@ -74,20 +73,6 @@ void ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patc
         entity_id,
         request
     );
-}
-
-u32 ecs_entity_get_id_by_body_id(const u32 body_id)
-{
-    slot_t *cp_pool = slot_get_value(&global_ecs->managers.componentmanager.componentpool_slots, ECS_CMP_COLLIDER_IDX);
-    slot_iterator(cp_pool, iter)
-    {
-        ecs_component_poolentry_t *entry = iter;
-        if (!entry->is_active) continue;
-        ecs_component_collider_t *c = (ecs_component_collider_t *)entry->entity_cmpdata;
-        if (c->internal.body_id == body_id)
-            return entry->entity_id;
-    }
-    return ECS_ENTITY_INVALID_ID;
 }
 
 void ecs_set_entity_transform(ecs_t *const self, const u32 entity_id, const vec3f_t position, const versors orientation, const vec3f_t scale)
