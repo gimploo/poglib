@@ -4,18 +4,16 @@
 #include <poglib/application/window/sdl_window.h>
 
 
-//INFO:  this requires command actions to be enums as those are the 
-//index that maps to the specific sdl provided input state (command key)
-//
-//
 typedef enum {
   COMMANDINPUTKEY_TYPE_KEYBOARD = 0,
   COMMANDINPUTKEY_TYPE_MOUSE = 1,
+  COMMANDINPUTKEY_TYPE_CONTROLLER = 2,
   COMMANDINPUTKEY_TYPE_COUNT
 } commandinputkey_type;
 
 typedef struct {
     commandinputkey_type type;
+    u16                 command;
     union {
         struct {
             SDL_Scancode scancode;
@@ -25,6 +23,14 @@ typedef struct {
             sdl_mousewheelstate wheel;
             sdl_mousestate      trigger;
         } sdl_mouse;
+        struct {
+            SDL_GameControllerButton button;
+            struct {
+                SDL_GameControllerAxis axis;
+                i16 deadzone;
+                bool positive;
+            } axis_as_button;
+        } sdl_controller;
     };
 } commandinputbinding_t;
 

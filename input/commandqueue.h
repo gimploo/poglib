@@ -63,28 +63,50 @@ void commandqueue_sync(commandqueue_t * const self)
     const commandregistry_t *commands = &self->registry;
 
     //printf("-------------------- NEW BATCH --------------------------------\n");
-    for (u16 command_type = 0; command_type < commands->count; command_type++) {
+    for (u16 i = 0; i < commands->count; i++) {
 
-        if (self->registry.registry[command_type].type == COMMANDINPUTKEY_TYPE_KEYBOARD && keyboard_buffer[self->registry.registry[command_type].sdl_keyboard_key.scancode]) {
+        const commandinputbinding_t *b = &self->registry.registry[i];
 
-            self->internal.bitmask |= (1 << command_type);
+        if (b->type == COMMANDINPUTKEY_TYPE_KEYBOARD && keyboard_buffer[b->sdl_keyboard_key.scancode]) {
 
-            //printf("KB Tracked %i\n", command_type);
+            self->internal.bitmask |= (1 << b->command);
 
-        } else if (self->registry.registry[command_type].type == COMMANDINPUTKEY_TYPE_MOUSE) {
+            //printf("KB Tracked %i\n", b->command);
 
-            const sdl_mousebuttontype key   = self->registry.registry[command_type].sdl_mouse.key;
-            const sdl_mousewheelstate wheel = self->registry.registry[command_type].sdl_mouse.wheel;
+        } else if (b->type == COMMANDINPUTKEY_TYPE_MOUSE) {
 
-            const bool found_match = (key != SDL_MOUSEBUTTON_NONE && commandqueue__internal_check_mousebutton_trigger(self->registry.registry[command_type]))
+            const sdl_mousebuttontype key   = b->sdl_mouse.key;
+            const sdl_mousewheelstate wheel = b->sdl_mouse.wheel;
+
+            const bool found_match = (key != SDL_MOUSEBUTTON_NONE && commandqueue__internal_check_mousebutton_trigger(self->registry.registry[i]))
                 || (wheel == SDL_MOUSEWHEEL_UP && window_mouse_wheel_is_scroll_up(global_window))
                 || (wheel == SDL_MOUSEWHEEL_DOWN && window_mouse_wheel_is_scroll_down(global_window));
 
             if (!found_match) continue;
 
-            self->internal.bitmask |= (1 << command_type);
+            self->internal.bitmask |= (1 << b->command);
 
-            //printf("MS Tracked %i\n", command_type);
+            //printf("MS Tracked %i\n", b->command);
+
+        } else if (b->type == COMMANDINPUTKEY_TYPE_CONTROLLER) {
+
+            bool triggered = false;
+
+            if (b->sdl_controller.axis_as_button.deadzone != 0 && window_controller_is_connected(global_window)) {
+                i16 val = window_controller_get_axis_value(global_window, b->sdl_controller.axis_as_button.axis);
+                triggered = b->sdl_controller.axis_as_button.positive
+                    ? val > b->sdl_controller.axis_as_button.deadzone
+                    : val < -b->sdl_controller.axis_as_button.deadzone;
+            }
+
+            if (!triggered && window_controller_is_connected(global_window)) {
+                triggered = window_controller_button_is_pressed(global_window, b->sdl_controller.button);
+            }
+
+            if (triggered) {
+                self->internal.bitmask |= (1 << b->command);
+                //printf("CTRL Tracked %i\n", b->command);
+            }
         }
         //printf("Bitmask: ");cq__internal_print_u16_bitmask(self->internal.bitmask);
     }

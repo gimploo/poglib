@@ -91,6 +91,16 @@ typedef struct window_t {
     } keyboard;
 
     struct {
+        bool                is_connected;
+        SDL_GameController  *handle;
+        SDL_JoystickID      instance_id;
+        bool                button_just_pressed[SDL_CONTROLLER_BUTTON_MAX];
+        bool                button_is_held[SDL_CONTROLLER_BUTTON_MAX];
+        bool                button_released[SDL_CONTROLLER_BUTTON_MAX];
+        i16                 axis[SDL_CONTROLLER_AXIS_MAX];
+    } controller;
+
+    struct {
         bool                is_active;
         struct window_t     *window;        // Holds subwindow address
     } subwindow;
@@ -127,6 +137,12 @@ bool                window_mouse_wheel_is_scroll_up(const window_t *const w);
 bool                window_mouse_wheel_is_scroll_down(const window_t *const w);
 bool                window_mouse_wheel_is_scroll_left(const window_t *const w);
 bool                window_mouse_wheel_is_scroll_right(const window_t *const w);
+
+bool                window_controller_is_connected(window_t *window);
+bool                window_controller_button_just_pressed(window_t *window, SDL_GameControllerButton button);
+bool                window_controller_button_is_held(window_t *window, SDL_GameControllerButton button);
+bool                window_controller_button_is_pressed(window_t *window, SDL_GameControllerButton button);
+i16                 window_controller_get_axis_value(window_t *window, SDL_GameControllerAxis axis);
 
 #define             window_mouse_get_norm_position(PWINDOW)                     (PWINDOW)->mouse.norm_position
 #define             window_mouse_get_position(PWINDOW)                          (PWINDOW)->mouse.position
@@ -249,6 +265,52 @@ bool window_mouse_wheel_is_scroll_right(const window_t *const w)
 bool window_mouse_wheel_is_scroll_left(const window_t *const w)
 {
     return w->mouse.wheel.state == SDL_MOUSEWHEEL_LEFT;
+}
+
+bool window_controller_is_connected(window_t *window)
+{
+    return window->controller.is_connected;
+}
+
+bool window_controller_button_just_pressed(window_t *window, SDL_GameControllerButton button)
+{
+    return window->controller.button_just_pressed[button];
+}
+
+bool window_controller_button_is_held(window_t *window, SDL_GameControllerButton button)
+{
+    return window->controller.button_is_held[button];
+}
+
+bool window_controller_button_is_pressed(window_t *window, SDL_GameControllerButton button)
+{
+    return window->controller.button_just_pressed[button]
+        || window->controller.button_is_held[button];
+}
+
+i16 window_controller_get_axis_value(window_t *window, SDL_GameControllerAxis axis)
+{
+    return window->controller.axis[axis];
+}
+
+INTERNAL void __controller_handle_button(window_t *window, SDL_GameControllerButton button, bool down)
+{
+    if (down) {
+        if (window->controller.button_is_held[button]) {
+            return;
+        }
+        if (window->controller.button_just_pressed[button]) {
+            window->controller.button_is_held[button] = true;
+            window->controller.button_just_pressed[button] = false;
+        } else {
+            window->controller.button_just_pressed[button] = true;
+            window->controller.button_is_held[button] = false;
+        }
+    } else {
+        window->controller.button_just_pressed[button] = false;
+        window->controller.button_is_held[button] = false;
+        window->controller.button_released[button] = true;
+    }
 }
 
 #define __impl_window_subwindow_gl_render_begin(PWINDOW) do {\
@@ -425,6 +487,19 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 #endif
 
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
+
+    {
+        int num_joysticks = SDL_NumJoysticks();
+        if (num_joysticks > 0) {
+            win.controller.handle = SDL_GameControllerOpen(0);
+            if (win.controller.handle) {
+                win.controller.is_connected = true;
+                win.controller.instance_id = SDL_JoystickInstanceID(
+                    SDL_GameControllerGetJoystick(win.controller.handle));
+                SDL_Log("Controller connected: %s\n", SDL_GameControllerName(win.controller.handle));
+            }
+        }
+    }
 
     win.__sdl_window = SDL_CreateWindow(
             win.title, 
@@ -883,6 +958,57 @@ void window_poll_input_events(window_t *window)
                 __keyboard_update_buffers(window, SDL_KEYUP, event->key.keysym.scancode);
             break;
 
+            case SDL_CONTROLLERDEVICEADDED:
+            {
+                SDL_GameController *ctrl = SDL_GameControllerOpen(event->cdevice.which);
+                if (ctrl) {
+                    if (window->controller.is_connected) {
+                        SDL_GameControllerClose(ctrl);
+                    } else {
+                        window->controller.handle = ctrl;
+                        window->controller.is_connected = true;
+                        window->controller.instance_id = SDL_JoystickInstanceID(
+                            SDL_GameControllerGetJoystick(ctrl));
+                        SDL_Log("Controller connected: %s\n", SDL_GameControllerName(ctrl));
+                    }
+                }
+            } break;
+
+            case SDL_CONTROLLERDEVICEREMOVED:
+            {
+                if (window->controller.is_connected &&
+                    window->controller.instance_id == event->cdevice.which) {
+                    SDL_GameControllerClose(window->controller.handle);
+                    window->controller.handle = NULL;
+                    window->controller.is_connected = false;
+                    memset(window->controller.button_just_pressed, 0, sizeof(window->controller.button_just_pressed));
+                    memset(window->controller.button_is_held, 0, sizeof(window->controller.button_is_held));
+                    memset(window->controller.axis, 0, sizeof(window->controller.axis));
+                    SDL_Log("Controller disconnected\n");
+                }
+            } break;
+
+            case SDL_CONTROLLERBUTTONDOWN:
+            {
+                if (window->controller.is_connected) {
+                    __controller_handle_button(window, event->cbutton.button, true);
+                }
+            } break;
+
+            case SDL_CONTROLLERBUTTONUP:
+            {
+                if (window->controller.is_connected) {
+                    __controller_handle_button(window, event->cbutton.button, false);
+                }
+            } break;
+
+            case SDL_CONTROLLERAXISMOTION:
+            {
+                if (window->controller.is_connected) {
+                    window->controller.axis[event->caxis.axis] = event->caxis.value;
+                }
+            } break;
+
             //default:
                 //SDL_ShowSimpleMessageBox(0, "ERROR", "Key not accounted for", window->__sdl_window);
                 //window->is_open = false;
@@ -974,6 +1100,12 @@ void window_destroy(void)
         window->subwindow.is_active = false;
     }
 
+    if (window->controller.is_connected && window->controller.handle) {
+        SDL_GameControllerClose(window->controller.handle);
+        window->controller.handle = NULL;
+        window->controller.is_connected = false;
+    }
+
     SDL_DestroyWindow(window->__sdl_window);
     SDL_Quit();
 
@@ -990,6 +1122,10 @@ void window_flush_transient_data(window_t *const self)
     self->mouse.rel = (vec2i_t){0};
     self->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
 
+    for (int i = 0; i < SDL_CONTROLLER_BUTTON_MAX; i++) {
+        self->controller.button_just_pressed[i] = false;
+        self->controller.button_released[i] = false;
+    }
 }
 
 
