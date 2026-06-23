@@ -46,7 +46,7 @@ typedef struct poggen_t {
 
 global poggen_t *global_engine = NULL;
 
-poggen_t *                          poggen_init(application_t * const app, const poggen_config_t config);
+poggen_t *                          poggen_init(application_t *const app, const poggen_config_t config);
 #define                             poggen_add_scene(PGEN, SCENE_NAME)                          poggen__internal_add_scene((PGEN), scene__internal_init(SCENE_NAME))
 void                                poggen_remove_scene(poggen_t *self, str_t label);
 void                                poggen_change_scene(poggen_t *self, str_t scene_label);
@@ -77,14 +77,14 @@ window_t * poggen_get_window(const poggen_t *self)
     return application_get_window(self->handle.app);
 }
 
-poggen_t * poggen_init(application_t * const app, const poggen_config_t config)
+poggen_t * poggen_init(application_t *const app, const poggen_config_t config)
 {
     if (!global_window)     eprint("A window is required to run poggen\n");
     if (global_engine)      eprint("Trying to initialize a second `poggen` in the same instance");
 
     poggen_t *output = (poggen_t *)calloc(1, sizeof(poggen_t ));
     ASSERT(output);
-    arena_t arena = arena_init(&app->handle.arena, 2 * MB);
+    arena_t arena = arena_init(&app->handle.arena, 5 * MB);
     *output = (poggen_t ){
         .config             = config,
         .scenes             = hashtable_init(MAX_SCENES_ALLOWED, HT_KEY_TYPE_STR, (ht_value_type){ .size = sizeof(scene_t), .type = HT_STORAGE_BY_REFERENCE }, &app->handle.arena),
