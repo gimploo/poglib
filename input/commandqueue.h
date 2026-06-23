@@ -94,7 +94,6 @@ void commandqueue_sync(commandqueue_t * const self)
             bool triggered = false;
 
             //NOTE: if deadzone is set, treat as axis-as-button binding
-            //      example: left stick pushed past 8000 units triggers walk forward
             if (b->sdl_controller.axis_as_button.deadzone != 0 && window_controller_is_connected(global_window)) {
                 i16 val = window_controller_get_axis_value(global_window, b->sdl_controller.axis_as_button.axis);
                 triggered = b->sdl_controller.axis_as_button.positive
@@ -102,14 +101,34 @@ void commandqueue_sync(commandqueue_t * const self)
                     : val < -b->sdl_controller.axis_as_button.deadzone;
             }
 
-            //NOTE: fall back to regular button check if axis didn't trigger (deadzone == 0)
+            //NOTE: fall back to regular button check if axis didn't trigger
             if (!triggered && window_controller_is_connected(global_window)) {
                 triggered = window_controller_button_is_pressed(global_window, b->sdl_controller.button);
             }
 
             if (triggered) {
                 self->internal.bitmask |= (1 << b->command);
-                //printf("CTRL Tracked %i\n", b->command);
+            }
+
+        //NOTE: keyboard AND controller OR'd together in a single binding
+        } else if (b->type == COMMANDINPUTKEY_TYPE_KEYBOARD_AND_CONTROLLER) {
+
+            bool triggered = keyboard_buffer[b->sdl_keyboard_and_controller.scancode];
+
+            if (!triggered && window_controller_is_connected(global_window)) {
+
+                if (b->sdl_keyboard_and_controller.axis_as_button.deadzone != 0) {
+                    i16 val = window_controller_get_axis_value(global_window, b->sdl_keyboard_and_controller.axis_as_button.axis);
+                    triggered = b->sdl_keyboard_and_controller.axis_as_button.positive
+                        ? val > b->sdl_keyboard_and_controller.axis_as_button.deadzone
+                        : val < -b->sdl_keyboard_and_controller.axis_as_button.deadzone;
+                } else {
+                    triggered = window_controller_button_is_pressed(global_window, b->sdl_keyboard_and_controller.button);
+                }
+            }
+
+            if (triggered) {
+                self->internal.bitmask |= (1 << b->command);
             }
         }
         //printf("Bitmask: ");cq__internal_print_u16_bitmask(self->internal.bitmask);
