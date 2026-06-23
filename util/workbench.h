@@ -177,7 +177,7 @@ workbench_t * workbench_init(arena_t *const arena)
 
     assetmanager_t *const assetmanager = &global_engine->systems.assets;
 
-    workbench_t o = {
+    workbench_t workbench = {
         .is_active = false,
         .shader = glshader_init(
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.vs"), 
@@ -274,13 +274,13 @@ workbench_t * workbench_init(arena_t *const arena)
         }
     };
 
-    workbench__internal_ecs_create_world_camera(&o);
+    workbench__internal_ecs_create_world_camera(&workbench);
 
     assetmanager_load_all_primitives(&global_engine->systems.assets);
 
-    gui_set_composition(&o.gui.handle, (ui_composition)workbench_compose_ui);
+    gui_set_composition(&workbench.gui.handle, (ui_composition)workbench_compose_ui);
 
-    global_workbench = arena_store(arena, &o, sizeof(o));
+    global_workbench = arena_store(arena, &workbench, sizeof(workbench));
 
     workbench_debug_renderer_init(&global_workbench->debug_renderer, arena);
 

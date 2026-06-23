@@ -54,7 +54,7 @@ boneinfo_t boneinfo(matrix4f_t offset) {
    │ → Transform back to world space (if needed).
 */
 
-#define MAX_MESHES_PER_MODEL WORD
+#define MAX_MESHES_PER_MODEL 10
 
 typedef struct glmodel_t {
 
@@ -74,7 +74,7 @@ typedef struct glmodel_t {
     f32 current_time;
 
     matrix4f_t global_inverse_transform;
-    arena_t arena;
+    arena_t *arena;
 
     struct {
         str_t active_playing_animation;
@@ -316,8 +316,8 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
     //Map all bones to an index for easy lookup
     const u32 total_bones = assimp__internal_get_total_bones(scene);
     if(total_bones) {
-        self->bone_name_to_index = arena_reserve(&self->arena, sizeof(hashtable_t));
-        *self->bone_name_to_index = hashtable_init(total_bones, HT_KEY_TYPE_STR, (ht_value_type){ .size = sizeof(i32), .type = HT_STORAGE_BY_VALUE_INLINE }, &self->arena);
+        self->bone_name_to_index = arena_reserve(self->arena, sizeof(hashtable_t));
+        *self->bone_name_to_index = hashtable_init(total_bones, HT_KEY_TYPE_STR, (ht_value_type){ .size = sizeof(i32), .type = HT_STORAGE_BY_VALUE_INLINE }, self->arena);
     }
 
     ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL);
@@ -325,7 +325,7 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
     {
         struct aiMesh *mesh = scene->mMeshes[mesh_index];
 
-        self->transforms[mesh_index] = list_init(matrix4f_t, &self->arena);
+        self->transforms[mesh_index] = list_init(matrix4f_t, self->arena);
 
         // Process mesh
         const glmesh_t m = assimp__internal_glmesh_processMesh(mesh);
@@ -361,7 +361,7 @@ void assimp__internal_glmodel_load_alltextures(glmodel_t *self, const struct aiS
         if (aitexture->mFilename.length == 0 && aitexture->mHeight == 0) {
             texture = gltexture2d_embedded_init((u8 *)aitexture->pcData, aitexture->mWidth);
         } else {
-            str_t absolute_texture_path = str_join(&self->arena, &self->directory_path, aitexture->mFilename.data);
+            str_t absolute_texture_path = str_join(self->arena, &self->directory_path, aitexture->mFilename.data);
             texture = gltexture2d_init(absolute_texture_path.data);
         }
         list_append(&self->textures, texture);
@@ -375,12 +375,13 @@ glmodel_t glmodel_init(const char *filepath)
     ASSERT(strlen(filepath) < ARRAY_LEN(o.filepath));
     memcpy(o.filepath, filepath, strlen(filepath));
     o.directory_path = str_get_directory_path(filepath);
-    o.arena = arena_init(NULL, 2 * MB);
-    o.meshes = list_init(glmesh_t, &o.arena);
-    o.textures = list_init(gltexture2d_t, &o.arena);
-    o.colors = list_init(vec4f_t, &o.arena);
-    o.bone_infos = list_init(boneinfo_t, &o.arena);
-    o.animator = animator_init(&o.arena);
+    o.arena = calloc(1, sizeof(arena_t));
+    *o.arena = arena_init(NULL, 64 * MB);
+    o.meshes = list_init(glmesh_t, o.arena);
+    o.textures = list_init(gltexture2d_t, o.arena);
+    o.colors = list_init(vec4f_t, o.arena);
+    o.bone_infos = list_init(boneinfo_t, o.arena);
+    o.animator = animator_init(o.arena);
     o.current_time = 0.0f;
     o.internal.root_channel_idx = -1;
 
@@ -405,11 +406,11 @@ glmodel_t glmodel_init(const char *filepath)
     assimp__internal_glmesh_processScene(&o, scene);
 
     //load all animations
-    animator_load_all_animations(&o.animator, scene, &o.arena);
+    animator_load_all_animations(&o.animator, scene, o.arena);
 
 
     //NOTE: this to cache the root channel idx to get the root position of the model during an animation
-    if (o.bone_name_to_index && scene->mRootNode) 
+    if (o.bone_name_to_index && scene->mRootNode && o.animator.animations.len > 0) 
     {
         for (u32 i = 0; i < scene->mRootNode->mNumChildren; i++) 
         {
@@ -470,7 +471,8 @@ void glmodel_destroy(glmodel_t *const self)
     animator_destroy(&self->animator);
 
     aiReleaseImport(self->scene);
-    arena_destroy(&self->arena);
+    arena_destroy(self->arena);
+    free(self->arena);
 
     memset(self->filepath, 0, sizeof(self->filepath));
 }

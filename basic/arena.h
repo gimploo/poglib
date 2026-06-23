@@ -70,7 +70,7 @@ void * arena__internal_check_in_freelist(arena_t *self, const u64 memory_size)
             ASSERT(self->freelist.head);
             ASSERT(chunk);
 
-            if (memory_size != chunk->size) {
+            if (memory_size > chunk->size) {
                 prev_chunk = chunk;
                 chunk = chunk->next;
                 continue;
@@ -94,8 +94,8 @@ void * arena__internal_check_in_freelist(arena_t *self, const u64 memory_size)
 
 void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const u64 memory_size)
 {
-    if ((self->capacity - self->size) < memory_size) {
-        eprint("Ran out of memory, asking for `%i`bytes but `%i`bytes only available\n\tcapacity = %i | size = %i", memory_size, (self->capacity - self->size), self->capacity, self->size);
+    if (!self->freelist.count && (self->capacity - self->size) < memory_size) {
+        eprint("Ran out of memory, asking for `%li`bytes but `%li`bytes only available\n\tcapacity = %li | size = %li", memory_size, (self->capacity - self->size), self->capacity, self->size);
     }
     const u64 align = 16;
     void *mem = NULL;
