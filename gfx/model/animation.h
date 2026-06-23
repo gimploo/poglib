@@ -37,15 +37,15 @@ typedef struct {
 } animator_t;
 
 
-animator_t          animator_init(void);
-void                animator_load_all_animations(animator_t *self, const struct aiScene *scene);
+animator_t          animator_init(arena_t *arena);
+void                animator_load_all_animations(animator_t *self, const struct aiScene *scene, arena_t *arena);
 animation_t *       animator_get_animation(const animator_t *self, const char *animation_label);
 void                animator_destroy(animator_t *self);
 
-animator_t animator_init(void)
+animator_t animator_init(arena_t *arena)
 {
     return (animator_t ){
-        .animations = list_init(animation_t, NULL)
+        .animations = list_init(animation_t, arena)
     };
 }
 
@@ -68,13 +68,13 @@ animation_t * animator_get_animation(const animator_t *self, const char *label)
     ASSERT(false);
 }
 
-animation_t __animation_init(const char *name, const f32 duration, const f32 ticks_per_second)
+animation_t __animation_init(const char *name, const f32 duration, const f32 ticks_per_second, arena_t *arena)
 {
     return (animation_t ) {
         .name = name,
         .duration = duration,
         .ticks_per_second = ticks_per_second,
-        .channels = list_init(node_anim_t, NULL)
+        .channels = list_init(node_anim_t, arena)
     };
 }
 
@@ -136,16 +136,16 @@ void __load_channel_scaling(const struct aiNodeAnim *node, list_t *scal)
     }
 }
 
-void __load_channels(const struct aiAnimation *animation, animation_t *self)
+void __load_channels(const struct aiAnimation *animation, animation_t *self, arena_t *arena)
 {
     for (u32 i = 0; i < animation->mNumChannels; i++)
     {
         const struct aiNodeAnim *node = animation->mChannels[i];
         node_anim_t n = {
             .node_name = node->mNodeName.data,
-            .position_keys = list_init(position_key_t, NULL),
-            .rotation_keys = list_init(rotation_key_t, NULL),
-            .scaling_keys = list_init(scaling_key_t, NULL),
+            .position_keys = list_init(position_key_t, arena),
+            .rotation_keys = list_init(rotation_key_t, arena),
+            .scaling_keys = list_init(scaling_key_t, arena),
         };
 
         __load_channel_positions(node, &n.position_keys);
@@ -156,7 +156,7 @@ void __load_channels(const struct aiAnimation *animation, animation_t *self)
     }
 }
 
-void animator_load_all_animations(animator_t *self, const struct aiScene *scene)
+void animator_load_all_animations(animator_t *self, const struct aiScene *scene, arena_t *arena)
 {
     for (u32 i = 0; i < scene->mNumAnimations; i++)
     {
@@ -165,9 +165,10 @@ void animator_load_all_animations(animator_t *self, const struct aiScene *scene)
         animation_t item = __animation_init(
             ai->mName.data,
             ai->mDuration, 
-            ai->mTicksPerSecond);
+            ai->mTicksPerSecond,
+            arena);
 
-        __load_channels(ai, &item);
+        __load_channels(ai, &item, arena);
 
         list_append(&self->animations, item);
     }

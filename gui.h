@@ -151,39 +151,31 @@ void    gui_destroy(gui_t *self);
 
 gui_t gui_init(arena_t * const arena, const ui_region_t starting_region)
 {
-    return (gui_t){
-        .shader =  glshader_init(
-            str(POGLIB_ROOT_DIR"/gui/uishader-vtx.glsl"), 
-            str(POGLIB_ROOT_DIR"/gui/uishader-frag.glsl"), 
-            (gluniform_registry_t) {
-                .count = 1,
-                .data = {
-                    [0] = {
-                        .name = str_lit("projection"),
-                        .type = GL_UNIFORM_TYPE_MATRIX4F
-                    }
+    gui_t o = {0};
+    o.shader =  glshader_init(
+        str(POGLIB_ROOT_DIR"/gui/uishader-vtx.glsl"), 
+        str(POGLIB_ROOT_DIR"/gui/uishader-frag.glsl"), 
+        (gluniform_registry_t) {
+            .count = 1,
+            .data = {
+                [0] = {
+                    .name = str_lit("projection"),
+                    .type = GL_UNIFORM_TYPE_MATRIX4F
                 }
-            },
-            arena
-        ),
-        .freetypefont = glfreetypefont_init(DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH, 14, true),
-        .arena = arena_init(arena, 1 * MB),
-        .gfx = {
-            .instanced_attrs = list_init(ui_attr_t, NULL),
+            }
         },
-        .internal = {
-            .layout_cursor_stack = {
-                .top = 0,
-                .buffer = {
-                    [0] = (layout_ctx_t){
-                        .max_row_height = 0,
-                        .region = starting_region,
-                        .starting_region = starting_region
-                    }
-                },
-            },
-        }
+        arena
+    );
+    o.freetypefont = glfreetypefont_init(DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH, 14, true);
+    o.arena = arena_init(arena, 1 * MB);
+    o.gfx.instanced_attrs = list_init(ui_attr_t, &o.arena);
+    o.internal.layout_cursor_stack.top = 0;
+    o.internal.layout_cursor_stack.buffer[0] = (layout_ctx_t){
+        .max_row_height = 0,
+        .region = starting_region,
+        .starting_region = starting_region
     };
+    return o;
 }
 
 

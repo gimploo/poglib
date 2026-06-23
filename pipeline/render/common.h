@@ -17,6 +17,7 @@ typedef enum {
 
 typedef struct {
     list_t buckets[MAX_RENDER_BUCKETS_ALLOWED];
+    arena_t arena;
     struct {
         glinstancebuffer_t instancebuffer;
     } internal;

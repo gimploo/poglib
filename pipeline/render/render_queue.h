@@ -9,7 +9,7 @@
 #include "poglib/pipeline/render/render_command.h"
 #include "poglib/util/asset.h"
 
-renderqueue_t       renderqueue_init(void);
+renderqueue_t       renderqueue_init(arena_t *arena);
 void                renderqueue_pass_command(renderqueue_t * const self, const rendercommand_t command);
 void                renderqueue_dispatch(renderqueue_t * const self);
 void                renderqueue_flush(renderqueue_t * const self);
@@ -22,10 +22,11 @@ bool renderqueue__internal_check_for_batchable_commands(renderqueue_t * const qu
 void renderqueue__internal_add_to_bucket(list_t * const render_commands, const rendercommand_t command);
 void rendercommand__internal_shader_upload_uniforms(const rendercommand_t * const command);
 
-renderqueue_t renderqueue_init(void)
+renderqueue_t renderqueue_init(arena_t *arena)
 {
     return (renderqueue_t) {
         .buckets = {0},
+        .arena = arena_init(arena, 2 * MB),
         .internal = {
             .instancebuffer = glinstancebuffer_init(2 * MB),
         }
@@ -34,7 +35,7 @@ renderqueue_t renderqueue_init(void)
 
 void renderqueue__internal_bucket_init_and_add_command(renderqueue_t *const self, const rendercommand_t command, const u16 idx)
 {
-    self->buckets[idx] = list_init(rendercommand_t, NULL);
+    self->buckets[idx] = list_init(rendercommand_t, &self->arena);
     list_append(&self->buckets[idx], command);
 }
 
@@ -75,6 +76,7 @@ void renderqueue_destroy(renderqueue_t * const self)
         list_destroy(&self->buckets[idx]);
     }
     glinstancebuffer_destroy(&self->internal.instancebuffer);
+    arena_destroy(&self->arena);
 }
 
 void renderqueue__internal_validate_command(const rendercommand_t command)
