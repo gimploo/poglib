@@ -380,7 +380,7 @@ glmodel_t glmodel_init(const char *filepath)
     o.textures = list_init(gltexture2d_t, &o.arena);
     o.colors = list_init(vec4f_t, &o.arena);
     o.bone_infos = list_init(boneinfo_t, &o.arena);
-    o.animator = animator_init();
+    o.animator = animator_init(&o.arena);
     o.current_time = 0.0f;
     o.internal.root_channel_idx = -1;
 
@@ -405,7 +405,7 @@ glmodel_t glmodel_init(const char *filepath)
     assimp__internal_glmesh_processScene(&o, scene);
 
     //load all animations
-    animator_load_all_animations(&o.animator, scene);
+    animator_load_all_animations(&o.animator, scene, &o.arena);
 
 
     //NOTE: this to cache the root channel idx to get the root position of the model during an animation
