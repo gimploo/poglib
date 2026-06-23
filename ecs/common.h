@@ -10,8 +10,8 @@
 #define ECS_ENTITY_INVALID_ID   0
 #define ECS_ENTITY_MAX_COUNT    (1 * MB)
 
-#define ecs_entity_foreach(OUT_ID) \
-    for (u32 OUT_ID = 1; OUT_ID <= global_ecs->internal.entity_generator_counter; OUT_ID++)
+#define ecs_entity_foreach(ITR) \
+    slot_iterator(&global_ecs->managers.entitymanager.entities, ITR)
 
 typedef struct ecs_entitymanager_t ecs_entitymanager_t;
 struct ecs_entitymanager_t {
