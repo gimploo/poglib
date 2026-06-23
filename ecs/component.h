@@ -367,6 +367,7 @@ void ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const 
                 entry->is_active = request.is_active;
             break;
             case ECS_PATCH_CMP_SET_TRANSFORM: {
+                ASSERT(cmp_idx == ECS_CMP_TRANSFORM_IDX);
                 ecs_component_transform_t *t = (ecs_component_transform_t *)entry->entity_cmpdata;
                 t->position = request.transform.position;
                 t->orientation = request.transform.orientation;

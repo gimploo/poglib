@@ -143,7 +143,8 @@ void workbench_editor_compose(gui_t *gui, workbench_t *wb)
     gui_ui_compose_end(gui);
     gui_ui_compose_end(gui);
 
-    if (gui_ui_ishovered(gui, WB_EDITOR_DELETE) && window_mouse_button_just_pressed(global_window, SDL_MOUSEBUTTON_LEFT)) {
+    const u32 wb_click = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
+    if (gui_ui_ishovered(gui, WB_EDITOR_DELETE) && (wb_click & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED))) {
         ecs_entity_remove(global_ecs, wb->selected_entity_id);
         wb->selected_entity_id = 0;
     }
@@ -170,7 +171,8 @@ void workbench_editor_add_entity_button(gui_t *gui)
     gui_ui_compose_end(gui);
     gui_ui_compose_end(gui);
 
-    if (gui_ui_ishovered(gui, WB_EDITOR_ADD_ENTITY) && window_mouse_button_just_pressed(global_window, SDL_MOUSEBUTTON_LEFT)) {
+    const u32 wb_click = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
+    if (gui_ui_ishovered(gui, WB_EDITOR_ADD_ENTITY) && (wb_click & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED))) {
         ecs_entity_add(global_ecs, (ecs_componentbundle_t){
             .signature = ECS_CMP_TRANSFORM | ECS_CMP_MODEL | ECS_CMP_MATERIAL,
             .component = {
