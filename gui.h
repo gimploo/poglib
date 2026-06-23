@@ -118,6 +118,7 @@ struct gui_t {
 
     struct {
         u32 hovered_ui_id;
+        u32 active_input_id;
     } state;
 
     ui_composition callback;
@@ -135,6 +136,10 @@ void    gui_set_composition(gui_t * const self, ui_composition callback);
 
 bool    gui_ui_ishovered(gui_t *const self, const u32 id);
 bool    gui_ui_isclicked(gui_t *const self, const u32 id);
+
+bool    gui_toggle(gui_t *const self, const u32 id, const bool current);
+f32     gui_slider_f32(gui_t *const self, const u32 id, const f32 value, const f32 min, const f32 max);
+str_t   gui_input_text(gui_t *const self, const u32 id, str_t buffer);
 
 #define gui_update(SELF, ...) do {\
     gui__internal_reset_state(SELF);\
@@ -535,6 +540,100 @@ bool gui_ui_isclicked(gui_t *const self, const u32 id)
 {
     ASSERT(global_window);
     return gui_ui_ishovered(self, id) && window_mouse_button_is_pressed(global_window, SDL_MOUSEBUTTON_LEFT);
+}
+
+bool gui_toggle(gui_t *const self, const u32 id, const bool current)
+{
+    bool result = current;
+    gui_ui_compose_begin(self, (ui_config_t){
+        .composition = { .traits = UI_BEHAVIOR_CLICKABLE | UI_BEHAVIOR_HOVERABLE },
+        .id = id,
+        .dim = { .min_height = 24, .mid_width = 48 },
+        .color = { .base = current ? COLOR_GREEN : COLOR_DARK_GRAY, .highlight = COLOR_GRAY },
+        .margin = { 2, 2, 0, 0 },
+        .padding = { 0 }
+    });
+    if (gui_ui_ishovered(self, id) && window_mouse_button_just_pressed(global_window, SDL_MOUSEBUTTON_LEFT)) result = !current;
+    gui_ui_compose_end(self);
+    return result;
+}
+
+f32 gui_slider_f32(gui_t *const self, const u32 id, const f32 value, const f32 min, const f32 max)
+{
+    f32 result = value;
+    const bool hovered = gui_ui_ishovered(self, id);
+    const bool active = self->state.active_input_id == id;
+
+    if (active && window_mouse_button_is_held(global_window, SDL_MOUSEBUTTON_LEFT)) {
+        const vec2i_t mp = window_mouse_get_position(global_window);
+        const f32 w = 200.f;
+        const f32 t = fminf(fmaxf((mp.x - 100.f) / w, 0.f), 1.f);
+        result = min + t * (max - min);
+    } else if (active && window_mouse_button_is_released(global_window, SDL_MOUSEBUTTON_LEFT)) {
+        self->state.active_input_id = 0;
+    }
+
+    char label[64];
+    snprintf(label, sizeof(label), "%.2f", value);
+    gui_ui_compose_begin(self, (ui_config_t){
+        .composition = { .traits = UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE },
+        .id = id,
+        .dim = { .min_height = 20, .mid_width = 200 },
+        .color = { .base = COLOR_DARK_GRAY, .highlight = COLOR_GRAY },
+        .margin = { 2, 2, 0, 0 },
+        .padding = { 2, 2, 2, 2 }
+    });
+    gui_ui_compose_begin(self, (ui_config_t){
+        .dim = { .min_height = 16, .mid_width = 60 },
+        .color = { .base = COLOR_WHITE },
+        .label = str__from_cstr(label, sizeof(label)),
+        .margin = { 0 }
+    });
+    gui_ui_compose_end(self);
+    gui_ui_compose_end(self);
+
+    if (hovered && window_mouse_button_just_pressed(global_window, SDL_MOUSEBUTTON_LEFT))
+        self->state.active_input_id = id;
+
+    return result;
+}
+
+str_t gui_input_text(gui_t *const self, const u32 id, str_t buffer)
+{
+    const bool is_active = self->state.active_input_id == id;
+    const bool just_clicked = gui_ui_ishovered(self, id) && window_mouse_button_just_pressed(global_window, SDL_MOUSEBUTTON_LEFT);
+
+    if (just_clicked && !is_active) {
+        self->state.active_input_id = id;
+        window_textinput_start();
+    } else if (just_clicked && is_active) {
+        self->state.active_input_id = 0;
+        window_textinput_stop();
+    }
+
+    if (is_active) {
+        buffer.len = global_window->textinput.len;
+        memcpy(buffer.data, global_window->textinput.data, buffer.len);
+    }
+
+    gui_ui_compose_begin(self, (ui_config_t){
+        .composition = { .traits = UI_BEHAVIOR_CLICKABLE | UI_BEHAVIOR_HOVERABLE },
+        .id = id,
+        .dim = { .min_height = 24, .mid_width = 160 },
+        .color = { .base = is_active ? (vec4f_t){0.1f, 0.1f, 0.4f, 1.0f} : COLOR_DARK_GRAY, .highlight = COLOR_GRAY },
+        .margin = { 2, 2, 0, 0 },
+        .padding = { 4, 4, 4, 4 }
+    });
+    gui_ui_compose_begin(self, (ui_config_t){
+        .dim = { .min_height = 18, .mid_width = 140 },
+        .color = { .base = COLOR_WHITE },
+        .label = buffer,
+        .margin = { 0 }
+    });
+    gui_ui_compose_end(self);
+    gui_ui_compose_end(self);
+
+    return buffer;
 }
 
 
