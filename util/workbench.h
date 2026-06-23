@@ -3,11 +3,11 @@
 #include "./glcamera.h"
 #include "./workbench/workbench-constants.h"
 #include "./gllight.h"
-#include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
 #include "./workbench/workbench-debug-renderer.h"
 #include "poglib/ecs.h"
 #include "poglib/ecs/common.h"
+#include <poglib/gui.h>
 
 typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG         = 0,
@@ -44,6 +44,8 @@ typedef struct {
 
     commandregistry_t commandregistry;
 
+    u32 selected_entity_id;
+
     struct {
         u32 entity_id;
         glcamera_t *handle;
@@ -61,6 +63,9 @@ void        workbench_track_lightsource(workbench_t *self, const gllight_t *ligh
 
 
 global workbench_t *global_workbench = NULL;
+
+#include "./workbench/workbench-editor-ui.h"
+#include "./workbench/ui/workbench-ui.h"
 
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0.f, 0.f, 10.f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
@@ -559,6 +564,12 @@ void workbench_update(const f32 dt)
     if (gui_ui_ishovered(&global_workbench->gui.handle, WB_COLLIDER_TOGGLE) && (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED)))
     {
         global_workbench->enable_collider = !global_workbench->enable_collider;
+    }
+
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED)) {
+        if (global_workbench->gui.handle.state.hovered_ui_id == 0) {
+            workbench_editor_pick_entity();
+        }
     }
 }
 
