@@ -164,6 +164,7 @@ struct ecs_component_collider_t {
 //expand this struct further
 struct ecs_collider_jolt_userdata_t {
     JPH_ObjectLayer objectlayertype;
+    collider_shape_dimension_t dimension;
 
 #ifdef DEBUG
     struct {
