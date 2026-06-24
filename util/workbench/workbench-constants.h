@@ -1,6 +1,10 @@
 #pragma once
 #include <poglib/basic.h>
 
+typedef enum WORKBENCH_GUI_BUTTON_IDS {
+    WB_COLLIDER_TOGGLE = 1,
+} WORKBENCH_GUI_BUTTON_IDS;
+
 f32 CAMERA_VERTICES [] = {
        // Main camera body (trapezoid shape - wider at back)
     // Front face (smaller)

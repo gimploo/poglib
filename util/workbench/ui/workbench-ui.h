@@ -6,13 +6,7 @@
 #include "poglib/poggen.h"
 #include <poglib/gui.h>
 
-typedef enum WORKBENCH_GUI_BUTTON_IDS {
-    WB_COLLIDER_TOGGLE = 1,
-} WORKBENCH_GUI_BUTTON_IDS;
-
-
 void    workbench_render_ui(gui_t *self);
-
 
 #ifndef IGNORE_WORKBENCH_GUI_RENDER
 
@@ -204,6 +198,9 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         gui_ui_compose_end(gui);
     }
     gui_ui_compose_end(gui);
+
+    workbench_editor_add_entity_button(gui);
+    workbench_editor_compose(gui, global_workbench);
 }
 
 

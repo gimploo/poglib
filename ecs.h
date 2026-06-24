@@ -20,6 +20,8 @@ glcamera_t *        ecs_get_active_camera(ecs_t *const self);
 
 void                ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
 
+void                ecs_set_entity_transform(ecs_t *const self, const u32 entity_id, const vec3f_t position, const versors orientation, const vec3f_t scale);
+
 void            ecs_update(ecs_t *const self);
 void            ecs_destroy(ecs_t * const self);
 
@@ -71,6 +73,15 @@ void ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patc
         entity_id,
         request
     );
+}
+
+void ecs_set_entity_transform(ecs_t *const self, const u32 entity_id, const vec3f_t position, const versors orientation, const vec3f_t scale)
+{
+    ecs_patch_entity(self, entity_id, (ecs_cmp_patch_payload_t){
+        .patch_type = ECS_PATCH_CMP_SET_TRANSFORM,
+        .signature = ECS_CMP_TRANSFORM,
+        .transform = { .position = position, .orientation = orientation, .scale = scale }
+    });
 }
 
 u32 ecs_entity_add(ecs_t *const self, const ecs_componentbundle_t component_config)

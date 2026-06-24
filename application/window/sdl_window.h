@@ -91,6 +91,11 @@ typedef struct window_t {
     } keyboard;
 
     struct {
+        char data[256];
+        u32 len;
+    } textinput;
+
+    struct {
         bool                is_active;
         struct window_t     *window;        // Holds subwindow address
     } subwindow;
@@ -118,6 +123,9 @@ void                window_update_title(window_t *window, const char *title);
 bool                window_keyboard_is_key_just_pressed(window_t *window, SDL_Keycode key);
 bool                window_keyboard_is_key_held(window_t *window, SDL_Keycode key);
 bool                window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key);
+
+void                window_textinput_start(void);
+void                window_textinput_stop(void);
 
 bool                window_mouse_button_just_pressed(window_t *window, sdl_mousebuttontype button);
 bool                window_mouse_button_is_pressed(window_t *window, sdl_mousebuttontype button);
@@ -873,11 +881,21 @@ void window_poll_input_events(window_t *window)
                 }
             break;
 
-            case SDL_KEYDOWN:
+            case SDL_TEXTINPUT: {
+                if (window->textinput.len + SDL_strlen(event->text.text) < 256) {
+                    SDL_strlcat(window->textinput.data, event->text.text, 256);
+                    window->textinput.len = (u32)SDL_strlen(window->textinput.data);
+                }
+            } break;
+
+            case SDL_KEYDOWN: {
                 if (event->key.repeat) 
                     break;
+                if (event->key.keysym.scancode == SDL_SCANCODE_BACKSPACE && window->textinput.len > 0) {
+                    window->textinput.data[--window->textinput.len] = '\0';
+                }
                 __keyboard_update_buffers(window, SDL_KEYDOWN, event->key.keysym.scancode);
-            break;
+            } break;
 
             case SDL_KEYUP:
                 __keyboard_update_buffers(window, SDL_KEYUP, event->key.keysym.scancode);
@@ -992,5 +1010,20 @@ void window_flush_transient_data(window_t *const self)
 
 }
 
+void window_textinput_start(void)
+{
+    ASSERT(global_window);
+    memset(global_window->textinput.data, 0, 256);
+    global_window->textinput.len = 0;
+    SDL_StartTextInput();
+}
+
+void window_textinput_stop(void)
+{
+    ASSERT(global_window);
+    memset(global_window->textinput.data, 0, 256);
+    global_window->textinput.len = 0;
+    SDL_StopTextInput();
+}
 
 #endif 

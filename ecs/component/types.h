@@ -210,8 +210,14 @@ struct ecs_componentbundle_t {
 struct ecs_cmp_patch_payload_t {
     enum {
         ECS_PATCH_CMP_ACTIVE_FIELD = 0,
+        ECS_PATCH_CMP_SET_TRANSFORM
     } patch_type;
     u32 signature;
     bool is_active;
+    struct {
+        vec3f_t position;
+        versors orientation;
+        vec3f_t scale;
+    } transform;
 };
 
