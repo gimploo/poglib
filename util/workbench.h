@@ -383,11 +383,30 @@ void workbench_render(void)
     }
 
     if (self->clay.initialized && self->selected_entity_id) {
+        f32 ww = (f32)global_window->width;
+        f32 wh = (f32)global_window->height;
         vec2i_t m = window_mouse_get_position(global_window);
+        Clay_SetLayoutDimensions((Clay_Dimensions){ ww, wh });
         Clay_SetPointerState((Clay_Vector2){ (f32)m.x, (f32)m.y },
-            window_mouse_button_is_held(global_window, SDL_BUTTON_LEFT));
+            wb_editor_active_slider >= 0 || window_mouse_button_is_held(global_window, SDL_BUTTON_LEFT));
         Clay_UpdateScrollContainers(false, (Clay_Vector2){0, 0}, 0.016f);
-        workbench_editor_entity_details_compose(&self->clay.renderer, self);
+        Clay_BeginLayout();
+        workbench_editor_entity_details_compose(self);
+        workbench_editor_compose(&self->clay.renderer, self);
+        Clay_RenderCommandArray cmds = Clay_EndLayout();
+        for (i32 si = 0; si < 3; si++) {
+            char sid[32];
+            int sn = snprintf(sid, sizeof(sid), "SliderTrack%d", si);
+            Clay_ElementId eid = Clay_GetElementId((Clay_String){ .length = sn, .chars = sid });
+            Clay_ElementData ed = Clay_GetElementData(eid);
+            if (ed.found) {
+                wb_editor_slider_bounds[si][0] = ed.boundingBox.x;
+                wb_editor_slider_bounds[si][1] = ed.boundingBox.y;
+                wb_editor_slider_bounds[si][2] = ed.boundingBox.width;
+                wb_editor_slider_bounds[si][3] = ed.boundingBox.height;
+            }
+        }
+        clay_poglib_render(&self->clay.renderer, cmds, &self->clay.font, 1, NULL, 0);
     }
 
 }

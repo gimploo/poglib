@@ -17,6 +17,10 @@ enum {
     WB_EDITOR_ADD_ENTITY,
 };
 
+/* Slider interaction state — persists across frames */
+static i32 wb_editor_active_slider = -1;
+static f32 wb_editor_slider_bounds[3][4]; /* [slider] = {x, y, w, h} from last frame */
+
 f32 workbench_editor_closest_point_on_ray(const vec3f_t ray_origin, const vec3f_t ray_dir, const vec3f_t point)
 {
     vec3f_t to_point = glms_vec3_sub(point, ray_origin);
@@ -60,9 +64,89 @@ void workbench_editor_pick_entity(void)
     }
 
     global_workbench->selected_entity_id = picked;
+    wb_editor_active_slider = -1;
 }
 
-void workbench_editor_compose(gui_t *gui, workbench_t *wb)
+static void wb_editor_slider_click_cb(Clay_ElementId id, Clay_PointerData ptr, intptr_t user)
+{
+    (void)id;
+    if (ptr.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME)
+        wb_editor_active_slider = (i32)user;
+}
+
+static void wb_editor_handle_delete_click(workbench_t *wb)
+{
+    Clay_ElementId del_id = Clay_GetElementId(CLAY_STRING("DeleteBtn"));
+    if (Clay_PointerOver(del_id)) {
+        if (window_mouse_button_just_pressed(global_window, SDL_BUTTON_LEFT)) {
+            ecs_entity_remove(global_ecs, wb->selected_entity_id);
+            wb->selected_entity_id = 0;
+            wb_editor_active_slider = -1;
+        }
+    }
+}
+
+static f32 wb_editor_slider(clay_poglib_renderer_t *r, workbench_t *wb,
+                             i32 slider_idx, f32 val, f32 min, f32 max,
+                             vec4f_t color, const char *label)
+{
+    (void)r;
+    (void)wb;
+    f32 panel_w = 260.0f;
+    f32 label_w = 18.0f;
+    f32 track_w = panel_w - 24.0f - label_w - 4.0f;
+    f32 t = (val - min) / (max - min);
+    if (t < 0.0f) t = 0.0f;
+    if (t > 1.0f) t = 1.0f;
+    f32 thumb_x = t * (track_w - 8.0f);
+
+    char buf[8];
+    int n = snprintf(buf, sizeof(buf), "%s", label);
+    { Clay_String s = { .length = n, .chars = buf };
+    CLAY_TEXT(s, CLAY_TEXT_CONFIG({
+        .fontId = 0, .fontSize = 13,
+        .textColor = { (u8)(color.x * 255), (u8)(color.y * 255),
+                       (u8)(color.z * 255), 255 }
+    })); }
+
+    char idbuf[32];
+    n = snprintf(idbuf, sizeof(idbuf), "SliderTrack%d", slider_idx);
+    Clay_String id_ss = { .length = n, .chars = idbuf };
+    Clay_ElementId track_id = Clay_GetElementId(id_ss);
+    CLAY({
+        .id = track_id,
+        .layout = { .sizing = { .width = CLAY_SIZING_FIXED(track_w), .height = CLAY_SIZING_FIXED(16) },
+                    .childAlignment = { .y = CLAY_ALIGN_Y_CENTER } },
+        .backgroundColor = { 50, 50, 55, 255 },
+        .cornerRadius = CLAY_CORNER_RADIUS(3)
+    }) {
+        Clay_OnHover(wb_editor_slider_click_cb, (intptr_t)slider_idx);
+        if (t > 0.005f) {
+            CLAY({
+                .layout = { .sizing = { .width = CLAY_SIZING_FIXED(thumb_x + 4.0f), .height = CLAY_SIZING_FIXED(16) } },
+                .backgroundColor = { (u8)(color.x * 255), (u8)(color.y * 255), (u8)(color.z * 255), 180 },
+                .cornerRadius = CLAY_CORNER_RADIUS(3)
+            }) {}
+        }
+    }
+
+    if (wb_editor_active_slider == slider_idx) {
+        f32 *b = wb_editor_slider_bounds[slider_idx];
+        vec2i_t m = window_mouse_get_position(global_window);
+        f32 local_x = (f32)m.x - b[0];
+        f32 raw_t = local_x / b[2];
+        if (raw_t < 0.0f) raw_t = 0.0f;
+        if (raw_t > 1.0f) raw_t = 1.0f;
+        val = min + raw_t * (max - min);
+
+        if (!window_mouse_button_is_held(global_window, SDL_BUTTON_LEFT))
+            wb_editor_active_slider = -1;
+    }
+
+    return val;
+}
+
+void workbench_editor_compose(clay_poglib_renderer_t *r, workbench_t *wb)
 {
     if (!wb->selected_entity_id) return;
 
@@ -71,84 +155,80 @@ void workbench_editor_compose(gui_t *gui, workbench_t *wb)
     ecs_component_transform_t *t = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
     if (!t) return;
 
-    gui_ui_compose_begin(gui, (ui_config_t){
-        .composition = { .styles = UI_STYLE_ROUNDED_CORNERS },
-        .color = { .base = (vec4f_t){0.15f, 0.15f, 0.15f, 0.92f} },
-        .dim = { .min_height = 200, .mid_width = 240 },
-        .margin = { .left = (u32)(global_window->width - 260), .top = 60 },
-        .padding = { 8, 8, 8, 8 }
-    });
+    f32 ww = (f32)global_window->width;
+    f32 panel_w = 260.0f;
+    f32 panel_x = ww - panel_w - 10.0f;
+    f32 panel_y = 310.0f;
 
-    char tmp[64];
+    CLAY({
+        .id = CLAY_ID("EntityEditorPanel"),
+        .layout = {
+            .sizing = { .width = CLAY_SIZING_FIXED(panel_w), .height = CLAY_SIZING_FIT() },
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            .padding = { 12, 12, 12, 12 },
+            .childGap = 6
+        },
+        .floating = {
+            .attachTo = CLAY_ATTACH_TO_ROOT,
+            .offset = { panel_x, panel_y },
+            .zIndex = 101
+        },
+        .backgroundColor = { 30, 30, 35, 230 },
+        .cornerRadius = CLAY_CORNER_RADIUS(8)
+    }) {
+        char buf[64];
+        int n = snprintf(buf, sizeof(buf), "Edit Entity %u", wb->selected_entity_id);
+        { Clay_String s = { .length = n, .chars = buf };
+        CLAY_TEXT(s, CLAY_TEXT_CONFIG({
+            .fontId = 0, .fontSize = 15, .textColor = { 220, 220, 220, 255 }
+        })); }
 
-    snprintf(tmp, sizeof(tmp), "Entity %u", wb->selected_entity_id);
-    gui_ui_compose_begin(gui, (ui_config_t){
-        .dim = { .min_height = 20, .mid_width = 180 },
-        .color = { .base = COLOR_WHITE },
-        .label = str__from_cstr(tmp, sizeof(tmp)),
-        .margin = { 0, 0, 4, 0 }
-    });
-    gui_ui_compose_end(gui);
+        CLAY({ .layout = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) } },
+               .backgroundColor = { 80, 80, 90, 255 } }) {}
 
-    snprintf(tmp, sizeof(tmp), "%.2f", t->position.x);
-    gui_ui_compose_begin(gui, (ui_config_t){
-        .dim = { .min_height = 16, .mid_width = 30 },
-        .color = { .base = (vec4f_t){0.8f, 0.2f, 0.2f, 1.0f} },
-        .label = str("X"),
-        .margin = { 0, 0, 0, 0 }
-    });
-    gui_ui_compose_end(gui);
-    f32 px = gui_slider_f32(gui, WB_EDITOR_SLIDER_X, t->position.x, -100.f, 100.f);
+        CLAY({ .layout = { .layoutDirection = CLAY_LEFT_TO_RIGHT, .childGap = 4, .padding = { 0, 0, 0, 0 } } }) {
+            f32 px = wb_editor_slider(r, wb, 0, t->position.x, -100.f, 100.f,
+                (vec4f_t){0.8f, 0.2f, 0.2f, 1.0f}, "X");
+            if (px != t->position.x) {
+                t->position.x = px;
+                ecs_set_entity_transform(global_ecs, wb->selected_entity_id, t->position, t->orientation, t->scale);
+            }
+        }
+        CLAY({ .layout = { .layoutDirection = CLAY_LEFT_TO_RIGHT, .childGap = 4, .padding = { 0, 0, 0, 0 } } }) {
+            f32 py = wb_editor_slider(r, wb, 1, t->position.y, -100.f, 100.f,
+                (vec4f_t){0.2f, 0.8f, 0.2f, 1.0f}, "Y");
+            if (py != t->position.y) {
+                t->position.y = py;
+                ecs_set_entity_transform(global_ecs, wb->selected_entity_id, t->position, t->orientation, t->scale);
+            }
+        }
+        CLAY({ .layout = { .layoutDirection = CLAY_LEFT_TO_RIGHT, .childGap = 4, .padding = { 0, 0, 0, 0 } } }) {
+            f32 pz = wb_editor_slider(r, wb, 2, t->position.z, -100.f, 100.f,
+                (vec4f_t){0.2f, 0.2f, 0.8f, 1.0f}, "Z");
+            if (pz != t->position.z) {
+                t->position.z = pz;
+                ecs_set_entity_transform(global_ecs, wb->selected_entity_id, t->position, t->orientation, t->scale);
+            }
+        }
 
-    snprintf(tmp, sizeof(tmp), "%.2f", t->position.y);
-    gui_ui_compose_begin(gui, (ui_config_t){
-        .dim = { .min_height = 16, .mid_width = 30 },
-        .color = { .base = (vec4f_t){0.2f, 0.8f, 0.2f, 1.0f} },
-        .label = str("Y"),
-        .margin = { 0, 0, 0, 0 }
-    });
-    gui_ui_compose_end(gui);
-    f32 py = gui_slider_f32(gui, WB_EDITOR_SLIDER_Y, t->position.y, -100.f, 100.f);
+        CLAY({ .layout = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) } },
+               .backgroundColor = { 80, 80, 90, 255 } }) {}
 
-    snprintf(tmp, sizeof(tmp), "%.2f", t->position.z);
-    gui_ui_compose_begin(gui, (ui_config_t){
-        .dim = { .min_height = 16, .mid_width = 30 },
-        .color = { .base = (vec4f_t){0.2f, 0.2f, 0.8f, 1.0f} },
-        .label = str("Z"),
-        .margin = { 0, 0, 0, 0 }
-    });
-    gui_ui_compose_end(gui);
-    f32 pz = gui_slider_f32(gui, WB_EDITOR_SLIDER_Z, t->position.z, -100.f, 100.f);
-
-    if (px != t->position.x || py != t->position.y || pz != t->position.z) {
-        ecs_set_entity_transform(global_ecs, wb->selected_entity_id,
-            (vec3f_t){ px, py, pz }, t->orientation, t->scale);
+        CLAY({
+            .id = CLAY_ID("DeleteBtn"),
+            .layout = { .sizing = { .width = CLAY_SIZING_FIXED(80), .height = CLAY_SIZING_FIXED(26) },
+                        .padding = { 6, 6, 6, 6 } },
+            .backgroundColor = { 180, 40, 40, 255 },
+            .cornerRadius = CLAY_CORNER_RADIUS(4)
+        }) {
+            { Clay_String s = { .length = 6, .chars = "Delete" };
+            CLAY_TEXT(s, CLAY_TEXT_CONFIG({
+                .fontId = 0, .fontSize = 13, .textColor = { 255, 255, 255, 255 }
+            })); }
+        }
     }
 
-    gui_ui_compose_begin(gui, (ui_config_t){
-        .id = WB_EDITOR_DELETE,
-        .composition = { .traits = UI_BEHAVIOR_CLICKABLE | UI_BEHAVIOR_HOVERABLE },
-        .dim = { .min_height = 24, .mid_width = 80 },
-        .color = { .base = (vec4f_t){0.6f, 0.1f, 0.1f, 1.0f}, .highlight = (vec4f_t){0.8f, 0.2f, 0.2f, 1.0f} },
-        .margin = { 0, 0, 4, 0 },
-        .padding = { 4, 4, 4, 4 }
-    });
-    gui_ui_compose_begin(gui, (ui_config_t){
-        .dim = { .min_height = 18, .mid_width = 60 },
-        .color = { .base = COLOR_WHITE },
-        .label = str("Delete"),
-        .margin = { 0 }
-    });
-    gui_ui_compose_end(gui);
-    gui_ui_compose_end(gui);
-
-    const u32 wb_click = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
-    if (gui_ui_ishovered(gui, WB_EDITOR_DELETE) && (wb_click & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED))) {
-        ecs_entity_remove(global_ecs, wb->selected_entity_id);
-        wb->selected_entity_id = 0;
-    }
-
-    gui_ui_compose_end(gui);
+    wb_editor_handle_delete_click(wb);
 }
 
 void workbench_editor_add_entity_button(gui_t *gui)

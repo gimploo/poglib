@@ -1,6 +1,6 @@
 #pragma once
 
-static void workbench_editor_entity_details_compose(clay_poglib_renderer_t *renderer, workbench_t *wb)
+static void workbench_editor_entity_details_compose(workbench_t *wb)
 {
     if (!wb->selected_entity_id) return;
 
@@ -22,9 +22,6 @@ static void workbench_editor_entity_details_compose(clay_poglib_renderer_t *rend
     f32 ww = (f32)global_window->width;
     f32 panel_w = 280.0f;
     f32 panel_x = ww - panel_w - 10.0f;
-
-    Clay_SetLayoutDimensions((Clay_Dimensions){ ww, (f32)global_window->height });
-    Clay_BeginLayout();
 
     CLAY({
         .id = CLAY_ID("EntityDetailsPanel"),
@@ -112,7 +109,4 @@ static void workbench_editor_entity_details_compose(clay_poglib_renderer_t *rend
             }
         }
     }
-
-    Clay_RenderCommandArray cmds = Clay_EndLayout();
-    clay_poglib_render(renderer, cmds, &wb->clay.font, 1, NULL, 0);
 }
