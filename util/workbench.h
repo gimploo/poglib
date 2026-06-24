@@ -244,8 +244,14 @@ workbench_t * workbench_init(arena_t *const arena)
 
     workbench_debug_renderer_init(&global_workbench->debug_renderer, arena);
 
+    /* Initialize clay: arena, renderer, font */
     f32 ww = (f32)global_window->width;
     f32 wh = (f32)global_window->height;
+    uint32_t clay_mem_size = Clay_MinMemorySize();
+    void *clay_mem = arena_reserve(arena, clay_mem_size);
+    memset(clay_mem, 0, clay_mem_size);
+    Clay_Arena clay_arena = Clay_CreateArenaWithCapacityAndMemory(clay_mem_size, clay_mem);
+    Clay_Initialize(clay_arena, (Clay_Dimensions){ ww, wh }, (Clay_ErrorHandler){ .errorHandlerFunction = NULL, .userData = NULL });
     global_workbench->clay.renderer = clay_poglib_init(ww, wh);
     global_workbench->clay.font = glfreetypefont_init(DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH, 16, false);
     Clay_SetMeasureTextFunction(clay_poglib_measure_text, &global_workbench->clay.font);
