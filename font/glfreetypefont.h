@@ -196,7 +196,7 @@ glfreetypefont_t glfreetypefont_init(const char *filepath, const u32 fontsize, b
             ox = 0;
         }
 
-        glTexSubImage2D(GL_TEXTURE_2D, 0, ox, oy, g->bitmap.width, g->bitmap.rows, GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
+        GL_CHECK(glTexSubImage2D(GL_TEXTURE_2D, 0, ox, oy, g->bitmap.width, g->bitmap.rows, GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer));
         o.fontatlas[c].ax = g->advance.x >> 6;
         o.fontatlas[c].ay = g->advance.y >> 6;
 
