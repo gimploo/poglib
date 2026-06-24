@@ -178,6 +178,9 @@ const void * assetmanager_get_assetresource(const assetmanager_t *const self, co
 void assetmanager_destroy(assetmanager_t *const self) 
 {
     ASSERT(self);
+
+    while(glGetError() != GL_NO_ERROR) {}
+
     hashtable_iterator(&self->gpu_uploaded_assets, entry)
     {
         gpu_asset_t *const asset = ((hashtable_entry_t * )entry)->value;

@@ -166,7 +166,6 @@ void bgtask_manager_destroy(bgtask_manager_t *self)
 
     queue_destroy(&self->tasks);
     arena_destroy(&self->arena);
-    memset(self, 0, sizeof(bgtask_manager_t));
 }
 
 void taskresponse_destroy(taskresponse_t *self) 

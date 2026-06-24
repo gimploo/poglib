@@ -80,7 +80,7 @@ poggen_t * poggen_init(application_t *const app, const poggen_config_t config)
     if (!global_window)     eprint("A window is required to run poggen\n");
     if (global_engine)      eprint("Trying to initialize a second `poggen` in the same instance");
 
-    arena_t arena = arena_init(NULL, 32 * MB);
+    arena_t arena = arena_init(NULL, 5 * MB);
     global_engine = arena_store(
         &arena,
         &(poggen_t ){
@@ -93,7 +93,7 @@ poggen_t * poggen_init(application_t *const app, const poggen_config_t config)
             },
             .systems = {
                 .assets      = assetmanager_init(global_bgtask_manager),
-                .renderqueue = renderqueue_init(&arena),
+                .renderqueue = renderqueue_init(),
                 .physics     = config.enable_physics 
                                ? (poggen__internal_physics_t){
                                    .phy_simulation_started = false,

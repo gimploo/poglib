@@ -9,7 +9,7 @@
 #include "poglib/pipeline/render/render_command.h"
 #include "poglib/util/asset.h"
 
-renderqueue_t       renderqueue_init(arena_t *arena);
+renderqueue_t       renderqueue_init(void);
 void                renderqueue_pass_command(renderqueue_t * const self, const rendercommand_t command);
 void                renderqueue_dispatch(renderqueue_t * const self);
 void                renderqueue_flush(renderqueue_t * const self);
@@ -22,11 +22,11 @@ bool renderqueue__internal_check_for_batchable_commands(renderqueue_t * const qu
 void renderqueue__internal_add_to_bucket(list_t * const render_commands, const rendercommand_t command);
 void rendercommand__internal_shader_upload_uniforms(const rendercommand_t * const command);
 
-renderqueue_t renderqueue_init(arena_t *arena)
+renderqueue_t renderqueue_init(void)
 {
     return (renderqueue_t) {
         .buckets = {0},
-        .arena = arena_init(arena, 2 * MB),
+        .arena = arena_init(NULL, 2 * MB),
         .internal = {
             .instancebuffer = glinstancebuffer_init(2 * MB),
         }
