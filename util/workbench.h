@@ -9,6 +9,7 @@
 #include "./workbench/common.h"
 #include "./workbench/workbench-editor-ui.h"
 #include "./workbench/ui/workbench-ui.h"
+#include "./workbench-editor/entity-details.h"
 
 
 workbench_t *   workbench_init(arena_t * const arena);
@@ -243,6 +244,13 @@ workbench_t * workbench_init(arena_t *const arena)
 
     workbench_debug_renderer_init(&global_workbench->debug_renderer, arena);
 
+    f32 ww = (f32)global_window->width;
+    f32 wh = (f32)global_window->height;
+    global_workbench->clay.renderer = clay_poglib_init(ww, wh);
+    global_workbench->clay.font = glfreetypefont_init(DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH, 16, false);
+    Clay_SetMeasureTextFunction(clay_poglib_measure_text, &global_workbench->clay.font);
+    global_workbench->clay.initialized = true;
+
     return global_workbench;
 }
 
@@ -333,6 +341,11 @@ void workbench_destroy(void)
     glshader_destroy(&self->shader);
     gui_destroy(&self->gui.handle);
 
+    if (self->clay.initialized) {
+        clay_poglib_destroy(&self->clay.renderer);
+        glfreetypefont_destroy(&self->clay.font);
+    }
+
     global_workbench = NULL;
 }
 
@@ -367,6 +380,14 @@ void workbench_render(void)
 
     if (self->gui.enable) {
         workbench__internal_render_ui(self);
+    }
+
+    if (self->clay.initialized && self->selected_entity_id) {
+        vec2i_t m = window_mouse_get_position(global_window);
+        Clay_SetPointerState((Clay_Vector2){ (f32)m.x, (f32)m.y },
+            window_mouse_button_is_held(global_window, SDL_BUTTON_LEFT));
+        Clay_UpdateScrollContainers(false, (Clay_Vector2){0, 0}, 0.016f);
+        workbench_editor_entity_details_compose(&self->clay.renderer, self);
     }
 
 }

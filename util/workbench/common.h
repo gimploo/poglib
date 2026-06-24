@@ -3,7 +3,9 @@
 #include <poglib/gui.h>
 #include <poglib/util/glcamera.h>
 #include <poglib/input/commandqueue.h>
+#include <poglib/font/glfreetypefont.h>
 #include "./workbench-debug-renderer.h"
+#include "../../clay_renderer_poglib.h"
 
 typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG         = 0,
@@ -46,6 +48,12 @@ typedef struct {
         u32 entity_id;
         glcamera_t *handle;
     } world_camera;
+
+    struct {
+        clay_poglib_renderer_t renderer;
+        glfreetypefont_t font;
+        bool initialized;
+    } clay;
 
 } workbench_t;
 
