@@ -39,32 +39,34 @@ static void workbench_editor_entity_details_compose(workbench_t *wb)
         .backgroundColor = { 25, 25, 30, 230 },
         .cornerRadius = CLAY_CORNER_RADIUS(8)
     }) {
-        char buf[128];
         int n;
 
-        n = snprintf(buf, sizeof(buf), "Entity %u", ecs_id);
-        { Clay_String s = { .length = n, .chars = buf };
-        CLAY_TEXT(s, CLAY_TEXT_CONFIG({
-            .fontId = 0, .fontSize = 18, .textColor = { 220, 220, 220, 255 }
-        })); }
+        n = snprintf(wb->clay.text_buf + wb->clay.text_offset,
+                     sizeof(wb->clay.text_buf) - (u32)wb->clay.text_offset,
+                     "Entity %u", ecs_id);
+        { Clay_String s = { .length = n, .chars = wb->clay.text_buf + wb->clay.text_offset };
+        CLAY_TEXT(s, CLAY_TEXT_CONFIG({ .fontId = 0, .fontSize = 18, .textColor = { 220, 220, 220, 255 } })); }
+        wb->clay.text_offset += n + 1;
 
         if (t) {
             CLAY({ .layout = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) } },
                    .backgroundColor = { 80, 80, 90, 255 } }) {}
 
-            n = snprintf(buf, sizeof(buf), "Position:  %.2f, %.2f, %.2f",
+            n = snprintf(wb->clay.text_buf + wb->clay.text_offset,
+                         sizeof(wb->clay.text_buf) - (u32)wb->clay.text_offset,
+                         "Position:  %.2f, %.2f, %.2f",
                          t->position.x, t->position.y, t->position.z);
-            { Clay_String s = { .length = n, .chars = buf };
-            CLAY_TEXT(s, CLAY_TEXT_CONFIG({
-                .fontId = 0, .fontSize = 14, .textColor = { 180, 180, 190, 255 }
-            })); }
+            { Clay_String s = { .length = n, .chars = wb->clay.text_buf + wb->clay.text_offset };
+            CLAY_TEXT(s, CLAY_TEXT_CONFIG({ .fontId = 0, .fontSize = 14, .textColor = { 180, 180, 190, 255 } })); }
+            wb->clay.text_offset += n + 1;
 
-            n = snprintf(buf, sizeof(buf), "Scale:     %.2f, %.2f, %.2f",
+            n = snprintf(wb->clay.text_buf + wb->clay.text_offset,
+                         sizeof(wb->clay.text_buf) - (u32)wb->clay.text_offset,
+                         "Scale:     %.2f, %.2f, %.2f",
                          t->scale.x, t->scale.y, t->scale.z);
-            { Clay_String s = { .length = n, .chars = buf };
-            CLAY_TEXT(s, CLAY_TEXT_CONFIG({
-                .fontId = 0, .fontSize = 14, .textColor = { 180, 180, 190, 255 }
-            })); }
+            { Clay_String s = { .length = n, .chars = wb->clay.text_buf + wb->clay.text_offset };
+            CLAY_TEXT(s, CLAY_TEXT_CONFIG({ .fontId = 0, .fontSize = 14, .textColor = { 180, 180, 190, 255 } })); }
+            wb->clay.text_offset += n + 1;
 
             versors q = t->orientation;
             f32 pitch = asinf(2.0f * (q.y * q.z - q.x * q.w));
@@ -72,22 +74,23 @@ static void workbench_editor_entity_details_compose(workbench_t *wb)
                                q.x * q.x + q.y * q.y - q.z * q.z - q.w * q.w);
             f32 roll  = atan2f(2.0f * (q.x * q.y + q.z * q.w),
                                q.x * q.x - q.y * q.y - q.z * q.z + q.w * q.w);
-            n = snprintf(buf, sizeof(buf), "Rotation:  %.0f, %.0f, %.0f",
+            n = snprintf(wb->clay.text_buf + wb->clay.text_offset,
+                         sizeof(wb->clay.text_buf) - (u32)wb->clay.text_offset,
+                         "Rotation:  %.0f, %.0f, %.0f",
                          pitch * (180.0f / PI), yaw * (180.0f / PI), roll * (180.0f / PI));
-            { Clay_String s = { .length = n, .chars = buf };
-            CLAY_TEXT(s, CLAY_TEXT_CONFIG({
-                .fontId = 0, .fontSize = 14, .textColor = { 180, 180, 190, 255 }
-            })); }
+            { Clay_String s = { .length = n, .chars = wb->clay.text_buf + wb->clay.text_offset };
+            CLAY_TEXT(s, CLAY_TEXT_CONFIG({ .fontId = 0, .fontSize = 14, .textColor = { 180, 180, 190, 255 } })); }
+            wb->clay.text_offset += n + 1;
         }
 
         CLAY({ .layout = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) } },
                .backgroundColor = { 80, 80, 90, 255 } }) {}
 
-        n = snprintf(buf, sizeof(buf), "Components");
-        { Clay_String s = { .length = n, .chars = buf };
-        CLAY_TEXT(s, CLAY_TEXT_CONFIG({
-            .fontId = 0, .fontSize = 14, .textColor = { 140, 200, 255, 255 }
-        })); }
+        n = snprintf(wb->clay.text_buf + wb->clay.text_offset,
+                     sizeof(wb->clay.text_buf) - (u32)wb->clay.text_offset, "Components");
+        { Clay_String s = { .length = n, .chars = wb->clay.text_buf + wb->clay.text_offset };
+        CLAY_TEXT(s, CLAY_TEXT_CONFIG({ .fontId = 0, .fontSize = 14, .textColor = { 140, 200, 255, 255 } })); }
+        wb->clay.text_offset += n + 1;
 
         static const char *labels[] = {
             [ECS_CMP_TRANSFORM_IDX] = "Transform",
@@ -101,11 +104,12 @@ static void workbench_editor_entity_details_compose(workbench_t *wb)
         for (u32 ci = 0; ci < ECS_CMP_COUNT; ci++) {
             if (entity_sig & (1 << ci)) {
                 const char *label = labels[ci] ? labels[ci] : "?";
-                n = snprintf(buf, sizeof(buf), "  %s", label);
-                { Clay_String s = { .length = n, .chars = buf };
-                CLAY_TEXT(s, CLAY_TEXT_CONFIG({
-                    .fontId = 0, .fontSize = 13, .textColor = { 160, 220, 160, 255 }
-                })); }
+                n = snprintf(wb->clay.text_buf + wb->clay.text_offset,
+                             sizeof(wb->clay.text_buf) - (u32)wb->clay.text_offset,
+                             "  %s", label);
+                { Clay_String s = { .length = n, .chars = wb->clay.text_buf + wb->clay.text_offset };
+                CLAY_TEXT(s, CLAY_TEXT_CONFIG({ .fontId = 0, .fontSize = 13, .textColor = { 160, 220, 160, 255 } })); }
+                wb->clay.text_offset += n + 1;
             }
         }
     }

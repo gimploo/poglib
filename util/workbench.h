@@ -389,6 +389,7 @@ void workbench_render(void)
     }
 
     if (self->clay.initialized && self->selected_entity_id) {
+        self->clay.text_offset = 0;
         f32 ww = (f32)global_window->width;
         f32 wh = (f32)global_window->height;
         vec2i_t m = window_mouse_get_position(global_window);

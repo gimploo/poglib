@@ -100,14 +100,15 @@ static f32 wb_editor_slider(clay_poglib_renderer_t *r, workbench_t *wb,
     if (t > 1.0f) t = 1.0f;
     f32 thumb_x = t * (track_w - 8.0f);
 
-    char buf[8];
-    int n = snprintf(buf, sizeof(buf), "%s", label);
-    { Clay_String s = { .length = n, .chars = buf };
+    int n = snprintf(wb->clay.text_buf + wb->clay.text_offset,
+                     sizeof(wb->clay.text_buf) - (u32)wb->clay.text_offset, "%s", label);
+    { Clay_String s = { .length = n, .chars = wb->clay.text_buf + wb->clay.text_offset };
     CLAY_TEXT(s, CLAY_TEXT_CONFIG({
         .fontId = 0, .fontSize = 13,
         .textColor = { (u8)(color.x * 255), (u8)(color.y * 255),
                        (u8)(color.z * 255), 255 }
     })); }
+    wb->clay.text_offset += n + 1;
 
     char idbuf[32];
     n = snprintf(idbuf, sizeof(idbuf), "SliderTrack%d", slider_idx);
@@ -176,12 +177,14 @@ void workbench_editor_compose(clay_poglib_renderer_t *r, workbench_t *wb)
         .backgroundColor = { 30, 30, 35, 230 },
         .cornerRadius = CLAY_CORNER_RADIUS(8)
     }) {
-        char buf[64];
-        int n = snprintf(buf, sizeof(buf), "Edit Entity %u", wb->selected_entity_id);
-        { Clay_String s = { .length = n, .chars = buf };
+        int n = snprintf(wb->clay.text_buf + wb->clay.text_offset,
+                         sizeof(wb->clay.text_buf) - (u32)wb->clay.text_offset,
+                         "Edit Entity %u", wb->selected_entity_id);
+        { Clay_String s = { .length = n, .chars = wb->clay.text_buf + wb->clay.text_offset };
         CLAY_TEXT(s, CLAY_TEXT_CONFIG({
             .fontId = 0, .fontSize = 15, .textColor = { 220, 220, 220, 255 }
         })); }
+        wb->clay.text_offset += n + 1;
 
         CLAY({ .layout = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(1) } },
                .backgroundColor = { 80, 80, 90, 255 } }) {}

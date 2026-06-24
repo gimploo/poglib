@@ -53,6 +53,8 @@ typedef struct {
         clay_poglib_renderer_t renderer;
         glfreetypefont_t font;
         bool initialized;
+        char text_buf[2048];
+        i32 text_offset;
     } clay;
 
 } workbench_t;
