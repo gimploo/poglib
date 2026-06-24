@@ -3,7 +3,6 @@
 #include <poglib/gui.h>
 #include <poglib/util/glcamera.h>
 #include <poglib/input/commandqueue.h>
-#include "../clay_project.h"
 #include "./workbench-debug-renderer.h"
 
 typedef enum workbench_action_type {
@@ -28,11 +27,6 @@ typedef struct {
         gui_t handle;
         bool enable;
     } gui;
-
-    struct {
-        clay_project_t handle;
-        bool enable;
-    } clay;
 
     struct {
         u32 atlas_id;

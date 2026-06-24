@@ -2,10 +2,8 @@
 #include "poglib/poggen.h"
 #include "poglib/ecs.h"
 #include "poglib/ecs/common.h"
-#include "../clay_project.h"
 #include "./common.h"
 
-void workbench_editor_compose(workbench_t *wb);
 
 #ifndef IGNORE_WORKBENCH_EDITOR_IMPLEMENTATION
 
