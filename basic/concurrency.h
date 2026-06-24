@@ -7,6 +7,9 @@
 
 //TODO: way to safely exit from active running threads.
 
+typedef struct bgtask_manager_t bgtask_manager_t;
+bgtask_manager_t *global_bgtask_manager = NULL;
+
 #define __ASYNC_META_HEADER__\
     atomic_bool is_done;\
     thrd_t thrd_id;\
@@ -47,7 +50,6 @@ struct taskconfig_t {
     void (*callback)(const taskpayload_t args, taskstorage_t storage, void *output_reserved_mem);
 };
 
-typedef struct bgtask_manager_t bgtask_manager_t;
 struct bgtask_manager_t {
     queue_t tasks;
     arena_t arena;
@@ -58,7 +60,7 @@ taskresponse_t *    task_response_empty(arena_t * const arena);
 void                taskresponse_destroy(taskresponse_t *self);
 
 
-bgtask_manager_t    bgtask_manager_init(void);
+bgtask_manager_t *  bgtask_manager_init(void);
 void                bgtask_manager_pass_task(bgtask_manager_t * const self, const taskconfig_t config);
 void                bgtask_manager_run_all_tasks(bgtask_manager_t *self);
 void                bgtask_manager_destroy(bgtask_manager_t *self);
@@ -86,12 +88,21 @@ taskresponse_t * taskresponse(arena_t * const arena, const u64 response_size)
     return taskresponse;
 }
 
-bgtask_manager_t bgtask_manager_init(void)
+bgtask_manager_t * bgtask_manager_init(void)
 {
-    return (bgtask_manager_t) {
-        .tasks = queue_init(TOTAL_THREADS_AVAILABLE, bgtask__internal_t, NULL),
-        .arena = arena_init(NULL, 8 * KB)
-    };
+    ASSERT(!global_bgtask_manager);
+
+    arena_t arena = arena_init(NULL, 8 * KB);
+    global_bgtask_manager = arena_store(
+        &arena,
+        &(bgtask_manager_t) {
+            .tasks = queue_init(TOTAL_THREADS_AVAILABLE, bgtask__internal_t, NULL),
+            .arena = {0}
+        }, 
+        sizeof(bgtask_manager_t)
+    );
+    global_bgtask_manager->arena = arena;
+    return global_bgtask_manager;
 }
 
 void bgtask_manager_pass_task(bgtask_manager_t * const self, const taskconfig_t config)
@@ -151,6 +162,8 @@ void bgtask_manager_run_all_tasks(bgtask_manager_t *self)
 
 void bgtask_manager_destroy(bgtask_manager_t *self)
 {
+    ASSERT(global_bgtask_manager);
+
     queue_destroy(&self->tasks);
     arena_destroy(&self->arena);
     memset(self, 0, sizeof(bgtask_manager_t));

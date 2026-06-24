@@ -28,7 +28,6 @@ typedef struct poggen_t {
     poggen_config_t     config;
     hashtable_t         scenes;
     scene_t             *current_scene;
-    bgtask_manager_t    bg_task_manager;
     arena_t             arena;
 
     struct {
@@ -59,9 +58,9 @@ void                                poggen_update_commandqueue_registry(poggen_t
 
 void                                poggen_tick(poggen_t *const self);
 void                                poggen_update(poggen_t *const self);
-void                                poggen_render(poggen_t *self, const f32 dt);
+void                                poggen_render(poggen_t *const self, const f32 dt);
 
-void                                poggen_destroy(poggen_t *self);
+void                                poggen_destroy(poggen_t *const self);
 
 
 /*----------------------------------------------------------------------------*/
@@ -69,7 +68,6 @@ void                                poggen_destroy(poggen_t *self);
 #ifndef IGNORE_POGGEN_IMPLEMENTATION
 
 #define MAX_SCENES_ALLOWED 10
-
 
 
 window_t * poggen_get_window(const poggen_t *self)
@@ -82,31 +80,28 @@ poggen_t * poggen_init(application_t *const app, const poggen_config_t config)
     if (!global_window)     eprint("A window is required to run poggen\n");
     if (global_engine)      eprint("Trying to initialize a second `poggen` in the same instance");
 
-    poggen_t *output = (poggen_t *)calloc(1, sizeof(poggen_t ));
-    ASSERT(output);
     arena_t arena = arena_init(NULL, 32 * MB);
-    *output = (poggen_t ){
-        .config             = config,
-        .scenes             = hashtable_init(MAX_SCENES_ALLOWED, HT_KEY_TYPE_STR, (ht_value_type){ .size = sizeof(scene_t), .type = HT_STORAGE_BY_REFERENCE }, &app->handle.arena),
-        .current_scene      = NULL,
-        .arena              = arena,
-        .bg_task_manager    = bgtask_manager_init(),
-        .handle = {
-            .app            = app
-        },
-        .systems = {
-            .assets      = assetmanager_init(&output->bg_task_manager),
-            .renderqueue = renderqueue_init(&arena),
-            .physics     = config.enable_physics 
-                           ? (poggen__internal_physics_t){
-                               .phy_simulation_started = false,
-                               .instance = physics_sys_jolt_init(&arena)
-                           } : (poggen__internal_physics_t){0},
-            .commandqueue = {0},
-        },
-    };
-
-    global_engine  = output;
+    global_engine = arena_store(
+        &arena,
+        &(poggen_t ){
+            .config             = config,
+            .scenes             = hashtable_init(MAX_SCENES_ALLOWED, HT_KEY_TYPE_STR, (ht_value_type){ .size = sizeof(scene_t), .type = HT_STORAGE_BY_REFERENCE }, &app->handle.arena),
+            .current_scene      = NULL,
+            .arena              = arena,
+            .handle = {
+                .app            = app
+            },
+            .systems = {
+                .assets      = assetmanager_init(global_bgtask_manager),
+                .renderqueue = renderqueue_init(&arena),
+                .physics     = config.enable_physics 
+                               ? (poggen__internal_physics_t){
+                                   .phy_simulation_started = false,
+                                   .instance = physics_sys_jolt_init(&arena)
+                               } : (poggen__internal_physics_t){0},
+                .commandqueue = {0},
+            },
+        }, sizeof(poggen_t));
 
     return global_engine;
 }
@@ -180,7 +175,6 @@ void poggen_update(poggen_t *const self)
         eprint("Missed to register physics interaction rules, else DISABLE physics in config passed to engine");
 
     assetmanager_update(&self->systems.assets);
-    bgtask_manager_run_all_tasks(&self->bg_task_manager);
 
     scene_t *current_scene = self->current_scene;
     if (current_scene == NULL) eprint("Current scene is null");
@@ -193,9 +187,9 @@ void poggen_update(poggen_t *const self)
     scene__internal_update(current_scene, dt);
 }
 
-void poggen_destroy(poggen_t *self)
+void poggen_destroy(poggen_t *const self)
 {
-    assert(self);
+    ASSERT(self);
 
     assetmanager_destroy(&self->systems.assets);
     hashtable_iterator(&self->scenes, tableentry) {
@@ -204,7 +198,6 @@ void poggen_destroy(poggen_t *self)
         mem_free(entry->value, sizeof(scene_t));
     }
     hashtable_destroy(&self->scenes);
-    bgtask_manager_destroy(&self->bg_task_manager);
 
     if (self->config.enable_physics)
         physics_sys_jolt_destroy(self->systems.physics.instance);
@@ -213,8 +206,6 @@ void poggen_destroy(poggen_t *self)
     arena_destroy(&self->arena);
 
     self->current_scene = NULL;
-    free(self);
-    self = NULL;
     global_engine = NULL;
 }
 

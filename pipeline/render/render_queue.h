@@ -66,7 +66,7 @@ void renderqueue_pass_command(renderqueue_t *const self, rendercommand_t command
     eprint("Buckets fully filled");
 }
 
-void renderqueue_destroy(renderqueue_t * const self)
+void renderqueue_destroy(renderqueue_t *const self)
 {
     for (u8 idx = 0; idx < MAX_RENDER_BUCKETS_ALLOWED; idx++)
     {

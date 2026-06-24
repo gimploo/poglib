@@ -25,7 +25,7 @@ typedef struct list_t {
 
 #define DEFAULT_LIST_STARTING_CAPACITY 4 
 
-#define         list_init(TYPE, ARENA)                               list__internal__init(DEFAULT_LIST_STARTING_CAPACITY, #TYPE, sizeof(TYPE), ARENA)
+#define         list_init(TYPE, PARENA)                         list__internal__init(DEFAULT_LIST_STARTING_CAPACITY, #TYPE, sizeof(TYPE), PARENA)
 
 #define         list_append(PLIST, VALUE)                       list__internal__append((PLIST), &(VALUE), sizeof(VALUE)) 
 #define         list_append_ptr(PLIST, PVALUE)                   list__internal__append((PLIST), &(PVALUE), sizeof(void *)) 
@@ -61,14 +61,14 @@ void            list_destroy(list_t *list);
 
 void * list_get_value(const list_t *list, const u64 index)
 {
-    assert(index < list->len);
+    ASSERT(index < list->len);
 
     return (list->data + index * list->internal.elem_size);
 }
 
 void list_clear(list_t *const list)
 {
-    assert(list);
+    ASSERT(list);
     list->internal.top = -1;
     list->len = 0;
     memset(list->data, 0, list->internal.elem_size * list->internal.capacity);
@@ -76,13 +76,13 @@ void list_clear(list_t *const list)
 
 list_t list__internal__init(const u64 capacity, const char *elem_type, const u64 elem_size, arena_t *const arena) 
 {
-    assert(elem_type);
-    assert(elem_size > 0);
+    ASSERT(elem_type);
+    ASSERT(elem_size > 0);
 
     u32 len = strlen(elem_type);
     if (len > MAX_TYPE_CHARACTER_LENGTH - 1) eprint("variable name is too big, exceeded the 16 limit threshold\n");
 
-    list_t o = {
+    return (list_t ){
         .len = 0,
         .data = (u8 *)arena_reserve(arena, capacity * elem_size),
         .arena = arena,
@@ -93,14 +93,12 @@ list_t list__internal__init(const u64 capacity, const char *elem_type, const u64
             .original_capacity = capacity,
         },
     };
-
-    return o;
 }
 
 void list__internal__append(list_t *list, const void *value_addr, u64 value_size)
 {
-    assert(list);
-    assert(value_addr);
+    ASSERT(list);
+    ASSERT(value_addr);
     if (value_size != list->internal.elem_size) eprint("trying to push a value of size %lu to slot of size %lu", value_size, list->internal.elem_size);
 
     if (list->internal.top == (i64)(list->internal.capacity - 1)) {
@@ -122,7 +120,7 @@ void list__internal__append(list_t *list, const void *value_addr, u64 value_size
 //in some common conditions
 void list_delete(list_t *list, const u64 index)
 {
-    assert(list);
+    ASSERT(list);
     if(list->internal.top == -1)           eprint("Trying to delete an element from an empty list\n");
     if((i64)index > list->internal.top)    eprint("index (`%lu`) exceeds list length (`%lu`) ", index, list->internal.top);
 
@@ -139,7 +137,7 @@ void list_delete(list_t *list, const u64 index)
 
 void list_print(const list_t *list, void (*print)(void*))
 {
-    assert(list);
+    ASSERT(list);
     if (list->internal.top == -1) {
         printf("[]\n");
         return ;
@@ -154,7 +152,7 @@ void list_print(const list_t *list, void (*print)(void*))
 
 void list_dump(const list_t *list)
 {
-    assert(list);
+    ASSERT(list);
 
     printf("\n len = %ld\n arr = %p\n top = %ld\n capacity = %ld\n elem_size = %ld\n", 
             list->len, 
@@ -172,18 +170,18 @@ void list_dump(const list_t *list)
 
 }
 
-void list_destroy(list_t *list)
+void list_destroy(list_t *const list)
 {
+    arena_giveback(list->arena, list->data, list->internal.capacity * list->internal.elem_size);
     list->data = NULL;
     list->internal.capacity = 0;
     list->internal.top = -1;
     list->len = 0;
     list->internal.elem_size = 0;
-
-    arena_destroy(list->arena);
+    list->arena = NULL;
 }
 
-void list_combine(list_t *dest, const list_t *src)
+void list_combine(list_t *const dest, const list_t *const src)
 {
     ASSERT(dest->internal.elem_size == src->internal.elem_size);
 
@@ -206,9 +204,10 @@ void list__internal__append_multiple(
     for (u32 i = 0; i < arr_len; i++)
     {
         list__internal__append(
-                slot, 
-                arr + (elem_size * i), 
-                elem_size);
+            slot, 
+            arr + (elem_size * i), 
+            elem_size
+        );
     }
 }
 
