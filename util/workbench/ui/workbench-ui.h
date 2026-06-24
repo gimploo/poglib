@@ -199,8 +199,6 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
     }
     gui_ui_compose_end(gui);
 
-    workbench_editor_add_entity_button(gui);
-    workbench_editor_compose(gui, global_workbench);
 }
 
 

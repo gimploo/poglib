@@ -4,68 +4,22 @@
 #include "./workbench/workbench-constants.h"
 #include "./gllight.h"
 #include "./workbench/workbench-grid.h"
-#include "./workbench/workbench-debug-renderer.h"
 #include "poglib/ecs.h"
 #include "poglib/ecs/common.h"
-#include <poglib/gui.h>
+#include "./workbench/common.h"
+#include "./workbench/workbench-editor-ui.h"
+#include "./workbench/ui/workbench-ui.h"
 
-typedef enum workbench_action_type {
-    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG         = 0,
-    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED = 1,
-    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN                = 2,
-    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT               = 3,
-    WORKBENCH_ACTION_TYPE_COUNT
-} workbench_action_type;
-
-typedef struct {
-
-    bool is_active;
-    bool enable_collider;
-    bool disable_grid;
-
-    struct {
-        bool wireframe_mode;
-    } render_config;
-
-    struct {
-        gui_t handle;
-        bool enable;
-    } gui;
-
-    struct {
-        u32 atlas_id;
-        u32 shader_id;
-    } primitives;
-
-    workbench_debug_renderer_t debug_renderer;
-
-    glshader_t shader;
-    vec3f_t player_camera_position;
-
-    commandregistry_t commandregistry;
-
-    u32 selected_entity_id;
-
-    struct {
-        u32 entity_id;
-        glcamera_t *handle;
-    } world_camera;
-
-} workbench_t;
 
 workbench_t *   workbench_init(arena_t * const arena);
 void            workbench_update(const f32 dt);
 void            workbench_render(void);
 void            workbench_destroy(void);
 
-void        workbench_toggle(void);
-void        workbench_track_lightsource(workbench_t *self, const gllight_t *light);
+void            workbench_toggle(void);
+void            workbench_track_lightsource(workbench_t *self, const gllight_t *light);
 
 
-global workbench_t *global_workbench = NULL;
-
-#include "./workbench/workbench-editor-ui.h"
-#include "./workbench/ui/workbench-ui.h"
 
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0.f, 0.f, 10.f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
@@ -289,6 +243,17 @@ workbench_t * workbench_init(arena_t *const arena)
 
     workbench_debug_renderer_init(&global_workbench->debug_renderer, arena);
 
+    {
+        glfreetypefont_t *f = &global_workbench->gui.handle.freetypefont;
+        global_workbench->clay.handle = clay_project_create(
+            arena, f,
+            &global_workbench->gui.handle.shader,
+            &f->texture,
+            (Clay_Dimensions){(f32)global_window->width, (f32)global_window->height}
+        );
+        global_workbench->clay.enable = true;
+    }
+
     return global_workbench;
 }
 
@@ -302,6 +267,32 @@ matrix4f_t workbench__internal_get_camera_view(const workbench_t *const self)
 void workbench__internal_render_ui(workbench_t *self)
 {
     gui_render(&self->gui.handle);
+}
+
+void workbench__internal_render_clay(workbench_t *self)
+{
+    if (!self->clay.enable) return;
+
+    vec2f_t mouse_pos = window_mouse_get_norm_position(global_window);
+    f32 mx = (mouse_pos.x + 1.0f) * 0.5f * (f32)global_window->width;
+    f32 my = (1.0f - mouse_pos.y) * 0.5f * (f32)global_window->height;
+    bool pointer_down = window_mouse_button_is_pressed(global_window, SDL_MOUSEBUTTON_LEFT);
+
+    clay_project_set_input(&self->clay.handle,
+        (Clay_Vector2){mx, my},
+        pointer_down,
+        (Clay_Vector2){0, 0},
+        0.016f
+    );
+
+    clay_project_begin(&self->clay.handle);
+
+    workbench_editor_add_entity_button(self);
+    workbench_editor_compose(self);
+
+    clay_project_render(&self->clay.handle);
+
+    workbench_editor_post(self);
 }
 
 #if 0
@@ -413,6 +404,10 @@ void workbench_render(void)
 
     if (self->gui.enable) {
         workbench__internal_render_ui(self);
+    }
+
+    if (self->clay.enable) {
+        workbench__internal_render_clay(self);
     }
 
 }
@@ -567,8 +562,9 @@ void workbench_update(const f32 dt)
     }
 
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED)) {
-        const bool ui_element_hovered = global_workbench->gui.handle.state.hovered_ui_id != 0;
-        if (!ui_element_hovered) {
+        const bool gui_hovered = global_workbench->gui.handle.state.hovered_ui_id != 0;
+        const bool clay_hovered = global_workbench->clay.handle.is_any_element_hovered;
+        if (!gui_hovered && !clay_hovered) {
             workbench_editor_pick_entity();
         }
     }

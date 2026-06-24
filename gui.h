@@ -366,7 +366,7 @@ void gui__internal_ui_create_text_internal(gui_t * const gui, const ui_region_t 
     }
 }
 
-void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
+void gui_ui_compose_begin(gui_t *const gui, const ui_config_t config)
 {
     gui__internal_ui_validate_config(config);
     const ui_region_t child_region = gui__internal_ui_add_child(gui, config);
