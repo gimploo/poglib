@@ -84,7 +84,7 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
             .min_height = 30,
             .min_width = 140 
         },
-        .padding = {8,4,4,4},
+        .padding = {4,4,4,8},
         .margin = {
             .left = 5, 
             .right = 5,
@@ -147,7 +147,7 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
             .min_height = 30,
             .min_width = 200 
         },
-        .padding = {8,4,4,4},
+        .padding = {4,4,4,8},
         .margin = {
             .left = 5, 
             .right = 5,
