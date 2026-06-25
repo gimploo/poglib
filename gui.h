@@ -157,7 +157,6 @@ bool    gui_ui_isclicked(gui_t *const self, const u32 id);
 
 void    gui_button(gui_t *gui, u32 id, str_t text, f32 w, f32 h, ui_config_t cfg);
 void    gui_label(gui_t *gui, str_t text, f32 w, f32 h, ui_config_t cfg);
-void    gui_panel(gui_t *gui, f32 w, f32 h, ui_config_t cfg);
 void    gui_render(gui_t *self);
 void    gui_destroy(gui_t *self);
 
@@ -421,6 +420,9 @@ void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
         .is_text = false,
     };
     list_append(&gui->gfx.instanced_attrs, attr);
+
+    if (config.text.len > 0)
+        gui__internal_ui_create_text_internal(gui, child_region, config);
 }
 
 void gui_button(gui_t *gui, u32 id, str_t text, f32 w, f32 h, ui_config_t cfg)
@@ -432,6 +434,7 @@ void gui_button(gui_t *gui, u32 id, str_t text, f32 w, f32 h, ui_config_t cfg)
     cfg.dim.min_height = (u32)h;
     cfg.text = text;
     gui_ui_compose_begin(gui, cfg);
+    gui_ui_compose_end(gui);
 }
 
 void gui_label(gui_t *gui, str_t text, f32 w, f32 h, ui_config_t cfg)
@@ -442,13 +445,6 @@ void gui_label(gui_t *gui, str_t text, f32 w, f32 h, ui_config_t cfg)
     cfg.text = text;
     gui_ui_compose_begin(gui, cfg);
     gui_ui_compose_end(gui);
-}
-
-void gui_panel(gui_t *gui, f32 w, f32 h, ui_config_t cfg)
-{
-    cfg.dim.min_width  = (u32)w;
-    cfg.dim.min_height = (u32)h;
-    gui_ui_compose_begin(gui, cfg);
 }
 
 
