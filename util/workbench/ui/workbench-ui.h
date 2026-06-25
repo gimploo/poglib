@@ -21,6 +21,15 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
     const u32 window_width = global_window->width;
     char tempbuffer[32] = {0};
 
+    gui_ui_compose_begin(gui, (ui_config_t){
+        .color = {
+            .base = COLOR_WHITE,
+        },
+        .dim = {
+            .min_height = 60,
+            .min_width = global_window->width
+        },
+    });
     //FPS Counter
     gui_ui_compose_begin(gui, (ui_config_t){ 
         .composition = {
@@ -31,7 +40,7 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         },
         .dim = {
             .min_height = 30,
-            .mid_width = 80 
+            .min_width = 80 
         },
         .padding = {4,4,4,4},
         .margin = {
@@ -45,17 +54,19 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         const f32 fps = application_get_fps(global_engine->handle.app);
         snprintf(tempbuffer, sizeof(tempbuffer), "FPS: %d", (int)fps);
         gui_ui_compose_begin(gui, (ui_config_t){ 
-            .composition = {0},
+            .composition = {
+                .styles = UI_STYLE_ONLY_TEXT
+            },
             .color = {
                 .base = COLOR_OFFWHITE,
             },
             .dim = {
                 .min_height = 40,
-                .mid_width = 40 
+                .min_width = 40 
             },
             .padding = {0},
             .margin = {0},
-            .label = str__from_cstr(tempbuffer, sizeof(tempbuffer))
+            .text = str__from_cstr(tempbuffer, sizeof(tempbuffer))
         });
         gui_ui_compose_end(gui);
     } 
@@ -71,9 +82,9 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         },
         .dim = {
             .min_height = 30,
-            .mid_width = 140 
+            .min_width = 140 
         },
-        .padding = {8,4,4,4},
+        .padding = {4,4,4,8},
         .margin = {
             .left = 5, 
             .right = 5,
@@ -86,17 +97,19 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         memset(tempbuffer, 0, sizeof(tempbuffer));
         snprintf(tempbuffer, sizeof(tempbuffer), "NDC [ %.2f, %.2f ]", mouse_pos.x, mouse_pos.y);
         gui_ui_compose_begin(gui, (ui_config_t){ 
-            .composition = {0},
+            .composition = {
+                .styles = UI_STYLE_ONLY_TEXT
+            },
             .color = {
                 .base = COLOR_SOFT_WHITE,
             },
             .dim = {
                 .min_height = 20,
-                .mid_width = 100 
+                .min_width = 100 
             },
             .padding = {0},
             .margin = {2,2,2,2},
-            .label = str__from_cstr(tempbuffer, sizeof(tempbuffer))
+            .text = str__from_cstr(tempbuffer, sizeof(tempbuffer))
         });
         gui_ui_compose_end(gui);
 
@@ -104,17 +117,19 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         const vec2i_t mouse_pos_wc = window_mouse_get_position(global_window);
         snprintf(tempbuffer, sizeof(tempbuffer), "WDC [ %i, %i ]", mouse_pos_wc.x, mouse_pos_wc.y);
         gui_ui_compose_begin(gui, (ui_config_t){ 
-            .composition = {0},
+            .composition = {
+                .styles = UI_STYLE_ONLY_TEXT
+            },
             .color = {
                 .base = COLOR_SOFT_WHITE,
             },
             .dim = {
                 .min_height = 20,
-                .mid_width = 100 
+                .min_width = 100 
             },
             .padding = {0},
             .margin = {0},
-            .label = str__from_cstr(tempbuffer, sizeof(tempbuffer))
+            .text = str__from_cstr(tempbuffer, sizeof(tempbuffer))
         });
         gui_ui_compose_end(gui);
     } 
@@ -130,9 +145,9 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         },
         .dim = {
             .min_height = 30,
-            .mid_width = 200 
+            .min_width = 200 
         },
-        .padding = {8,4,4,4},
+        .padding = {4,4,4,8},
         .margin = {
             .left = 5, 
             .right = 5,
@@ -145,17 +160,19 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         memset(tempbuffer, 0, sizeof(tempbuffer));
         snprintf(tempbuffer, sizeof(tempbuffer), "cam pos [ %.2f, %.2f, %.2f ]", camera_pos.x, camera_pos.y, camera_pos.z);
         gui_ui_compose_begin(gui, (ui_config_t){ 
-            .composition = {0},
+            .composition = {
+                .styles = UI_STYLE_ONLY_TEXT
+            },
             .color = {
                 .base = COLOR_SOFT_WHITE,
             },
             .dim = {
                 .min_height = 40,
-                .mid_width = 80 
+                .min_width = 80 
             },
             .padding = {0},
             .margin = {0},
-            .label = str__from_cstr(tempbuffer, sizeof(tempbuffer))
+            .text = str__from_cstr(tempbuffer, sizeof(tempbuffer))
         });
         gui_ui_compose_end(gui);
     } 
@@ -169,7 +186,7 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         .id = WB_COLLIDER_TOGGLE,
         .dim = {
             .min_height = 30,
-            .mid_width = 120,
+            .min_width = 120,
         },
         .color = {
             .base = COLOR_WHITE,
@@ -190,19 +207,22 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
     });{
         gui_ui_compose_begin(gui, (ui_config_t) {
             .id = WB_COLLIDER_TOGGLE,
-            .composition = {0},
+            .composition = {
+                .styles = UI_STYLE_ONLY_TEXT
+            },
             .dim = {
                 .min_height = 40,
-                .mid_width = 40,
+                .min_width = 40,
             },
             .color = {
                 .base = COLOR_BLACK,
                 .highlight = COLOR_BLUE
             },
-            .label = str("show colliders"),
+            .text = str("show colliders"),
         });
         gui_ui_compose_end(gui);
     }
+    gui_ui_compose_end(gui);
     gui_ui_compose_end(gui);
 }
 
@@ -225,7 +245,7 @@ void workbench__internal_compose_ui__test(const application_t * const app, gui_t
         },
         .dim = {
             .min_height = 100,
-            .mid_width = 100 
+            .min_width = 100 
         },
         .padding = {
             10, 10, 10, 10
@@ -238,18 +258,20 @@ void workbench__internal_compose_ui__test(const application_t * const app, gui_t
         }
     });
         gui_ui_compose_begin(gui, (ui_config_t){ 
-            .composition = {0},
+            .composition = {
+                .styles = UI_STYLE_ONLY_TEXT
+            },
             .color = {
                 .base = COLOR_WHITE,
                 .highlight = COLOR_CYAN,
             },
             .dim = {
                 .min_height = 40,
-                .mid_width = 80 
+                .min_width = 80 
             },
             .padding = {0},
             .margin = {0},
-            .label = str("Hello World")
+            .text = str("Hello World")
         });
         gui_ui_compose_end(gui);
     gui_ui_compose_end(gui);
@@ -266,7 +288,7 @@ void workbench__internal_compose_ui__test(const application_t * const app, gui_t
             },
             .dim = {
                 .min_height = 50,
-                .mid_width = 50
+                .min_width = 50
             },
             .padding = {0},
             .margin = {
@@ -286,7 +308,7 @@ void workbench__internal_compose_ui__test(const application_t * const app, gui_t
                 },
                 .dim = {
                     .min_height = 10,
-                    .mid_width = 10
+                    .min_width = 10
                 },
                 .padding = {0},
                 .margin = {
