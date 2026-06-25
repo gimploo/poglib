@@ -1,66 +1,22 @@
 #pragma once
 #include <poglib/poggen.h>
-#include "./glcamera.h"
-#include "./workbench/workbench-constants.h"
-#include "./gllight.h"
+#include <poglib/ecs.h>
+
+#include "./workbench/common.h"
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
-#include "./workbench/workbench-debug-renderer.h"
-#include "poglib/ecs.h"
-#include "poglib/ecs/common.h"
+#include "poglib/ecs/component/types.h"
+#include "poglib/gui.h"
+#include "poglib/util/workbench/workbench-editor.h"
 
-typedef enum workbench_action_type {
-    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG         = 0,
-    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED = 1,
-    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN                = 2,
-    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT               = 3,
-    WORKBENCH_ACTION_TYPE_COUNT
-} workbench_action_type;
-
-typedef struct {
-
-    bool is_active;
-    bool enable_collider;
-    bool disable_grid;
-
-    struct {
-        bool wireframe_mode;
-    } render_config;
-
-    struct {
-        gui_t handle;
-        bool enable;
-    } gui;
-
-    struct {
-        u32 atlas_id;
-        u32 shader_id;
-    } primitives;
-
-    workbench_debug_renderer_t debug_renderer;
-
-    glshader_t shader;
-    vec3f_t player_camera_position;
-
-    commandregistry_t commandregistry;
-
-    struct {
-        u32 entity_id;
-        glcamera_t *handle;
-    } world_camera;
-
-} workbench_t;
 
 workbench_t *   workbench_init(arena_t * const arena);
 void            workbench_update(const f32 dt);
 void            workbench_render(void);
 void            workbench_destroy(void);
 
-void        workbench_toggle(void);
-void        workbench_track_lightsource(workbench_t *self, const gllight_t *light);
+void            workbench_toggle(void);
 
-
-global workbench_t *global_workbench = NULL;
 
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0.f, 0.f, 10.f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
@@ -386,6 +342,8 @@ void workbench_render(void)
     ASSERT(global_workbench);
     workbench_t *self = global_workbench;
 
+    if (!self->is_active) return;
+
     workbench__internal_update_ui(self, self->world_camera.handle->position);
 
     if (!self->disable_grid) {
@@ -407,6 +365,7 @@ void workbench_render(void)
     }
 
     if (self->gui.enable) {
+        workbench_editor_render();
         workbench__internal_render_ui(self);
     }
 
@@ -560,6 +519,23 @@ void workbench_update(const f32 dt)
     {
         global_workbench->enable_collider = !global_workbench->enable_collider;
     }
+
+    workbench_editor_update();
+
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED))
+    {
+        global_workbench->editor.selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
+    }
+
+    ecs_patch_entity(
+        global_ecs, 
+        global_workbench->world_camera.entity_id, 
+        (ecs_cmp_patch_payload_t) {
+            .patch_type = ECS_PATCH_CMP_ACTIVE_FIELD,
+            .is_active = global_workbench->editor.selected_entity_id == ECS_ENTITY_INVALID_ID,
+            .signature = ECS_CMP_TRANSFORM
+        }
+    );
 }
 
 void workbench_toggle(void)

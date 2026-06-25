@@ -10,6 +10,7 @@
 #include "poglib/util/asset.h"
 #include "poglib/util/assetmanager.h"
 #include "poglib/util/workbench.h"
+#include "poglib/util/workbench/common.h"
 
 void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
@@ -52,11 +53,13 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             1.0f, 1000.0f
         );
 
+        const bool is_editor_selected = global_workbench->editor.selected_entity_id == entry->entity_id;
+
         const rendercommand_instance_t instance = {
             .translation = (vec4f_t) { transform->position.x, transform->position.y, transform->position.z, 0.f },
             .scale = (vec4f_t) { transform->scale.x, transform->scale.y,  transform->scale.z,  0.f },
             .orientation = *(vec4f_t *)&transform->orientation,
-            .color = COLOR_WHITE,
+            .color = is_editor_selected ? COLOR_RED : COLOR_WHITE,
             .uv = spriteatlas_get_sprite(atlas, mesh->prototype_sprite_type),
         };
 
