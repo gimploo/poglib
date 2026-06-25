@@ -47,8 +47,7 @@ void ecs_system_camera(ecs_componentmanager_t *const cmp_manager, const ecs_syst
         ecs_component_camera_t *const camera = (ecs_component_camera_t *)entry->entity_cmpdata;
 
         //NOTE: only updating active camera
-        if (!entry->is_active)
-            continue;
+        if (!entry->is_active) continue;
 
         switch(camera->mode)
         {
