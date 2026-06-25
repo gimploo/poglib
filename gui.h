@@ -421,8 +421,11 @@ void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
     };
     list_append(&gui->gfx.instanced_attrs, attr);
 
-    if (config.text.len > 0)
-        gui__internal_ui_create_text_internal(gui, child_region, config);
+    if (config.text.len > 0) {
+        ui_config_t text_cfg = config;
+        text_cfg.color.base = (vec4f_t){1.0f, 1.0f, 1.0f, 1.0f};
+        gui__internal_ui_create_text_internal(gui, child_region, text_cfg);
+    }
 }
 
 void gui_button(gui_t *gui, u32 id, str_t text, f32 w, f32 h, ui_config_t cfg)
