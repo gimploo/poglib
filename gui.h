@@ -155,38 +155,9 @@ bool    gui_ui_isclicked(gui_t *const self, const u32 id);
     ((SELF)->callback((SELF), __VA_ARGS__));\
 } while(0);
 
-#define gui_button(GUI, ID, TEXT, W, H, ...) \
-    gui_ui_compose_begin((GUI), (ui_config_t){ \
-        .id = (ID), \
-        .composition = { \
-            .traits = UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE, \
-            .styles = UI_STYLE_ROUNDED_CORNERS, \
-        }, \
-        .dim = { .min_width = (W), .min_height = (H) }, \
-        .text = (TEXT), \
-        __VA_ARGS__ \
-    })
-
-#define gui_label(GUI, TEXT, W, H, ...) \
-    do { \
-        gui_ui_compose_begin((GUI), (ui_config_t){ \
-            .composition = { .styles = UI_STYLE_ONLY_TEXT }, \
-            .dim = { .min_width = (W), .min_height = (H) }, \
-            .color = { .base = COLOR_WHITE }, \
-            .text = (TEXT), \
-            __VA_ARGS__ \
-        }); \
-        gui_ui_compose_end((GUI)); \
-    } while(0)
-
-#define gui_panel(GUI, W, H, ...) \
-    gui_ui_compose_begin((GUI), (ui_config_t){ \
-        .dim = { .min_width = (W), .min_height = (H) }, \
-        .color = { .base = COLOR_BLACK }, \
-        __VA_ARGS__ \
-    })
-
-
+void    gui_button(gui_t *gui, u32 id, str_t text, f32 w, f32 h, ui_config_t cfg);
+void    gui_label(gui_t *gui, str_t text, f32 w, f32 h, ui_config_t cfg);
+void    gui_panel(gui_t *gui, f32 w, f32 h, ui_config_t cfg);
 void    gui_render(gui_t *self);
 void    gui_destroy(gui_t *self);
 
@@ -450,6 +421,34 @@ void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
         .is_text = false,
     };
     list_append(&gui->gfx.instanced_attrs, attr);
+}
+
+void gui_button(gui_t *gui, u32 id, str_t text, f32 w, f32 h, ui_config_t cfg)
+{
+    cfg.id = id;
+    cfg.composition.traits = UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE;
+    cfg.composition.styles = UI_STYLE_ROUNDED_CORNERS;
+    cfg.dim.min_width  = (u32)w;
+    cfg.dim.min_height = (u32)h;
+    cfg.text = text;
+    gui_ui_compose_begin(gui, cfg);
+}
+
+void gui_label(gui_t *gui, str_t text, f32 w, f32 h, ui_config_t cfg)
+{
+    cfg.composition.styles = UI_STYLE_ONLY_TEXT;
+    cfg.dim.min_width  = (u32)w;
+    cfg.dim.min_height = (u32)h;
+    cfg.text = text;
+    gui_ui_compose_begin(gui, cfg);
+    gui_ui_compose_end(gui);
+}
+
+void gui_panel(gui_t *gui, f32 w, f32 h, ui_config_t cfg)
+{
+    cfg.dim.min_width  = (u32)w;
+    cfg.dim.min_height = (u32)h;
+    gui_ui_compose_begin(gui, cfg);
 }
 
 
