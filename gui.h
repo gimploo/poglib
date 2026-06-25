@@ -38,7 +38,8 @@ typedef enum {
 
 typedef enum {
     UI_STYLE_NONE               = 0,
-    UI_STYLE_ROUNDED_CORNERS    = 1 << 0
+    UI_STYLE_ROUNDED_CORNERS    = 1 << 0,
+    UI_STYLE_ONLY_TEXT          = 1 << 1,
 } ui_style_config;
 
 typedef struct {
@@ -62,12 +63,12 @@ typedef struct {
     } padding, margin, border, corners;
 
     struct {
-        u32 mid_width;
+        u32 min_width;
         u32 min_height;
     } dim;
 
     u32 id;
-    str_t label;
+    str_t text;
 
     struct {
         vec4f_t base;
@@ -245,9 +246,13 @@ void gui_ui_compose_end(gui_t *gui)
 void gui__internal_ui_validate_config(ui_config_t config)
 {
     ASSERT(config.dim.min_height > 0);
-    ASSERT(config.dim.mid_width > 0);
+    ASSERT(config.dim.min_width > 0);
     if (config.composition.traits & UI_BEHAVIOR_CLICKABLE) {
         ASSERT(config.id != 0);
+    }
+
+    if (config.composition.styles & UI_STYLE_ONLY_TEXT) {
+        ASSERT(config.text.len > 0);
     }
 }
 
@@ -258,7 +263,7 @@ ui_region_t gui__internal_ui_add_child(gui_t *gui, const ui_config_t config)
         .buffer[gui->internal.layout_cursor_stack.top];
 
     const ui_region_t parent_region = parent_layout.region;
-    const u32 width_enclosed_by_child_region = config.margin.left + config.dim.mid_width + config.margin.right;
+    const u32 width_enclosed_by_child_region = config.margin.left + config.dim.min_width + config.margin.right;
 
     //1. Does child fit in parent's region
     //2. Extend size of parent to encapsulate the child
@@ -269,7 +274,7 @@ ui_region_t gui__internal_ui_add_child(gui_t *gui, const ui_config_t config)
     ui_region_t child_region = {
         .cursor.x = current_cursor.x + config.margin.left,
         .cursor.y = current_cursor.y + config.margin.top,
-        .width  = config.dim.mid_width,
+        .width  = config.dim.min_width,
         .height = config.dim.min_height
     };
 
@@ -327,14 +332,14 @@ ui_region_t gui__internal_ui_add_child(gui_t *gui, const ui_config_t config)
 void gui__internal_ui_create_text_internal(gui_t * const gui, const ui_region_t child_region, const ui_config_t config)
 {
     vec2f_t starting_pos = child_region.cursor;
-    const f32 offset = config.dim.mid_width / config.label.len;
-    for (u32 i = 0; i < config.label.len; i++)
+    const f32 offset = config.dim.min_width / config.text.len;
+    for (u32 i = 0; i < config.text.len; i++)
     {
         const box_t quad = glfreetypefont_generate_uv_for_char(
                 &gui->freetypefont, 
-                config.label.data[i]);
+                config.text.data[i]);
 
-        const u8 character = config.label.data[i];
+        const u8 character = config.text.data[i];
         const f32 glyph_w = gui->freetypefont.fontatlas[character].bw;
         const f32 glyph_h = gui->freetypefont.fontatlas[character].bh;
         const f32 bearing_x = gui->freetypefont.fontatlas[character].bl;
@@ -369,7 +374,7 @@ void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
     gui__internal_update_state(gui, config);
     const vec4f_t computed_color = gui__internal_get_color(gui, config);
 
-    if (config.label.len) {
+    if (config.composition.styles & UI_STYLE_ONLY_TEXT) {
         gui__internal_ui_create_text_internal(gui, child_region, config);
         return;
     }
@@ -410,7 +415,7 @@ void gui_render(gui_t *self)
 
     gui__internal_reset_layout_cursor(self);
 
-    const matrix4f_t ortho_ndc = glms_ortho(0.0f, global_window->width, global_window->height, 0.0f, -2.0f, 2.0f);
+    const matrix4f_t ortho_ndc = glms_ortho(0.0f, global_window->width, global_window->height, 0.0f, -2.0f * MAX_UI_NESTING_ALLOWED, 2.0f * MAX_UI_NESTING_ALLOWED);
 
     glrenderer3d_draw((glrendererconfig_t) {
         .calls = {
