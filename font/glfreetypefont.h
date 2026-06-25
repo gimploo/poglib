@@ -19,7 +19,9 @@
 //quad, when passing the position
 
 #define MAX_CHARACTERS_IN_FREETYPE 128
+#ifndef DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH
 #define DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH "lib/poglib/res/ttf_fonts/Roboto-Medium.ttf"
+#endif
 
 typedef struct glfreetypefont_t {
 

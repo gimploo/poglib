@@ -12,6 +12,7 @@
 #include "poglib/util/asset.h"
 #include "poglib/util/assetmanager.h"
 #include "poglib/util/glcamera.h"
+#include "poglib/util/workbench/common.h"
 
 void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
@@ -114,7 +115,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                                     },
                                     [5] = {
                                         .name = str_lit("light.color"),
-                                        .value.vec4 = COLOR_WHITE
+                                        .value.vec4 = global_workbench->editor.selected_entity_id == entry->entity_id ? COLOR_RED : COLOR_WHITE
                                     },
                                     [6] = {
                                         .name = str_lit("light.ambient"),

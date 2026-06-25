@@ -101,7 +101,7 @@ typedef struct {
     f32            is_text;
 } ui_attr_t;
 
-#define MAX_UI_NESTING_ALLOWED 4
+#define MAX_UI_NESTING_ALLOWED 16
 
 typedef struct gui_t gui_t;
 
@@ -168,13 +168,16 @@ bool    gui_ui_isclicked(gui_t *const self, const u32 id);
     })
 
 #define gui_label(GUI, TEXT, W, H, ...) \
-    gui_ui_compose_begin((GUI), (ui_config_t){ \
-        .composition = { .styles = UI_STYLE_ONLY_TEXT }, \
-        .dim = { .min_width = (W), .min_height = (H) }, \
-        .color = { .base = COLOR_WHITE }, \
-        .text = (TEXT), \
-        __VA_ARGS__ \
-    })
+    do { \
+        gui_ui_compose_begin((GUI), (ui_config_t){ \
+            .composition = { .styles = UI_STYLE_ONLY_TEXT }, \
+            .dim = { .min_width = (W), .min_height = (H) }, \
+            .color = { .base = COLOR_WHITE }, \
+            .text = (TEXT), \
+            __VA_ARGS__ \
+        }); \
+        gui_ui_compose_end((GUI)); \
+    } while(0)
 
 #define gui_panel(GUI, W, H, ...) \
     gui_ui_compose_begin((GUI), (ui_config_t){ \
@@ -311,7 +314,6 @@ ui_region_t gui__internal_ui_add_child(gui_t *gui, const ui_config_t config)
 
     if (config.size_mode == UI_SIZE_FILL) {
         child_width = parent_region.width - (f32)(config.margin.left + config.margin.right);
-        child_height = parent_layout.region.height - (f32)(config.margin.top + config.margin.bottom);
     }
 
     const f32 width_enclosed_by_child_region = (f32)config.margin.left + child_width + (f32)config.margin.right;
@@ -362,8 +364,12 @@ ui_region_t gui__internal_ui_add_child(gui_t *gui, const ui_config_t config)
                     .x = child_region.cursor.x + (f32)config.padding.left,
                     .y = child_region.cursor.y + (f32)config.padding.top
                 },
-                .height = child_region.height,
-                .width = child_region.width
+                .height = child_region.height - (f32)(config.padding.top + config.padding.bottom) > 0.0f
+                    ? child_region.height - (f32)(config.padding.top + config.padding.bottom)
+                    : 0.0f,
+                .width  = child_region.width  - (f32)(config.padding.left + config.padding.right) > 0.0f
+                    ? child_region.width  - (f32)(config.padding.left + config.padding.right)
+                    : 0.0f,
             },
             .max_row_height = (u32)child_region.height,
             .starting_region = child_region

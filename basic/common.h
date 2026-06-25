@@ -25,7 +25,9 @@
 
 //NOTE: this should be truncated along the start of all file paths 
 //TODO: possible to inject string path here via the forge build script ?
+#ifndef POGLIB_ROOT_DIR
 #define POGLIB_ROOT_DIR     "lib/poglib"
+#endif
 
 typedef unsigned char   u8;
 typedef char            i8;
