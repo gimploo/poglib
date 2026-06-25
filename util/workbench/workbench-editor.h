@@ -69,26 +69,32 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
     if (!global_workbench->editor.selected_entity_id) return;
 
     gui_t *const gui = &global_workbench->gui.handle;
+    printf("selected entityId = %i\n", global_workbench->editor.selected_entity_id);
 
     gui_ui_compose_begin(gui, (ui_config_t) {
             .dim = {
-                .min_width = 200,
-                .min_height = 200,
+                .min_width = 150,
+                .min_height = 150,
             },
             .margin = {
                 .top = 20.f,
                 .left = 20.f
             },
             .color = {
-                .base = COLOR_DARK_GRAY
+                .base = COLOR_BLACK
             }
     });
-        gui_ui_compose_begin(gui, (ui_config_t) {
-                .id = 1,
-                .text = str("show transform"),
+    for (u8 idx = 0; idx < 3; idx ++)
+    {
+        const str_t options[3] = {
+            str("T"),
+            str("R"),
+            str("S"),
+        };
+            gui_ui_compose_begin(gui, (ui_config_t) {
+                .id = idx + 2,
                 .composition = {
-                    .styles = UI_STYLE_ONLY_TEXT,
-                    .traits = UI_BEHAVIOR_CLICKABLE 
+                    .traits = UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE 
                 },
                 .dim = {
                     .min_width = 20,
@@ -99,52 +105,30 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                     .left = 20.f
                 },
                 .color = {
-                    .base = COLOR_WHITE
+                    .base = COLOR_GRAY,
+                    .highlight = COLOR_DARK_GRAY
                 }
-        });
-        gui_ui_compose_end(gui);
-        gui_ui_compose_begin(gui, (ui_config_t) {
-                .id = 2,
-                .text = str("rotation"),
-                .composition = {
-                    .traits = UI_BEHAVIOR_CLICKABLE,
-                    .styles = UI_STYLE_ONLY_TEXT
-                },
-                .dim = {
-                    .min_width = 15,
-                    .min_height = 10,
-                },
-                .margin = {
-                    .top = 20.f,
-                    .left = 20.f
-                },
-                .color = {
-                    .base = COLOR_WHITE
-                }
-        });
-        gui_ui_compose_end(gui);
-        gui_ui_compose_begin(gui, (ui_config_t) {
-                .id = 3,
-                .text = str("scale"),
-                .composition = {
-                    .styles = UI_STYLE_ONLY_TEXT,
-                    .traits = UI_BEHAVIOR_CLICKABLE 
-                },
-                .dim = {
-                    .min_width = 15,
-                    .min_height = 10,
-                },
-                .margin = {
-                    .top = 20.f,
-                    .left = 20.f
-                },
-                .color = {
-                    .base = COLOR_WHITE
-                }
-        });
-        gui_ui_compose_end(gui);
+            });
+
+                gui_ui_compose_begin(gui, (ui_config_t) {
+                        .text = options[idx],
+                        .composition = {
+                            .styles = UI_STYLE_ONLY_TEXT,
+                        },
+                        .dim = {
+                            .min_width = 10,
+                            .min_height = 10,
+                        },
+                        .color = {
+                            .base = COLOR_WHITE
+                        }
+                }); gui_ui_compose_end(gui);
+
+            gui_ui_compose_end(gui);
+    }
     gui_ui_compose_end(gui);
 }
+
 
 void workbench_editor_render(void)
 {

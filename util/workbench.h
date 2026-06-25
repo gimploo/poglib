@@ -5,6 +5,7 @@
 #include "./workbench/common.h"
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
+#include "SDL_keycode.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/gui.h"
 #include "poglib/util/workbench/workbench-editor.h"
@@ -225,6 +226,12 @@ workbench_t * workbench_init(arena_t *const arena)
                 [WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT] = {
                     .type = COMMANDINPUTKEY_TYPE_MOUSE,
                     .sdl_mouse.wheel = SDL_MOUSEWHEEL_DOWN,
+                },
+                [WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
+                    .sdl_keyboard_key = {
+                        .scancode = SDL_SCANCODE_ESCAPE
+                    }
                 },
             },
         }
@@ -522,9 +529,25 @@ void workbench_update(const f32 dt)
 
     workbench_editor_update();
 
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED))
-    {
-        global_workbench->editor.selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED))   {
+
+        if (global_workbench->editor.prevmouseclicked_entity_Id != global_workbench->editor.mouse_closest_to_entity_id) {
+            global_workbench->editor.mouseclick_counter = 0;
+        } else {
+            ++global_workbench->editor.mouseclick_counter;
+        }
+
+        if (global_workbench->editor.mouseclick_counter == 2) {
+            global_workbench->editor.selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
+        }
+
+        global_workbench->editor.prevmouseclicked_entity_Id = global_workbench->editor.mouse_closest_to_entity_id;
+        printf("click registered %i \n", global_workbench->editor.mouseclick_counter);
+    }
+
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT))              {
+        global_workbench->editor.selected_entity_id = 0;
+        global_workbench->editor.mouseclick_counter = 0;
     }
 
     ecs_patch_entity(
@@ -536,6 +559,7 @@ void workbench_update(const f32 dt)
             .signature = ECS_CMP_TRANSFORM
         }
     );
+
 }
 
 void workbench_toggle(void)
