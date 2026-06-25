@@ -75,6 +75,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
     if (!global_workbench->editor.selected_entity_id) return;
 
     gui_t *const gui = &global_workbench->gui.handle;
+    printf("selected entityId = %i\n", global_workbench->editor.selected_entity_id);
 
     gui_ui_compose_begin(gui, (ui_config_t) {
             .dim = {

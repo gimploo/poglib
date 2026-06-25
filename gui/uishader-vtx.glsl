@@ -9,18 +9,23 @@ layout (location = 2) in vec4 region_color;  // [r, g, b, a]
 layout (location = 3) in float zorder; 
 layout (location = 4) in vec4 uv_rect; // [x, y, w, h] in pixels
 layout (location = 5) in float is_text; 
+layout (location = 6) in float corner_radius; 
 
 uniform mat4 projection;
 
 out vec4 v_Color;
 out vec2 v_UV;
 out float v_is_text;
+out vec2 v_quad_coord;
+out float v_corner_radius;
 
 void main()
 {
     v_Color = region_color;
     v_UV = uv_rect.xy + (quad_vtx * uv_rect.zw);
     v_is_text = is_text;
+    v_quad_coord = quad_vtx;
+    v_corner_radius = corner_radius;
 
     // Instance Position calculation: 
     // We scale the unit quad by width/height and offset by x/y
