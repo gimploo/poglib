@@ -7,12 +7,19 @@
 #include "./workbench-debug-renderer.h"
 
 
+typedef enum gizmo_mode {
+    GIZMO_MODE_TRANSLATE = 0,
+    GIZMO_MODE_ROTATE,
+    GIZMO_MODE_SCALE,
+} gizmo_mode_t;
+
 typedef enum workbench_action_type {
-    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG         = 0,
-    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED = 1,
-    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN                = 2,
-    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT               = 3,
-    WORKBENCH_ACTION_TYPE_CANCEL_ACTION                 = 4,
+    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG             = 0,
+    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED     = 1,
+    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN                    = 2,
+    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT                   = 3,
+    WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT                = 4,
+    WORKBENCH_ACTION_TYPE_GIZMO_CYCLE_MODE                  = 5,
     WORKBENCH_ACTION_TYPE_COUNT
 } workbench_action_type;
 
@@ -52,6 +59,10 @@ typedef struct {
     struct {
         u32 mouse_closest_to_entity_id;
         u32 selected_entity_id;
+
+        u32 prevmouseclicked_entity_Id;
+        u32 mouseclick_counter;
+        gizmo_mode_t gizmo_mode;
     } editor;
 
 } workbench_t;
