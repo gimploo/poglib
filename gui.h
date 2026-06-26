@@ -159,13 +159,9 @@ void    gui_set_composition(gui_t * const self, ui_composition callback);
 bool    gui_ui_ishovered(gui_t *const self, const u32 id);
 bool    gui_ui_isclicked(gui_t *const self, const u32 id);
 
-#define gui_update(SELF, ...) do {\
-    gui__internal_reset_state(SELF);\
-    ((SELF)->callback((SELF), __VA_ARGS__));\
-} while(0);
+void    gui_run(gui_t *const self, const bool render_as_wireframe);
 
-void    gui_render(gui_t *self);
-void    gui_destroy(gui_t *self);
+void    gui_destroy(gui_t *const self);
 
 
 
@@ -498,11 +494,15 @@ void gui__internal_reset_state(gui_t *self)
     self->state.hovered_ui_id = 0;
 }
 
-void gui_render(gui_t *self)
+void gui_run(gui_t *const self, const bool render_as_wireframe)
 {
     if (!self->callback) {
         eprint("No ui composition provided!");
     }
+
+    gui__internal_reset_state(self);
+
+    self->callback(self);
 
     gui__internal_reset_layout_cursor(self);
 
@@ -513,6 +513,7 @@ void gui_render(gui_t *self)
             .count = 1,
             .call = {
                [0] = {
+                    .is_wireframe = render_as_wireframe,
                     .disable_depth_buffer = true,
                     .instancing = {
                         .enable = true,

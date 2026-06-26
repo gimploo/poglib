@@ -1,5 +1,6 @@
 #pragma once
 #include "./common.h"
+#include "poglib/basic/str.h"
 #include "poglib/ecs.h"
 #include "poglib/gui.h"
 #include "poglib/gfx/glrenderer3d.h"
@@ -75,13 +76,12 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
     if (!global_workbench->editor.selected_entity_id) return;
 
     gui_t *const gui = &global_workbench->gui.handle;
-    printf("selected entityId = %i\n", global_workbench->editor.selected_entity_id);
 
     gui_ui_compose_begin(gui, (ui_config_t) {
         .layout = UI_LAYOUT_VERTICAL,
         .dim = {
             .min_width = 300,
-            .min_height = 150,
+            .min_height = 250,
         },
         .margin = {
             .top = 5.f,
@@ -91,6 +91,33 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
             .base = COLOR_BLACK
         }
     });
+
+        //Entity label
+        { 
+
+            char tempbuffer[32] = {0};
+            snprintf(tempbuffer, sizeof(tempbuffer), "Id: %d", global_workbench->editor.selected_entity_id);
+
+            gui_ui_compose_begin(gui, (ui_config_t){
+                .composition = {
+                    .styles = UI_STYLE_ONLY_TEXT,
+                },
+                .dim = {
+                    .min_width  = 80,
+                    .min_height = 30,
+                },
+                .text = str__from_cstr(tempbuffer, sizeof(tempbuffer)),
+                .color = {
+                    .base = COLOR_WHITE
+                },
+                .margin = {
+                    .top = 5.f,
+                    .left = 5.f,
+                }
+            });
+            gui_ui_compose_end(gui);
+        }
+
         for (u8 idx = 0; idx < 3; idx ++)
         {
             const str_t options[3] = {
@@ -117,7 +144,36 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                 }
             };
 
-            gui_ui_compose_begin(gui, cfg);
+            //Container
+            gui_ui_compose_begin(gui, (ui_config_t){
+                .dim = {
+                    .min_width = 250,
+                    .min_height = 50,
+                },
+                .padding = {
+                    .top = 5.f, 
+                    .left = 5.f 
+                }
+            });
+            {
+
+                //Label
+                gui_ui_compose_begin(gui, cfg);
+                gui_ui_compose_end(gui);
+
+                //Slider
+                {
+                    gui_ui_compose_begin(gui, (ui_config_t){
+                        .color = COLOR_ABYSS_BLUE,
+                        .dim = {
+                            .min_height = 30,
+                            .min_width = 80 
+                        }
+                    });
+                    gui_ui_compose_end(gui);
+                }
+
+            }
             gui_ui_compose_end(gui);
 
         }

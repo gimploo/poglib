@@ -1,6 +1,5 @@
 #pragma once
 #include <poglib/basic.h>
-#include <poglib/input/commandqueue.h>
 #include <poglib/gui.h>
 #include <poglib/util/glcamera.h>
 
@@ -20,6 +19,8 @@ typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT                   = 3,
     WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT                = 4,
     WORKBENCH_ACTION_TYPE_GIZMO_CYCLE_MODE                  = 5,
+    WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME                  = 6,
+    WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION            = 7,
     WORKBENCH_ACTION_TYPE_COUNT
 } workbench_action_type;
 

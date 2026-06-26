@@ -4,6 +4,7 @@
 #include "poglib/basic/color.h"
 #include "poglib/basic/str.h"
 #include "poglib/poggen.h"
+#include "poglib/util/workbench/workbench-editor.h"
 #include <poglib/gui.h>
 
 typedef enum WORKBENCH_GUI_BUTTON_IDS {
@@ -224,9 +225,10 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
     }
     gui_ui_compose_end(gui);
     gui_ui_compose_end(gui);
+
+
+    workbench_editor_render();
 }
-
-
 
 
 void workbench__internal_compose_ui__test(const application_t * const app, gui_t *gui)

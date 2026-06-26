@@ -203,6 +203,9 @@ bool window_mouse_button_is_released(
          window->mouse.button == button;
 }
 
+//FIXME: this is bad - this not the pattern we follow else where why is this
+//an exception
+
 bool window_keyboard_is_key_just_pressed(window_t *window, SDL_Keycode key)
 {
     bool output = window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)];
@@ -302,7 +305,7 @@ void window_set_background(window_t *window, vec4f_t color)
 }
 
 
-INTERNAL void __mouse_update_position(window_t *window)
+INTERNAL void sdl_window__internal__mouse_update_position(window_t *window)
 {
     i32 x, y;
     SDL_GetMouseState(&x, &y);
@@ -381,7 +384,7 @@ static inline window_t __subwindow_init(const char *title, u64 width, u64 height
 
     output.__sdl_window_id  = SDL_GetWindowID(output.__sdl_window);
 
-    __mouse_update_position(&output);
+    sdl_window__internal__mouse_update_position(&output);
 
     return output;
 
@@ -413,7 +416,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 
     win.background_color = DEFAULT_BACKGROUND_COLOR;
 
-    __mouse_update_position(&win);
+    sdl_window__internal__mouse_update_position(&win);
     win.mouse.state = SDL_MOUSESTATE_NONE;
 
     win.subwindow.window = NULL;
@@ -792,7 +795,7 @@ void window_subwindow_render_stuff(window_t *subwindow, void (*stuff)(void *), v
 
 #define SDL_KEYSTATE_UNKNOWN SDL_FIRSTEVENT
 
-//NOTE: this is NOT ran in a fixed tick rate
+//NOTE: this is NOT designed to be ran in a fixed tick rate
 void window_poll_input_events(window_t *window)
 {
     SDL_Event *event = &window->__sdl_event;
@@ -824,7 +827,7 @@ void window_poll_input_events(window_t *window)
 
             case SDL_MOUSEMOTION:
                 is_mouse_moving = true;
-                __mouse_update_position(window);
+                sdl_window__internal__mouse_update_position(window);
                 switch(window->mouse.state)
                 {
                     case SDL_MOUSESTATE_RELEASED:
