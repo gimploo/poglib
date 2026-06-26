@@ -78,61 +78,49 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
     printf("selected entityId = %i\n", global_workbench->editor.selected_entity_id);
 
     gui_ui_compose_begin(gui, (ui_config_t) {
-            .dim = {
-                .min_width = 150,
-                .min_height = 150,
-            },
-            .margin = {
-                .top = 20.f,
-                .left = 20.f
-            },
-            .color = {
-                .base = COLOR_BLACK
-            }
+        .layout = UI_LAYOUT_VERTICAL,
+        .dim = {
+            .min_width = 300,
+            .min_height = 150,
+        },
+        .margin = {
+            .top = 5.f,
+            .left = 5.f
+        },
+        .color = {
+            .base = COLOR_BLACK
+        }
     });
-    for (u8 idx = 0; idx < 3; idx ++)
-    {
-        const str_t options[3] = {
-            str("T"),
-            str("R"),
-            str("S"),
-        };
-            gui_ui_compose_begin(gui, (ui_config_t) {
-                .id = idx + 1,
+        for (u8 idx = 0; idx < 3; idx ++)
+        {
+            const str_t options[3] = {
+                str("Translation"),
+                str("Rotation"),
+                str("Scale"),
+            };
+
+            const ui_config_t cfg = {
                 .composition = {
-                    .traits = UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE 
+                    .styles = UI_STYLE_ONLY_TEXT,
                 },
                 .dim = {
-                    .min_width = 20,
-                    .min_height = 15,
+                    .min_width  = 80,
+                    .min_height = 30,
+                },
+                .text = options[idx],
+                .color = {
+                    .base = COLOR_WHITE
                 },
                 .margin = {
-                    .top = 20.f,
-                    .left = 20.f
-                },
-                .color = {
-                    .base = COLOR_GRAY,
-                    .highlight = COLOR_DARK_GRAY
+                    .top = 5.f,
+                    .left = 5.f,
                 }
-            });
+            };
 
-                gui_ui_compose_begin(gui, (ui_config_t) {
-                        .id = idx + 1,
-                        .text = options[idx],
-                        .composition = {
-                            .styles = UI_STYLE_ONLY_TEXT,
-                        },
-                        .dim = {
-                            .min_width = 10,
-                            .min_height = 10,
-                        },
-                        .color = {
-                            .base = COLOR_WHITE
-                        }
-                }); gui_ui_compose_end(gui);
-
+            gui_ui_compose_begin(gui, cfg);
             gui_ui_compose_end(gui);
-    }
+
+        }
     gui_ui_compose_end(gui);
 }
 
