@@ -1,12 +1,6 @@
 #pragma once
-#include "./common.h"
-#include "poglib/basic/str.h"
-#include "poglib/ecs.h"
-#include "poglib/ecs/component/types.h"
-#include "poglib/gui.h"
-#include "poglib/gfx/glrenderer3d.h"
-#include <poglib/math.h>
-#include <stdio.h>
+#include <poglib/util/workbench/common.h>
+#include <poglib/ecs.h>
 
 #define GIZMO_CIRCLE_SEGMENTS 32
 #define GIZMO_AXIS_LENGTH 0.15f
@@ -144,8 +138,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                 }
             });
             {
-
-                //Label
+                //NOTE: T.R.S Operation label
                 gui_ui_compose_begin(gui, (ui_config_t){
                     .composition = {
                         .styles = UI_STYLE_ONLY_TEXT,
@@ -164,7 +157,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                 });
                 gui_ui_compose_end(gui);
 
-                //Slider
+                //NOTE: Slider
                 {
                     ui_config_t value_style = {
                         .composition = {
@@ -185,9 +178,9 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                     };
 
                     gui_ui_compose_begin(gui, (ui_config_t){
-                        .id = 67,
+                        .id = 67 + (3 * idx),
                         .composition = {
-                            .traits = UI_BEHAVIOR_TRACK_STATE_RANGE | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
+                            .traits = UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
                         },
                         .dim = {
                             .min_width = 50,
@@ -202,6 +195,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                             .size = sizeof(f32)
                         },
                     });
+                    {
                         //Label
                         memset(tempbuffer, 0, sizeof(tempbuffer));
 
@@ -215,9 +209,9 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                     gui_ui_compose_end(gui);
 
                     gui_ui_compose_begin(gui, (ui_config_t){
-                        .id = 67,
+                        .id = 68 + (3 * idx),
                         .composition = {
-                            .traits = UI_BEHAVIOR_TRACK_STATE_RANGE | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
+                            .traits = UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
                         },
                         .color = {
                             .base = COLOR_GREEN,
@@ -231,6 +225,9 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                             .ref = (void *)&transform->position.y,
                             .size = sizeof(f32)
                         },
+                        .margin = {
+                            .left = 10.f 
+                        }
                     });
                         //Label
                         memset(tempbuffer, 0, sizeof(tempbuffer));
@@ -245,13 +242,13 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                     gui_ui_compose_end(gui);
 
                     gui_ui_compose_begin(gui, (ui_config_t){
-                        .id = 67,
+                        .id = 69 + (3 * idx),
                         .color = {
                             .base = COLOR_BLUE,
                             .highlight = COLOR_LIGHTBLUE,
                         },
                         .composition = {
-                            .traits = UI_BEHAVIOR_TRACK_STATE_RANGE | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
+                            .traits = UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
                         },
                         .dim = {
                             .min_width = 50,
@@ -261,6 +258,9 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                             .ref = (void *)&transform->position.z,
                             .size = sizeof(f32)
                         },
+                        .margin = {
+                            .left = 10.f 
+                        }
                     });
                         //Label
                         memset(tempbuffer, 0, sizeof(tempbuffer));
@@ -272,11 +272,13 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                         value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
                         gui_ui_compose_begin(gui, value_style);
                         gui_ui_compose_end(gui);
-                    gui_ui_compose_end(gui);
+
+                    }
+                    gui_ui_compose_end(gui); //NOTE: slider for x, y, z
                 }
 
             }
-            gui_ui_compose_end(gui);
+            gui_ui_compose_end(gui); //NOTE: TRS container
 
         }
     }
