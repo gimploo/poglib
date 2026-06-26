@@ -27,7 +27,7 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
             .base = COLOR_WHITE,
         },
         .dim = {
-            .min_height = 60,
+            .min_height = 50,
             .min_width = global_window->width
         },
     });
@@ -83,7 +83,7 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         },
         .dim = {
             .min_height = 30,
-            .min_width = 140 
+            .min_width = 250
         },
         .padding = {4,4,4,8},
         .margin = {
@@ -96,7 +96,7 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
     {
         const vec2f_t mouse_pos = window_mouse_get_norm_position(global_window);
         memset(tempbuffer, 0, sizeof(tempbuffer));
-        snprintf(tempbuffer, sizeof(tempbuffer), "NDC [ %.2f, %.2f ]", mouse_pos.x, mouse_pos.y);
+        snprintf(tempbuffer, sizeof(tempbuffer), "NDC [ %.2f, %.2f ] | ", mouse_pos.x, mouse_pos.y);
         gui_ui_compose_begin(gui, (ui_config_t){ 
             .composition = {
                 .styles = UI_STYLE_ONLY_TEXT
@@ -106,7 +106,7 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
             },
             .dim = {
                 .min_height = 20,
-                .min_width = 100 
+                .min_width = 120 
             },
             .padding = {0},
             .margin = {2,2,2,2},
@@ -129,7 +129,7 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
                 .min_width = 100 
             },
             .padding = {0},
-            .margin = {0},
+            .margin = {2,2,2,2},
             .text = str__from_cstr(tempbuffer, sizeof(tempbuffer))
         });
         gui_ui_compose_end(gui);
