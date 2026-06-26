@@ -94,7 +94,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
             .left = 5.f
         },
         .color = {
-            .base = COLOR_BLACK
+            .base = COLOR_ABYSS_BLUE
         }
     });
     {

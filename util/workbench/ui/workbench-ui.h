@@ -14,7 +14,7 @@ typedef enum WORKBENCH_GUI_BUTTON_IDS {
 } WORKBENCH_GUI_BUTTON_IDS;
 
 
-void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
+void workbench_compose_ui(gui_t *const gui)
 {
     char tempbuffer[32] = {0};
 
@@ -153,7 +153,7 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         }
     }); 
     {
-        const vec2f_t mouse_pos = window_mouse_get_norm_position(global_window);
+        const vec3f_t camera_pos = global_workbench->world_camera.handle->position;
         memset(tempbuffer, 0, sizeof(tempbuffer));
         snprintf(tempbuffer, sizeof(tempbuffer), "cam pos [ %.2f, %.2f, %.2f ]", camera_pos.x, camera_pos.y, camera_pos.z);
         gui_ui_compose_begin(gui, (ui_config_t){ 
@@ -191,7 +191,7 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
         },
         .color = {
             .base = COLOR_WHITE,
-            .highlight = COLOR_OFFWHITE
+            .highlight = COLOR_GRAY
         },
         .margin = {
             .left = 5, 
@@ -217,7 +217,6 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
             },
             .color = {
                 .base = COLOR_BLACK,
-                .highlight = COLOR_BLUE
             },
             .text = str("show colliders"),
         });
