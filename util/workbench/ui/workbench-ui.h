@@ -180,7 +180,6 @@ void workbench_compose_ui(gui_t *const gui)
             .styles = UI_STYLE_ROUNDED_CORNERS,
             .traits = UI_BEHAVIOR_CLICKABLE | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_TRACK_STATE_TOGGLE
         },
-        .id = WB_COLLIDER_TOGGLE,
         .binding = {
             .ref = &global_workbench->enable_collider,
             .size = sizeof(bool)
@@ -207,7 +206,6 @@ void workbench_compose_ui(gui_t *const gui)
         }
     });{
         gui_ui_compose_begin(gui, (ui_config_t) {
-            .id = WB_COLLIDER_TOGGLE,
             .composition = {
                 .styles = UI_STYLE_ONLY_TEXT
             },

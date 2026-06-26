@@ -535,10 +535,6 @@ void workbench_update(const f32 dt)
     if (!global_workbench->is_active) return;
 
     const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
-    if (gui_ui_ishovered(&global_workbench->gui.handle, WB_COLLIDER_TOGGLE) && (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED)))
-    {
-        global_workbench->enable_collider = !global_workbench->enable_collider;
-    }
 
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME)) 
         global_workbench->render_config.wireframe_mode = !global_workbench->render_config.wireframe_mode;
