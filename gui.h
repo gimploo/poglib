@@ -102,10 +102,10 @@ typedef struct {
     } color;
 
     //WARN: AI introduced this, use with care - not tested!
-    ui_text_align   text_align;
-    ui_size_mode    size_mode;
+    ui_text_align       text_align;
+    ui_size_mode        size_mode;
 
-    ui_valuebinding_t binding;
+    ui_valuebinding_t   binding;
 
 } ui_config_t;
 
@@ -238,11 +238,12 @@ void gui__internal_update_state(gui_t *gui, const ui_config_t config)
         .buffer[gui->internal.layout_cursor_stack.top]
         .region;
 
-    const bool is_cursor_on_ui  = (f32)mouse_pos.x > region.cursor.x
-                                    && (f32)mouse_pos.x < region.cursor.x + region.width
-                                    && (f32)mouse_pos.y > region.cursor.y
-                                    && (f32)mouse_pos.y < region.cursor.y + region.height;
-    const bool is_ui_clicked    = is_cursor_on_ui && window_mouse_button_just_pressed(global_window, SDL_MOUSEBUTTON_LEFT);
+    const bool is_cursor_on_ui = ((f32)mouse_pos.x > region.cursor.x)
+        && ((f32)mouse_pos.x < region.cursor.x + region.width)
+        && ((f32)mouse_pos.y > region.cursor.y)
+        && ((f32)mouse_pos.y < region.cursor.y + region.height);
+
+    const bool is_ui_clicked = is_cursor_on_ui && window_mouse_button_just_pressed(global_window, SDL_MOUSEBUTTON_LEFT);
 
     gui->state.hovered_ui_id = is_cursor_on_ui
         ? config.id
@@ -256,17 +257,23 @@ void gui__internal_update_state(gui_t *gui, const ui_config_t config)
     }
 
     const bool is_released = window_mouse_button_is_released(global_window, SDL_MOUSEBUTTON_LEFT);
-    if ((config.composition.traits & UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG) && (is_cursor_on_ui || is_released)) {
-        //NOTE: the behavior here is to track the ui on mouse drag and on mouse click release
+    if (config.composition.traits & UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG) {
+
+        //TODO: the behavior here is to track the ui on mouse drag / click and on mouse click release
         //the ui is untracked
 
         if (is_ui_clicked && !gui->internal.mouse_lock_on_ui.ui_id) {
             gui->internal.mouse_lock_on_ui.ui_id = config.id;
         }
 
+        if ((gui->internal.mouse_lock_on_ui.ui_id == config.id) && !is_released) {
+            const vec2i_t rel = global_window->mouse.rel;
+            *((f32 *)config.binding.ref) += (rel.x / 10.f);
+        }
+
         if (is_released) {
             if (gui->internal.mouse_lock_on_ui.ui_id == config.id && !is_cursor_on_ui) {
-                gui->internal.mouse_lock_on_ui.ui_id = 0; // released outside → clear
+                gui->internal.mouse_lock_on_ui.ui_id = 0;
             }
         }
     }
