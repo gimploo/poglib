@@ -6,6 +6,7 @@
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
 #include "SDL_keycode.h"
+#include "poglib/application/window/sdl_window.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/gui.h"
 #include "poglib/util/workbench/workbench-editor.h"
@@ -219,6 +220,13 @@ workbench_t * workbench_init(arena_t *const arena)
                         .trigger    = SDL_MOUSESTATE_JUST_PRESSED,
                     }
                 },
+                [WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED] = {
+                    .type = COMMANDINPUTKEY_TYPE_MOUSE,
+                    .sdl_mouse = {
+                        .key        = SDL_MOUSEBUTTON_LEFT,
+                        .trigger    = SDL_MOUSESTATE_JUST_PRESSED,
+                    }
+                },
                 [WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN] = {
                     .type = COMMANDINPUTKEY_TYPE_MOUSE,
                     .sdl_mouse.wheel = SDL_MOUSEWHEEL_UP,
@@ -239,6 +247,19 @@ workbench_t * workbench_init(arena_t *const arena)
                         .scancode = SDL_SCANCODE_G
                     }
                 },
+                [WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
+                    .sdl_keyboard_key = {
+                        .scancode = SDL_SCANCODE_TAB
+                    }
+                },
+                [WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION] = {
+                    .type = COMMANDINPUTKEY_TYPE_MOUSE,
+                    .sdl_mouse = {
+                        .key = SDL_MOUSEBUTTON_RIGHT,
+                        .trigger= SDL_MOUSESTATE_JUST_PRESSED,
+                    },
+                }
             },
         }
     };
@@ -263,10 +284,6 @@ matrix4f_t workbench__internal_get_camera_view(const workbench_t *const self)
 }
 
 
-void workbench__internal_render_ui(workbench_t *self)
-{
-    gui_render(&self->gui.handle);
-}
 
 #if 0
 void workbench__internal_render_lightsources(workbench_t *self)
@@ -348,7 +365,6 @@ void workbench_destroy(void)
 
 
 
-void workbench__internal_update_ui(workbench_t * const self, const vec3f_t worlcamera_position);
 
 void workbench_render(void)
 {
@@ -357,7 +373,6 @@ void workbench_render(void)
 
     if (!self->is_active) return;
 
-    workbench__internal_update_ui(self, self->world_camera.handle->position);
 
     if (!self->disable_grid) {
         workbench__internal_render_grid(
@@ -378,17 +393,9 @@ void workbench_render(void)
     }
 
     if (self->gui.enable) {
-        workbench_editor_render();
-        workbench__internal_render_ui(self);
+        gui_run(&self->gui.handle, self->render_config.wireframe_mode);
     }
 
-}
-
-void workbench__internal_update_ui(workbench_t * const self, const vec3f_t world_camera_position)
-{
-    if (!self->gui.enable) return;
-
-    gui_update(&self->gui.handle, world_camera_position);
 }
 
 void workbench_render_camera(
@@ -533,9 +540,12 @@ void workbench_update(const f32 dt)
         global_workbench->enable_collider = !global_workbench->enable_collider;
     }
 
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME)) 
+        global_workbench->render_config.wireframe_mode = !global_workbench->render_config.wireframe_mode;
+
     workbench_editor_update();
 
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED))   {
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION))   {
 
         if (global_workbench->editor.prevmouseclicked_entity_Id != global_workbench->editor.mouse_closest_to_entity_id) {
             global_workbench->editor.mouseclick_counter = 0;
@@ -548,10 +558,9 @@ void workbench_update(const f32 dt)
         }
 
         global_workbench->editor.prevmouseclicked_entity_Id = global_workbench->editor.mouse_closest_to_entity_id;
-        printf("click registered %i \n", global_workbench->editor.mouseclick_counter);
     }
 
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT))              {
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT)) {
         global_workbench->editor.selected_entity_id = 0;
         global_workbench->editor.mouseclick_counter = 0;
     }
