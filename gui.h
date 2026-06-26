@@ -153,16 +153,19 @@ struct gui_t {
     } internal;
 
     struct {
+
+        //NOTE: reason to have these two is that sometimes we may want to know if the mouse is over the ui else where 
+        //and `is_mouse_on_ui` is to track during the immediate mode rendering
         u32 hovered_ui_id;
         bool is_mouse_on_ui;
-        ui_valuebinding_t active_binding;
+
     } state;
 
     ui_composition callback;
 };
 
 
-gui_t   gui_init(arena_t * const arena, const ui_region_t starting_region);
+gui_t   gui_init(arena_t *const arena, const ui_region_t starting_region);
 
 //INFO: define this in a function
 void    gui_ui_compose_begin(gui_t * const gui, const ui_config_t config);
@@ -182,7 +185,7 @@ void    gui_destroy(gui_t *const self);
 
 #ifndef IGNORE_GUI_IMPLEMENTATION
 
-gui_t gui_init(arena_t * const arena, const ui_region_t starting_region)
+gui_t gui_init(arena_t *const arena, const ui_region_t starting_region)
 {
     gui_t o = {0};
     o.shader =  glshader_init(
@@ -246,11 +249,6 @@ void gui__internal_update_state(gui_t *gui, const ui_config_t config)
     }
 }
 
-bool gui__internal_is_cursor_on_ui(const gui_t *gui, const ui_config_t config)
-{
-    return gui->state.hovered_ui_id != 0 && config.id == gui->state.hovered_ui_id;
-}
-
 vec4f_t gui__internal_get_color(const gui_t *gui, const ui_config_t config)
 {
     if ((config.composition.traits & UI_BEHAVIOR_HOVERABLE) == 0) {
@@ -259,10 +257,8 @@ vec4f_t gui__internal_get_color(const gui_t *gui, const ui_config_t config)
 
     if (config.composition.traits & UI_BEHAVIOR_TRACK_STATE_TOGGLE) {
         ASSERT(config.binding.ref);
-        return *(bool *)config.binding.ref ? config.color.highlight : config.color.base;
+        return (*(bool *)config.binding.ref || gui->state.is_mouse_on_ui) ? config.color.highlight : config.color.base;
     }
-
-    //return gui__internal_is_cursor_on_ui(gui, config) ? config.color.highlight : config.color.base;
     return gui->state.is_mouse_on_ui ? config.color.highlight : config.color.base;
 }
 
@@ -545,14 +541,15 @@ void gui_run(gui_t *const self, const bool render_as_wireframe)
         eprint("No ui composition provided!");
     }
 
+    gui__internal_reset_layout_cursor(self);
     gui__internal_reset_state(self);
+
+    //NOTE: update starts here
 
     self->callback(self);
 
-    gui__internal_reset_layout_cursor(self);
 
-    const matrix4f_t ortho_ndc = glms_ortho(0.0f, global_window->width, global_window->height, 0.0f, -2.0f * MAX_UI_NESTING_ALLOWED, 2.0f * MAX_UI_NESTING_ALLOWED);
-
+    //NOTE: render starts here
     glrenderer3d_draw((glrendererconfig_t) {
         .calls = {
             .count = 1,
@@ -585,7 +582,7 @@ void gui_run(gui_t *const self, const bool render_as_wireframe)
                             .data = {
                                 [0] = {
                                     .name = str_lit("projection"),
-                                    .value.mat4 = ortho_ndc
+                                    .value.mat4 = glms_ortho(0.0f, global_window->width, global_window->height, 0.0f, -2.0f * MAX_UI_NESTING_ALLOWED, 2.0f * MAX_UI_NESTING_ALLOWED)
                                 },
                             }
                         }
