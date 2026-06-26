@@ -57,7 +57,14 @@ typedef struct {
     f32 height;
 }  ui_region_t;
 
+typedef enum {
+    UI_LAYOUT_HORIZONTAL = 0,
+    UI_LAYOUT_VERTICAL = 1
+} ui_layout_t;
+
 typedef struct {
+
+    ui_layout_t layout;
 
     struct {
         u32 traits; 
@@ -110,8 +117,10 @@ typedef void (*ui_composition)(gui_t *gui, ...);
 typedef struct {
     ui_region_t region;
     u32 max_row_height;
+    u32 max_col_width;
     ui_region_t starting_region; 
-} layout_ctx_t;
+    ui_layout_t layout;
+} cursor_ctx_t;
 
 struct gui_t {
     arena_t arena;
@@ -126,7 +135,7 @@ struct gui_t {
     struct {
         struct {
             i8 top;
-            layout_ctx_t buffer[MAX_UI_NESTING_ALLOWED];
+            cursor_ctx_t buffer[MAX_UI_NESTING_ALLOWED];
         } layout_cursor_stack;
     } internal;
 
@@ -155,8 +164,6 @@ bool    gui_ui_isclicked(gui_t *const self, const u32 id);
     ((SELF)->callback((SELF), __VA_ARGS__));\
 } while(0);
 
-void    gui_button(gui_t *gui, u32 id, str_t text, f32 w, f32 h, ui_config_t cfg);
-void    gui_label(gui_t *gui, str_t text, f32 w, f32 h, ui_config_t cfg);
 void    gui_render(gui_t *self);
 void    gui_destroy(gui_t *self);
 
@@ -184,10 +191,11 @@ gui_t gui_init(arena_t * const arena, const ui_region_t starting_region)
     o.freetypefont = glfreetypefont_init(DEFAULT_FONT_ROBOTO_MEDIUM_FILEPATH, 14, true);
     o.gfx.instanced_attrs = list_init(ui_attr_t, arena);
     o.internal.layout_cursor_stack.top = 0;
-    o.internal.layout_cursor_stack.buffer[0] = (layout_ctx_t){
+    o.internal.layout_cursor_stack.buffer[0] = (cursor_ctx_t){
         .max_row_height = 0,
         .region = starting_region,
-        .starting_region = starting_region
+        .starting_region = starting_region,
+        .max_col_width = 0
     };
     return o;
 }
@@ -229,7 +237,7 @@ vec4f_t gui__internal_get_color(const gui_t *gui, const ui_config_t config)
     return gui__internal_is_cursor_on_ui(gui, config) ? config.color.highlight : config.color.base;
 }
 
-void gui__internal_ui_push_cursor_layout(gui_t *gui, const layout_ctx_t old_cursor__updated, const layout_ctx_t new_cursor)
+void gui__internal_ui_push_cursor_layout(gui_t *gui, const cursor_ctx_t old_cursor__updated, const cursor_ctx_t new_cursor)
 {
     const u8 new_top = ++gui->internal.layout_cursor_stack.top;
     ASSERT(new_top < MAX_UI_NESTING_ALLOWED);
@@ -241,15 +249,6 @@ void gui__internal_ui_pop_cursor_layout(gui_t *gui)
 {
     ASSERT(gui->internal.layout_cursor_stack.top > -1);
     --gui->internal.layout_cursor_stack.top;
-}
-
-vec2f_t gui__internal_get_current_cursor(const gui_t *gui)
-{
-    const ui_region_t region = gui->internal
-        .layout_cursor_stack
-        .buffer[gui->internal.layout_cursor_stack.top].region;
-
-    return region.cursor;
 }
 
 void gui_ui_compose_end(gui_t *gui)
@@ -272,77 +271,88 @@ void gui__internal_ui_validate_config(const ui_config_t config)
 
 ui_region_t gui__internal_ui_add_child(gui_t *gui, const ui_config_t config)
 {
-    const layout_ctx_t parent_layout = gui->internal
+    const cursor_ctx_t parent_layout = gui->internal
         .layout_cursor_stack
         .buffer[gui->internal.layout_cursor_stack.top];
 
-    const ui_region_t parent_region = parent_layout.region;
-    const vec2f_t current_cursor = gui__internal_get_current_cursor(gui);
-
-    f32 child_width  = (f32)config.dim.min_width;
-    f32 child_height = (f32)config.dim.min_height;
+    const ui_region_t parent_region         = parent_layout.region;
+    vec2f_t parents_current_cursor          = parent_layout.region.cursor;
+    const f32 child_height                  = (f32)config.dim.min_height;
+    f32 child_width                         = (f32)config.dim.min_width;
 
     if (config.size_mode == UI_SIZE_FILL) {
         child_width = parent_region.width - (f32)(config.margin.left + config.margin.right);
     }
 
-    const f32 width_enclosed_by_child_region = (f32)config.margin.left + child_width + (f32)config.margin.right;
+    const u32 child_region_width    = config.margin.left + child_width + config.margin.right;
+    const u32 child_region_height   = config.margin.top + config.margin.bottom + child_height;
 
-    ui_region_t child_region = {
-        .cursor.x = current_cursor.x + (f32)config.margin.left,
-        .cursor.y = current_cursor.y + (f32)config.margin.top,
+
+    //NOTE: handle cases where the generated current cursor is outside the containing region
+    {
+        const vec2f_t current_cursor = (vec2f_t ){
+            .x = parents_current_cursor.x + config.margin.left,
+            .y = parents_current_cursor.y + config.margin.top,
+        };
+        const bool is_next_cursor_outside_parent_region_horizontal  = (current_cursor.x  > (parent_layout.starting_region.cursor.x + parent_region.width));
+        const bool is_next_cursor_outside_parent_region_vertical    = (current_cursor.y > (parent_layout.starting_region.cursor.y + parent_region.height));
+
+        if (is_next_cursor_outside_parent_region_horizontal && parent_layout.layout == UI_LAYOUT_HORIZONTAL) {
+            parents_current_cursor.x = parent_layout.starting_region.cursor.x;
+            parents_current_cursor.y = parent_layout.starting_region.cursor.y + parent_layout.max_row_height;
+        }
+
+        if (is_next_cursor_outside_parent_region_vertical && parent_layout.layout == UI_LAYOUT_VERTICAL) {
+            parents_current_cursor.x = parent_layout.starting_region.cursor.x + parent_layout.max_col_width;
+            parents_current_cursor.y = parent_layout.starting_region.cursor.y;
+        }
+    }
+
+    const ui_region_t child_region = {
+        .cursor = (vec2f_t){
+            .x = parents_current_cursor.x + config.margin.left,
+            .y = parents_current_cursor.y + config.margin.top,
+        },
         .width  = child_width,
         .height = child_height
     };
 
-    const f32 next_active_cursor_x = current_cursor.x + width_enclosed_by_child_region;
-
-    const bool is_child_region_at_end_parent_layout_width = next_active_cursor_x >
-        (parent_layout.starting_region.cursor.x + parent_region.width);
-
-    if (is_child_region_at_end_parent_layout_width) {
-        child_region.cursor = (vec2f_t){
-            .x = parent_layout.starting_region.cursor.x + (f32)config.margin.left,
-            .y = current_cursor.y + (f32)parent_layout.max_row_height + (f32)config.margin.top,
+    const vec2f_t next_parent_cursor = parent_layout.layout == UI_LAYOUT_HORIZONTAL 
+        ? (vec2f_t ){
+            .x = parents_current_cursor.x + child_region_width,
+            .y = parents_current_cursor.y
+        } : (vec2f_t ){
+            .x = parents_current_cursor.x,
+            .y = parents_current_cursor.y + child_region_height
         };
-    }
 
-    const f32 row_height = (f32)config.margin.top + (f32)config.margin.bottom + child_height;
 
     gui__internal_ui_push_cursor_layout(
         gui,
-        (layout_ctx_t) {
+        (cursor_ctx_t) {
+            .layout = parent_layout.layout,
             .region = (ui_region_t) {
-                .cursor = is_child_region_at_end_parent_layout_width
-                    ? (vec2f_t){
-                        parent_layout.starting_region.cursor.x + width_enclosed_by_child_region,
-                        current_cursor.y + (f32)parent_layout.max_row_height
-                    }
-                    : (vec2f_t){
-                        next_active_cursor_x,
-                        current_cursor.y
-                    },
+                .cursor = next_parent_cursor,
                 .width = parent_region.width,
                 .height = parent_region.height
             },
-            .max_row_height = MAX(parent_layout.max_row_height, (u32)row_height),
-            .starting_region = parent_layout.starting_region
+            .max_row_height = MAX(parent_layout.max_row_height, child_region_height),
+            .starting_region = parent_layout.starting_region,
+            .max_col_width = MAX(parent_layout.max_col_width, child_region_width),
         },
-        (layout_ctx_t) {
+        (cursor_ctx_t) {
+            .layout = config.layout,
             .region = {
                 .cursor = (vec2f_t){
                     .x = child_region.cursor.x + (f32)config.padding.left,
                     .y = child_region.cursor.y + (f32)config.padding.top
                 },
-                .height = child_region.height - (f32)(config.padding.top + config.padding.bottom) > 0.0f
-                    ? child_region.height - (f32)(config.padding.top + config.padding.bottom)
-                    : 0.0f,
-                .width  = child_region.width  - (f32)(config.padding.left + config.padding.right) > 0.0f
-                    ? child_region.width  - (f32)(config.padding.left + config.padding.right)
-                    : 0.0f,
+                .height = child_region.height - (f32)(config.padding.top + config.padding.bottom),
+                .width  = child_region.width  - (f32)(config.padding.left + config.padding.right),
             },
-            .max_row_height = (u32)child_region.height,
-            .starting_region = child_region
+            .max_row_height     = child_region.height,
+            .starting_region    = child_region,
+            .max_col_width      = child_region.width
         }
     );
     return child_region;
@@ -428,25 +438,44 @@ void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
     }
 }
 
-void gui_button(gui_t *gui, u32 id, str_t text, f32 w, f32 h, ui_config_t cfg)
+void gui_button(gui_t *const gui, const u32 id, const str_t text, const f32 w, const f32 h)
 {
-    cfg.id = id;
-    cfg.composition.traits = UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE;
-    cfg.composition.styles = UI_STYLE_ROUNDED_CORNERS;
-    cfg.dim.min_width  = (u32)w;
-    cfg.dim.min_height = (u32)h;
-    cfg.text = text;
-    gui_ui_compose_begin(gui, cfg);
-    gui_ui_compose_end(gui);
-}
+    const ui_config_t cfg = {
+        .id = id,
+        .composition = {
+            .traits = UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE,
+            .styles = UI_STYLE_ROUNDED_CORNERS,
+        },
+        .margin = {
+            .top = 2.f,
+            .left = 2.f
+        },
+        .dim = {
+            .min_width  = (u32)w,
+            .min_height = (u32)h,
+        },
+        .color = {
+            .base = COLOR_WHITE,
+            .highlight = COLOR_CHARCOAL
+        }
+    };
+    const ui_config_t text_cfg = {
+        .composition = {
+            .styles = UI_STYLE_ONLY_TEXT,
+        },
+        .dim = {
+            .min_width  = (u32)w,
+            .min_height = (u32)h,
+        },
+        .text = text,
+        .color = {
+            .base = COLOR_BLACK
+        }
+    };
 
-void gui_label(gui_t *gui, str_t text, f32 w, f32 h, ui_config_t cfg)
-{
-    cfg.composition.styles = UI_STYLE_ONLY_TEXT;
-    cfg.dim.min_width  = (u32)w;
-    cfg.dim.min_height = (u32)h;
-    cfg.text = text;
     gui_ui_compose_begin(gui, cfg);
+        gui_ui_compose_begin(gui, text_cfg);
+        gui_ui_compose_end(gui);
     gui_ui_compose_end(gui);
 }
 
@@ -456,9 +485,10 @@ void gui__internal_reset_layout_cursor(gui_t *self)
 {
     const ui_region_t starting_region = self->internal.layout_cursor_stack.buffer[0].starting_region;
     self->internal.layout_cursor_stack.top = 0;
-    self->internal.layout_cursor_stack.buffer[0] = (layout_ctx_t){ 
+    self->internal.layout_cursor_stack.buffer[0] = (cursor_ctx_t){ 
         .region = starting_region,
         .max_row_height = 0,
+        .max_col_width = 0,
         .starting_region = starting_region
     };
 }
