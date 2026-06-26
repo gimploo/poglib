@@ -93,7 +93,6 @@ typedef struct {
         u32 min_height;
     } dim;
 
-    u32 id;
     str_t text;
 
     struct {
@@ -106,6 +105,10 @@ typedef struct {
     ui_size_mode        size_mode;
 
     ui_valuebinding_t   binding;
+
+    struct {
+        u32 id;
+    } internal;
 
 } ui_config_t;
 
@@ -157,6 +160,8 @@ struct gui_t {
         //NOTE: `is_mouse_on_ui` is to track whether mouse is on ui during the immediate mode rendering
         bool is_mouse_on_ui;
 
+        u32 ui_id_generator;
+
     } internal;
 
     struct {
@@ -170,7 +175,7 @@ struct gui_t {
 gui_t   gui_init(arena_t *const arena, const ui_region_t starting_region);
 
 //INFO: define this in a function
-void    gui_ui_compose_begin(gui_t * const gui, const ui_config_t config);
+u32     gui_ui_compose_begin(gui_t * const gui, const ui_config_t config);
 void    gui_ui_compose_end(gui_t *gui);
 
 //INFO: pass above declared function that includes the gui compisition into here
@@ -214,8 +219,6 @@ gui_t gui_init(arena_t *const arena, const ui_region_t starting_region)
         .max_col_width = 0
     };
 
-    o.internal.mouse_lock_on_ui.ui_id = 0;
-
     return o;
 }
 
@@ -246,7 +249,7 @@ void gui__internal_update_state(gui_t *gui, const ui_config_t config)
     const bool is_ui_clicked = is_cursor_on_ui && window_mouse_button_just_pressed(global_window, SDL_MOUSEBUTTON_LEFT);
 
     gui->state.hovered_ui_id = is_cursor_on_ui
-        ? config.id
+        ? config.internal.id
         : gui->state.hovered_ui_id;
 
     gui->internal.is_mouse_on_ui = is_cursor_on_ui;
@@ -256,28 +259,22 @@ void gui__internal_update_state(gui_t *gui, const ui_config_t config)
         *(bool *)config.binding.ref = !*(bool *)config.binding.ref;
     }
 
-    const bool is_released = window_mouse_button_is_released(global_window, SDL_MOUSEBUTTON_LEFT);
     if (config.composition.traits & UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG) {
 
-        //TODO: the behavior here is to track the ui on mouse drag / click and on mouse click release
-        //the ui is untracked
-
-        if (is_ui_clicked && !gui->internal.mouse_lock_on_ui.ui_id) {
-            gui->internal.mouse_lock_on_ui.ui_id = config.id;
+        if (is_ui_clicked) {
+            gui->internal.mouse_lock_on_ui.ui_id = config.internal.id;
         }
 
-        if ((gui->internal.mouse_lock_on_ui.ui_id == config.id) && !is_released) {
-            const vec2i_t rel = global_window->mouse.rel;
-            *((f32 *)config.binding.ref) += (rel.x / 10.f);
+        static int i = 0;
+        if (gui->internal.mouse_lock_on_ui.ui_id == config.internal.id) {
+            i32 rel = global_window->mouse.rel.x;
+            *((f32 *)config.binding.ref) += (rel / 10.f);
         }
 
-        if (is_released) {
-            if (gui->internal.mouse_lock_on_ui.ui_id == config.id && !is_cursor_on_ui) {
-                gui->internal.mouse_lock_on_ui.ui_id = 0;
-            }
+        if (window_mouse_button_is_released(global_window, SDL_MOUSEBUTTON_LEFT)) {
+            gui->internal.mouse_lock_on_ui.ui_id = 0;
         }
     }
-
 }
 
 vec4f_t gui__internal_get_color(const gui_t *gui, const ui_config_t config)
@@ -290,7 +287,7 @@ vec4f_t gui__internal_get_color(const gui_t *gui, const ui_config_t config)
         return config.color.base;
     }
 
-    if ((config.composition.traits & UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG) && config.id == gui->internal.mouse_lock_on_ui.ui_id) {
+    if ((config.composition.traits & UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG) && config.internal.id == gui->internal.mouse_lock_on_ui.ui_id) {
         return config.color.highlight;
     }
 
@@ -324,10 +321,6 @@ void gui__internal_ui_validate_config(const ui_config_t config)
 {
     ASSERT(config.dim.min_height);
     ASSERT(config.dim.min_width);
-
-    if (config.composition.traits & UI_BEHAVIOR_CLICKABLE) {
-        ASSERT(config.id != 0);
-    }
 
     if (config.composition.traits & UI_BEHAVIOR_TRACK_STATE_TOGGLE) {
         ASSERT(config.binding.ref);
@@ -481,8 +474,10 @@ void gui__internal_ui_create_text_internal(gui_t * const gui, const ui_region_t 
     }
 }
 
-void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
+u32 gui_ui_compose_begin(gui_t *const gui, ui_config_t config)
 {
+    config.internal.id = ++gui->internal.ui_id_generator;
+
     gui__internal_ui_validate_config(config);
 
     const ui_region_t child_region = gui__internal_ui_add_child(gui, config);
@@ -493,7 +488,7 @@ void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
 
     if (config.composition.styles & UI_STYLE_ONLY_TEXT) {
         gui__internal_ui_create_text_internal(gui, child_region, config);
-        return;
+        return config.internal.id;
     }
 
     const ui_attr_t attr = {
@@ -513,6 +508,8 @@ void gui_ui_compose_begin(gui_t * const gui, const ui_config_t config)
         text_cfg.color.base = (vec4f_t){1.0f, 1.0f, 1.0f, 1.0f};
         gui__internal_ui_create_text_internal(gui, child_region, text_cfg);
     }
+
+    return config.internal.id;
 }
 
 
@@ -534,6 +531,7 @@ void gui__internal_reset_internals(gui_t *self)
 
     self->state.hovered_ui_id = 0;
     self->internal.is_mouse_on_ui = false;
+    self->internal.ui_id_generator = 0;
 }
 
 void gui_run(gui_t *const self, const bool render_as_wireframe)
@@ -682,7 +680,7 @@ bool gui_ui_ishovered(gui_t *const self, const u32 id)
 bool gui_ui_isclicked(gui_t *const self, const u32 id)
 {
     ASSERT(global_window);
-    return gui_ui_ishovered(self, id) && window_mouse_button_is_pressed(global_window, SDL_MOUSEBUTTON_LEFT);
+    return gui_ui_ishovered(self, id) && window_mouse_button_just_pressed(global_window, SDL_MOUSEBUTTON_LEFT);
 }
 
 

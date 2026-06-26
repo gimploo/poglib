@@ -15,7 +15,8 @@
 #define COLOR_NEUTRAL                       COLOR_WHITE
 
 // --- Debug Palette (High Visibility) ---
-#define COLOR_ORANGE  (vec4f_t){1.00f, 0.57f, 0.00f, 1.0f }
+#define COLOR_ORANGE        (vec4f_t){1.00f, 0.57f, 0.00f, 1.0f }
+#define COLOR_LIGHTORANGE   (vec4f_t){0.80f, 0.27f, 0.00f, 1.0f }
 #define COLOR_MINT    (vec4f_t){0.00f, 1.00f, 0.62f, 1.0f }
 #define COLOR_CYAN    (vec4f_t){0.00f, 0.90f, 1.00f, 1.0f }
 #define COLOR_ABYSS   (vec4f_t){0.04f, 0.05f, 0.08f, 1.0f }
