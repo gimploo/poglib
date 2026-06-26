@@ -179,9 +179,9 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                 }
 
                 //Label
-                if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f, %.2f, %.2f", transform->position.x, transform->position.y, transform->position.z);
-                else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f, %.2f, %.2f", transform->orientation.x, transform->orientation.y, transform->orientation.z);
-                else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f, %.2f, %.2f", transform->scale.x, transform->scale.y, transform->scale.z);
+                if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "[ %.2f, %.2f, %.2f ]", transform->position.x, transform->position.y, transform->position.z);
+                else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "[ %.2f, %.2f, %.2f ]", transform->orientation.x, transform->orientation.y, transform->orientation.z);
+                else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "[ %.2f, %.2f, %.2f ]", transform->scale.x, transform->scale.y, transform->scale.z);
 
                 cfg.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
                 gui_ui_compose_begin(gui, cfg);
