@@ -99,7 +99,8 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
     });
     {
         char tempbuffer[32] = {0};
-        //Entity label
+
+        //NOTE: Entity label
         { 
             snprintf(tempbuffer, sizeof(tempbuffer), "Entity Id: %d", global_workbench->editor.selected_entity_id);
 
@@ -131,24 +132,6 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                 str("Scale"),
             };
 
-            ui_config_t cfg = {
-                .composition = {
-                    .styles = UI_STYLE_ONLY_TEXT,
-                },
-                .dim = {
-                    .min_width  = 80,
-                    .min_height = 30,
-                },
-                .text = options[idx],
-                .color = {
-                    .base = COLOR_WHITE
-                },
-                .margin = {
-                    .top = 5.f,
-                    .left = 5.f,
-                }
-            };
-
             //Container
             gui_ui_compose_begin(gui, (ui_config_t){
                 .dim = {
@@ -163,29 +146,134 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
             {
 
                 //Label
-                gui_ui_compose_begin(gui, cfg);
+                gui_ui_compose_begin(gui, (ui_config_t){
+                    .composition = {
+                        .styles = UI_STYLE_ONLY_TEXT,
+                    },
+                    .dim = {
+                        .min_width  = 90,
+                        .min_height = 30,
+                    },
+                    .text = options[idx],
+                    .color = {
+                        .base = COLOR_WHITE
+                    },
+                    .margin = {
+                        .top = 5.f,
+                    }
+                });
                 gui_ui_compose_end(gui);
 
                 //Slider
                 {
-                    gui_ui_compose_begin(gui, (ui_config_t){
-                        .color = COLOR_ABYSS_BLUE,
+                    ui_config_t value_style = {
+                        .composition = {
+                            .styles = UI_STYLE_ONLY_TEXT,
+                        },
+                        .text_align = UI_TEXT_ALIGN_CENTER,
                         .dim = {
+                            .min_width  = 40,
                             .min_height = 30,
-                            .min_width = 80 
+                        },
+                        .text = options[idx],
+                        .color = {
+                            .base = COLOR_BLACK
+                        },
+                        .margin = {
+                            .top = 5.f,
                         }
+                    };
+
+                    gui_ui_compose_begin(gui, (ui_config_t){
+                        .id = 67,
+                        .composition = {
+                            .traits = UI_BEHAVIOR_TRACK_STATE_RANGE | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
+                        },
+                        .dim = {
+                            .min_width = 50,
+                            .min_height = 30,
+                        },
+                        .color = {
+                            .base = COLOR_RED,
+                            .highlight = COLOR_LIGHTRED,
+                        },
+                        .binding = {
+                            .ref = (void *)&transform->position.x,
+                            .size = sizeof(f32)
+                        },
                     });
+                        //Label
+                        memset(tempbuffer, 0, sizeof(tempbuffer));
+
+                        if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.x);
+                        else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.x);
+                        else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.x);
+
+                        value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
+                        gui_ui_compose_begin(gui, value_style);
+                        gui_ui_compose_end(gui);
+                    gui_ui_compose_end(gui);
+
+                    gui_ui_compose_begin(gui, (ui_config_t){
+                        .id = 67,
+                        .composition = {
+                            .traits = UI_BEHAVIOR_TRACK_STATE_RANGE | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
+                        },
+                        .color = {
+                            .base = COLOR_GREEN,
+                            .highlight = COLOR_LIGHTGREEN,
+                        },
+                        .dim = {
+                            .min_width = 50,
+                            .min_height = 30,
+                        },
+                        .binding = {
+                            .ref = (void *)&transform->position.y,
+                            .size = sizeof(f32)
+                        },
+                    });
+                        //Label
+                        memset(tempbuffer, 0, sizeof(tempbuffer));
+
+                        if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.y);
+                        else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.y);
+                        else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.y);
+
+                        value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
+                        gui_ui_compose_begin(gui, value_style);
+                        gui_ui_compose_end(gui);
+                    gui_ui_compose_end(gui);
+
+                    gui_ui_compose_begin(gui, (ui_config_t){
+                        .id = 67,
+                        .color = {
+                            .base = COLOR_BLUE,
+                            .highlight = COLOR_LIGHTBLUE,
+                        },
+                        .composition = {
+                            .traits = UI_BEHAVIOR_TRACK_STATE_RANGE | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
+                        },
+                        .dim = {
+                            .min_width = 50,
+                            .min_height = 30,
+                        },
+                        .binding = {
+                            .ref = (void *)&transform->position.z,
+                            .size = sizeof(f32)
+                        },
+                    });
+                        //Label
+                        memset(tempbuffer, 0, sizeof(tempbuffer));
+
+                        if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.z);
+                        else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.z);
+                        else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.z);
+
+                        value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
+                        gui_ui_compose_begin(gui, value_style);
+                        gui_ui_compose_end(gui);
                     gui_ui_compose_end(gui);
                 }
-
-                //Label
-                if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "[ %.2f, %.2f, %.2f ]", transform->position.x, transform->position.y, transform->position.z);
-                else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "[ %.2f, %.2f, %.2f ]", transform->orientation.x, transform->orientation.y, transform->orientation.z);
-                else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "[ %.2f, %.2f, %.2f ]", transform->scale.x, transform->scale.y, transform->scale.z);
-
-                cfg.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
-                gui_ui_compose_begin(gui, cfg);
-                gui_ui_compose_end(gui);
 
             }
             gui_ui_compose_end(gui);

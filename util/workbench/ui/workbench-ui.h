@@ -8,18 +8,14 @@
 #include <poglib/gui.h>
 
 typedef enum WORKBENCH_GUI_BUTTON_IDS {
-    WB_COLLIDER_TOGGLE = 1,
+
+    WB_COLLIDER_TOGGLE = 69,
+
 } WORKBENCH_GUI_BUTTON_IDS;
 
 
-void    workbench_render_ui(gui_t *self);
-
-
-#ifndef IGNORE_WORKBENCH_GUI_RENDER
-
 void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
 {
-    const u32 window_width = global_window->width;
     char tempbuffer[32] = {0};
 
     gui_ui_compose_begin(gui, (ui_config_t){
@@ -182,9 +178,13 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
     gui_ui_compose_begin(gui, (ui_config_t) {
         .composition = {
             .styles = UI_STYLE_ROUNDED_CORNERS,
-            .traits = UI_BEHAVIOR_CLICKABLE | UI_BEHAVIOR_HOVERABLE
+            .traits = UI_BEHAVIOR_CLICKABLE | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_TRACK_STATE_TOGGLE
         },
         .id = WB_COLLIDER_TOGGLE,
+        .binding = {
+            .ref = &global_workbench->enable_collider,
+            .size = sizeof(bool)
+        },
         .dim = {
             .min_height = 30,
             .min_width = 120,
@@ -230,99 +230,3 @@ void workbench_compose_ui(gui_t *const gui, const vec3f_t camera_pos)
     workbench_editor_render();
 }
 
-
-void workbench__internal_compose_ui__test(const application_t * const app, gui_t *gui)
-{
-    const u32 window_width = global_window->width;
-    const f32 fps = application_get_fps(app);
-
-    gui_ui_compose_begin(gui, (ui_config_t){ 
-        .composition = {
-            .styles = UI_STYLE_ROUNDED_CORNERS,
-            .traits = UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
-        },
-        .color = {
-            .base = COLOR_BLUE,
-            .highlight = COLOR_RED,
-        },
-        .dim = {
-            .min_height = 100,
-            .min_width = 100 
-        },
-        .padding = {
-            10, 10, 10, 10
-        },
-        .margin = {
-            .left = 10, 
-            .right = 10,
-            .top = 10,
-            .bottom = 10 
-        }
-    });
-        gui_ui_compose_begin(gui, (ui_config_t){ 
-            .composition = {
-                .styles = UI_STYLE_ONLY_TEXT
-            },
-            .color = {
-                .base = COLOR_WHITE,
-                .highlight = COLOR_CYAN,
-            },
-            .dim = {
-                .min_height = 40,
-                .min_width = 80 
-            },
-            .padding = {0},
-            .margin = {0},
-            .text = str("Hello World")
-        });
-        gui_ui_compose_end(gui);
-    gui_ui_compose_end(gui);
-
-    for(u8 i = 0; i < 100; i++) {
-        gui_ui_compose_begin(gui, (ui_config_t){ 
-            .composition = {
-                .styles = UI_STYLE_ROUNDED_CORNERS,
-                .traits = UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
-            },
-            .color = {
-                .base = COLOR_BLUE,
-                .highlight = COLOR_RED,
-            },
-            .dim = {
-                .min_height = 50,
-                .min_width = 50
-            },
-            .padding = {0},
-            .margin = {
-                .left = 10, 
-                .right = 10,
-                .top = 10,
-                .bottom = 10 
-            }
-        });
-            gui_ui_compose_begin(gui, (ui_config_t){ 
-                .composition = {
-                    .traits = UI_BEHAVIOR_HOVERABLE
-                },
-                .color = {
-                    .base = COLOR_WHITE,
-                    .highlight = COLOR_BLACK,
-                },
-                .dim = {
-                    .min_height = 10,
-                    .min_width = 10
-                },
-                .padding = {0},
-                .margin = {
-                    .left = 10, 
-                    .right = 10,
-                    .top = 10,
-                    .bottom = 10 
-                }
-            });
-            gui_ui_compose_end(gui);
-        gui_ui_compose_end(gui);
-    }
-}
-
-#endif
