@@ -73,9 +73,16 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
 
     gui_t *const gui = &global_workbench->gui.handle;
 
-    const ecs_component_transform_t *const transform = ecs_entity_query_components(
+    ecs_component_transform_t *const transform = ecs_entity_query_components(
         global_ecs, global_workbench->editor.selected_entity_id, ECS_CMP_TRANSFORM
     ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+
+    //NOTE: used in the editor to udpate value for each one of these
+    vec3f_t *const TRS[3] = {
+        &transform->position,
+        (vec3f_t *)&transform->orientation,
+        &transform->scale,
+    };
 
     gui_ui_compose_begin(gui, (ui_config_t) {
         .layout = UI_LAYOUT_VERTICAL,
@@ -191,7 +198,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                             .highlight = COLOR_LIGHTRED,
                         },
                         .binding = {
-                            .ref = (void *)&transform->position.x,
+                            .ref = (void *)&TRS[idx]->x,
                             .size = sizeof(f32)
                         },
                     });
@@ -222,7 +229,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                             .min_height = 30,
                         },
                         .binding = {
-                            .ref = (void *)&transform->position.y,
+                            .ref = (void *)&TRS[idx]->y,
                             .size = sizeof(f32)
                         },
                         .margin = {
@@ -255,7 +262,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                             .min_height = 30,
                         },
                         .binding = {
-                            .ref = (void *)&transform->position.z,
+                            .ref = (void *)&TRS[idx]->z,
                             .size = sizeof(f32)
                         },
                         .margin = {
