@@ -2,9 +2,11 @@
 #include "./common.h"
 #include "poglib/basic/str.h"
 #include "poglib/ecs.h"
+#include "poglib/ecs/component/types.h"
 #include "poglib/gui.h"
 #include "poglib/gfx/glrenderer3d.h"
 #include <poglib/math.h>
+#include <stdio.h>
 
 #define GIZMO_CIRCLE_SEGMENTS 32
 #define GIZMO_AXIS_LENGTH 0.15f
@@ -77,6 +79,10 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
 
     gui_t *const gui = &global_workbench->gui.handle;
 
+    const ecs_component_transform_t *const transform = ecs_entity_query_components(
+        global_ecs, global_workbench->editor.selected_entity_id, ECS_CMP_TRANSFORM
+    ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+
     gui_ui_compose_begin(gui, (ui_config_t) {
         .layout = UI_LAYOUT_VERTICAL,
         .dim = {
@@ -91,12 +97,11 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
             .base = COLOR_BLACK
         }
     });
-
+    {
+        char tempbuffer[32] = {0};
         //Entity label
         { 
-
-            char tempbuffer[32] = {0};
-            snprintf(tempbuffer, sizeof(tempbuffer), "Id: %d", global_workbench->editor.selected_entity_id);
+            snprintf(tempbuffer, sizeof(tempbuffer), "Entity Id: %d", global_workbench->editor.selected_entity_id);
 
             gui_ui_compose_begin(gui, (ui_config_t){
                 .composition = {
@@ -126,7 +131,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                 str("Scale"),
             };
 
-            const ui_config_t cfg = {
+            ui_config_t cfg = {
                 .composition = {
                     .styles = UI_STYLE_ONLY_TEXT,
                 },
@@ -173,10 +178,20 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                     gui_ui_compose_end(gui);
                 }
 
+                //Label
+                if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f, %.2f, %.2f", transform->position.x, transform->position.y, transform->position.z);
+                else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f, %.2f, %.2f", transform->orientation.x, transform->orientation.y, transform->orientation.z);
+                else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f, %.2f, %.2f", transform->scale.x, transform->scale.y, transform->scale.z);
+
+                cfg.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
+                gui_ui_compose_begin(gui, cfg);
+                gui_ui_compose_end(gui);
+
             }
             gui_ui_compose_end(gui);
 
         }
+    }
     gui_ui_compose_end(gui);
 }
 
