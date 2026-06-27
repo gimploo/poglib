@@ -41,7 +41,8 @@ typedef struct {
 
     struct {
         u32 atlas_id;
-        u32 shader_id;
+        u32 mesh_shader_id;
+        u32 line_shader_id;
     } primitives;
 
     workbench_debug_renderer_t debug_renderer;
