@@ -312,9 +312,10 @@ ecs_entity_query_t ecs_componentmanager__internal_query_components(const ecs_com
         if (!(component_signature & (1 << cmp_idx)))
             continue;
 
-        if (cmp_idx_buffer[cmp_idx] == ECS_CMP_INVALID_IDX) 
-            eprint("Trying to query unavailble component type idx `%i` from entity id `%i`", cmp_idx, entity_id);
-
+        if (cmp_idx_buffer[cmp_idx] == ECS_CMP_INVALID_IDX) {
+            result.entity_cmp_data[cmp_idx] = NULL;
+            continue;
+        }
 
         const slot_t *const pool = slot_get_value(&self->componentpool_slots, cmp_idx);
         result.entity_cmp_data[cmp_idx] = ecs_componentmanager__internal_get_cmpdata_from_pooldata(

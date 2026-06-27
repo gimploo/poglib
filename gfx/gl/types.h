@@ -113,6 +113,8 @@ typedef struct glmesh_t {
 
 } glmesh_t;
 
+//FIXME: this is a wierd naming convention, this having glmesh prefix when its not used within glmesh_t,
+//the only place this used so far is in `assetmanager` which i think the the type should denote. 
 typedef enum glmesh_primitive_type {
     GL_MESH_PRIMITIVE_TYPE_NONE     = 0,
     GL_MESH_PRIMITIVE_TYPE_LINE     = 1,

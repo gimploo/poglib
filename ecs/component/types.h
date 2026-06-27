@@ -155,6 +155,9 @@ struct ecs_component_collider_t {
         JPH_CharacterVirtual        *kinematic_body;
         vec3f_t                     position;
         versors                     orientation;
+#ifdef DEBUG
+        JPH_Shape                   *shape;
+#endif
     } internal;
 };
 

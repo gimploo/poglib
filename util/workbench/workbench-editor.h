@@ -1,6 +1,9 @@
 #pragma once
 #include "poglib/basic/color.h"
+#include "poglib/ecs/component/types.h"
+#include "poglib/external/joltc/include/joltc.h"
 #include "poglib/gui.h"
+#include "poglib/physics/jolt-wrapper.h"
 #include "poglib/pipeline/render/render_queue.h"
 #include "poglib/util/asset.h"
 #include "poglib/util/assetmanager.h"
@@ -61,12 +64,12 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
 
 INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(void)
 {
-    if (!global_workbench->editor.selected_entity_id) return;
+    if (!global_workbench->editor.current_selected_entity_id) return;
 
     gui_t *const gui = &global_workbench->gui.handle;
 
     ecs_component_transform_t *const transform = ecs_entity_query_components(
-        global_ecs, global_workbench->editor.selected_entity_id, ECS_CMP_TRANSFORM
+        global_ecs, global_workbench->editor.current_selected_entity_id, ECS_CMP_TRANSFORM
     ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
 
     //NOTE: used in the editor to udpate value for each one of these
@@ -95,7 +98,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
 
         //NOTE: Entity label
         { 
-            snprintf(tempbuffer, sizeof(tempbuffer), "Entity Id: %d", global_workbench->editor.selected_entity_id);
+            snprintf(tempbuffer, sizeof(tempbuffer), "Entity Id: %d", global_workbench->editor.current_selected_entity_id);
 
             gui_ui_compose_begin(gui, (ui_config_t){
                 .composition = {
@@ -289,7 +292,8 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                     },
                 });
                     if (gui_ui_isclicked(gui, reset_id)) {
-                        *TRS[idx] = (vec3f_t){0};
+                        if (idx == 2) *TRS[idx] = (vec3f_t){1.f,1.f,1.f};
+                        else          *TRS[idx] = (vec3f_t){0};
                     }
                 gui_ui_compose_end(gui);
 
@@ -308,21 +312,21 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
 ) {
     const f32 axis_length = 1000.f;
     rendercommand_instance_line_t gizmo[3] = {
-        // +X axis (red) — identity rotation, scale X by length
+        //NOTE: X axis
         {
             .color       = {1.0f, 0.0f, 0.0f, 1.0f},
             .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
-            .orientation = {0.0f, 0.0f, 0.0f, 1.0f},   // identity
+            .orientation = {0.0f, 0.0f, 0.0f, 1.0f},
             .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
         },
-        // +Y axis (green) — rotate +X → +Y: 90° around Z
+        //NOTE: Y axis
         {
             .color       = {0.0f, 1.0f, 0.0f, 1.0f},
             .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
             .orientation = {0.0f, 0.0f, -0.7071f, 0.7071f},
             .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
         },
-        // +Z axis (blue) — rotate +X → +Z: -90° around Y
+        //NOTE: Z axis
         {
             .color       = {0.0f, 0.0f, 1.0f, 1.0f},
             .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
@@ -367,10 +371,10 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
 
 INTERNAL void workbench_editor__internal_draw_gizmo_on_entity_selection(void)
 {
-    if (!global_workbench->editor.selected_entity_id) return;
+    if (!global_workbench->editor.current_selected_entity_id) return;
 
     const ecs_component_transform_t *const transform = ecs_entity_query_components(
-        global_ecs, global_workbench->editor.selected_entity_id, ECS_CMP_TRANSFORM
+        global_ecs, global_workbench->editor.current_selected_entity_id, ECS_CMP_TRANSFORM
     ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
 
     if (!transform) return;
@@ -385,6 +389,46 @@ INTERNAL void workbench_editor__internal_draw_gizmo_on_entity_selection(void)
 void workbench_editor_render(void)
 {
     workbench_editor__internal_show_entity_info_for_selected_entity();
+}
+
+INTERNAL void workbench_editor__internal_update_physics_colliders(void)
+{
+    if(!global_workbench->editor.current_selected_entity_id) return;
+    printf("updating collider\n");
+
+    const u32 entity_id = global_workbench->editor.current_selected_entity_id;
+    const ecs_entity_query_t query      = ecs_entity_query_components(global_ecs, entity_id, ECS_CMP_COLLIDER | ECS_CMP_TRANSFORM);
+    ecs_component_collider_t *collider  = query.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
+
+    if (!collider) return;
+
+    //NOTE: updating the shape of the collider
+    {
+        ecs_component_transform_t *transform = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+        ASSERT(transform);
+
+        JPH_Shape *const newShape = JPH_Shape_ScaleShape(collider->internal.shape, (JPH_Vec3 *)&transform->scale);
+        JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, newShape, false, JPH_Activation_DontActivate);
+        JPH_Shape_Destroy(newShape);
+
+        JPH_Quat quat = {
+            .x = transform->orientation.x,
+            .y = transform->orientation.y,
+            .z = transform->orientation.z,
+            .w = transform->orientation.w,
+        };
+
+        JPH_BodyInterface_SetPositionAndRotation(
+            global_physics_sys_jolt_instance->bodyinterface, 
+            collider->internal.body_id, 
+            (JPH_Vec3 *)&transform->position, 
+            &quat, 
+            JPH_Activation_DontActivate
+        );
+
+        collider->internal.position     = transform->position;
+        collider->internal.orientation  = transform->orientation;
+    }
 }
 
 void workbench_editor_update(void)
