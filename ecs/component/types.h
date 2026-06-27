@@ -88,7 +88,6 @@ struct ecs_component_input_t {
     } direction_source;
     void (*input_behavior)(ecs_component_input_state_t * const state, const u16 command_bitmask, const f32 dt);
     struct {
-        commandqueue_t *commandqueue;
         ecs_component_input_state_t state; 
     } internal;
 };
