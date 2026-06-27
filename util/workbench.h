@@ -15,9 +15,8 @@
 workbench_t *   workbench_init(arena_t * const arena);
 void            workbench_update(const f32 dt);
 void            workbench_render(void);
+void                workbench_toggle(void);
 void            workbench_destroy(void);
-
-void            workbench_toggle(void);
 
 
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0.f, 0.f, 10.f}
@@ -561,21 +560,24 @@ void workbench_update(const f32 dt)
 
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION))   {
 
-        if (global_workbench->editor.prevmouseclicked_entity_Id != global_workbench->editor.mouse_closest_to_entity_id) {
+        if (global_workbench->editor.prev_selected_entity_id != global_workbench->editor.mouse_closest_to_entity_id) {
+            global_workbench->editor.prev_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
             global_workbench->editor.mouseclick_counter = 0;
         } else {
             ++global_workbench->editor.mouseclick_counter;
         }
 
-        if (global_workbench->editor.mouseclick_counter == 2) {
-            global_workbench->editor.selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
+        if (global_workbench->editor.mouseclick_counter == 1) {
+            global_workbench->editor.current_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
         }
 
-        global_workbench->editor.prevmouseclicked_entity_Id = global_workbench->editor.mouse_closest_to_entity_id;
     }
 
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT)) {
-        global_workbench->editor.selected_entity_id = 0;
+        if (global_workbench->editor.current_selected_entity_id) {
+            workbench_editor__internal_update_physics_colliders();
+        }
+        global_workbench->editor.current_selected_entity_id = 0;
         global_workbench->editor.mouseclick_counter = 0;
     }
 
@@ -588,7 +590,7 @@ void workbench_update(const f32 dt)
         global_workbench->world_camera.entity_id, 
         (ecs_cmp_patch_payload_t) {
             .patch_type = ECS_PATCH_CMP_ACTIVE_FIELD,
-            .is_active = global_workbench->editor.selected_entity_id == ECS_ENTITY_INVALID_ID,
+            .is_active = global_workbench->editor.current_selected_entity_id == ECS_ENTITY_INVALID_ID,
             .signature = ECS_CMP_TRANSFORM
         }
     );

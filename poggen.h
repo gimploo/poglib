@@ -191,12 +191,12 @@ void poggen_destroy(poggen_t *const self)
 {
     ASSERT(self);
 
-    assetmanager_destroy(&self->systems.assets);
     hashtable_iterator(&self->scenes, tableentry) {
         hashtable_entry_t *entry = tableentry;
         scene__internal_destroy(entry->value);
         mem_free(entry->value, sizeof(scene_t));
     }
+    assetmanager_destroy(&self->systems.assets);
     hashtable_destroy(&self->scenes);
 
     if (self->config.enable_physics)

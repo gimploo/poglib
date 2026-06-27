@@ -93,7 +93,9 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
         if (diff_shape_type || diff_shape_dim) {
 
             if (shape) {
+#ifndef DEBUG
                 JPH_Shape_Destroy(shape); 
+#endif
                 shape = NULL;
             }
 
@@ -111,6 +113,8 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
 
                 default: eprint("Collider shape type not accounted for here");
             }
+
+            collider->internal.shape = shape;
         }
 
         if(diff_shape_dim || diff_motion_type) {
@@ -186,7 +190,10 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
     }
 
     if (body_settings)  JPH_BodyCreationSettings_Destroy(body_settings);
+
+#ifndef DEBUG
     if (shape)          JPH_Shape_Destroy(shape); 
+#endif
 
 }
 
