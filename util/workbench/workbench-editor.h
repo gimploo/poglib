@@ -1,23 +1,13 @@
 #pragma once
 #include "poglib/basic/color.h"
 #include "poglib/gui.h"
+#include "poglib/pipeline/render/render_queue.h"
+#include "poglib/util/asset.h"
+#include "poglib/util/assetmanager.h"
 #include <poglib/util/workbench/common.h>
 #include <poglib/ecs.h>
 
-#define GIZMO_CIRCLE_SEGMENTS 32
-#define GIZMO_AXIS_LENGTH 0.15f
-#define GIZMO_CONE_HEIGHT 0.25f
-#define GIZMO_CONE_RADIUS 0.10f
-#define GIZMO_CUBE_SIZE 0.18f
-#define GIZMO_RING_RADIUS 0.85f
-
-const vec4f_t GIZMO_COLOR_X = {1.0f, 0.2f, 0.2f, 1.0f};
-const vec4f_t GIZMO_COLOR_Y = {0.2f, 1.0f, 0.2f, 1.0f};
-const vec4f_t GIZMO_COLOR_Z = {0.2f, 0.4f, 1.0f, 1.0f};
-const vec4f_t GIZMO_COLOR_WHITE = {1.0f, 1.0f, 1.0f, 0.8f};
-
-
-f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_origin, const vec3f_t ray_dir, const vec3f_t targetpoint)
+INTERNAL f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_origin, const vec3f_t ray_dir, const vec3f_t targetpoint)
 {
     const vec3f_t to_point = glms_vec3_sub(targetpoint, ray_origin);
     f32 t = glms_vec3_dot(to_point, ray_dir);
@@ -26,7 +16,7 @@ f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_origin, co
     return glms_vec3_distance(closest, targetpoint);
 }
 
-void workbench_editor__internal_check_mouse_closest_entity(void)
+INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
 {
     vec2f_t ndc = window_mouse_get_norm_position(global_window);
     glcamera_t *cam = global_workbench->world_camera.handle;
@@ -69,7 +59,7 @@ void workbench_editor__internal_check_mouse_closest_entity(void)
     global_workbench->editor.mouse_closest_to_entity_id = picked;
 }
 
-void workbench_editor__internal_show_entity_info_for_selected_entity(void)
+INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(void)
 {
     if (!global_workbench->editor.selected_entity_id) return;
 
@@ -311,284 +301,95 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
     gui_ui_compose_end(gui);
 }
 
-
-static void gizmo__draw_line(vec3f_t a, vec3f_t b, vec4f_t color,
-    matrix4f_t view, matrix4f_t proj, vec3f_t cam_pos, glshader_t *shader)
-{
-    f32 vtx[6] = { a.x, a.y, a.z, b.x, b.y, b.z };
-    glrenderer3d_drawcall((glrendercall_t){
-        .draw_mode = GL_LINES,
-        .vtx = {
-            [VBO_STREAM_TYPE_GEOMETRY] = {
-                .raw_data = (u8 *)vtx,
-                .size = sizeof(vtx)
-            }
+INTERNAL void workbench_editor__internal_gizmo_draw_axis(
+    const vec3f_t entitypos, 
+    const matrix4f_t view, 
+    const matrix4f_t proj
+) {
+    const f32 axis_length = 1000.f;
+    rendercommand_instance_line_t gizmo[3] = {
+        // +X axis (red) — identity rotation, scale X by length
+        {
+            .color       = {1.0f, 0.0f, 0.0f, 1.0f},
+            .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
+            .orientation = {0.0f, 0.0f, 0.0f, 1.0f},   // identity
+            .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
         },
-        .shader_config = {
-            .shader = shader,
-            .uniforms = {
-                .count = 5,
-                .data = {
-                    [0] = { .name = str_lit("view"), .value = view },
-                    [1] = { .name = str_lit("projection"), .value = proj },
-                    [2] = { .name = str_lit("transform"), .value = MATRIX4F_IDENTITY },
-                    [3] = { .name = str_lit("color"), .value.vec4 = color },
-                    [4] = { .name = str_lit("cameraPos"), .value.vec3 = cam_pos },
-                }
-            }
+        // +Y axis (green) — rotate +X → +Y: 90° around Z
+        {
+            .color       = {0.0f, 1.0f, 0.0f, 1.0f},
+            .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
+            .orientation = {0.0f, 0.0f, -0.7071f, 0.7071f},
+            .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
         },
-        .attrs = {
-            .count = 1,
-            .attr = {
-                [0] = { .ncmp = 3, .interleaved = 0, .type = GL_FLOAT }
-            }
-        }
-    });
-}
-
-static void gizmo__draw_cone(vec3f_t tip, vec3f_t dir, f32 height, f32 radius,
-    vec4f_t color, matrix4f_t view, matrix4f_t proj, vec3f_t cam_pos, glshader_t *shader)
-{
-    vec3f_t base_center = glms_vec3_sub(tip, glms_vec3_scale(dir, height));
-    vec3f_t up = {0.0f, 1.0f, 0.0f};
-    if (fabs(glms_vec3_dot(dir, up)) > 0.99f)
-        up = (vec3f_t){1.0f, 0.0f, 0.0f};
-    vec3f_t right = glms_vec3_normalize(glms_vec3_cross(dir, up));
-    up = glms_vec3_normalize(glms_vec3_cross(right, dir));
-
-    f32 vtx[8 * 6 * 3];
-    u32 count = 0;
-    for (u32 i = 0; i < 8; i++) {
-        f32 a0 = (f32)i / 8.0f * 2.0f * PI;
-        f32 a1 = (f32)(i + 1) / 8.0f * 2.0f * PI;
-        vec3f_t p0 = glms_vec3_add(base_center,
-            glms_vec3_add(glms_vec3_scale(right, cosf(a0) * radius),
-                          glms_vec3_scale(up, sinf(a0) * radius)));
-        vec3f_t p1 = glms_vec3_add(base_center,
-            glms_vec3_add(glms_vec3_scale(right, cosf(a1) * radius),
-                          glms_vec3_scale(up, sinf(a1) * radius)));
-        vtx[count++] = tip.x; vtx[count++] = tip.y; vtx[count++] = tip.z;
-        vtx[count++] = p0.x;  vtx[count++] = p0.y;  vtx[count++] = p0.z;
-        vtx[count++] = p1.x;  vtx[count++] = p1.y;  vtx[count++] = p1.z;
-        vtx[count++] = base_center.x; vtx[count++] = base_center.y; vtx[count++] = base_center.z;
-        vtx[count++] = p1.x;          vtx[count++] = p1.y;          vtx[count++] = p1.z;
-        vtx[count++] = p0.x;          vtx[count++] = p0.y;          vtx[count++] = p0.z;
-    }
-
-    glrenderer3d_drawcall((glrendercall_t){
-        .draw_mode = GL_TRIANGLES,
-        .vtx = {
-            [VBO_STREAM_TYPE_GEOMETRY] = {
-                .raw_data = (u8 *)vtx,
-                .size = count * sizeof(f32)
-            }
+        // +Z axis (blue) — rotate +X → +Z: -90° around Y
+        {
+            .color       = {0.0f, 0.0f, 1.0f, 1.0f},
+            .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
+            .orientation = {0.0f, -0.7071f, 0.0f, 0.7071f},
+            .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
         },
-        .shader_config = {
-            .shader = shader,
-            .uniforms = {
-                .count = 5,
-                .data = {
-                    [0] = { .name = str_lit("view"), .value = view },
-                    [1] = { .name = str_lit("projection"), .value = proj },
-                    [2] = { .name = str_lit("transform"), .value = MATRIX4F_IDENTITY },
-                    [3] = { .name = str_lit("color"), .value.vec4 = color },
-                    [4] = { .name = str_lit("cameraPos"), .value.vec3 = cam_pos },
-                }
-            }
-        },
-        .attrs = {
-            .count = 1,
-            .attr = {
-                [0] = { .ncmp = 3, .interleaved = 0, .type = GL_FLOAT }
-            }
-        }
-    });
-}
-
-static void gizmo__draw_cube(vec3f_t center, f32 size, vec4f_t color, matrix4f_t view, matrix4f_t proj, vec3f_t cam_pos, glshader_t *shader)
-{
-    const f32 h = size * 0.5f;
-    const vec3f_t c = center;
-    const vec3f_t corners[8] = {
-        {c.x - h, c.y - h, c.z - h},
-        {c.x + h, c.y - h, c.z - h},
-        {c.x + h, c.y + h, c.z - h},
-        {c.x - h, c.y + h, c.z - h},
-        {c.x - h, c.y - h, c.z + h},
-        {c.x + h, c.y - h, c.z + h},
-        {c.x + h, c.y + h, c.z + h},
-        {c.x - h, c.y + h, c.z + h},
-    };
-    const u32 edges[12][2] = {
-        {0,1},{1,2},{2,3},{3,0},
-        {4,5},{5,6},{6,7},{7,4},
-        {0,4},{1,5},{2,6},{3,7},
-    };
-    f32 vtx[12 * 2 * 3];
-    u32 count = 0;
-    for (u32 i = 0; i < 12; i++) {
-        vtx[count++] = corners[edges[i][0]].x;
-        vtx[count++] = corners[edges[i][0]].y;
-        vtx[count++] = corners[edges[i][0]].z;
-        vtx[count++] = corners[edges[i][1]].x;
-        vtx[count++] = corners[edges[i][1]].y;
-        vtx[count++] = corners[edges[i][1]].z;
-    }
-
-    glrenderer3d_drawcall((glrendercall_t){
-        .draw_mode = GL_LINES,
-        .vtx = {
-            [VBO_STREAM_TYPE_GEOMETRY] = {
-                .raw_data = (u8 *)vtx,
-                .size = count * sizeof(f32)
-            }
-        },
-        .shader_config = {
-            .shader = shader,
-            .uniforms = {
-                .count = 5,
-                .data = {
-                    [0] = { .name = str_lit("view"), .value = view },
-                    [1] = { .name = str_lit("projection"), .value = proj },
-                    [2] = { .name = str_lit("transform"), .value = MATRIX4F_IDENTITY },
-                    [3] = { .name = str_lit("color"), .value.vec4 = color },
-                    [4] = { .name = str_lit("cameraPos"), .value.vec3 = cam_pos },
-                }
-            }
-        },
-        .attrs = {
-            .count = 1,
-            .attr = {
-                [0] = { .ncmp = 3, .interleaved = 0, .type = GL_FLOAT }
-            }
-        }
-    });
-}
-
-static void gizmo__draw_ring(vec3f_t center, vec3f_t axis, f32 radius, u32 segments,
-    vec4f_t color, matrix4f_t view, matrix4f_t proj, vec3f_t cam_pos, glshader_t *shader)
-{
-    (void)cam_pos;
-    vec3f_t up = {0.0f, 1.0f, 0.0f};
-    if (fabs(glms_vec3_dot(axis, up)) > 0.99f)
-        up = (vec3f_t){1.0f, 0.0f, 0.0f};
-    vec3f_t right = glms_vec3_normalize(glms_vec3_cross(axis, up));
-    up = glms_vec3_normalize(glms_vec3_cross(right, axis));
-
-    f32 vtx[GIZMO_CIRCLE_SEGMENTS * 2 * 3];
-    u32 count = 0;
-    for (u32 i = 0; i < segments; i++) {
-        f32 a0 = (f32)i / segments * 2.0f * PI;
-        f32 a1 = (f32)(i + 1) / segments * 2.0f * PI;
-        vec3f_t p0 = glms_vec3_add(center,
-            glms_vec3_add(glms_vec3_scale(right, cosf(a0) * radius),
-                          glms_vec3_scale(up, sinf(a0) * radius)));
-        vec3f_t p1 = glms_vec3_add(center,
-            glms_vec3_add(glms_vec3_scale(right, cosf(a1) * radius),
-                          glms_vec3_scale(up, sinf(a1) * radius)));
-        vtx[count++] = p0.x; vtx[count++] = p0.y; vtx[count++] = p0.z;
-        vtx[count++] = p1.x; vtx[count++] = p1.y; vtx[count++] = p1.z;
-    }
-
-    glrenderer3d_drawcall((glrendercall_t){
-        .draw_mode = GL_LINES,
-        .vtx = {
-            [VBO_STREAM_TYPE_GEOMETRY] = {
-                .raw_data = (u8 *)vtx,
-                .size = count * sizeof(f32)
-            }
-        },
-        .shader_config = {
-            .shader = shader,
-            .uniforms = {
-                .count = 5,
-                .data = {
-                    [0] = { .name = str_lit("view"), .value = view },
-                    [1] = { .name = str_lit("projection"), .value = proj },
-                    [2] = { .name = str_lit("transform"), .value = MATRIX4F_IDENTITY },
-                    [3] = { .name = str_lit("color"), .value.vec4 = color },
-                    [4] = { .name = str_lit("cameraPos"), .value.vec3 = cam_pos },
-                }
-            }
-        },
-        .attrs = {
-            .count = 1,
-            .attr = {
-                [0] = { .ncmp = 3, .interleaved = 0, .type = GL_FLOAT }
-            }
-        }
-    });
-}
-
-void workbench_editor__gizmo_draw(vec3f_t entity_pos, vec3f_t cam_pos, matrix4f_t view, matrix4f_t proj, gizmo_mode_t mode)
-{
-    f32 dist = glms_vec3_distance(cam_pos, entity_pos);
-    f32 scale = dist * GIZMO_AXIS_LENGTH;
-
-    const vec3f_t axes[3] = {
-        {1.0f, 0.0f, 0.0f},
-        {0.0f, 1.0f, 0.0f},
-        {0.0f, 0.0f, 1.0f},
-    };
-    const vec4f_t colors[3] = {
-        GIZMO_COLOR_X, GIZMO_COLOR_Y, GIZMO_COLOR_Z
     };
 
-    glshader_t *shader = &global_workbench->shader;
+    for (u8 idx = 0; idx < 3; idx++)
+    {
+        rendercommand_t rendercommand = {
+            .draw_mode = RENDER_COMMAND_DRAW_MODE_LINES,
+            .instance = {
+                .raw_data = {0},
+                .size = sizeof(rendercommand_instance_line_t),
+            },
+            .material = {
+                .shader = {
+                    .data = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id),
+                    .uniforms = {
+                        .count = 2,
+                        .data = {
+                            [0] = {
+                                .name = str("projection"),
+                                .value = proj
+                            },
+                            [1] = {
+                                .name = str("view"),
+                                .value = view,
+                            }
+                        }
+                    }
+                }
+            },
+            .mesh = assetmanager_get_gpu_loaded_asset_async(&global_engine->systems.assets, GL_MESH_PRIMITIVE_TYPE_LINE)->meshes.data,
+        };
 
-    for (u32 i = 0; i < 3; i++) {
-        vec3f_t tip = glms_vec3_add(entity_pos, glms_vec3_scale(axes[i], scale));
-
-        if (mode == GIZMO_MODE_TRANSLATE) {
-            gizmo__draw_line(entity_pos, tip, colors[i], view, proj, cam_pos, shader);
-            gizmo__draw_cone(tip, axes[i], scale * GIZMO_CONE_HEIGHT, scale * GIZMO_CONE_RADIUS,
-                            colors[i], view, proj, cam_pos, shader);
-        } else if (mode == GIZMO_MODE_SCALE) {
-            gizmo__draw_line(entity_pos, tip, colors[i], view, proj, cam_pos, shader);
-            gizmo__draw_cube(tip, scale * GIZMO_CUBE_SIZE, colors[i], view, proj, cam_pos, shader);
-        } else if (mode == GIZMO_MODE_ROTATE) {
-            gizmo__draw_ring(entity_pos, axes[i], scale * GIZMO_RING_RADIUS, GIZMO_CIRCLE_SEGMENTS,
-                            colors[i], view, proj, cam_pos, shader);
-        }
+        memcpy(rendercommand.instance.raw_data, &gizmo[idx], sizeof(gizmo[idx]));
+        renderqueue_pass_command(&global_engine->systems.renderqueue, rendercommand);
     }
+}
 
-    if (mode == GIZMO_MODE_SCALE) {
-        gizmo__draw_cube(entity_pos, scale * GIZMO_CUBE_SIZE * 0.5f,
-                        GIZMO_COLOR_WHITE, view, proj, cam_pos, shader);
-    }
+INTERNAL void workbench_editor__internal_draw_gizmo_on_entity_selection(void)
+{
+    if (!global_workbench->editor.selected_entity_id) return;
+
+    const ecs_component_transform_t *const transform = ecs_entity_query_components(
+        global_ecs, global_workbench->editor.selected_entity_id, ECS_CMP_TRANSFORM
+    ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+
+    if (!transform) return;
+
+    workbench_editor__internal_gizmo_draw_axis(
+        transform->position, 
+        glcamera_getview(global_workbench->world_camera.handle),
+        glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f)
+    );
 }
 
 void workbench_editor_render(void)
 {
     workbench_editor__internal_show_entity_info_for_selected_entity();
-
-
-    if (global_workbench->editor.selected_entity_id) {
-
-        ecs_entity_query_t q = ecs_entity_query_components(
-            global_ecs, global_workbench->editor.selected_entity_id, ECS_CMP_TRANSFORM
-        );
-
-        ecs_component_transform_t *transform = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-
-        if (transform) {
-
-            const glcamera_t *cam = global_workbench->world_camera.handle;
-            const matrix4f_t view = glcamera_getview(cam);
-            const matrix4f_t proj = glms_perspective(radians(45),
-                global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
-
-
-            workbench_editor__gizmo_draw(
-                transform->position, cam->position, view, proj,
-                global_workbench->editor.gizmo_mode
-            );
-        }
-    }
 }
 
 void workbench_editor_update(void)
 {
     workbench_editor__internal_check_mouse_closest_entity();
+    workbench_editor__internal_draw_gizmo_on_entity_selection();
 }
 

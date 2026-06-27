@@ -55,7 +55,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
 
         const bool is_editor_selected = global_workbench->editor.selected_entity_id == entry->entity_id;
 
-        const rendercommand_instance_t instance = {
+        const rendercommand_instance_primitive_mesh_t instance = {
             .translation = (vec4f_t) { transform->position.x, transform->position.y, transform->position.z, 0.f },
             .scale = (vec4f_t) { transform->scale.x, transform->scale.y,  transform->scale.z,  0.f },
             .orientation = *(vec4f_t *)&transform->orientation,
@@ -69,7 +69,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             .enable_wireframe = false,
             .instance = {
                 .raw_data = {0},
-                .size = sizeof(rendercommand_instance_t)
+                .size = sizeof(rendercommand_instance_primitive_mesh_t)
             },
             .material = {
                 .textures = {
