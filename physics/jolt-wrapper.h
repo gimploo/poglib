@@ -93,10 +93,14 @@ void physics_sys_jolt__internal_tracefunc(const char* message)
 
 bool physics_sys_jolt__internal_assertfailurefunc(const char* expression, const char* message, const char* file, uint32_t line)
 {
-    fprintf(stderr, "Expression = %s\nMessage = %s", expression, message);
+    fprintf(stderr, "== Failure in jolt physics =================\n");
+    fprintf(stderr, "Expression = %s\nMessage = %s\n", expression, message);
     fprintf(stderr, "Failed at line number %i in file %s\n", line, file);
-    eprint("Failure in jolt");
+    fprintf(stderr, "============================================\n");
+
+    eprint("Failure in jolt - check above for more details");
     return false;
+
 }
 
 physics_sys_jolt_t * physics_sys_jolt_init(arena_t * const arena)
