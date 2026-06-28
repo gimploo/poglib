@@ -562,23 +562,13 @@ void workbench_update(const f32 dt)
 
         if (global_workbench->editor.prev_selected_entity_id != global_workbench->editor.mouse_closest_to_entity_id) {
             global_workbench->editor.prev_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
-            global_workbench->editor.mouseclick_counter = 0;
         } else {
-            ++global_workbench->editor.mouseclick_counter;
-        }
-
-        if (global_workbench->editor.mouseclick_counter == 1) {
             global_workbench->editor.current_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
         }
-
     }
 
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT)) {
-        if (global_workbench->editor.current_selected_entity_id) {
-            workbench_editor__internal_update_physics_colliders();
-        }
-        global_workbench->editor.current_selected_entity_id = 0;
-        global_workbench->editor.mouseclick_counter = 0;
+        workbench_editor_savechanges();
     }
 
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_GIZMO_CYCLE_MODE)) {
@@ -613,6 +603,8 @@ void workbench_toggle(void)
             .is_active = self->is_active
         }
     );
+
+    workbench_editor_savechanges();
 
     if (!self->is_active) return;
 

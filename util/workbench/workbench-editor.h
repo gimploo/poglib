@@ -507,6 +507,14 @@ void workbench_editor_render(void)
     workbench_editor__internal_show_entity_info_for_selected_entity();
 }
 
+INTERNAL void workbench_editor_savechanges(void)
+{
+    if(!global_workbench->editor.current_selected_entity_id) return;
+    workbench_editor__internal_update_physics_colliders();
+
+    global_workbench->editor.current_selected_entity_id = 0;
+}
+
 INTERNAL void workbench_editor__internal_update_physics_colliders(void)
 {
     if(!global_workbench->editor.current_selected_entity_id) return;
