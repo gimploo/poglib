@@ -62,7 +62,6 @@ typedef struct {
         u32 mouse_closest_to_entity_id;
         u32 current_selected_entity_id;
         u32 prev_selected_entity_id;
-        u32 mouseclick_counter;
 
         gizmo_mode_t gizmo_mode;
     } editor;
