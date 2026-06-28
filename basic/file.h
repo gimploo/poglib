@@ -24,8 +24,8 @@ file_t          file_init(const char *file_path, const char *mode);
 void            file_readall(const file_t * const file, char *buffer, const u64 buffer_size);
 void            file_readline(const file_t *file, char *buffer, u64 buffersize);
 void            file_writeline(file_t *file, const char *line);
-void            file_readbytes(const file_t *file, void * const buffer, const u64 buffersize);
-void            file_writebytes(const file_t *file, void * const buffer, const u64 buffersize);
+void            file_readbytes(const file_t *file, void *const buffer, const u64 buffersize);
+void            file_writebytes(const file_t *file, const void *const buffer, const u64 buffersize);
 void            file_destroy(file_t * file);
 
 #define file(NAME, MODE, VAR)\
@@ -46,17 +46,17 @@ void file_readbytes(const file_t *file, void * const buffer, const u64 buffersiz
     fread(buffer, buffersize, 1, file->fp);
 }
 
-void file_writebytes(const file_t *file, void * const buffer, const u64 buffersize)
+void file_writebytes(const file_t *file, const void *const buffer, const u64 buffersize)
 {
-    assert(buffer);
-    assert(buffersize > 0);
-    assert(!file->is_closed);
+    ASSERT(buffer);
+    ASSERT(buffersize > 0);
+    ASSERT(!file->is_closed);
 
     fwrite(buffer, buffersize, 1, file->fp);
 }
 
 u64 file_get_size(const char *filepath)
-{    
+{
     assert(filepath);
 
     FILE *fp = fopen(filepath, "r");

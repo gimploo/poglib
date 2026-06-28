@@ -1,23 +1,18 @@
 #pragma once
 #include "poglib/basic/color.h"
+#include "poglib/ecs/component/types.h"
+#include "poglib/external/joltc/include/joltc.h"
 #include "poglib/gui.h"
+#include "poglib/physics/jolt-wrapper.h"
+#include "poglib/pipeline/render/render_queue.h"
+#include "poglib/util/asset.h"
+#include "poglib/util/assetmanager.h"
 #include <poglib/util/workbench/common.h>
 #include <poglib/ecs.h>
 
-#define GIZMO_CIRCLE_SEGMENTS 32
-#define GIZMO_AXIS_LENGTH 0.15f
-#define GIZMO_CONE_HEIGHT 0.25f
-#define GIZMO_CONE_RADIUS 0.10f
-#define GIZMO_CUBE_SIZE 0.18f
-#define GIZMO_RING_RADIUS 0.85f
+INTERNAL void workbench_editor__internal_update_physics_colliders(void);
 
-const vec4f_t GIZMO_COLOR_X = {1.0f, 0.2f, 0.2f, 1.0f};
-const vec4f_t GIZMO_COLOR_Y = {0.2f, 1.0f, 0.2f, 1.0f};
-const vec4f_t GIZMO_COLOR_Z = {0.2f, 0.4f, 1.0f, 1.0f};
-const vec4f_t GIZMO_COLOR_WHITE = {1.0f, 1.0f, 1.0f, 0.8f};
-
-
-f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_origin, const vec3f_t ray_dir, const vec3f_t targetpoint)
+INTERNAL f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_origin, const vec3f_t ray_dir, const vec3f_t targetpoint)
 {
     const vec3f_t to_point = glms_vec3_sub(targetpoint, ray_origin);
     f32 t = glms_vec3_dot(to_point, ray_dir);
@@ -26,7 +21,7 @@ f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_origin, co
     return glms_vec3_distance(closest, targetpoint);
 }
 
-void workbench_editor__internal_check_mouse_closest_entity(void)
+INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
 {
     vec2f_t ndc = window_mouse_get_norm_position(global_window);
     glcamera_t *cam = global_workbench->world_camera.handle;
@@ -69,28 +64,81 @@ void workbench_editor__internal_check_mouse_closest_entity(void)
     global_workbench->editor.mouse_closest_to_entity_id = picked;
 }
 
-void workbench_editor__internal_show_entity_info_for_selected_entity(void)
+INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(void)
 {
-    if (!global_workbench->editor.selected_entity_id) return;
+    const u32 entity_id                             = global_workbench->editor.current_selected_entity_id;
+    const ecs_entity_query_t query                  = ecs_entity_query_components(global_ecs, entity_id, ECS_CMP_COLLIDER | ECS_CMP_TRANSFORM);
+    ecs_component_collider_t *const collider        = query.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
+    ecs_component_transform_t *const transform      = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+
+    //FIXME: For kinematic bodies theres no direct API to do this, it was suggested to use  
+    // to destroy and recreate the CharacterVirtual with a new scaled shape.
+    if (collider->internal.kinematic_body) return;
+
+    switch(collider->shape_type)
+    {
+        case COLLIDER_SHAPE_TYPE_SPHERE:
+        case COLLIDER_SHAPE_TYPE_CAPSULE: {
+            JPH_Shape *scaled = JPH_Shape_ScaleShape(collider->internal.shape, (JPH_Vec3 *)&transform->scale);
+            JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)scaled, false, JPH_Activation_DontActivate);
+            JPH_Shape_Destroy(scaled);
+       } break;
+        case COLLIDER_SHAPE_TYPE_CUBE: {
+            collider->dim.cube.half_width  = transform->scale.x;
+            collider->dim.cube.half_height = transform->scale.y;
+            collider->dim.cube.half_depth  = transform->scale.z;
+            JPH_BoxShape *newShape = JPH_BoxShape_Create((JPH_Vec3 *)&collider->dim.cube, JPH_DEFAULT_CONVEX_RADIUS);
+            JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
+            JPH_Shape_Destroy((JPH_Shape *)newShape);
+       } break;
+
+      default: eprint("collider shape type not accounted for");
+    }
+    logging("Applied transform scale to physics collider to entity (%i)", global_workbench->editor.current_selected_entity_id);
+}
+
+INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(void)
+{
+    if (!global_workbench->editor.current_selected_entity_id) return;
 
     gui_t *const gui = &global_workbench->gui.handle;
+    char tempbuffer[32] = {0};
 
-    ecs_component_transform_t *const transform = ecs_entity_query_components(
-        global_ecs, global_workbench->editor.selected_entity_id, ECS_CMP_TRANSFORM
-    ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+    enum option_type {
+        OT_TRANSLATION  = 0,
+        OT_ROTATION     = 1,
+        OT_SCALE        = 2,
+        OT_COUNT
+    };
+
+    const str_t transform_member_labels[OT_COUNT] = {
+        [OT_TRANSLATION]    = str("Translation"),
+        [OT_ROTATION]       = str("Rotation"),
+        [OT_SCALE]          = str("Scale"),
+    };
+
+    const ecs_entity_query_t query = ecs_entity_query_components(
+        global_ecs, 
+        global_workbench->editor.current_selected_entity_id, 
+        ECS_CMP_TRANSFORM | ECS_CMP_COLLIDER
+    );
+
+    ecs_component_transform_t *const transform  = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+    ecs_component_collider_t *const collider    =  query.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
 
     //NOTE: used in the editor to udpate value for each one of these
-    vec3f_t *const TRS[3] = {
+    vec3f_t *const transform_bindings[OT_COUNT] = {
         &transform->position,
         (vec3f_t *)&transform->orientation,
         &transform->scale,
     };
 
+    const u16 entity_details_container_width = 300;
     gui_ui_compose_begin(gui, (ui_config_t) {
         .layout = UI_LAYOUT_VERTICAL,
         .dim = {
-            .min_width = 300,
-            .min_height = 250,
+            .min_width = entity_details_container_width,
+            .min_height = 400,
         },
         .margin = {
             .top = 5.f,
@@ -101,39 +149,30 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
         }
     });
     {
-        char tempbuffer[32] = {0};
+        //INFO: ==Entity label=====================================================================================
+        snprintf(tempbuffer, sizeof(tempbuffer), "Entity Id: %d", global_workbench->editor.current_selected_entity_id);
+        gui_ui_compose_begin(gui, (ui_config_t){
+            .composition = {
+                .styles = UI_STYLE_ONLY_TEXT,
+            },
+            .dim = {
+                .min_width  = 80,
+                .min_height = 30,
+            },
+            .text = str__from_cstr(tempbuffer, sizeof(tempbuffer)),
+            .color = {
+                .base = COLOR_WHITE
+            },
+            .margin = {
+                .top = 5.f,
+                .left = 5.f,
+            }
+        });
+        gui_ui_compose_end(gui);
+        //INFO: =======================================================================================
 
-        //NOTE: Entity label
-        { 
-            snprintf(tempbuffer, sizeof(tempbuffer), "Entity Id: %d", global_workbench->editor.selected_entity_id);
-
-            gui_ui_compose_begin(gui, (ui_config_t){
-                .composition = {
-                    .styles = UI_STYLE_ONLY_TEXT,
-                },
-                .dim = {
-                    .min_width  = 80,
-                    .min_height = 30,
-                },
-                .text = str__from_cstr(tempbuffer, sizeof(tempbuffer)),
-                .color = {
-                    .base = COLOR_WHITE
-                },
-                .margin = {
-                    .top = 5.f,
-                    .left = 5.f,
-                }
-            });
-            gui_ui_compose_end(gui);
-        }
-
-        for (u8 idx = 0; idx < 3; idx ++)
+        for (u8 idx = 0; idx < OT_COUNT; idx ++)
         {
-            const str_t options[3] = {
-                str("Translation"),
-                str("Rotation"),
-                str("Scale"),
-            };
 
             //NOTE: Container
             gui_ui_compose_begin(gui, (ui_config_t){
@@ -156,7 +195,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                         .min_width  = 90,
                         .min_height = 30,
                     },
-                    .text = options[idx],
+                    .text = transform_member_labels[idx],
                     .color = {
                         .base = COLOR_WHITE
                     },
@@ -175,7 +214,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                         .min_width  = 40,
                         .min_height = 30,
                     },
-                    .text = options[idx],
+                    .text = transform_member_labels[idx],
                     .color = {
                         .base = COLOR_BLACK
                     },
@@ -198,7 +237,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                         .highlight = COLOR_LIGHTRED,
                     },
                     .binding = {
-                        .ref = (void *)&TRS[idx]->x,
+                        .ref = (void *)&transform_bindings[idx]->x,
                         .size = sizeof(f32)
                     },
                 });
@@ -206,9 +245,15 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                     //Label
                     memset(tempbuffer, 0, sizeof(tempbuffer));
 
-                    if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.x);
-                    else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.x);
-                    else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.x);
+                    switch(idx)
+                    {
+                        case OT_TRANSLATION:    snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.x);
+                        break;
+                        case OT_ROTATION:       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.x);
+                        break;
+                        case OT_SCALE:          snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.x);
+                        break;
+                    }
 
                     value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
                     gui_ui_compose_begin(gui, value_style);
@@ -228,7 +273,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                         .min_height = 30,
                     },
                     .binding = {
-                        .ref = (void *)&TRS[idx]->y,
+                        .ref = (void *)&transform_bindings[idx]->y,
                         .size = sizeof(f32)
                     },
                     .margin = {
@@ -238,9 +283,15 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                     //Label
                     memset(tempbuffer, 0, sizeof(tempbuffer));
 
-                    if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.y);
-                    else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.y);
-                    else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.y);
+                    switch(idx)
+                    {
+                        case OT_TRANSLATION:    snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.y);
+                        break;
+                        case OT_ROTATION:       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.y);
+                        break;
+                        case OT_SCALE:          snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.y);
+                        break;
+                    }
 
                     value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
                     gui_ui_compose_begin(gui, value_style);
@@ -260,7 +311,7 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                         .min_height = 30,
                     },
                     .binding = {
-                        .ref = (void *)&TRS[idx]->z,
+                        .ref = (void *)&transform_bindings[idx]->z,
                         .size = sizeof(f32)
                     },
                     .margin = {
@@ -270,9 +321,15 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                     //Label
                     memset(tempbuffer, 0, sizeof(tempbuffer));
 
-                    if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.z);
-                    else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.z);
-                    else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.z);
+                    switch(idx)
+                    {
+                        case OT_TRANSLATION:    snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.z);
+                        break;
+                        case OT_ROTATION:       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.z);
+                        break;
+                        case OT_SCALE:          snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.z);
+                        break;
+                    }
 
                     value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
                     gui_ui_compose_begin(gui, value_style);
@@ -299,296 +356,195 @@ void workbench_editor__internal_show_entity_info_for_selected_entity(void)
                     },
                 });
                     if (gui_ui_isclicked(gui, reset_id)) {
-                        *TRS[idx] = (vec3f_t){0};
+                        if (idx == OT_SCALE)    *transform_bindings[idx] = (vec3f_t){1.f,1.f,1.f};
+                        else                    *transform_bindings[idx] = (vec3f_t){0};
                     }
                 gui_ui_compose_end(gui);
 
             }
             gui_ui_compose_end(gui); //NOTE: TRS container
-
         }
+
+        //NOTE: == Apply scale to collider ===========================================
+        const bool show_apply_collider_button = collider && collider->internal.body_id;
+        const u32 apply_collider_button_id = gui_ui_compose_begin(gui, (ui_config_t){
+            .composition = {
+                .traits = show_apply_collider_button ? (UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE) : UI_BEHAVIOR_NONE,
+            },
+            .dim = {
+                .min_width = entity_details_container_width - 20,
+                .min_height = 30,
+            },
+            .color = {
+                .base = show_apply_collider_button ? COLOR_WHITE : COLOR_GRAY,
+                .highlight = COLOR_OFFWHITE,
+            },
+            .margin = {
+                .top = 10.f,
+                .left = 10.f,
+                .right = 10.f,
+                .bottom = 10.f,
+            }
+        });
+            gui_ui_compose_begin(
+                gui, 
+                (ui_config_t) {
+                    .composition = {
+                        .styles = UI_STYLE_ONLY_TEXT,
+                    },
+                    .text_align = UI_TEXT_ALIGN_CENTER,
+                    .dim = {
+                        .min_width  = entity_details_container_width - 20,
+                        .min_height = 30,
+                    },
+                    .text = str("Apply scale to collider"),
+                    .color = {
+                        .base = COLOR_BLACK
+                    },
+                    .margin = {
+                        .top = 5.f,
+                    }
+                }
+            );
+
+            if (gui_ui_isclicked(gui, apply_collider_button_id)) {
+                workbench_editor__internal_apply_transform_scale_to_phy_collider();
+                workbench_editor__internal_update_physics_colliders();
+            }
+
+            gui_ui_compose_end(gui);
+        gui_ui_compose_end(gui);
+        //NOTE: =====================================================================
     }
     gui_ui_compose_end(gui);
+
+    transform->orientation = glms_quat_normalize(transform->orientation);
 }
 
-
-static void gizmo__draw_line(vec3f_t a, vec3f_t b, vec4f_t color,
-    matrix4f_t view, matrix4f_t proj, vec3f_t cam_pos, glshader_t *shader)
-{
-    f32 vtx[6] = { a.x, a.y, a.z, b.x, b.y, b.z };
-    glrenderer3d_drawcall((glrendercall_t){
-        .draw_mode = GL_LINES,
-        .vtx = {
-            [VBO_STREAM_TYPE_GEOMETRY] = {
-                .raw_data = (u8 *)vtx,
-                .size = sizeof(vtx)
-            }
+INTERNAL void workbench_editor__internal_gizmo_draw_axis(
+    const vec3f_t entitypos, 
+    const matrix4f_t view, 
+    const matrix4f_t proj
+) {
+    const f32 axis_length = 1000.f;
+    rendercommand_instance_line_t gizmo[3] = {
+        //NOTE: X axis
+        {
+            .color       = {1.0f, 0.0f, 0.0f, 1.0f},
+            .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
+            .orientation = {0.0f, 0.0f, 0.0f, 1.0f},
+            .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
         },
-        .shader_config = {
-            .shader = shader,
-            .uniforms = {
-                .count = 5,
-                .data = {
-                    [0] = { .name = str_lit("view"), .value = view },
-                    [1] = { .name = str_lit("projection"), .value = proj },
-                    [2] = { .name = str_lit("transform"), .value = MATRIX4F_IDENTITY },
-                    [3] = { .name = str_lit("color"), .value.vec4 = color },
-                    [4] = { .name = str_lit("cameraPos"), .value.vec3 = cam_pos },
-                }
-            }
+        //NOTE: Y axis
+        {
+            .color       = {0.0f, 1.0f, 0.0f, 1.0f},
+            .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
+            .orientation = {0.0f, 0.0f, -0.7071f, 0.7071f},
+            .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
         },
-        .attrs = {
-            .count = 1,
-            .attr = {
-                [0] = { .ncmp = 3, .interleaved = 0, .type = GL_FLOAT }
-            }
-        }
-    });
-}
-
-static void gizmo__draw_cone(vec3f_t tip, vec3f_t dir, f32 height, f32 radius,
-    vec4f_t color, matrix4f_t view, matrix4f_t proj, vec3f_t cam_pos, glshader_t *shader)
-{
-    vec3f_t base_center = glms_vec3_sub(tip, glms_vec3_scale(dir, height));
-    vec3f_t up = {0.0f, 1.0f, 0.0f};
-    if (fabs(glms_vec3_dot(dir, up)) > 0.99f)
-        up = (vec3f_t){1.0f, 0.0f, 0.0f};
-    vec3f_t right = glms_vec3_normalize(glms_vec3_cross(dir, up));
-    up = glms_vec3_normalize(glms_vec3_cross(right, dir));
-
-    f32 vtx[8 * 6 * 3];
-    u32 count = 0;
-    for (u32 i = 0; i < 8; i++) {
-        f32 a0 = (f32)i / 8.0f * 2.0f * PI;
-        f32 a1 = (f32)(i + 1) / 8.0f * 2.0f * PI;
-        vec3f_t p0 = glms_vec3_add(base_center,
-            glms_vec3_add(glms_vec3_scale(right, cosf(a0) * radius),
-                          glms_vec3_scale(up, sinf(a0) * radius)));
-        vec3f_t p1 = glms_vec3_add(base_center,
-            glms_vec3_add(glms_vec3_scale(right, cosf(a1) * radius),
-                          glms_vec3_scale(up, sinf(a1) * radius)));
-        vtx[count++] = tip.x; vtx[count++] = tip.y; vtx[count++] = tip.z;
-        vtx[count++] = p0.x;  vtx[count++] = p0.y;  vtx[count++] = p0.z;
-        vtx[count++] = p1.x;  vtx[count++] = p1.y;  vtx[count++] = p1.z;
-        vtx[count++] = base_center.x; vtx[count++] = base_center.y; vtx[count++] = base_center.z;
-        vtx[count++] = p1.x;          vtx[count++] = p1.y;          vtx[count++] = p1.z;
-        vtx[count++] = p0.x;          vtx[count++] = p0.y;          vtx[count++] = p0.z;
-    }
-
-    glrenderer3d_drawcall((glrendercall_t){
-        .draw_mode = GL_TRIANGLES,
-        .vtx = {
-            [VBO_STREAM_TYPE_GEOMETRY] = {
-                .raw_data = (u8 *)vtx,
-                .size = count * sizeof(f32)
-            }
+        //NOTE: Z axis
+        {
+            .color       = {0.0f, 0.0f, 1.0f, 1.0f},
+            .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
+            .orientation = {0.0f, -0.7071f, 0.0f, 0.7071f},
+            .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
         },
-        .shader_config = {
-            .shader = shader,
-            .uniforms = {
-                .count = 5,
-                .data = {
-                    [0] = { .name = str_lit("view"), .value = view },
-                    [1] = { .name = str_lit("projection"), .value = proj },
-                    [2] = { .name = str_lit("transform"), .value = MATRIX4F_IDENTITY },
-                    [3] = { .name = str_lit("color"), .value.vec4 = color },
-                    [4] = { .name = str_lit("cameraPos"), .value.vec3 = cam_pos },
-                }
-            }
-        },
-        .attrs = {
-            .count = 1,
-            .attr = {
-                [0] = { .ncmp = 3, .interleaved = 0, .type = GL_FLOAT }
-            }
-        }
-    });
-}
-
-static void gizmo__draw_cube(vec3f_t center, f32 size, vec4f_t color, matrix4f_t view, matrix4f_t proj, vec3f_t cam_pos, glshader_t *shader)
-{
-    const f32 h = size * 0.5f;
-    const vec3f_t c = center;
-    const vec3f_t corners[8] = {
-        {c.x - h, c.y - h, c.z - h},
-        {c.x + h, c.y - h, c.z - h},
-        {c.x + h, c.y + h, c.z - h},
-        {c.x - h, c.y + h, c.z - h},
-        {c.x - h, c.y - h, c.z + h},
-        {c.x + h, c.y - h, c.z + h},
-        {c.x + h, c.y + h, c.z + h},
-        {c.x - h, c.y + h, c.z + h},
-    };
-    const u32 edges[12][2] = {
-        {0,1},{1,2},{2,3},{3,0},
-        {4,5},{5,6},{6,7},{7,4},
-        {0,4},{1,5},{2,6},{3,7},
-    };
-    f32 vtx[12 * 2 * 3];
-    u32 count = 0;
-    for (u32 i = 0; i < 12; i++) {
-        vtx[count++] = corners[edges[i][0]].x;
-        vtx[count++] = corners[edges[i][0]].y;
-        vtx[count++] = corners[edges[i][0]].z;
-        vtx[count++] = corners[edges[i][1]].x;
-        vtx[count++] = corners[edges[i][1]].y;
-        vtx[count++] = corners[edges[i][1]].z;
-    }
-
-    glrenderer3d_drawcall((glrendercall_t){
-        .draw_mode = GL_LINES,
-        .vtx = {
-            [VBO_STREAM_TYPE_GEOMETRY] = {
-                .raw_data = (u8 *)vtx,
-                .size = count * sizeof(f32)
-            }
-        },
-        .shader_config = {
-            .shader = shader,
-            .uniforms = {
-                .count = 5,
-                .data = {
-                    [0] = { .name = str_lit("view"), .value = view },
-                    [1] = { .name = str_lit("projection"), .value = proj },
-                    [2] = { .name = str_lit("transform"), .value = MATRIX4F_IDENTITY },
-                    [3] = { .name = str_lit("color"), .value.vec4 = color },
-                    [4] = { .name = str_lit("cameraPos"), .value.vec3 = cam_pos },
-                }
-            }
-        },
-        .attrs = {
-            .count = 1,
-            .attr = {
-                [0] = { .ncmp = 3, .interleaved = 0, .type = GL_FLOAT }
-            }
-        }
-    });
-}
-
-static void gizmo__draw_ring(vec3f_t center, vec3f_t axis, f32 radius, u32 segments,
-    vec4f_t color, matrix4f_t view, matrix4f_t proj, vec3f_t cam_pos, glshader_t *shader)
-{
-    (void)cam_pos;
-    vec3f_t up = {0.0f, 1.0f, 0.0f};
-    if (fabs(glms_vec3_dot(axis, up)) > 0.99f)
-        up = (vec3f_t){1.0f, 0.0f, 0.0f};
-    vec3f_t right = glms_vec3_normalize(glms_vec3_cross(axis, up));
-    up = glms_vec3_normalize(glms_vec3_cross(right, axis));
-
-    f32 vtx[GIZMO_CIRCLE_SEGMENTS * 2 * 3];
-    u32 count = 0;
-    for (u32 i = 0; i < segments; i++) {
-        f32 a0 = (f32)i / segments * 2.0f * PI;
-        f32 a1 = (f32)(i + 1) / segments * 2.0f * PI;
-        vec3f_t p0 = glms_vec3_add(center,
-            glms_vec3_add(glms_vec3_scale(right, cosf(a0) * radius),
-                          glms_vec3_scale(up, sinf(a0) * radius)));
-        vec3f_t p1 = glms_vec3_add(center,
-            glms_vec3_add(glms_vec3_scale(right, cosf(a1) * radius),
-                          glms_vec3_scale(up, sinf(a1) * radius)));
-        vtx[count++] = p0.x; vtx[count++] = p0.y; vtx[count++] = p0.z;
-        vtx[count++] = p1.x; vtx[count++] = p1.y; vtx[count++] = p1.z;
-    }
-
-    glrenderer3d_drawcall((glrendercall_t){
-        .draw_mode = GL_LINES,
-        .vtx = {
-            [VBO_STREAM_TYPE_GEOMETRY] = {
-                .raw_data = (u8 *)vtx,
-                .size = count * sizeof(f32)
-            }
-        },
-        .shader_config = {
-            .shader = shader,
-            .uniforms = {
-                .count = 5,
-                .data = {
-                    [0] = { .name = str_lit("view"), .value = view },
-                    [1] = { .name = str_lit("projection"), .value = proj },
-                    [2] = { .name = str_lit("transform"), .value = MATRIX4F_IDENTITY },
-                    [3] = { .name = str_lit("color"), .value.vec4 = color },
-                    [4] = { .name = str_lit("cameraPos"), .value.vec3 = cam_pos },
-                }
-            }
-        },
-        .attrs = {
-            .count = 1,
-            .attr = {
-                [0] = { .ncmp = 3, .interleaved = 0, .type = GL_FLOAT }
-            }
-        }
-    });
-}
-
-void workbench_editor__gizmo_draw(vec3f_t entity_pos, vec3f_t cam_pos, matrix4f_t view, matrix4f_t proj, gizmo_mode_t mode)
-{
-    f32 dist = glms_vec3_distance(cam_pos, entity_pos);
-    f32 scale = dist * GIZMO_AXIS_LENGTH;
-
-    const vec3f_t axes[3] = {
-        {1.0f, 0.0f, 0.0f},
-        {0.0f, 1.0f, 0.0f},
-        {0.0f, 0.0f, 1.0f},
-    };
-    const vec4f_t colors[3] = {
-        GIZMO_COLOR_X, GIZMO_COLOR_Y, GIZMO_COLOR_Z
     };
 
-    glshader_t *shader = &global_workbench->shader;
+    for (u8 idx = 0; idx < 3; idx++)
+    {
+        rendercommand_t rendercommand = {
+            .draw_mode = RENDER_COMMAND_DRAW_MODE_LINES,
+            .instance = {
+                .raw_data = {0},
+                .size = sizeof(rendercommand_instance_line_t),
+            },
+            .material = {
+                .shader = {
+                    .data = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id),
+                    .uniforms = {
+                        .count = 2,
+                        .data = {
+                            [0] = {
+                                .name = str("projection"),
+                                .value = proj
+                            },
+                            [1] = {
+                                .name = str("view"),
+                                .value = view,
+                            }
+                        }
+                    }
+                }
+            },
+            .mesh = assetmanager_get_gpu_loaded_asset_async(&global_engine->systems.assets, GL_MESH_PRIMITIVE_TYPE_LINE)->meshes.data,
+        };
 
-    for (u32 i = 0; i < 3; i++) {
-        vec3f_t tip = glms_vec3_add(entity_pos, glms_vec3_scale(axes[i], scale));
-
-        if (mode == GIZMO_MODE_TRANSLATE) {
-            gizmo__draw_line(entity_pos, tip, colors[i], view, proj, cam_pos, shader);
-            gizmo__draw_cone(tip, axes[i], scale * GIZMO_CONE_HEIGHT, scale * GIZMO_CONE_RADIUS,
-                            colors[i], view, proj, cam_pos, shader);
-        } else if (mode == GIZMO_MODE_SCALE) {
-            gizmo__draw_line(entity_pos, tip, colors[i], view, proj, cam_pos, shader);
-            gizmo__draw_cube(tip, scale * GIZMO_CUBE_SIZE, colors[i], view, proj, cam_pos, shader);
-        } else if (mode == GIZMO_MODE_ROTATE) {
-            gizmo__draw_ring(entity_pos, axes[i], scale * GIZMO_RING_RADIUS, GIZMO_CIRCLE_SEGMENTS,
-                            colors[i], view, proj, cam_pos, shader);
-        }
+        memcpy(rendercommand.instance.raw_data, &gizmo[idx], sizeof(gizmo[idx]));
+        renderqueue_pass_command(&global_engine->systems.renderqueue, rendercommand);
     }
+}
 
-    if (mode == GIZMO_MODE_SCALE) {
-        gizmo__draw_cube(entity_pos, scale * GIZMO_CUBE_SIZE * 0.5f,
-                        GIZMO_COLOR_WHITE, view, proj, cam_pos, shader);
-    }
+INTERNAL void workbench_editor__internal_draw_gizmo_on_entity_selection(void)
+{
+    if (!global_workbench->editor.current_selected_entity_id) return;
+
+    const ecs_component_transform_t *const transform = ecs_entity_query_components(
+        global_ecs, global_workbench->editor.current_selected_entity_id, ECS_CMP_TRANSFORM
+    ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+
+    if (!transform) return;
+
+    workbench_editor__internal_gizmo_draw_axis(
+        transform->position, 
+        glcamera_getview(global_workbench->world_camera.handle),
+        glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f)
+    );
 }
 
 void workbench_editor_render(void)
 {
     workbench_editor__internal_show_entity_info_for_selected_entity();
+}
 
+INTERNAL void workbench_editor__internal_update_physics_colliders(void)
+{
+    if(!global_workbench->editor.current_selected_entity_id) return;
 
-    if (global_workbench->editor.selected_entity_id) {
+    logging("Updated physics collider for entity(%i)", global_workbench->editor.current_selected_entity_id);
 
-        ecs_entity_query_t q = ecs_entity_query_components(
-            global_ecs, global_workbench->editor.selected_entity_id, ECS_CMP_TRANSFORM
+    const u32 entity_id = global_workbench->editor.current_selected_entity_id;
+    const ecs_entity_query_t query      = ecs_entity_query_components(global_ecs, entity_id, ECS_CMP_COLLIDER | ECS_CMP_TRANSFORM);
+    ecs_component_collider_t *collider  = query.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
+
+    if (!collider) return;
+
+    //NOTE: updating the shape of the collider
+    {
+        ecs_component_transform_t *const transform = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+        ASSERT(transform);
+
+        JPH_BodyInterface_SetPositionAndRotation(
+            global_physics_sys_jolt_instance->bodyinterface, 
+            collider->internal.body_id, 
+            (JPH_Vec3 *)&transform->position, 
+            &(JPH_Quat) {
+                .x = transform->orientation.x,
+                .y = transform->orientation.y,
+                .z = transform->orientation.z,
+                .w = transform->orientation.w,
+            },
+            JPH_Activation_DontActivate
         );
 
-        ecs_component_transform_t *transform = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-
-        if (transform) {
-
-            const glcamera_t *cam = global_workbench->world_camera.handle;
-            const matrix4f_t view = glcamera_getview(cam);
-            const matrix4f_t proj = glms_perspective(radians(45),
-                global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
-
-
-            workbench_editor__gizmo_draw(
-                transform->position, cam->position, view, proj,
-                global_workbench->editor.gizmo_mode
-            );
-        }
+        collider->internal.position     = transform->position;
+        collider->internal.orientation  = transform->orientation;
     }
 }
 
 void workbench_editor_update(void)
 {
     workbench_editor__internal_check_mouse_closest_entity();
+    workbench_editor__internal_draw_gizmo_on_entity_selection();
 }
 

@@ -2,9 +2,7 @@
 #include <poglib/basic.h>
 #include <poglib/gui.h>
 #include <poglib/util/glcamera.h>
-
 #include "./workbench-debug-renderer.h"
-
 
 typedef enum gizmo_mode {
     GIZMO_MODE_TRANSLATE = 0,
@@ -41,7 +39,8 @@ typedef struct {
 
     struct {
         u32 atlas_id;
-        u32 shader_id;
+        u32 mesh_shader_id;
+        u32 line_shader_id;
     } primitives;
 
     workbench_debug_renderer_t debug_renderer;
@@ -58,11 +57,13 @@ typedef struct {
 
 
     struct {
-        u32 mouse_closest_to_entity_id;
-        u32 selected_entity_id;
 
-        u32 prevmouseclicked_entity_Id;
+        //NOTE: these are used for entity selection
+        u32 mouse_closest_to_entity_id;
+        u32 current_selected_entity_id;
+        u32 prev_selected_entity_id;
         u32 mouseclick_counter;
+
         gizmo_mode_t gizmo_mode;
     } editor;
 

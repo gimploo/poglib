@@ -5,6 +5,7 @@
 #include "poglib/external/joltc/include/joltc.h"
 #include "poglib/physics/jolt-wrapper.h"
 #include "../component.h"
+#include "poglib/util/workbench/common.h"
 
 void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
@@ -19,7 +20,7 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
         ecs_component_transform_t *transform        = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
 
         //HACK: is this good ? - who tf knows - keep this till i get smarter :p
-        if (transform->source == ECS_CMP_TRANSFORM_SOURCE_ANIMATION)
+        if (transform->source == ECS_CMP_TRANSFORM_SOURCE_ANIMATION || global_workbench->is_active)
             break;
 
         switch(collider->motion_type)
@@ -65,9 +66,8 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
             break;
 
             case JPH_MotionType_Static: 
-                //HACK: commenting this out for now - require the colliders to be updated when entity updates are done in the scene
-                //transform->position     = collider->internal.position;
-                //transform->orientation  = collider->internal.orientation;
+                transform->position     = collider->internal.position;
+                transform->orientation  = collider->internal.orientation;
             break;
 
             default: eprint("motion type not accounted for");

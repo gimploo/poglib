@@ -88,7 +88,6 @@ struct ecs_component_input_t {
     } direction_source;
     void (*input_behavior)(ecs_component_input_state_t * const state, const u16 command_bitmask, const f32 dt);
     struct {
-        commandqueue_t *commandqueue;
         ecs_component_input_state_t state; 
     } internal;
 };
@@ -156,6 +155,9 @@ struct ecs_component_collider_t {
         JPH_CharacterVirtual        *kinematic_body;
         vec3f_t                     position;
         versors                     orientation;
+#ifdef DEBUG
+        JPH_Shape                   *shape;
+#endif
     } internal;
 };
 

@@ -6,6 +6,10 @@
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
 
+#define ECS_SAVE_FILE_MAGIC     0x45435346u
+#define ECS_SAVE_FILE_VERSION   1u
+#define ECS_SAVE_FILEPATH       "ecs.save"
+
 ecs_t * global_ecs = NULL;
 
 ecs_t *         ecs_init(void);
@@ -19,6 +23,9 @@ void                ecs_set_active_camera(ecs_t *const self, const u32 entity_id
 glcamera_t *        ecs_get_active_camera(ecs_t *const self);
 
 void                ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
+
+void                ecs_save_to_file(ecs_t *const self, const str_t filepath);
+void                ecs_load_savefile(ecs_t *const self, const str_t filepath);
 
 void            ecs_update(ecs_t *const self);
 void            ecs_destroy(ecs_t * const self);
@@ -131,6 +138,81 @@ ecs_entity_query_t ecs_entity_query_components(ecs_t *const self, const u32 enti
 void ecs_destroy(ecs_t * const self)
 {
     arena_destroy(&self->arena);
+}
+
+void ecs_save_to_file(ecs_t *const self, const str_t filepath)
+{
+    ASSERT(self);
+
+    file_t f = file_init(filepath.data, "wb");
+
+    const u32 magic        = ECS_SAVE_FILE_MAGIC;
+    const u32 version      = ECS_SAVE_FILE_VERSION;
+    const u32 entity_count = self->managers.entitymanager.entities.len;
+
+    file_writebytes(&f, (void *)&magic,        sizeof(magic));
+    file_writebytes(&f, (void *)&version,      sizeof(version));
+    file_writebytes(&f, (void *)&entity_count, sizeof(entity_count));
+
+    slot_iterator(&self->managers.entitymanager.entities, iter)
+    {
+        const ecs_entity_t *const entity = iter;
+
+        ecs_entity_query_t query = ecs_entity_query_components(
+            self, entity->id, entity->component_signature
+        );
+
+        ecs_componentbundle_t dest = { 
+            .signature = entity->component_signature,
+            .component = {0}
+        };
+
+        for (u8 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
+        {
+            const ecs_component_type cmp_type = 1 << cmp_idx;
+            if ((entity->component_signature & cmp_type) == 0) continue;
+
+            const u16 cmp_size = ecs_component__internal_get_componenttype_size(cmp_type);
+            memcpy(&dest.component[cmp_idx], query.entity_cmp_data[cmp_idx], cmp_size);
+        }
+
+        file_writebytes(&f, &dest, sizeof(dest));
+    }
+
+    file_destroy(&f);
+}
+
+void ecs_load_savefile(ecs_t *const self, const str_t filepath)
+{
+    if (self->internal.entity_generator_counter) eprint("Clear existing ecs before loading a save file");
+    ASSERT(self);
+    ASSERT(filepath.data);
+    ASSERT(filepath.len > 0);
+
+    if (!file_check_exist(filepath.data))
+    {
+        eprint("save file not found: `%s`", filepath.data);
+        return;
+    }
+
+    file_t f = file_init(filepath.data, "rb");
+
+    u32 magic, version, entity_count;
+    file_readbytes(&f, &magic,        sizeof(magic));
+    file_readbytes(&f, &version,      sizeof(version));
+    file_readbytes(&f, &entity_count, sizeof(entity_count));
+
+    ASSERT(magic == ECS_SAVE_FILE_MAGIC);
+    ASSERT(version == ECS_SAVE_FILE_VERSION);
+
+    for (u32 idx = 0; idx < entity_count; idx++)
+    {
+        ecs_componentbundle_t bundle;
+        file_readbytes(&f, &bundle, sizeof(bundle));
+        ecs_entity_add(self, bundle);
+    }
+
+    file_destroy(&f);
 }
 
 #endif

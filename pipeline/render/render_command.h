@@ -8,9 +8,17 @@
 //for all cases, although wasteful - GPU requires to padded that way for those types rest can be
 //used as they are.
 
-typedef struct rendercommand_instance_t rendercommand_instance_t;
-struct rendercommand_instance_t {
+typedef struct rendercommand_instance_primitive_mesh_t rendercommand_instance_primitive_mesh_t;
+struct rendercommand_instance_primitive_mesh_t {
     box_t uv;
+    vec4f_t color;
+    vec4f_t translation;
+    vec4f_t orientation;
+    vec4f_t scale;
+};
+
+typedef struct rendercommand_instance_line_t rendercommand_instance_line_t;
+struct rendercommand_instance_line_t {
     vec4f_t color;
     vec4f_t translation;
     vec4f_t orientation;
