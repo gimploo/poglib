@@ -113,6 +113,8 @@ void ecs_component__internal_bundle_validate_and_initalize_internals(ecs_compone
             case ECS_CMP_TRANSFORM: {
                 if (config->component[ECS_CMP_TRANSFORM_IDX].transform.orientation.w == 0) {
                     config->component[ECS_CMP_TRANSFORM_IDX].transform.orientation = GLM_QUAT_IDENTITY;
+                } else {
+                    config->component[ECS_CMP_TRANSFORM_IDX].transform.orientation = glms_quat_normalize(config->component[ECS_CMP_TRANSFORM_IDX].transform.orientation);
                 }
                 if (config->component[ECS_CMP_TRANSFORM_IDX].transform.source == ECS_CMP_TRANSFORM_SOURCE_PHYSICS) {
                     ASSERT(config->signature & ECS_CMP_COLLIDER);
