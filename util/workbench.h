@@ -15,9 +15,8 @@
 workbench_t *   workbench_init(arena_t * const arena);
 void            workbench_update(const f32 dt);
 void            workbench_render(void);
+void                workbench_toggle(void);
 void            workbench_destroy(void);
-
-void            workbench_toggle(void);
 
 
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0.f, 0.f, 10.f}
@@ -168,10 +167,28 @@ workbench_t * workbench_init(arena_t *const arena)
             arena
         ),
         .primitives = {
-            .shader_id = assetmanager_load_glsl_shader(
+            .mesh_shader_id = assetmanager_load_glsl_shader(
                 assetmanager,
                 str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-vtx.glsl"),
                 str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-frag.glsl"),
+                (gluniform_registry_t){ 
+                    .count = 2,
+                    .data = {
+                        [0] = {
+                            .name = str_lit("projection"),
+                            .type = GL_UNIFORM_TYPE_MATRIX4F
+                        },
+                        [1] = {
+                            .name = str_lit("view"),
+                            .type = GL_UNIFORM_TYPE_MATRIX4F
+                        },
+                    }
+                }
+            ),
+            .line_shader_id = assetmanager_load_glsl_shader(
+                assetmanager,
+                str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-line-vtx.glsl"),
+                str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-line-frag.glsl"),
                 (gluniform_registry_t){ 
                     .count = 2,
                     .data = {
@@ -412,7 +429,7 @@ void workbench_render_camera(
         10000.0f
     );
 
-    const rendercommand_instance_t instance = {
+    const rendercommand_instance_primitive_mesh_t instance = {
         .translation = { position.x, position.y, position.z, 0.f },
         .orientation = { orientation.x, orientation.y, orientation.z, orientation.w }, 
         .scale = vec4f(0.5f),
@@ -431,12 +448,12 @@ void workbench_render_camera(
         .mesh = asset->meshes.data,
         .instance = {
             .raw_data = {0},
-            .size = sizeof(rendercommand_instance_t)
+            .size = sizeof(rendercommand_instance_primitive_mesh_t)
         },
         .material = {
             .textures = {0},
             .shader = {
-                .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.shader_id),
+                .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.mesh_shader_id),
                 .uniforms = {
                     .count = 2,
                     .data = {
@@ -478,7 +495,7 @@ void workbench_render_marker(
     spriteatlas_t *atlas = (spriteatlas_t *)assetmanager_get_assetresource(
         assetmanager, ASSET_TYPE_TEXTURE_SPRITE_ATLAS, self->primitives.atlas_id);
 
-    const rendercommand_instance_t instance = {
+    const rendercommand_instance_primitive_mesh_t instance = {
         .translation = { translation.x, translation.y, translation.z, 0.f },
         .scale = vec4f(0.05f),
         .orientation = {0.f, 0.f, 0.f, 1.f},
@@ -497,7 +514,7 @@ void workbench_render_marker(
         .mesh = asset->meshes.data,
         .instance = {
             .raw_data = {0},
-            .size = sizeof(rendercommand_instance_t)
+            .size = sizeof(rendercommand_instance_primitive_mesh_t)
         },
         .material = {
             .textures = {
@@ -507,7 +524,7 @@ void workbench_render_marker(
                 }
             },
             .shader = {
-                .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, self->primitives.shader_id),
+                .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, self->primitives.mesh_shader_id),
                 .uniforms = {
                     .count = 2,
                     .data = {
@@ -543,21 +560,24 @@ void workbench_update(const f32 dt)
 
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION))   {
 
-        if (global_workbench->editor.prevmouseclicked_entity_Id != global_workbench->editor.mouse_closest_to_entity_id) {
+        if (global_workbench->editor.prev_selected_entity_id != global_workbench->editor.mouse_closest_to_entity_id) {
+            global_workbench->editor.prev_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
             global_workbench->editor.mouseclick_counter = 0;
         } else {
             ++global_workbench->editor.mouseclick_counter;
         }
 
-        if (global_workbench->editor.mouseclick_counter == 2) {
-            global_workbench->editor.selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
+        if (global_workbench->editor.mouseclick_counter == 1) {
+            global_workbench->editor.current_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
         }
 
-        global_workbench->editor.prevmouseclicked_entity_Id = global_workbench->editor.mouse_closest_to_entity_id;
     }
 
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT)) {
-        global_workbench->editor.selected_entity_id = 0;
+        if (global_workbench->editor.current_selected_entity_id) {
+            workbench_editor__internal_update_physics_colliders();
+        }
+        global_workbench->editor.current_selected_entity_id = 0;
         global_workbench->editor.mouseclick_counter = 0;
     }
 
@@ -570,7 +590,7 @@ void workbench_update(const f32 dt)
         global_workbench->world_camera.entity_id, 
         (ecs_cmp_patch_payload_t) {
             .patch_type = ECS_PATCH_CMP_ACTIVE_FIELD,
-            .is_active = global_workbench->editor.selected_entity_id == ECS_ENTITY_INVALID_ID,
+            .is_active = global_workbench->editor.current_selected_entity_id == ECS_ENTITY_INVALID_ID,
             .signature = ECS_CMP_TRANSFORM
         }
     );

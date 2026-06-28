@@ -17,6 +17,8 @@ typedef struct str_t {
 
 } str_t ;
 
+#define         STR_EMPTY (str_t){0}
+
 #define         str(STRING)              (str_t ) { .data = STRING, .len = sizeof(STRING) - 1, .internal.heap_allocated = false }
 #define         str_lit(STRING)          { .data = STRING, .len = sizeof(STRING) - 1, .internal.heap_allocated = false }
 str_t           str_init(arena_t *arena, const char * const __buffer);

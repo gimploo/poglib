@@ -18,7 +18,7 @@ void                renderqueue_destroy(renderqueue_t * const self);
 #ifndef IGNORE_RENDER_QUEUE_IMPLEMENTATION
 
 void renderqueue__internal_validate_command(rendercommand_t);
-bool renderqueue__internal_check_for_batchable_commands(renderqueue_t * const queue, rendercommand_t command);
+bool renderqueue__internal_check_for_batchable_commands(renderqueue_t * const queue, const rendercommand_t command);
 void renderqueue__internal_add_to_bucket(list_t * const render_commands, const rendercommand_t command);
 void rendercommand__internal_shader_upload_uniforms(const rendercommand_t * const command);
 
@@ -57,7 +57,7 @@ void renderqueue_pass_command(renderqueue_t *const self, rendercommand_t command
             return;
         }
 
-        if (self->buckets[idx].len == 0) {
+        if (!self->buckets[idx].len) {
             renderqueue__internal_add_to_bucket(&self->buckets[idx], command);
             return;
         }
@@ -85,7 +85,8 @@ void renderqueue__internal_validate_command(const rendercommand_t command)
     //unintentional mismatches - or through an error during runtime to reorder the textures (better) so we can avoid the sorting
     //all together
 
-    {   //NOTE: Mesh validation
+    {
+        //NOTE: Mesh validation
         ASSERT(command.mesh);
         ASSERT(command.mesh->vao_id > 0);
         ASSERT(command.mesh->attribute_count > 0);
@@ -107,7 +108,7 @@ void renderqueue__internal_add_to_bucket(list_t * const render_commands, const r
     list_append(render_commands, command);
 }
 
-bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const queue, rendercommand_t command)
+bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const queue, const rendercommand_t command)
 {
     for (u8 idx = 0; idx < MAX_RENDER_BUCKETS_ALLOWED; idx++)
     {
@@ -115,11 +116,16 @@ bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const que
 
         if (!list_is_init(commands)) continue;
 
-        const rendercommand_t * const first_render_command = commands->len
+        const rendercommand_t *const first_render_command = commands->len
             ? list_get_value(commands, 0)
             : NULL;
 
-        if (!first_render_command)                                                  continue;
+        //NOTE: is the buckets empty and no commands found add to it
+        if (!first_render_command) {
+            renderqueue__internal_add_to_bucket(commands, command);
+            return true;
+        };
+
         if (command.mesh->vao_id != first_render_command->mesh->vao_id)             continue;
         if (command.draw_mode != first_render_command->draw_mode)                   continue;
         if (command.enable_wireframe != first_render_command->enable_wireframe)     continue;
@@ -205,7 +211,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
     for (u8 idx = 0; idx < MAX_DRAW_CALLS_PER_FRAME_COUNT; idx++)
     {
         const list_t *bucket_commands = &self->buckets[idx];
-        if (!bucket_commands->len)          continue;
+        if (!bucket_commands->len) continue;
 
         const rendercommand_t *first_command = list_get_value(bucket_commands, 0);
         ASSERT(first_command->mesh->vao_id);
@@ -214,7 +220,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
         else                                    GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 
         //NOTE: bind shader
-        const glshader_t * const shader = first_command->material.shader.data;
+        const glshader_t *const shader = first_command->material.shader.data;
         if (binded_shader_id != shader->id) {
             GL_CHECK(glUseProgram(shader->id));
             binded_shader_id = shader->id;

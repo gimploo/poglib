@@ -265,7 +265,6 @@ void gui__internal_update_state(gui_t *gui, const ui_config_t config)
             gui->internal.mouse_lock_on_ui.ui_id = config.internal.id;
         }
 
-        static int i = 0;
         if (gui->internal.mouse_lock_on_ui.ui_id == config.internal.id) {
             i32 rel = global_window->mouse.rel.x;
             *((f32 *)config.binding.ref) += (rel / 10.f);
