@@ -10,6 +10,8 @@
 #include <poglib/util/workbench/common.h>
 #include <poglib/ecs.h>
 
+INTERNAL void workbench_editor__internal_update_physics_colliders(void);
+
 INTERNAL f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_origin, const vec3f_t ray_dir, const vec3f_t targetpoint)
 {
     const vec3f_t to_point = glms_vec3_sub(targetpoint, ray_origin);
@@ -62,6 +64,39 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
     global_workbench->editor.mouse_closest_to_entity_id = picked;
 }
 
+INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(void)
+{
+    const u32 entity_id                             = global_workbench->editor.current_selected_entity_id;
+    const ecs_entity_query_t query                  = ecs_entity_query_components(global_ecs, entity_id, ECS_CMP_COLLIDER | ECS_CMP_TRANSFORM);
+    ecs_component_collider_t *const collider        = query.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
+    ecs_component_transform_t *const transform      = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+
+    //FIXME: For kinematic bodies theres no direct API to do this, it was suggested to use  
+    // to destroy and recreate the CharacterVirtual with a new scaled shape.
+    if (collider->internal.kinematic_body) return;
+
+    switch(collider->shape_type)
+    {
+        case COLLIDER_SHAPE_TYPE_SPHERE:
+        case COLLIDER_SHAPE_TYPE_CAPSULE: {
+            JPH_Shape *scaled = JPH_Shape_ScaleShape(collider->internal.shape, (JPH_Vec3 *)&transform->scale);
+            JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)scaled, false, JPH_Activation_DontActivate);
+            JPH_Shape_Destroy(scaled);
+       } break;
+        case COLLIDER_SHAPE_TYPE_CUBE: {
+            collider->dim.cube.half_width  = transform->scale.x;
+            collider->dim.cube.half_height = transform->scale.y;
+            collider->dim.cube.half_depth  = transform->scale.z;
+            JPH_BoxShape *newShape = JPH_BoxShape_Create((JPH_Vec3 *)&collider->dim.cube, JPH_DEFAULT_CONVEX_RADIUS);
+            JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
+            JPH_Shape_Destroy((JPH_Shape *)newShape);
+       } break;
+
+      default: eprint("collider shape type not accounted for");
+    }
+    logging("Applied transform scale to physics collider to entity (%i)", global_workbench->editor.current_selected_entity_id);
+}
+
 INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(void)
 {
     if (!global_workbench->editor.current_selected_entity_id) return;
@@ -82,9 +117,14 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
         [OT_SCALE]          = str("Scale"),
     };
 
-    ecs_component_transform_t *const transform = ecs_entity_query_components(
-        global_ecs, global_workbench->editor.current_selected_entity_id, ECS_CMP_TRANSFORM
-    ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+    const ecs_entity_query_t query = ecs_entity_query_components(
+        global_ecs, 
+        global_workbench->editor.current_selected_entity_id, 
+        ECS_CMP_TRANSFORM | ECS_CMP_COLLIDER
+    );
+
+    ecs_component_transform_t *const transform  = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+    ecs_component_collider_t *const collider    =  query.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
 
     //NOTE: used in the editor to udpate value for each one of these
     vec3f_t *const transform_bindings[OT_COUNT] = {
@@ -93,11 +133,12 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
         &transform->scale,
     };
 
+    const u16 entity_details_container_width = 300;
     gui_ui_compose_begin(gui, (ui_config_t) {
         .layout = UI_LAYOUT_VERTICAL,
         .dim = {
-            .min_width = 300,
-            .min_height = 250,
+            .min_width = entity_details_container_width,
+            .min_height = 400,
         },
         .margin = {
             .top = 5.f,
@@ -108,7 +149,6 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
         }
     });
     {
-
         //INFO: ==Entity label=====================================================================================
         snprintf(tempbuffer, sizeof(tempbuffer), "Entity Id: %d", global_workbench->editor.current_selected_entity_id);
         gui_ui_compose_begin(gui, (ui_config_t){
@@ -323,8 +363,58 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
 
             }
             gui_ui_compose_end(gui); //NOTE: TRS container
-
         }
+
+        //NOTE: == Apply scale to collider ===========================================
+        const bool show_apply_collider_button = collider && collider->internal.body_id;
+        const u32 apply_collider_button_id = gui_ui_compose_begin(gui, (ui_config_t){
+            .composition = {
+                .traits = show_apply_collider_button ? (UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE) : UI_BEHAVIOR_NONE,
+            },
+            .dim = {
+                .min_width = entity_details_container_width - 20,
+                .min_height = 30,
+            },
+            .color = {
+                .base = show_apply_collider_button ? COLOR_WHITE : COLOR_GRAY,
+                .highlight = COLOR_OFFWHITE,
+            },
+            .margin = {
+                .top = 10.f,
+                .left = 10.f,
+                .right = 10.f,
+                .bottom = 10.f,
+            }
+        });
+            gui_ui_compose_begin(
+                gui, 
+                (ui_config_t) {
+                    .composition = {
+                        .styles = UI_STYLE_ONLY_TEXT,
+                    },
+                    .text_align = UI_TEXT_ALIGN_CENTER,
+                    .dim = {
+                        .min_width  = entity_details_container_width - 20,
+                        .min_height = 30,
+                    },
+                    .text = str("Apply scale to collider"),
+                    .color = {
+                        .base = COLOR_BLACK
+                    },
+                    .margin = {
+                        .top = 5.f,
+                    }
+                }
+            );
+
+            if (gui_ui_isclicked(gui, apply_collider_button_id)) {
+                workbench_editor__internal_apply_transform_scale_to_phy_collider();
+                workbench_editor__internal_update_physics_colliders();
+            }
+
+            gui_ui_compose_end(gui);
+        gui_ui_compose_end(gui);
+        //NOTE: =====================================================================
     }
     gui_ui_compose_end(gui);
 
@@ -433,10 +523,6 @@ INTERNAL void workbench_editor__internal_update_physics_colliders(void)
     {
         ecs_component_transform_t *const transform = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
         ASSERT(transform);
-
-        JPH_Shape *const newShape = JPH_Shape_ScaleShape(collider->internal.shape, (JPH_Vec3 *)&transform->scale);
-        JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, newShape, false, JPH_Activation_DontActivate);
-        JPH_Shape_Destroy(newShape);
 
         JPH_BodyInterface_SetPositionAndRotation(
             global_physics_sys_jolt_instance->bodyinterface, 
