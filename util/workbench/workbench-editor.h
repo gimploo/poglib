@@ -2,60 +2,268 @@
 #include "poglib/basic/color.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/external/joltc/include/joltc.h"
+#include "poglib/gfx/model/assimp.h"
 #include "poglib/gui.h"
 #include "poglib/physics/jolt-wrapper.h"
 #include "poglib/pipeline/render/render_queue.h"
 #include "poglib/util/asset.h"
 #include "poglib/util/assetmanager.h"
 #include <poglib/util/workbench/common.h>
+#include <poglib/util/workbench/workbench-constants.h>
 #include <poglib/ecs.h>
 
-INTERNAL f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_origin, const vec3f_t ray_dir, const vec3f_t targetpoint)
+INTERNAL void workbench_editor__internal_ray_to_local(
+    const vec3f_t             world_origin,
+    const vec3f_t             world_dir,
+    const matrix4f_t          inv_world,
+    vec3f_t *out_origin,
+    vec3f_t *out_dir)
 {
-    const vec3f_t to_point = glms_vec3_sub(targetpoint, ray_origin);
-    f32 t = glms_vec3_dot(to_point, ray_dir);
-    if (t < 0.f) t = 0.f;
-    vec3f_t closest = glms_vec3_add(ray_origin, glms_vec3_scale(ray_dir, t));
-    return glms_vec3_distance(closest, targetpoint);
+    const vec4f_t o4 = glms_mat4_mulv(inv_world, (vec4f_t){ world_origin.x, world_origin.y, world_origin.z, 1.f });
+    const vec4f_t d4 = glms_mat4_mulv(inv_world, (vec4f_t){ world_dir.x,   world_dir.y,   world_dir.z,   0.f });
+    *out_origin = *(vec3f_t *)&o4;
+    *out_dir    = *(vec3f_t *)&d4;
+}
+
+INTERNAL bool workbench_editor__internal_ray_intersects_aabb(
+    const vec3f_t origin,
+    const vec3f_t dir,
+    const vec3f_t half_extents,
+    f32 *out_t)
+{
+    f32 t_min = -INFINITY;
+    f32 t_max = +INFINITY;
+
+    const f32 *o = (f32 *)&origin;
+    const f32 *d = (f32 *)&dir;
+    const f32 *h = (f32 *)&half_extents;
+
+    for (u32 i = 0; i < 3; i++) {
+        if (fabsf(d[i]) < 1e-6f) {
+            if (o[i] < -h[i] || o[i] > h[i]) return false;
+        } else {
+            const f32 inv = 1.f / d[i];
+            f32 t1 = (-h[i] - o[i]) * inv;
+            f32 t2 = (+h[i] - o[i]) * inv;
+            if (t1 > t2) { f32 tmp = t1; t1 = t2; t2 = tmp; }
+
+            if (t1 > t_min) t_min = t1;
+            if (t2 < t_max) t_max = t2;
+            if (t_min > t_max) return false;
+        }
+    }
+
+    const f32 t = t_min > 0.f ? t_min : t_max;
+    if (t <= 0.f) return false;
+    *out_t = t;
+    return true;
+}
+
+INTERNAL bool workbench_editor__internal_lookup_bounds(const u32 entity_id, vec3f_t *out_half_extents)
+{
+    for (u32 i = 0; i < global_workbench->editor.selection_bounds_count; i++) {
+        if (global_workbench->editor.selection_bounds[i].entity_id == entity_id) {
+            *out_half_extents = global_workbench->editor.selection_bounds[i].half_extents;
+            return true;
+        }
+    }
+    return false;
+}
+
+INTERNAL void workbench_editor__internal_cache_bounds(const u32 entity_id, const vec3f_t half_extents)
+{
+    if (global_workbench->editor.selection_bounds_count < EDITOR_SELECTION_BOUNDS_MAX) {
+        u32 idx = global_workbench->editor.selection_bounds_count++;
+        global_workbench->editor.selection_bounds[idx].entity_id    = entity_id;
+        global_workbench->editor.selection_bounds[idx].half_extents = half_extents;
+    }
+}
+
+INTERNAL vec3f_t workbench_editor__internal_camera_aabb_halfextents(void)
+{
+    f32 min[3] = { INFINITY,  INFINITY,  INFINITY };
+    f32 max[3] = { -INFINITY, -INFINITY, -INFINITY };
+
+    const u32 vert_count = ARRAY_LEN(CAMERA_VERTICES) / 3;
+    for (u32 i = 0; i < vert_count; i++) {
+        for (u32 j = 0; j < 3; j++) {
+            const f32 v = CAMERA_VERTICES[i * 3 + j];
+            if (v < min[j]) min[j] = v;
+            if (v > max[j]) max[j] = v;
+        }
+    }
+
+    return (vec3f_t){
+        (max[0] - min[0]) * 0.5f,
+        (max[1] - min[1]) * 0.5f,
+        (max[2] - min[2]) * 0.5f,
+    };
+}
+
+INTERNAL vec3f_t workbench_editor__internal_model_compute_aabb_halfextents(const u32 model_asset_id)
+{
+    const glmodel_t *model = assetmanager_get_assetresource(
+        &global_engine->systems.assets, ASSET_TYPE_MODEL, model_asset_id);
+
+    f32 min[3] = { INFINITY,  INFINITY,  INFINITY };
+    f32 max[3] = { -INFINITY, -INFINITY, -INFINITY };
+
+    if (!model) goto fallback;
+
+    list_iterator(&model->meshes, mesh_iter) {
+        const glmesh_t *mesh = mesh_iter;
+        slot_iterator(&mesh->vtx, vtx_iter) {
+            const glvertex3d_t *v = vtx_iter;
+            for (u32 j = 0; j < 3; j++) {
+                const f32 coord = ((f32 *)&v->pos)[j];
+                if (coord < min[j]) min[j] = coord;
+                if (coord > max[j]) max[j] = coord;
+            }
+        }
+    }
+
+    if (min[0] > max[0]) goto fallback;
+
+    return (vec3f_t){
+        (max[0] - min[0]) * 0.5f,
+        (max[1] - min[1]) * 0.5f,
+        (max[2] - min[2]) * 0.5f,
+    };
+
+fallback:
+    return (vec3f_t){ 1.0f, 1.0f, 1.0f };
+}
+
+INTERNAL vec3f_t workbench_editor__internal_get_entity_halfextents(const u32 entity_id)
+{
+    vec3f_t cached;
+    if (workbench_editor__internal_lookup_bounds(entity_id, &cached))
+        return cached;
+
+    vec3f_t he;
+
+    // Model takes priority (most accurate bounds)
+    const ecs_entity_query_t q_model = ecs_entity_query_components(global_ecs, entity_id, ECS_CMP_MODEL | ECS_CMP_TRANSFORM);
+    if (q_model.entity_cmp_data[ECS_CMP_MODEL_IDX]) {
+        const ecs_component_model_t *m = q_model.entity_cmp_data[ECS_CMP_MODEL_IDX];
+        he = workbench_editor__internal_model_compute_aabb_halfextents(m->asset_id);
+    }
+    // Camera entity has known vertex data
+    else if (entity_id == global_workbench->world_camera.entity_id) {
+        he = workbench_editor__internal_camera_aabb_halfextents();
+    }
+    // Default: unit box, scale applied via world matrix
+    else {
+        he = (vec3f_t){ 1.0f, 1.0f, 1.0f };
+    }
+
+    workbench_editor__internal_cache_bounds(entity_id, he);
+    return he;
+}
+
+INTERNAL versors workbench_editor__internal_quat_from_x_to_dir(const vec3f_t dir)
+{
+    const vec3f_t x_axis = { 1.0f, 0.0f, 0.0f };
+    const vec3f_t d      = glms_vec3_normalize(dir);
+    const f32     dot    = glms_vec3_dot(x_axis, d);
+
+    if (dot > 0.9999f)
+        return (versors){ 0.0f, 0.0f, 0.0f, 1.0f };
+
+    if (dot < -0.9999f)
+        return glms_quatv(GLM_PIf, (vec3f_t){ 0.0f, 1.0f, 0.0f });
+
+    const vec3f_t axis = glms_vec3_normalize(glms_cross(x_axis, d));
+    return glms_quatv(acosf(dot), axis);
 }
 
 INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
 {
-    vec2f_t ndc = window_mouse_get_norm_position(global_window);
-    glcamera_t *cam = global_workbench->world_camera.handle;
+    vec2f_t      ndc = window_mouse_get_norm_position(global_window);
+    glcamera_t  *cam = global_workbench->world_camera.handle;
 
     vec3f_t dir = {0};
     {
-        const matrix4f_t view       = glcamera_getview(cam);
-        const matrix4f_t proj       = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 0.1f, 1000.0f);
-        const matrix4f_t inv_pv     = glms_mat4_inv(glms_mat4_mul(proj, view));
-        const vec4f_t near          = { ndc.x, ndc.y, -1.0f, 1.0f };
-        const vec4f_t far           = { ndc.x, ndc.y,  1.0f, 1.0f };
+        const matrix4f_t view   = glcamera_getview(cam);
+        const matrix4f_t proj   = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 0.1f, 1000.0f);
+        const matrix4f_t inv_pv = glms_mat4_inv(glms_mat4_mul(proj, view));
+        const vec4f_t    near   = { ndc.x, ndc.y, -1.0f, 1.0f };
+        const vec4f_t    far    = { ndc.x, ndc.y,  1.0f, 1.0f };
 
-        vec4f_t near_w      = glms_mat4_mulv(inv_pv, near);
-        vec4f_t far_w       = glms_mat4_mulv(inv_pv, far);
-        near_w              = glms_vec4_scale(near_w, 1.0f / near_w.w);
-        far_w               = glms_vec4_scale(far_w,  1.0f / far_w.w);
+        vec4f_t near_w   = glms_mat4_mulv(inv_pv, near);
+        vec4f_t far_w    = glms_mat4_mulv(inv_pv, far);
+        near_w           = glms_vec4_scale(near_w, 1.0f / near_w.w);
+        far_w            = glms_vec4_scale(far_w,  1.0f / far_w.w);
 
-        dir                 = glms_vec3_normalize(glms_vec3_sub(*(vec3f_t *)&far_w, *(vec3f_t *)&near_w));
+        dir              = glms_vec3_normalize(glms_vec3_sub(*(vec3f_t *)&far_w, *(vec3f_t *)&near_w));
     }
 
-    u32 picked = 0;
-    f32 closest_dist = 5.f;
+    const vec3f_t ray_origin = cam->position;
+    u32 picked        = 0;
+    f32 closest_dist  = INFINITY;
 
+    // ---- Pass 1: Physics raycast for entities with colliders ----
+    {
+        const JPH_NarrowPhaseQuery *npq = JPH_PhysicsSystem_GetNarrowPhaseQuery(
+            global_physics_sys_jolt_instance->physics_system);
+        JPH_RayCastResult hit = {0};
+        if (JPH_NarrowPhaseQuery_CastRay(npq, (JPH_Vec3 *)&ray_origin, (JPH_Vec3 *)&dir,
+                &hit, NULL, NULL, NULL)) {
+            if (hit.fraction > 0.f) {
+                slot_t *pool = slot_get_value(
+                    &global_ecs->managers.componentmanager.componentpool_slots,
+                    ECS_CMP_COLLIDER_IDX);
+                slot_iterator(pool, entry) {
+                    if (!((ecs_component_poolentry_t *)entry)->is_active) continue;
+                    const ecs_component_collider_t *c =
+                        (ecs_component_collider_t *)((ecs_component_poolentry_t *)entry)->entity_cmpdata;
+                    if (c->internal.body_id == hit.bodyID) {
+                        picked       = ((ecs_component_poolentry_t *)entry)->entity_id;
+                        closest_dist = hit.fraction;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // ---- Pass 2: Ray vs local AABB slab test for entities without colliders ----
     slot_iterator(&global_ecs->managers.entitymanager.entities, iter)
     {
         if (!slot_iterator_index) continue;
 
-        const ecs_entity_t *const e         = iter;
-        const ecs_entity_query_t q          = ecs_entity_query_components(global_ecs, e->id, ECS_CMP_TRANSFORM);
-        const ecs_component_transform_t *t  = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+        const ecs_entity_t        *const e = iter;
+        const ecs_entity_query_t  q       = ecs_entity_query_components(global_ecs, e->id,
+                                                   ECS_CMP_TRANSFORM | ECS_CMP_COLLIDER);
+        const ecs_component_transform_t *t = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
         if (!t) continue;
 
-        const f32 d = workbench_editor__internal_closest_point_on_ray(cam->position, dir, t->position);
-        if (d < closest_dist) {
-            closest_dist = d;
-            picked = e->id;
+        // Skip entities that already have physics colliders (handled by Pass 1)
+        if (q.entity_cmp_data[ECS_CMP_COLLIDER_IDX]) continue;
+
+        const vec3f_t local_he = workbench_editor__internal_get_entity_halfextents(e->id);
+
+        const matrix4f_t world_mat = glms_mat4_mul(
+            glms_mat4_mul(glms_translate_make(t->position),
+                          glms_quat_mat4(t->orientation)),
+            glms_scale_make(t->scale));
+        const matrix4f_t inv_world = glms_mat4_inv(world_mat);
+
+        vec3f_t local_origin, local_dir;
+        workbench_editor__internal_ray_to_local(ray_origin, dir, inv_world, &local_origin, &local_dir);
+
+        f32 t_hit;
+        if (workbench_editor__internal_ray_intersects_aabb(local_origin, local_dir, local_he, &t_hit)) {
+            const vec3f_t local_hit = glms_vec3_add(local_origin, glms_vec3_scale(local_dir, t_hit));
+            const vec4f_t world_hit4 = glms_mat4_mulv(world_mat,
+                (vec4f_t){ local_hit.x, local_hit.y, local_hit.z, 1.f });
+            const vec3f_t world_hit = *(vec3f_t *)&world_hit4;
+            const f32 dist = glms_vec3_dot(glms_vec3_sub(world_hit, ray_origin), dir);
+
+            if (dist > 0.f && dist < closest_dist) {
+                closest_dist = dist;
+                picked       = e->id;
+            }
         }
     }
 
@@ -331,6 +539,105 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
     transform->orientation = glms_quat_normalize(transform->orientation);
 }
 
+INTERNAL void workbench_editor__internal_submit_line_command(
+    const vec3f_t start,
+    const vec3f_t end,
+    const vec4f_t color,
+    const matrix4f_t view,
+    const matrix4f_t proj)
+{
+    const vec3f_t edge_dir = glms_vec3_sub(end, start);
+    const f32     length   = glms_vec3_norm(edge_dir);
+    if (length < 1e-6f) return;
+
+    const versors rot = workbench_editor__internal_quat_from_x_to_dir(edge_dir);
+
+    rendercommand_instance_line_t instance = {
+        .color       = color,
+        .translation = { start.x, start.y, start.z, 0.f },
+        .orientation = { rot.x, rot.y, rot.z, rot.w },
+        .scale       = { length, 1.0f, 1.0f, 0.0f },
+    };
+
+    rendercommand_t rc = {
+        .draw_mode = RENDER_COMMAND_DRAW_MODE_LINES,
+        .instance = {
+            .raw_data = {0},
+            .size = sizeof(rendercommand_instance_line_t),
+        },
+        .material = {
+            .shader = {
+                .data = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id),
+                .uniforms = {
+                    .count = 2,
+                    .data = {
+                        [0] = { .name = str("projection"), .value = proj },
+                        [1] = { .name = str("view"),       .value = view },
+                    }
+                }
+            }
+        },
+        .mesh = assetmanager_get_gpu_loaded_asset_async(&global_engine->systems.assets, GL_MESH_PRIMITIVE_TYPE_LINE)->meshes.data,
+    };
+
+    memcpy(rc.instance.raw_data, &instance, sizeof(instance));
+    renderqueue_pass_command(&global_engine->systems.renderqueue, rc);
+}
+
+INTERNAL void workbench_editor__internal_draw_oob_on_entity_selection(void)
+{
+    if (!global_workbench->editor.current_selected_entity_id) return;
+
+    const u32 entity_id = global_workbench->editor.current_selected_entity_id;
+
+    const ecs_entity_query_t q = ecs_entity_query_components(global_ecs, entity_id, ECS_CMP_TRANSFORM);
+    const ecs_component_transform_t *t = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+    if (!t) return;
+
+    const vec3f_t he = workbench_editor__internal_get_entity_halfextents(entity_id);
+
+    const matrix4f_t view = glcamera_getview(global_workbench->world_camera.handle);
+    const matrix4f_t proj = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
+
+    const matrix4f_t world_mat = glms_mat4_mul(
+        glms_mat4_mul(glms_translate_make(t->position),
+                      glms_quat_mat4(t->orientation)),
+        glms_scale_make(t->scale));
+
+    const f32 hx = he.x;
+    const f32 hy = he.y;
+    const f32 hz = he.z;
+
+    const vec3f_t local_corners[8] = {
+        { -hx, -hy, -hz }, { +hx, -hy, -hz },
+        { +hx, +hy, -hz }, { -hx, +hy, -hz },
+        { -hx, -hy, +hz }, { +hx, -hy, +hz },
+        { +hx, +hy, +hz }, { -hx, +hy, +hz },
+    };
+
+    vec3f_t world_corners[8];
+    for (u32 i = 0; i < 8; i++) {
+        const vec4f_t w4 = glms_mat4_mulv(world_mat,
+            (vec4f_t){ local_corners[i].x, local_corners[i].y, local_corners[i].z, 1.f });
+        world_corners[i] = *(vec3f_t *)&w4;
+    }
+
+    const u32 edges[12][2] = {
+        {0,1}, {1,2}, {2,3}, {3,0},
+        {4,5}, {5,6}, {6,7}, {7,4},
+        {0,4}, {1,5}, {2,6}, {3,7},
+    };
+
+    const vec4f_t oob_color = COLOR_ORANGE;
+
+    for (u32 i = 0; i < 12; i++) {
+        workbench_editor__internal_submit_line_command(
+            world_corners[edges[i][0]],
+            world_corners[edges[i][1]],
+            oob_color, view, proj);
+    }
+}
+
 INTERNAL void workbench_editor__internal_gizmo_draw_axis(
     const vec3f_t entitypos, 
     const matrix4f_t view, 
@@ -338,21 +645,18 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
 ) {
     const f32 axis_length = 1000.f;
     rendercommand_instance_line_t gizmo[3] = {
-        //NOTE: X axis
         {
             .color       = {1.0f, 0.0f, 0.0f, 1.0f},
             .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
             .orientation = {0.0f, 0.0f, 0.0f, 1.0f},
             .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
         },
-        //NOTE: Y axis
         {
             .color       = {0.0f, 1.0f, 0.0f, 1.0f},
             .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
             .orientation = {0.0f, 0.0f, -0.7071f, 0.7071f},
             .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
         },
-        //NOTE: Z axis
         {
             .color       = {0.0f, 0.0f, 1.0f, 1.0f},
             .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
@@ -460,5 +764,6 @@ void workbench_editor_update(void)
 {
     workbench_editor__internal_check_mouse_closest_entity();
     workbench_editor__internal_draw_gizmo_on_entity_selection();
+    workbench_editor__internal_draw_oob_on_entity_selection();
 }
 

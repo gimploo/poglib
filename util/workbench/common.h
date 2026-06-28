@@ -65,6 +65,13 @@ typedef struct {
         u32 mouseclick_counter;
 
         gizmo_mode_t gizmo_mode;
+
+        #define EDITOR_SELECTION_BOUNDS_MAX 256
+        struct {
+            u32     entity_id;
+            vec3f_t half_extents;
+        } selection_bounds[EDITOR_SELECTION_BOUNDS_MAX];
+        u32 selection_bounds_count;
     } editor;
 
 } workbench_t;

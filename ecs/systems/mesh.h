@@ -59,7 +59,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             .translation = (vec4f_t) { transform->position.x, transform->position.y, transform->position.z, 0.f },
             .scale = (vec4f_t) { transform->scale.x, transform->scale.y,  transform->scale.z,  0.f },
             .orientation = *(vec4f_t *)&transform->orientation,
-            .color = is_editor_selected ? COLOR_RED : COLOR_WHITE,
+            .color = is_editor_selected ? COLOR_CYAN : COLOR_WHITE,
             .uv = spriteatlas_get_sprite(atlas, mesh->prototype_sprite_type),
         };
 
