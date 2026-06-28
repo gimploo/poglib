@@ -67,13 +67,27 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
     if (!global_workbench->editor.current_selected_entity_id) return;
 
     gui_t *const gui = &global_workbench->gui.handle;
+    char tempbuffer[32] = {0};
+
+    enum option_type {
+        OT_TRANSLATION  = 0,
+        OT_ROTATION     = 1,
+        OT_SCALE        = 2,
+        OT_COUNT
+    };
+
+    const str_t transform_member_labels[OT_COUNT] = {
+        [OT_TRANSLATION]    = str("Translation"),
+        [OT_ROTATION]       = str("Rotation"),
+        [OT_SCALE]          = str("Scale"),
+    };
 
     ecs_component_transform_t *const transform = ecs_entity_query_components(
         global_ecs, global_workbench->editor.current_selected_entity_id, ECS_CMP_TRANSFORM
     ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
 
     //NOTE: used in the editor to udpate value for each one of these
-    vec3f_t *const TRS[3] = {
+    vec3f_t *const transform_bindings[OT_COUNT] = {
         &transform->position,
         (vec3f_t *)&transform->orientation,
         &transform->scale,
@@ -94,39 +108,31 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
         }
     });
     {
-        char tempbuffer[32] = {0};
 
-        //NOTE: Entity label
-        { 
-            snprintf(tempbuffer, sizeof(tempbuffer), "Entity Id: %d", global_workbench->editor.current_selected_entity_id);
+        //INFO: ==Entity label=====================================================================================
+        snprintf(tempbuffer, sizeof(tempbuffer), "Entity Id: %d", global_workbench->editor.current_selected_entity_id);
+        gui_ui_compose_begin(gui, (ui_config_t){
+            .composition = {
+                .styles = UI_STYLE_ONLY_TEXT,
+            },
+            .dim = {
+                .min_width  = 80,
+                .min_height = 30,
+            },
+            .text = str__from_cstr(tempbuffer, sizeof(tempbuffer)),
+            .color = {
+                .base = COLOR_WHITE
+            },
+            .margin = {
+                .top = 5.f,
+                .left = 5.f,
+            }
+        });
+        gui_ui_compose_end(gui);
+        //INFO: =======================================================================================
 
-            gui_ui_compose_begin(gui, (ui_config_t){
-                .composition = {
-                    .styles = UI_STYLE_ONLY_TEXT,
-                },
-                .dim = {
-                    .min_width  = 80,
-                    .min_height = 30,
-                },
-                .text = str__from_cstr(tempbuffer, sizeof(tempbuffer)),
-                .color = {
-                    .base = COLOR_WHITE
-                },
-                .margin = {
-                    .top = 5.f,
-                    .left = 5.f,
-                }
-            });
-            gui_ui_compose_end(gui);
-        }
-
-        for (u8 idx = 0; idx < 3; idx ++)
+        for (u8 idx = 0; idx < OT_COUNT; idx ++)
         {
-            const str_t options[3] = {
-                str("Translation"),
-                str("Rotation"),
-                str("Scale"),
-            };
 
             //NOTE: Container
             gui_ui_compose_begin(gui, (ui_config_t){
@@ -149,7 +155,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         .min_width  = 90,
                         .min_height = 30,
                     },
-                    .text = options[idx],
+                    .text = transform_member_labels[idx],
                     .color = {
                         .base = COLOR_WHITE
                     },
@@ -168,7 +174,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         .min_width  = 40,
                         .min_height = 30,
                     },
-                    .text = options[idx],
+                    .text = transform_member_labels[idx],
                     .color = {
                         .base = COLOR_BLACK
                     },
@@ -191,7 +197,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         .highlight = COLOR_LIGHTRED,
                     },
                     .binding = {
-                        .ref = (void *)&TRS[idx]->x,
+                        .ref = (void *)&transform_bindings[idx]->x,
                         .size = sizeof(f32)
                     },
                 });
@@ -199,9 +205,15 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                     //Label
                     memset(tempbuffer, 0, sizeof(tempbuffer));
 
-                    if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.x);
-                    else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.x);
-                    else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.x);
+                    switch(idx)
+                    {
+                        case OT_TRANSLATION:    snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.x);
+                        break;
+                        case OT_ROTATION:       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.x);
+                        break;
+                        case OT_SCALE:          snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.x);
+                        break;
+                    }
 
                     value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
                     gui_ui_compose_begin(gui, value_style);
@@ -221,7 +233,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         .min_height = 30,
                     },
                     .binding = {
-                        .ref = (void *)&TRS[idx]->y,
+                        .ref = (void *)&transform_bindings[idx]->y,
                         .size = sizeof(f32)
                     },
                     .margin = {
@@ -231,9 +243,15 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                     //Label
                     memset(tempbuffer, 0, sizeof(tempbuffer));
 
-                    if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.y);
-                    else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.y);
-                    else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.y);
+                    switch(idx)
+                    {
+                        case OT_TRANSLATION:    snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.y);
+                        break;
+                        case OT_ROTATION:       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.y);
+                        break;
+                        case OT_SCALE:          snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.y);
+                        break;
+                    }
 
                     value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
                     gui_ui_compose_begin(gui, value_style);
@@ -253,7 +271,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         .min_height = 30,
                     },
                     .binding = {
-                        .ref = (void *)&TRS[idx]->z,
+                        .ref = (void *)&transform_bindings[idx]->z,
                         .size = sizeof(f32)
                     },
                     .margin = {
@@ -263,9 +281,15 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                     //Label
                     memset(tempbuffer, 0, sizeof(tempbuffer));
 
-                    if (idx == 0)       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.z);
-                    else if (idx == 1)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.z);
-                    else if (idx == 2)  snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.z);
+                    switch(idx)
+                    {
+                        case OT_TRANSLATION:    snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.z);
+                        break;
+                        case OT_ROTATION:       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.z);
+                        break;
+                        case OT_SCALE:          snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.z);
+                        break;
+                    }
 
                     value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
                     gui_ui_compose_begin(gui, value_style);
@@ -292,8 +316,8 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                     },
                 });
                     if (gui_ui_isclicked(gui, reset_id)) {
-                        if (idx == 2) *TRS[idx] = (vec3f_t){1.f,1.f,1.f};
-                        else          *TRS[idx] = (vec3f_t){0};
+                        if (idx == OT_SCALE)    *transform_bindings[idx] = (vec3f_t){1.f,1.f,1.f};
+                        else                    *transform_bindings[idx] = (vec3f_t){0};
                     }
                 gui_ui_compose_end(gui);
 
@@ -303,6 +327,8 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
         }
     }
     gui_ui_compose_end(gui);
+
+    transform->orientation = glms_quat_normalize(transform->orientation);
 }
 
 INTERNAL void workbench_editor__internal_gizmo_draw_axis(
@@ -394,7 +420,8 @@ void workbench_editor_render(void)
 INTERNAL void workbench_editor__internal_update_physics_colliders(void)
 {
     if(!global_workbench->editor.current_selected_entity_id) return;
-    printf("updating collider\n");
+
+    logging("Updated physics collider for entity(%i)", global_workbench->editor.current_selected_entity_id);
 
     const u32 entity_id = global_workbench->editor.current_selected_entity_id;
     const ecs_entity_query_t query      = ecs_entity_query_components(global_ecs, entity_id, ECS_CMP_COLLIDER | ECS_CMP_TRANSFORM);
@@ -404,25 +431,23 @@ INTERNAL void workbench_editor__internal_update_physics_colliders(void)
 
     //NOTE: updating the shape of the collider
     {
-        ecs_component_transform_t *transform = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+        ecs_component_transform_t *const transform = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
         ASSERT(transform);
 
         JPH_Shape *const newShape = JPH_Shape_ScaleShape(collider->internal.shape, (JPH_Vec3 *)&transform->scale);
         JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, newShape, false, JPH_Activation_DontActivate);
         JPH_Shape_Destroy(newShape);
 
-        JPH_Quat quat = {
-            .x = transform->orientation.x,
-            .y = transform->orientation.y,
-            .z = transform->orientation.z,
-            .w = transform->orientation.w,
-        };
-
         JPH_BodyInterface_SetPositionAndRotation(
             global_physics_sys_jolt_instance->bodyinterface, 
             collider->internal.body_id, 
             (JPH_Vec3 *)&transform->position, 
-            &quat, 
+            &(JPH_Quat) {
+                .x = transform->orientation.x,
+                .y = transform->orientation.y,
+                .z = transform->orientation.z,
+                .w = transform->orientation.w,
+            },
             JPH_Activation_DontActivate
         );
 
