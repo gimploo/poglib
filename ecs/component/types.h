@@ -150,6 +150,7 @@ struct ecs_component_collider_t {
     JPH_MotionType                  motion_type;
     JPH_ObjectLayer                 object_layer_type;
     collider_shape_dimension_t      dim;
+    u32                             owner_entity_id;
     struct {
         JPH_BodyID                  body_id;
         JPH_CharacterVirtual        *kinematic_body;
@@ -165,6 +166,7 @@ struct ecs_component_collider_t {
 //pass an heap allocated refernce to `ecs_collider_jolt_userdata_t` if we begin to 
 //expand this struct further
 struct ecs_collider_jolt_userdata_t {
+    u32 entity_id;
     JPH_ObjectLayer objectlayertype;
     collider_shape_dimension_t dimension;
 

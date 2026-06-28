@@ -115,7 +115,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                                     },
                                     [5] = {
                                         .name = str_lit("light.color"),
-                                        .value.vec4 = global_workbench->editor.current_selected_entity_id == entry->entity_id ? COLOR_CYAN : COLOR_WHITE
+                                        .value.vec4 = global_workbench->editor.current_selected_entity_id == entry->entity_id ? COLOR_RED : COLOR_WHITE
                                     },
                                     [6] = {
                                         .name = str_lit("light.ambient"),

@@ -187,11 +187,11 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
         const matrix4f_t view   = glcamera_getview(cam);
         const matrix4f_t proj   = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 0.1f, 1000.0f);
         const matrix4f_t inv_pv = glms_mat4_inv(glms_mat4_mul(proj, view));
-        const vec4f_t    near   = { ndc.x, ndc.y, -1.0f, 1.0f };
-        const vec4f_t    far    = { ndc.x, ndc.y,  1.0f, 1.0f };
+        const vec4f_t    nearp  = { ndc.x, ndc.y, -1.0f, 1.0f };
+        const vec4f_t    farp   = { ndc.x, ndc.y,  1.0f, 1.0f };
 
-        vec4f_t near_w   = glms_mat4_mulv(inv_pv, near);
-        vec4f_t far_w    = glms_mat4_mulv(inv_pv, far);
+        vec4f_t near_w   = glms_mat4_mulv(inv_pv, nearp);
+        vec4f_t far_w    = glms_mat4_mulv(inv_pv, farp);
         near_w           = glms_vec4_scale(near_w, 1.0f / near_w.w);
         far_w            = glms_vec4_scale(far_w,  1.0f / far_w.w);
 
@@ -210,18 +210,11 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
         if (JPH_NarrowPhaseQuery_CastRay(npq, (JPH_Vec3 *)&ray_origin, (JPH_Vec3 *)&dir,
                 &hit, NULL, NULL, NULL)) {
             if (hit.fraction > 0.f) {
-                slot_t *pool = slot_get_value(
-                    &global_ecs->managers.componentmanager.componentpool_slots,
-                    ECS_CMP_COLLIDER_IDX);
-                slot_iterator(pool, entry) {
-                    if (!((ecs_component_poolentry_t *)entry)->is_active) continue;
-                    const ecs_component_collider_t *c =
-                        (ecs_component_collider_t *)((ecs_component_poolentry_t *)entry)->entity_cmpdata;
-                    if (c->internal.body_id == hit.bodyID) {
-                        picked       = ((ecs_component_poolentry_t *)entry)->entity_id;
-                        closest_dist = hit.fraction;
-                        break;
-                    }
+                const u64 ud = JPH_BodyInterface_GetUserData(
+                    global_physics_sys_jolt_instance->bodyinterface, hit.bodyID);
+                if (ud) {
+                    picked       = ((ecs_collider_jolt_userdata_t *)ud)->entity_id;
+                    closest_dist = hit.fraction;
                 }
             }
         }

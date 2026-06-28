@@ -632,63 +632,58 @@ void workbench__internal_show_colliders(workbench_t *const self)
     ASSERT(global_physics_sys_jolt_instance);
 
     if (!global_workbench->enable_collider) return;
-    if (!global_workbench->editor.current_selected_entity_id) return;
 
-    const u32 entity_id = global_workbench->editor.current_selected_entity_id;
+    JPH_DrawSettings draw_settings;
+    JPH_DrawSettings_InitDefault(&draw_settings);
+    draw_settings.drawShape = true;
+    draw_settings.drawShapeWireframe = true;
+    draw_settings.drawShapeColor = JPH_BodyManager_ShapeColor_InstanceColor;
 
-    const ecs_entity_query_t q = ecs_entity_query_components(global_ecs, entity_id, ECS_CMP_COLLIDER);
-    const ecs_component_collider_t *collider = q.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
-    if (!collider) return;
+    JPH_PhysicsSystem_DrawBodies(
+        global_physics_sys_jolt_instance->physics_system,
+        &draw_settings,
+        self->debug_renderer.jolt_handle,
+        NULL
+    );
 
-    switch (collider->motion_type) {
-        case JPH_MotionType_Static:
-        case JPH_MotionType_Dynamic:
-        {
-            const JPH_Shape *shape = JPH_BodyInterface_GetShape(
-                global_physics_sys_jolt_instance->bodyinterface,
-                collider->internal.body_id);
-            if (!shape) return;
+    slot_t *sc_pool = slot_get_value(&global_ecs->managers.componentmanager.componentpool_slots, ECS_CMP_COLLIDER_IDX);
+    slot_iterator(sc_pool, sc_iter)
+    {
+        ecs_component_poolentry_t *sc_entry = sc_iter;
+        if (!sc_entry->is_active) continue;
 
-            JPH_Mat4 transform;
-            JPH_Mat4_RotationTranslation(
-                &transform,
-                (JPH_Quat *)&collider->internal.orientation,
-                (JPH_Vec3 *)&collider->internal.position);
+        ecs_component_collider_t *sc = (ecs_component_collider_t *)sc_entry->entity_cmpdata;
+        if (sc->motion_type != JPH_MotionType_Kinematic) continue;
+        if (!sc->internal.kinematic_body) continue;
 
-            const JPH_Vec3 scale = {1.0f, 1.0f, 1.0f};
-            JPH_Shape_Draw(shape, self->debug_renderer.jolt_handle,
-                &transform, &scale, 0xFFFFFFFF, false, true);
-        }
-        break;
+        const JPH_Shape *shape = JPH_CharacterBase_GetShape((JPH_CharacterBase *)sc->internal.kinematic_body);
+        if (!shape) continue;
 
-        case JPH_MotionType_Kinematic:
-        {
-            if (!collider->internal.kinematic_body) return;
+        JPH_Vec3 shape_offset;
+        JPH_CharacterVirtual_GetShapeOffset(sc->internal.kinematic_body, &shape_offset);
 
-            const JPH_Shape *shape = JPH_CharacterBase_GetShape((JPH_CharacterBase *)collider->internal.kinematic_body);
-            if (!shape) return;
+        JPH_Vec3 draw_pos;
+        draw_pos.x = sc->internal.position.x + shape_offset.x;
+        draw_pos.y = sc->internal.position.y + shape_offset.y;
+        draw_pos.z = sc->internal.position.z + shape_offset.z;
 
-            JPH_Vec3 shape_offset;
-            JPH_CharacterVirtual_GetShapeOffset(collider->internal.kinematic_body, &shape_offset);
+        JPH_Mat4 transform;
+        JPH_Mat4_RotationTranslation(
+            &transform,
+            (JPH_Quat *)&sc->internal.orientation,
+            &draw_pos
+        );
 
-            JPH_Vec3 draw_pos;
-            draw_pos.x = collider->internal.position.x + shape_offset.x;
-            draw_pos.y = collider->internal.position.y + shape_offset.y;
-            draw_pos.z = collider->internal.position.z + shape_offset.z;
-
-            JPH_Mat4 transform;
-            JPH_Mat4_RotationTranslation(
-                &transform,
-                (JPH_Quat *)&collider->internal.orientation,
-                &draw_pos);
-
-            const JPH_Vec3 scale = {1.0f, 1.0f, 1.0f};
-            JPH_Shape_Draw(shape, self->debug_renderer.jolt_handle,
-                &transform, &scale, 0xFFFFFFFF, false, true);
-        }
-        break;
-
-        default: return;
+        const JPH_Vec3 scale = {1.0f, 1.0f, 1.0f};
+        JPH_Shape_Draw(
+            shape,
+            self->debug_renderer.jolt_handle,
+            &transform,
+            &scale,
+            0xFFFFFFFF,
+            false,
+            true
+        );
     }
 
     const matrix4f_t view = workbench__internal_get_camera_view(self);
