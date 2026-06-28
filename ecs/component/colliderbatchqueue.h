@@ -154,7 +154,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                 //expansion of `ecs_collider_jolt_userdata_t` whenever we may need to
 
                 const ecs_collider_jolt_userdata_t userdata = {
-                    .entity_id       = collider->owner_entity_id,
+                    .entity_id       = collider->internal.entity_id,
                     .objectlayertype = collider->object_layer_type,
                     .dimension       = collider->dim,
 #ifdef DEBUG

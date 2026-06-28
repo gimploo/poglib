@@ -150,8 +150,8 @@ struct ecs_component_collider_t {
     JPH_MotionType                  motion_type;
     JPH_ObjectLayer                 object_layer_type;
     collider_shape_dimension_t      dim;
-    u32                             owner_entity_id;
     struct {
+        u32                         entity_id;
         JPH_BodyID                  body_id;
         JPH_CharacterVirtual        *kinematic_body;
         vec3f_t                     position;
