@@ -126,6 +126,9 @@ INTERNAL void workbench_editor__internal_get_entity_bounds(const u32 entity_id, 
 
     JPH_Shape *shape = (JPH_Shape *)JPH_BoxShape_Create((JPH_Vec3 *)&he, 0.f);
 
+    logging("[EDITOR] cached shape for entity=%u he=(%.2f %.2f %.2f) shape=%p",
+        entity_id, he.x, he.y, he.z, shape);
+
     workbench_editor__internal_cache_bounds(entity_id, he, shape);
     *out_he    = he;
     *out_shape = shape;
@@ -172,6 +175,10 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
     u32 picked        = 0;
     f32 closest_dist  = INFINITY;
 
+    logging("[EDITOR] ray_origin=(%.2f %.2f %.2f) dir=(%.2f %.2f %.2f)",
+        ray_origin.x, ray_origin.y, ray_origin.z,
+        dir.x, dir.y, dir.z);
+
     // ---- Pass 1: Physics raycast for entities with colliders ----
     {
         const JPH_NarrowPhaseQuery *npq = JPH_PhysicsSystem_GetNarrowPhaseQuery(
@@ -185,6 +192,7 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
                 if (ud) {
                     picked       = ((ecs_collider_jolt_userdata_t *)ud)->entity_id;
                     closest_dist = hit.fraction;
+                    logging("[EDITOR] Pass1 HIT entity=%u dist=%.2f", picked, closest_dist);
                 }
             }
         }
@@ -207,7 +215,7 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
         vec3f_t local_he;
         JPH_Shape *shape;
         workbench_editor__internal_get_entity_bounds(e->id, &local_he, &shape);
-        if (!shape) continue;
+        if (!shape) { logging("[EDITOR] Pass2 SKIP entity=%u (no shape)", e->id); continue; }
 
         const matrix4f_t world_mat = glms_mat4_mul(
             glms_mat4_mul(glms_translate_make(t->position),
@@ -233,6 +241,9 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
                 const vec3f_t world_hit = *(vec3f_t *)&world_hit4;
                 const f32 dist = glms_vec3_dot(glms_vec3_sub(world_hit, ray_origin), dir);
 
+                logging("[EDITOR] Pass2 HIT entity=%u dist=%.2f (d_min=%.2f)",
+                    e->id, dist, closest_dist);
+
                 if (dist > 0.f && dist < closest_dist) {
                     closest_dist = dist;
                     picked       = e->id;
@@ -241,6 +252,7 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
         }
     }
 
+    logging("[EDITOR] closest=entity=%u dist=%.2f", picked, closest_dist);
     global_workbench->editor.mouse_closest_to_entity_id = picked;
 }
 
