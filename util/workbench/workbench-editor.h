@@ -160,7 +160,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                 .min_width  = 80,
                 .min_height = 30,
             },
-            .text = str__from_cstr(tempbuffer, sizeof(tempbuffer)),
+            .text = str_from_cstr(tempbuffer, sizeof(tempbuffer)),
             .color = {
                 .base = COLOR_WHITE
             },
@@ -256,7 +256,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         break;
                     }
 
-                    value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
+                    value_style.text = str_from_cstr(tempbuffer, sizeof(tempbuffer));
                     gui_ui_compose_begin(gui, value_style);
                     gui_ui_compose_end(gui);
                 gui_ui_compose_end(gui);
@@ -294,7 +294,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         break;
                     }
 
-                    value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
+                    value_style.text = str_from_cstr(tempbuffer, sizeof(tempbuffer));
                     gui_ui_compose_begin(gui, value_style);
                     gui_ui_compose_end(gui);
                 gui_ui_compose_end(gui);
@@ -332,7 +332,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         break;
                     }
 
-                    value_style.text = str__from_cstr(tempbuffer, sizeof(tempbuffer));
+                    value_style.text = str_from_cstr(tempbuffer, sizeof(tempbuffer));
                     gui_ui_compose_begin(gui, value_style);
                     gui_ui_compose_end(gui);
 
@@ -421,6 +421,8 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
     gui_ui_compose_end(gui);
 
     transform->orientation = glms_quat_normalize(transform->orientation);
+
+    //NOTE: Jolt requires scales to be +ve value always
     transform->scale = glms_vec3_abs(transform->scale);
 }
 
@@ -460,7 +462,7 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
             .draw_mode = RENDER_COMMAND_DRAW_MODE_LINES,
             .instance = {
                 .raw_data = {0},
-                .size = sizeof(rendercommand_instance_line_t),
+                .occupied_size = sizeof(rendercommand_instance_line_t),
             },
             .material = {
                 .shader = {

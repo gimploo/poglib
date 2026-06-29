@@ -96,8 +96,8 @@ bool file_check_exist(const char *filepath)
 
 file_t file_init(const char *file_path, const char *mode)
 {
-    assert(file_path);
-    assert(mode);
+    ASSERT(file_path);
+    ASSERT(mode);
     file_t file = {0};
     file.name       = file_path;
     file.mode       = mode;
@@ -105,7 +105,7 @@ file_t file_init(const char *file_path, const char *mode)
 
     file.fp         = fopen(file_path, mode) ;
     if (!file.fp) 
-        eprint("unable to open file `%s`", file_path);
+        eprint("Unable to open file `%s`", file_path);
 
     __file_set_size(&file);
 

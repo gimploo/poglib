@@ -255,8 +255,8 @@ glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
     if (file_fs == NULL) eprint("file_fs arguemnt is null");
 
     glshader_t shader = {
-        .vs = str__from_cstr(file_vs, strlen(file_vs)),
-        .fg = str__from_cstr(file_fs, strlen(file_vs)),
+        .vs = str_from_cstr(file_vs, strlen(file_vs)),
+        .fg = str_from_cstr(file_fs, strlen(file_vs)),
     };
     glshader__internal_load_from_file(&shader, file_vs, file_fs, NULL);
 

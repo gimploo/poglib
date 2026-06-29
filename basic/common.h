@@ -92,7 +92,7 @@ typedef struct {
 
 #define buffer(FIXED_CAPACITY)          \
     struct {                            \
-        u32 size;                       \
+        u32 occupied_size;              \
         u8 raw_data[FIXED_CAPACITY];    \
     }
 

@@ -126,7 +126,7 @@ gltexture2d_t gltexture2d_init(const char *filepath)
 
     return (gltexture2d_t) {
         .id         = id,
-        .filepath   = str__from_cstr(filepath, strlen(filepath)),
+        .filepath   = str_from_cstr(filepath, strlen(filepath)),
         .buf        = buf,
         .width      = width,
         .height     = height,

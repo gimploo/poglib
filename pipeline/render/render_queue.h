@@ -42,7 +42,7 @@ void renderqueue__internal_bucket_init_and_add_command(renderqueue_t *const self
 void renderqueue_pass_command(renderqueue_t *const self, rendercommand_t command)
 {
     ASSERT(self);
-    ASSERT(command.instance.size <= sizeof(command.instance.raw_data));
+    ASSERT(command.instance.occupied_size <= sizeof(command.instance.raw_data));
 
     renderqueue__internal_validate_command(command);
 
@@ -142,7 +142,7 @@ bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const que
         );
         if (!has_same_texture) continue;
 
-        const bool has_same_instance_size = first_render_command->instance.size == command.instance.size;
+        const bool has_same_instance_size = first_render_command->instance.occupied_size == command.instance.occupied_size;
         if (!has_same_instance_size) 
             continue;
 
@@ -233,7 +233,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
         }
 
         //NOTE: Use instance if configured
-        const bool is_instanced = first_command->instance.size > 0;
+        const bool is_instanced = first_command->instance.occupied_size > 0;
         if (is_instanced) {
             //NOTE: copy over instace data into the gl instance buffer
             instance_starting_offset = glinstancebuffer_get_current_offest(&self->internal.instancebuffer);
@@ -243,7 +243,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
                 glinstancebuffer_push(
                     &self->internal.instancebuffer,
                     cmd->instance.raw_data,
-                    cmd->instance.size
+                    cmd->instance.occupied_size
                 );
             }
 
@@ -252,7 +252,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
             glinstancebuffer_bind(
                 &self->internal.instancebuffer, 
                 instance_starting_offset,
-                bucket_commands->len * first_command->instance.size);
+                bucket_commands->len * first_command->instance.occupied_size);
 
             if (binded_shader_id)
                 glshader_upload_uniforms(shader, first_command->material.shader.uniforms);

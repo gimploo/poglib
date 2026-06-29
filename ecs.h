@@ -5,16 +5,17 @@
 #include "poglib/application.h"
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
+#include "poglib/ecs/serialization.h"
+#include "poglib/poggen.h"
+#include "poglib/util/assetmanager.h"
 
-#define ECS_SAVE_FILE_MAGIC     0x45435346u
-#define ECS_SAVE_FILE_VERSION   1u
-#define ECS_SAVE_FILEPATH       "ecs.save"
 
 ecs_t * global_ecs = NULL;
 
 ecs_t *         ecs_init(void);
 
 u32                 ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config);
+u32                 ecs_entity_duplicate(ecs_t *const self, const u32 entity_id);
 void                ecs_entity_remove(ecs_t * const self, const u32 entityId);
 
 ecs_entity_query_t   ecs_entity_query_components(ecs_t *const self, const u32 entity_id, const u32 component_signature);
@@ -130,9 +131,11 @@ void ecs_update(ecs_t *const self)
     ecs_componentmanager_update(&self->managers.componentmanager);
 
     const ecs_systemmanager_t * const manager = &self->managers.systemmanager;
+    if (!manager->count) return;
+
     for (u8 idx = 0; idx < ECS_SYSTEM_MAX_COUNT; idx++)
     {
-        if (!manager->count || !manager->systems[idx].callback)
+        if (!manager->systems[idx].callback)
             continue;
 
         manager->systems[idx].callback(
@@ -159,40 +162,31 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
 {
     ASSERT(self);
 
-    file_t f = file_init(filepath.data, "wb");
+    file_t f = file_init(filepath.data, "w");
 
-    const u32 magic        = ECS_SAVE_FILE_MAGIC;
-    const u32 version      = ECS_SAVE_FILE_VERSION;
-    const u32 entity_count = self->managers.entitymanager.entities.len;
-
-    file_writebytes(&f, (void *)&magic,        sizeof(magic));
-    file_writebytes(&f, (void *)&version,      sizeof(version));
-    file_writebytes(&f, (void *)&entity_count, sizeof(entity_count));
+    ecs_serializer__internal_write_header(&f);
 
     slot_iterator(&self->managers.entitymanager.entities, iter)
     {
         const ecs_entity_t *const entity = iter;
 
+        ecs_serializer__internal_write_entity_data(&f, entity->id, entity->component_signature);
+
         ecs_entity_query_t query = ecs_entity_query_components(
             self, entity->id, entity->component_signature
         );
-
-        ecs_componentbundle_t dest = { 
-            .signature = entity->component_signature,
-            .component = {0}
-        };
 
         for (u8 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
         {
             const ecs_component_type cmp_type = 1 << cmp_idx;
             if ((entity->component_signature & cmp_type) == 0) continue;
 
-            const u16 cmp_size = ecs_component__internal_get_componenttype_size(cmp_type);
-            memcpy(&dest.component[cmp_idx], query.entity_cmp_data[cmp_idx], cmp_size);
+            ecs_serializer__internal_entity_cmp_data(&f, cmp_type, query.entity_cmp_data[cmp_idx]);
         }
-
-        file_writebytes(&f, &dest, sizeof(dest));
     }
+    assetmanager_write_assetpaths_to_file(&global_engine->systems.assets, &f);
+
+    ecs_serializer__internal_write_footer(&f);
 
     file_destroy(&f);
 }
@@ -210,7 +204,7 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
         return;
     }
 
-    file_t f = file_init(filepath.data, "rb");
+    file_t f = file_init(filepath.data, "r");
 
     u32 magic, version, entity_count;
     file_readbytes(&f, &magic,        sizeof(magic));
