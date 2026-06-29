@@ -4,9 +4,7 @@
 typedef struct {
     gltexture2d_t   texture;
     slot_t          sprites;
-    struct {
-        arena_t *arena;
-    } internal;
+    vec2i_t         tile_count;
 } spriteatlas_t;
 
 spriteatlas_t          spriteatlas_init(const str_t filepath, const u32 tile_count_width, const u32 tile_count_height, arena_t *const arena);
@@ -47,7 +45,8 @@ spriteatlas_t spriteatlas_init(const str_t filepath, const u32 tile_count_width,
     }
     return (spriteatlas_t) {
         .sprites = atlas,
-        .texture = texture
+        .texture = texture,
+        .tile_count = { tile_count_width, tile_count_height }
     };
 }
 

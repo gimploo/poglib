@@ -18,7 +18,7 @@ u32                 ecs_entity_add(ecs_t * const self, const ecs_componentbundle
 u32                 ecs_entity_duplicate(ecs_t *const self, const u32 entity_id);
 void                ecs_entity_remove(ecs_t * const self, const u32 entityId);
 
-ecs_entity_query_t   ecs_entity_query_components(ecs_t *const self, const u32 entity_id, const u32 component_signature);
+ecs_entity_query_t  ecs_entity_query_components(ecs_t *const self, const u32 entity_id, const u32 component_signature);
 
 void                ecs_set_active_camera(ecs_t *const self, const u32 entity_id);
 glcamera_t *        ecs_get_active_camera(ecs_t *const self);
@@ -184,7 +184,7 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
             ecs_serializer__internal_entity_cmp_data(&f, cmp_type, query.entity_cmp_data[cmp_idx]);
         }
     }
-    assetmanager_write_assetpaths_to_file(&global_engine->systems.assets, &f);
+    assetmanager_write_assetmeta_data_to_file(&global_engine->systems.assets, &f);
 
     ecs_serializer__internal_write_footer(&f);
 
@@ -205,21 +205,6 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
     }
 
     file_t f = file_init(filepath.data, "r");
-
-    u32 magic, version, entity_count;
-    file_readbytes(&f, &magic,        sizeof(magic));
-    file_readbytes(&f, &version,      sizeof(version));
-    file_readbytes(&f, &entity_count, sizeof(entity_count));
-
-    ASSERT(magic == ECS_SAVE_FILE_MAGIC);
-    ASSERT(version == ECS_SAVE_FILE_VERSION);
-
-    for (u32 idx = 0; idx < entity_count; idx++)
-    {
-        ecs_componentbundle_t bundle;
-        file_readbytes(&f, &bundle, sizeof(bundle));
-        ecs_entity_add(self, bundle);
-    }
 
     file_destroy(&f);
 }

@@ -177,12 +177,12 @@ void assetmanager_serialize_to_file(const assetmanager_t *const self, file_t *co
     ASSERT(!file->is_closed);
 
     buffer(WORD) buffer = {0};
-    hashtable_iterator(&self->assetid_to_assetpath, iter)
+    hashtable_iterator(&self->assetmeta_lookup, iter)
     {
         const hashtable_entry_t *entry  = iter;
         const str_t *const assetpath    = entry->value;
         snprintf(
-            buffer.raw_data, buffer.occupied_size, 
+            buffer.raw_data, buffer.size, 
             "assetid:%i,assetpath:%*s\n",
             entry->key.u32,
             assetpath->len,

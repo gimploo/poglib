@@ -462,7 +462,7 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
             .draw_mode = RENDER_COMMAND_DRAW_MODE_LINES,
             .instance = {
                 .raw_data = {0},
-                .occupied_size = sizeof(rendercommand_instance_line_t),
+                .size = sizeof(rendercommand_instance_line_t),
             },
             .material = {
                 .shader = {

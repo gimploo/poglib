@@ -5,6 +5,7 @@
 #include "../util.h"
 #include "../arena.h"
 #include "../runtime-ctx.h"
+#include "poglib/basic/file.h"
 
 //NOTE: Things to know before using 
 //-------------------------------------
@@ -59,7 +60,7 @@ hashtable_t     hashtable_init(
 #define         hashtable_insert(PTABLE, KEY, VALUE)\
                 hashtable__internal_insert((PTABLE), (KEY), (void *)(u64)(VALUE))
 
-void            hashtable_insert_by_value(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr);
+void *          hashtable_insert_by_value(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr);
 
 #define         hashtable_iterator(TABLE, ENTRY)\
                 slot_iterator(&(TABLE)->entries, (ENTRY))
@@ -149,7 +150,7 @@ const void * hashtable__internal_get_value_based_on_storage(hashtable_t * const 
         : arena_store(&table->internal.valuepool, value_addr, table->internal.valuetype.size);
 }
 
-void hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr)
+void * hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr)
 {
     if (table->entries.len == slot_get_capacity(&table->entries)) {
         eprint("Exceeded limit");
@@ -164,7 +165,7 @@ void hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t
 
     while(true) {
 
-        hashtable_entry_t * const entry = table->entries.len
+        hashtable_entry_t *const entry = table->entries.len
             ? slot_get_value(&table->entries,index) 
             : NULL;
 
@@ -175,19 +176,18 @@ void hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t
                 .probe_distance = probe_distance,
                 .is_occupied = true,
             };
-            slot_insert(
+            return slot_insert(
                 &table->entries, 
                 index, 
                 &newentry,
                 sizeof(hashtable_entry_t)
             );
-            return;
         }
 
         //NOTE: override value of an existing hashtable entry
         if (hashtable__internal_compare_key(table, swap_key, entry->key)) {
             entry->value = (void *)value;
-            return;
+            return entry;
         }
 
         if(probe_distance > entry->probe_distance){
@@ -335,10 +335,29 @@ bool hashtable_has_key(const hashtable_t *table, const hashtable_key_t key)
     }
 }
 
-void hashtable_insert_by_value(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr)
+void * hashtable_insert_by_value(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr)
 {
     ASSERT(table->internal.valuetype.type == HT_STORAGE_BY_VALUE);
-    hashtable__internal_insert(table, key, value_addr);
+    return hashtable__internal_insert(table, key, value_addr);
+}
+
+void hashtable_serialize_to_file(
+    const hashtable_t *const table, 
+    file_t *const file,
+    void (*callback)(const hashtable_entry_t *const entry, buffer_t *const buffer))
+{
+    ASSERT(!file->is_closed);
+
+    hashtable_iterator(table, iter)
+    {
+        u8 buffer[WORD] = {0};
+        const hashtable_entry_t *const entry = iter;
+        callback(entry, &(buffer_t ){
+            .raw_data = buffer,
+            .size = sizeof(buffer)
+        });
+        file_writeline(file, (char *)buffer);
+    }
 }
 
 #endif

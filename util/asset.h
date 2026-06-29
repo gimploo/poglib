@@ -10,6 +10,17 @@ typedef enum asset_type {
     ASSET_TYPE_COUNT
 } asset_type;
 
+
+typedef struct {
+    asset_type type;
+    union {
+        hashtable_t      *uniformlocs;
+        vec2i_t          tile_counts;
+    } meta;
+    str_t filepath1;
+    str_t filepath2;
+} asset_meta_t;
+
 typedef struct {
     u32 vao_id;
     u32 index_count;
