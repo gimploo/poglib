@@ -99,6 +99,21 @@ u32 ecs_entity_add(ecs_t *const self, const ecs_componentbundle_t component_conf
     return new_entity.id;
 }
 
+u32 ecs_entity_duplicate(ecs_t *const self, const u32 entity_id)
+{
+    const u64 entity_idx = (u64)hashtable_get_value(
+        &self->managers.entitymanager.entityid_to_entityidx_lookup, (hashtable_key_t) {
+            .u32 = entity_id
+        });
+
+    ecs_componentbundle_t component_config = ecs_componentmanager_get_componentbundle_from_existing_entity(
+        &self->managers.componentmanager, 
+        *(ecs_entity_t *)slot_get_value(&self->managers.entitymanager.entities, entity_idx)
+    );
+
+    return ecs_entity_add(self, component_config);
+}
+
 void ecs_entity_remove(ecs_t * const self, const u32 entityId)
 {
     ecs_entitymanager_remove(&self->managers.entitymanager, entityId);

@@ -18,6 +18,7 @@ void                            ecs_componentmanager_remove(ecs_componentmanager
 void                            ecs_componentmanager_removeall(ecs_componentmanager_t * const self, const u32 entity_id);
 ecs_component_entry_t           ecs_componentmanager_get_component(const ecs_componentmanager_t * const self, const u32 entity_id, const ecs_component_type cmp_type);
 void                            ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
+ecs_componentbundle_t           ecs_componentmanager_get_componentbundle_from_existing_entity(ecs_componentmanager_t *const self, const ecs_entity_t entity);
 
 
 #ifndef IGNORE_ECS_COMPONENT_IMPLEMENTATION
@@ -234,6 +235,9 @@ void ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 
         (hashtable_key_t){ .u32 = entity_id }
     );
 
+    if (cmp_idx_buffer[cmp_idx] == ECS_CMP_INVALID_IDX) 
+        return;
+
     const u16 index_of_cmp_to_remove                = cmp_idx_buffer[cmp_idx];
     const bool is_last_element                      = index_of_cmp_to_remove == (componentpool->len - 1);
     cmp_idx_buffer[cmp_idx]                         = ECS_CMP_INVALID_IDX;
@@ -248,7 +252,7 @@ void ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 
 
     //NOTE: swaps last item to deleted item's index
 
-    const u32 last_element_data_idx                 = componentpool->len - 1;
+    const u32 last_element_data_idx                 = componentpool->len;
     ecs_component_poolentry_t *last_element_data    = slot_get_value(componentpool, last_element_data_idx);
     const u32 moved_entity_id                       = ecs_componentmanager__internal_get_entity_id_from_pooldata(last_element_data);
     i16 *const cmp_buf                              = hashtable_get_value(&self->entity2components_lookup, (hashtable_key_t){ .u32 = moved_entity_id });
@@ -393,6 +397,31 @@ void ecs_componentmanager__internal_cmp_cleanup(const ecs_component_type type, c
 
         default: return;
     }
+}
+
+ecs_componentbundle_t ecs_componentmanager_get_componentbundle_from_existing_entity(ecs_componentmanager_t *const self, const ecs_entity_t entity)
+{
+    const ecs_entity_query_t query = ecs_componentmanager__internal_query_components(
+        self, entity.id, entity.component_signature
+    );
+
+    ecs_componentbundle_t dest = { 
+        .signature = entity.component_signature,
+        .component = {0}
+    };
+
+    for (u8 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
+    {
+        const ecs_component_type cmp_type = 1 << cmp_idx;
+        if ((entity.component_signature & cmp_type) == 0) continue;
+
+        ASSERT(query.entity_cmp_data[cmp_idx]);
+
+        const u16 cmp_size = ecs_component__internal_get_componenttype_size(cmp_type);
+        memcpy(&dest.component[cmp_idx], query.entity_cmp_data[cmp_idx], cmp_size);
+    }
+
+    return dest;
 }
 
 #endif

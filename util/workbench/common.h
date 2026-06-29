@@ -4,21 +4,16 @@
 #include <poglib/util/glcamera.h>
 #include "./workbench-debug-renderer.h"
 
-typedef enum gizmo_mode {
-    GIZMO_MODE_TRANSLATE = 0,
-    GIZMO_MODE_ROTATE,
-    GIZMO_MODE_SCALE,
-} gizmo_mode_t;
-
 typedef enum workbench_action_type {
-    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG             = 0,
-    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED     = 1,
-    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN                    = 2,
-    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT                   = 3,
-    WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT                = 4,
-    WORKBENCH_ACTION_TYPE_GIZMO_CYCLE_MODE                  = 5,
-    WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME                  = 6,
-    WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION            = 7,
+    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG = 0,
+    WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED,
+    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN,
+    WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT,
+    WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT,
+    WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME,
+    WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION,
+    WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY,
+    WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY,
     WORKBENCH_ACTION_TYPE_COUNT
 } workbench_action_type;
 
@@ -63,7 +58,6 @@ typedef struct {
         u32 current_selected_entity_id;
         u32 prev_selected_entity_id;
 
-        gizmo_mode_t gizmo_mode;
     } editor;
 
 } workbench_t;

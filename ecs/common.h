@@ -10,10 +10,17 @@
 #define ECS_ENTITY_INVALID_ID   0
 #define ECS_ENTITY_MAX_COUNT    (1 * MB)
 
+typedef struct ecs_entity_t ecs_entity_t;
 typedef struct ecs_entitymanager_t ecs_entitymanager_t;
+
 struct ecs_entitymanager_t {
     slot_t      entities;
-    hashtable_t lookup;
+    hashtable_t entityid_to_entityidx_lookup;
+};
+
+struct ecs_entity_t {
+    u32 id;
+    u32 component_signature;
 };
 
 

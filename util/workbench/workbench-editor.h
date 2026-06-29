@@ -359,6 +359,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                     if (gui_ui_isclicked(gui, reset_id)) {
                         if (idx == OT_SCALE)    *transform_bindings[idx] = (vec3f_t){1.f,1.f,1.f};
                         else                    *transform_bindings[idx] = (vec3f_t){0};
+                        workbench_editor__internal_update_physics_colliders();
                     }
                 gui_ui_compose_end(gui);
 
@@ -420,6 +421,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
     gui_ui_compose_end(gui);
 
     transform->orientation = glms_quat_normalize(transform->orientation);
+    transform->scale = glms_vec3_abs(transform->scale);
 }
 
 INTERNAL void workbench_editor__internal_gizmo_draw_axis(
@@ -555,5 +557,21 @@ void workbench_editor_update(void)
 {
     workbench_editor__internal_check_mouse_closest_entity();
     workbench_editor__internal_draw_gizmo_on_entity_selection();
+}
+
+void workbench_editor_copypaste_entity(void)
+{
+    if (!global_workbench->editor.current_selected_entity_id) return;
+    ecs_entity_duplicate(global_ecs, global_workbench->editor.current_selected_entity_id);
+    logging("Duplicated entity (%i)", global_workbench->editor.current_selected_entity_id);
+}
+
+void workbench_editor_delete_entity(void)
+{
+    if (!global_workbench->editor.current_selected_entity_id) return;
+
+    ecs_entity_remove(global_ecs, global_workbench->editor.current_selected_entity_id);
+    global_workbench->editor.current_selected_entity_id = 0;
+    logging("Deleted entity (%i)", global_workbench->editor.current_selected_entity_id);
 }
 
