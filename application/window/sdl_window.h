@@ -128,6 +128,8 @@ bool                window_mouse_wheel_is_scroll_down(const window_t *const w);
 bool                window_mouse_wheel_is_scroll_left(const window_t *const w);
 bool                window_mouse_wheel_is_scroll_right(const window_t *const w);
 
+void                window_lock_mouse(const window_t *const self, const bool lock_mouse);
+
 #define             window_mouse_get_norm_position(PWINDOW)                     (PWINDOW)->mouse.norm_position
 #define             window_mouse_get_position(PWINDOW)                          (PWINDOW)->mouse.position
 #define             window_mouse_get_relative_position(PWINDOW)                 (PWINDOW)->mouse.rel
@@ -257,6 +259,7 @@ bool window_mouse_wheel_is_scroll_left(const window_t *const w)
 
 #define __impl_window_gl_render_begin(PWINDOW) do {\
 \
+    SDL_GL_MakeCurrent((PWINDOW)->__sdl_window, (PWINDOW)->__glcontext);\
     i32 dw, dh; \
     SDL_GL_GetDrawableSize((PWINDOW)->__sdl_window, &dw, &dh); \
     GL_CHECK(glViewport(0, 0, dw, dh));\
@@ -503,7 +506,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 
 }
 
-INTERNAL void __window_handle_sdlwindow_event(window_t *window, SDL_Event *event) 
+INTERNAL void window__internal__handle_window_events(window_t *const window, const SDL_Event *const event) 
 {
     if (window->__sdl_window_id == event->window.windowID) {
 
@@ -532,6 +535,8 @@ INTERNAL void __window_handle_sdlwindow_event(window_t *window, SDL_Event *event
               break;
 
             case SDL_WINDOWEVENT_RESIZED:
+                window->width = event->window.data1;
+                window->height = event->window.data2;
                 SDL_Log("Window (%s) resized to %dx%d", window->title,
                       event->window.data1, event->window.data2);
             break;
@@ -777,7 +782,7 @@ void window_subwindow_render_stuff(window_t *subwindow, void (*stuff)(void *), v
 #define SDL_KEYSTATE_UNKNOWN SDL_FIRSTEVENT
 
 //NOTE: this is NOT designed to be ran in a fixed tick rate
-void window_poll_input_events(window_t *window)
+void window_poll_input_events(window_t *const window)
 {
     SDL_Event *event = &window->__sdl_event;
 
@@ -795,7 +800,7 @@ void window_poll_input_events(window_t *window)
         switch (event->type) 
         {
             case SDL_WINDOWEVENT:
-                __window_handle_sdlwindow_event(window, event);
+                window__internal__handle_window_events(window, event);
             break;
 
             case SDL_MOUSEWHEEL:
@@ -975,5 +980,10 @@ void window_flush_transient_data(window_t *const self)
     memset(&self->keyboard.just_pressed, 0, sizeof(self->keyboard.just_pressed));
 }
 
+void window_lock_mouse(const window_t *const self, const bool lock_mouse)
+{
+    (void)self;
+    SDL_SetRelativeMouseMode(lock_mouse);
+}
 
 #endif 
