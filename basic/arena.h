@@ -34,7 +34,7 @@ struct free_chunks_t {
     u64 size;
 };
 
-arena_t     arena_init(arena_t *const , const u64 capacity);
+arena_t     arena_init(arena_t *const, const u64 capacity);
 void *      arena_reserve(arena_t *const self, const u64 memory_size);
 bool        arena_is_init(const arena_t *const self);
 void *      arena_store(arena_t *const self, const void *const mem, const u64 mem_size);
@@ -46,7 +46,7 @@ void        arena_destroy(arena_t *const self);
 
 void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const u64 memory_size);
 
-arena_t arena_init(arena_t *arena, u64 capacity)
+arena_t arena_init(arena_t *const arena, const u64 capacity)
 {
     arena_t o = {
         .capacity = capacity,

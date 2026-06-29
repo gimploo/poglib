@@ -4,6 +4,7 @@
 #include "poglib/basic/arena.h"
 #include "poglib/basic/concurrency.h"
 #include "poglib/basic/ds/hashtable.h"
+#include "poglib/basic/str.h"
 #include "poglib/gfx/gl/objects.h"
 #include "poglib/gfx/gl/renderconfig.h"
 #include "poglib/gfx/gl/shader.h"
@@ -23,6 +24,7 @@ struct assetmanager_t {
     bgtask_manager_t    *bgtask_manager;
     hashtable_t         assetmaps[ASSET_TYPE_COUNT];
     hashtable_t         gpu_uploaded_assets;
+    hashtable_t         assetid_to_assetpath;
     struct {
         u32             asset_idx_generator;
         mpsc_queue_t    gpu_upload_queue;
@@ -41,6 +43,7 @@ u32                 assetmanager_load_glsl_shader(assetmanager_t *self, const st
 
 const void *        assetmanager_get_assetresource(const assetmanager_t *const self, const asset_type assettype, const u32 assetId);
 gpu_asset_t *       assetmanager_get_gpu_loaded_asset_async(const assetmanager_t *const self, const u32 asset_id);
+void                assetmanager_write_assetpaths_to_file(const assetmanager_t *const self, file_t *const file);
 
 void                assetmanager_destroy(assetmanager_t *const self);
 
@@ -49,6 +52,8 @@ void                assetmanager_destroy(assetmanager_t *const self);
 #ifndef IGNORE_ASSETMANAGER_IMPLEMENTATION
 
 #define MAX_ASSETS_ALLOWED_PER_TYPE 10
+
+INTERNAL void assetmanager__internal_add_assetpath(assetmanager_t *const self, const u32 asset_id, const str_t filepath1, const str_t filepath2);
 
 assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
 {
@@ -62,6 +67,7 @@ assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
             [ASSET_TYPE_TEXTURE_SPRITE_ATLAS] = hashtable_init(3, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(spriteatlas_t),  .type = HT_STORAGE_BY_VALUE }, &arena),
         },
         .bgtask_manager = taskmanager,
+        .assetid_to_assetpath = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT, HT_KEY_TYPE_U32, (ht_value_type){ .size = sizeof(str_t), .type = HT_STORAGE_BY_VALUE } , &arena),
         .gpu_uploaded_assets = hashtable_init(ASSET_TYPE_COUNT * MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gpu_asset_t), .type = HT_STORAGE_BY_REFERENCE }, &arena),
         .internal = {
             .asset_idx_generator = GL_MESH_PRIMITIVE_TYPE_COUNT,
@@ -131,6 +137,7 @@ u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepa
         (hashtable_key_t){ .u32 = asset_id }, 
         response
     );
+    assetmanager__internal_add_assetpath(self, asset_id, filepath, STR_EMPTY);
 
     bgtask_manager_pass_task(
         self->bgtask_manager,
@@ -201,6 +208,7 @@ u32 assetmanager_load_glsl_shader(assetmanager_t *const self, const str_t vtx_fi
     glshader_t *shader = arena_reserve(&self->arena, sizeof(glshader_t));
     *shader = glshader_init(vtx_filepath, frag_filepath, registry, &self->arena);
 
+    assetmanager__internal_add_assetpath(self, asset_id, vtx_filepath, frag_filepath);
     hashtable_insert(&self->assetmaps[ASSET_TYPE_GLSL_SHADER], (hashtable_key_t){.u32 = asset_id}, shader);
     logging("Shader compiled %s, %s", shader->fg.data, shader->vs.data);
     return asset_id;
@@ -475,7 +483,7 @@ void assetmanager__internal_upload_camera_model(assetmanager_t *const self)
             [VBO_STREAM_TYPE_GEOMETRY] = { 
                 .buffer = {
                     .raw_data = (u8 *)CAMERA_VERTICES,
-                    .size = sizeof(CAMERA_INDICES),
+                    .size = sizeof(CAMERA_VERTICES),
                 }, 
                 .index_count = ARRAY_LEN(CAMERA_INDICES)
             },
@@ -548,7 +556,7 @@ void assetmanager__internal_upload_line_to_gpu(assetmanager_t *const self)
                     .raw_data = (u8 *)DEFAULT_LINE_VERTICES,
                     .size = sizeof(DEFAULT_LINE_VERTICES),
                 }, 
-                .index_count = ARRAY_LEN(DEFAULT_LINE_VERTICES)
+                .index_count = ARRAY_LEN(DEFAULT_LINE_INDICES)
             },
             [VBO_STREAM_TYPE_INSTANCE] = {0},
         }
@@ -612,9 +620,48 @@ u32 assetmanager_load_spriteatlas(assetmanager_t *const self, const str_t filepa
 {
     const spriteatlas_t atlas   = spriteatlas_init(filepath, tile_count_width, tile_count_height, &self->arena);
     const u32 asset_id          = ++self->internal.asset_idx_generator;
+    assetmanager__internal_add_assetpath(self, asset_id, filepath, STR_EMPTY);
     hashtable_insert(&self->assetmaps[ASSET_TYPE_TEXTURE_SPRITE_ATLAS], (hashtable_key_t){ .u32 = asset_id }, &atlas);
     return asset_id;
 }
+
+INTERNAL void assetmanager__internal_add_assetpath(assetmanager_t *const self, const u32 asset_id, const str_t filepath1, const str_t filepath2)
+{
+    ASSERT(filepath1.len || filepath2.len);
+    buffer(WORD) buffer = {0};
+
+    if (filepath1.len && !filepath2.len)        snprintf((char *)buffer.raw_data, sizeof(buffer.raw_data), "%s", filepath1.data);
+    else if (!filepath1.len && filepath2.len)   snprintf((char *)buffer.raw_data, sizeof(buffer.raw_data), "%s", filepath2.data);
+    else                                        snprintf((char *)buffer.raw_data, sizeof(buffer.raw_data), "%s|%s", filepath1.data, filepath2.data);
+ 
+    const str_t assetpath = str_init(&self->arena, (char *)buffer.raw_data);
+    hashtable_insert_by_value(
+        &self->assetid_to_assetpath, 
+        (hashtable_key_t) { .u32 = asset_id }, 
+        &assetpath
+    );
+}
+
+void assetmanager_write_assetpaths_to_file(const assetmanager_t *const self, file_t *const file)
+{
+    ASSERT(!file->is_closed);
+
+    buffer(WORD) buffer = {0};
+    hashtable_iterator(&self->assetid_to_assetpath, iter)
+    {
+        const hashtable_entry_t *entry  = iter;
+        const str_t *const assetpath    = entry->value;
+        snprintf(
+            buffer.raw_data, sizeof(buffer.raw_data), 
+            "assetid:%u,assetpath:%.*s\n",
+            entry->key.u32,
+            assetpath->len,
+            assetpath->data
+        );
+        file_writeline(file, buffer.raw_data);
+    }
+}
+
 
 
 #endif

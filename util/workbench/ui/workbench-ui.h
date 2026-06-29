@@ -63,7 +63,7 @@ void workbench_compose_ui(gui_t *const gui)
             },
             .padding = {0},
             .margin = {0},
-            .text = str__from_cstr(tempbuffer, sizeof(tempbuffer))
+            .text = str_from_cstr(tempbuffer, sizeof(tempbuffer))
         });
         gui_ui_compose_end(gui);
     } 
@@ -106,7 +106,7 @@ void workbench_compose_ui(gui_t *const gui)
             },
             .padding = {0},
             .margin = {2,2,2,2},
-            .text = str__from_cstr(tempbuffer, sizeof(tempbuffer))
+            .text = str_from_cstr(tempbuffer, sizeof(tempbuffer))
         });
         gui_ui_compose_end(gui);
 
@@ -126,7 +126,7 @@ void workbench_compose_ui(gui_t *const gui)
             },
             .padding = {0},
             .margin = {2,2,2,2},
-            .text = str__from_cstr(tempbuffer, sizeof(tempbuffer))
+            .text = str_from_cstr(tempbuffer, sizeof(tempbuffer))
         });
         gui_ui_compose_end(gui);
     } 
@@ -169,7 +169,7 @@ void workbench_compose_ui(gui_t *const gui)
             },
             .padding = {0},
             .margin = {0},
-            .text = str__from_cstr(tempbuffer, sizeof(tempbuffer))
+            .text = str_from_cstr(tempbuffer, sizeof(tempbuffer))
         });
         gui_ui_compose_end(gui);
     } 

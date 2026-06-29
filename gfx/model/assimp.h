@@ -216,7 +216,7 @@ glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh) {
 i32 assimp__internal_get_bone_id(hashtable_t *bone_name_to_index, const struct aiBone *bone)
 {
     u64 bone_id = 0;
-    str_t bone_name = str__from_cstr(bone->mName.data, bone->mName.length);
+    str_t bone_name = str_from_cstr(bone->mName.data, bone->mName.length);
 
     if (hashtable_has_key(bone_name_to_index, (hashtable_key_t){ .str = bone_name })) {
         bone_id = (u64)hashtable_get_value(bone_name_to_index, (hashtable_key_t){ .str = bone_name });
@@ -267,7 +267,7 @@ void assimp__internal_glmodel_read_node_heirarchy(const hashtable_t *const bone_
     const matrix4f_t node_transform     = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
     const matrix4f_t global_transform   = matrix4f_multiply(parentTransform, node_transform);
 
-    const str_t node_name = str__from_cstr(node->mName.data, node->mName.length);
+    const str_t node_name = str_from_cstr(node->mName.data, node->mName.length);
     if (hashtable_has_key(bone_name_to_index, (hashtable_key_t){ .str = node_name })) {
 
         const u64 bone_index        = (u64)hashtable_get_value(bone_name_to_index, (hashtable_key_t){ .str = node_name });
@@ -414,7 +414,7 @@ glmodel_t glmodel_init(const char *filepath)
     {
         for (u32 i = 0; i < scene->mRootNode->mNumChildren; i++) 
         {
-            const str_t name = str__from_cstr(
+            const str_t name = str_from_cstr(
                 scene->mRootNode->mChildren[i]->mName.data,
                 scene->mRootNode->mChildren[i]->mName.length
             );
@@ -552,7 +552,7 @@ void assimp__internal_process_node_anim(glmodel_t *self, struct aiNode *node, co
 {
     ASSERT(node);
 
-    const str_t node_name       = str__from_cstr(node->mName.data, node->mName.length);
+    const str_t node_name       = str_from_cstr(node->mName.data, node->mName.length);
     matrix4f_t node_transform   = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
 
     // Find animation channel for this node
@@ -613,10 +613,10 @@ void glmodel_set_animation(glmodel_t *const self, const char *animation_label, c
     }
 
     // Track current animation and time to reset time on animation change
-    if (str_cmp(self->internal.active_playing_animation, str__from_cstr(animation_label, strlen(animation_label))) == 0) {
+    if (str_cmp(self->internal.active_playing_animation, str_from_cstr(animation_label, strlen(animation_label))) == 0) {
         self->current_time = 0.0f; // Reset time when switching animations
         self->internal.playing_animation_iteration_count = 0;
-        self->internal.active_playing_animation = str__from_cstr(animation_label, strlen(animation_label));
+        self->internal.active_playing_animation = str_from_cstr(animation_label, strlen(animation_label));
     }
 
     // Increment animation time (convert dt from seconds to ticks)

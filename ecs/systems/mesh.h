@@ -69,7 +69,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             .enable_wireframe = false,
             .instance = {
                 .raw_data = {0},
-                .size = sizeof(rendercommand_instance_primitive_mesh_t)
+                .occupied_size = sizeof(rendercommand_instance_primitive_mesh_t)
             },
             .material = {
                 .textures = {

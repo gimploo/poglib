@@ -100,7 +100,7 @@ u32 ht__internal_hash_u32(const u32 key) {
     return key * 2654435761u;
 }
 
-hashtable_t hashtable_init(const u32 capacity, const ht_key_type keytype, const ht_value_type valuetype, arena_t * const arena)
+hashtable_t hashtable_init(const u32 capacity, const ht_key_type keytype, const ht_value_type valuetype, arena_t *const arena)
 {
     ASSERT(capacity > 0);
     ASSERT(valuetype.size > 0);

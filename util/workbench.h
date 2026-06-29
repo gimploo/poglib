@@ -458,7 +458,7 @@ void workbench_render_camera(
         .mesh = asset->meshes.data,
         .instance = {
             .raw_data = {0},
-            .size = sizeof(rendercommand_instance_primitive_mesh_t)
+            .occupied_size = sizeof(rendercommand_instance_primitive_mesh_t)
         },
         .material = {
             .textures = {0},
@@ -524,7 +524,7 @@ void workbench_render_marker(
         .mesh = asset->meshes.data,
         .instance = {
             .raw_data = {0},
-            .size = sizeof(rendercommand_instance_primitive_mesh_t)
+            .occupied_size = sizeof(rendercommand_instance_primitive_mesh_t)
         },
         .material = {
             .textures = {

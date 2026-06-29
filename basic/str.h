@@ -22,7 +22,7 @@ typedef struct str_t {
 #define         str(STRING)              (str_t ) { .data = STRING, .len = sizeof(STRING) - 1, .internal.heap_allocated = false }
 #define         str_lit(STRING)          { .data = STRING, .len = sizeof(STRING) - 1, .internal.heap_allocated = false }
 str_t           str_init(arena_t *arena, const char * const __buffer);
-str_t           str__from_cstr(const char *data, const u32 len);
+str_t           str_from_cstr(const char *data, const u32 len);
 void            str_free(str_t *x);
 void            str_print(str_t *str);
 void            str_get_data(const str_t *data, char *output);
@@ -275,7 +275,7 @@ void cstr_get_file_extension(const char *filepath, char output[32])
     }
 }
 
-str_t str__from_cstr(const char *data, const u32 len)
+str_t str_from_cstr(const char *data, const u32 len)
 {
     return (str_t) {
         .data = (char *)data,
