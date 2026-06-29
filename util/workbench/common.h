@@ -68,8 +68,9 @@ typedef struct {
 
         #define EDITOR_SELECTION_BOUNDS_MAX 256
         struct {
-            u32     entity_id;
-            vec3f_t half_extents;
+            u32         entity_id;
+            vec3f_t     half_extents;
+            JPH_Shape  *shape;
         } selection_bounds[EDITOR_SELECTION_BOUNDS_MAX];
         u32 selection_bounds_count;
     } editor;

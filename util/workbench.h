@@ -377,6 +377,10 @@ void workbench_destroy(void)
     glshader_destroy(&self->shader);
     gui_destroy(&self->gui.handle);
 
+    for (u32 i = 0; i < self->editor.selection_bounds_count; i++) {
+        if (self->editor.selection_bounds[i].shape)
+            JPH_Shape_Destroy(self->editor.selection_bounds[i].shape);
+    }
     self->editor.selection_bounds_count = 0;
 
     global_workbench = NULL;

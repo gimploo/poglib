@@ -25,57 +25,25 @@ INTERNAL void workbench_editor__internal_ray_to_local(
     *out_dir    = *(vec3f_t *)&d4;
 }
 
-INTERNAL bool workbench_editor__internal_ray_intersects_aabb(
-    const vec3f_t origin,
-    const vec3f_t dir,
-    const vec3f_t half_extents,
-    f32 *out_t)
-{
-    f32 t_min = -INFINITY;
-    f32 t_max = +INFINITY;
-
-    const f32 *o = (f32 *)&origin;
-    const f32 *d = (f32 *)&dir;
-    const f32 *h = (f32 *)&half_extents;
-
-    for (u32 i = 0; i < 3; i++) {
-        if (fabsf(d[i]) < 1e-6f) {
-            if (o[i] < -h[i] || o[i] > h[i]) return false;
-        } else {
-            const f32 inv = 1.f / d[i];
-            f32 t1 = (-h[i] - o[i]) * inv;
-            f32 t2 = (+h[i] - o[i]) * inv;
-            if (t1 > t2) { f32 tmp = t1; t1 = t2; t2 = tmp; }
-
-            if (t1 > t_min) t_min = t1;
-            if (t2 < t_max) t_max = t2;
-            if (t_min > t_max) return false;
-        }
-    }
-
-    const f32 t = t_min > 0.f ? t_min : t_max;
-    if (t <= 0.f) return false;
-    *out_t = t;
-    return true;
-}
-
-INTERNAL bool workbench_editor__internal_lookup_bounds(const u32 entity_id, vec3f_t *out_half_extents)
+INTERNAL bool workbench_editor__internal_lookup_bounds(const u32 entity_id, vec3f_t *out_half_extents, JPH_Shape **out_shape)
 {
     for (u32 i = 0; i < global_workbench->editor.selection_bounds_count; i++) {
         if (global_workbench->editor.selection_bounds[i].entity_id == entity_id) {
             *out_half_extents = global_workbench->editor.selection_bounds[i].half_extents;
+            *out_shape        = global_workbench->editor.selection_bounds[i].shape;
             return true;
         }
     }
     return false;
 }
 
-INTERNAL void workbench_editor__internal_cache_bounds(const u32 entity_id, const vec3f_t half_extents)
+INTERNAL void workbench_editor__internal_cache_bounds(const u32 entity_id, const vec3f_t half_extents, JPH_Shape *shape)
 {
     if (global_workbench->editor.selection_bounds_count < EDITOR_SELECTION_BOUNDS_MAX) {
         u32 idx = global_workbench->editor.selection_bounds_count++;
         global_workbench->editor.selection_bounds[idx].entity_id    = entity_id;
         global_workbench->editor.selection_bounds[idx].half_extents = half_extents;
+        global_workbench->editor.selection_bounds[idx].shape        = shape;
     }
 }
 
@@ -134,11 +102,10 @@ fallback:
     return (vec3f_t){ 1.0f, 1.0f, 1.0f };
 }
 
-INTERNAL vec3f_t workbench_editor__internal_get_entity_halfextents(const u32 entity_id)
+INTERNAL void workbench_editor__internal_get_entity_bounds(const u32 entity_id, vec3f_t *out_he, JPH_Shape **out_shape)
 {
-    vec3f_t cached;
-    if (workbench_editor__internal_lookup_bounds(entity_id, &cached))
-        return cached;
+    if (workbench_editor__internal_lookup_bounds(entity_id, out_he, out_shape))
+        return;
 
     vec3f_t he;
 
@@ -157,8 +124,11 @@ INTERNAL vec3f_t workbench_editor__internal_get_entity_halfextents(const u32 ent
         he = (vec3f_t){ 1.0f, 1.0f, 1.0f };
     }
 
-    workbench_editor__internal_cache_bounds(entity_id, he);
-    return he;
+    JPH_Shape *shape = JPH_BoxShape_Create((JPH_Vec3 *)&he, 0.f);
+
+    workbench_editor__internal_cache_bounds(entity_id, he, shape);
+    *out_he    = he;
+    *out_shape = shape;
 }
 
 INTERNAL versors workbench_editor__internal_quat_from_x_to_dir(const vec3f_t dir)
@@ -220,7 +190,7 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
         }
     }
 
-    // ---- Pass 2: Ray vs local AABB slab test for entities without colliders ----
+    // ---- Pass 2: Jolt shape raycast for entities without physics colliders ----
     slot_iterator(&global_ecs->managers.entitymanager.entities, iter)
     {
         if (!slot_iterator_index) continue;
@@ -234,7 +204,10 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
         // Skip entities that already have physics colliders (handled by Pass 1)
         if (q.entity_cmp_data[ECS_CMP_COLLIDER_IDX]) continue;
 
-        const vec3f_t local_he = workbench_editor__internal_get_entity_halfextents(e->id);
+        vec3f_t local_he;
+        JPH_Shape *shape;
+        workbench_editor__internal_get_entity_bounds(e->id, &local_he, &shape);
+        if (!shape) continue;
 
         const matrix4f_t world_mat = glms_mat4_mul(
             glms_mat4_mul(glms_translate_make(t->position),
@@ -245,16 +218,10 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
         vec3f_t local_origin, local_dir;
         workbench_editor__internal_ray_to_local(ray_origin, dir, inv_world, &local_origin, &local_dir);
 
-        f32 t_hit;
-        if (workbench_editor__internal_ray_intersects_aabb(local_origin, local_dir, local_he, &t_hit)) {
-            const vec3f_t local_hit = glms_vec3_add(local_origin, glms_vec3_scale(local_dir, t_hit));
-            const vec4f_t world_hit4 = glms_mat4_mulv(world_mat,
-                (vec4f_t){ local_hit.x, local_hit.y, local_hit.z, 1.f });
-            const vec3f_t world_hit = *(vec3f_t *)&world_hit4;
-            const f32 dist = glms_vec3_dot(glms_vec3_sub(world_hit, ray_origin), dir);
-
-            if (dist > 0.f && dist < closest_dist) {
-                closest_dist = dist;
+        JPH_RayCastResult shape_hit;
+        if (JPH_Shape_CastRay(shape, (JPH_Vec3 *)&local_origin, (JPH_Vec3 *)&local_dir, &shape_hit)) {
+            if (shape_hit.fraction > 0.f && shape_hit.fraction < closest_dist) {
+                closest_dist = shape_hit.fraction;
                 picked       = e->id;
             }
         }
@@ -587,7 +554,9 @@ INTERNAL void workbench_editor__internal_draw_oob_on_entity_selection(void)
     const ecs_component_transform_t *t = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
     if (!t) return;
 
-    const vec3f_t he = workbench_editor__internal_get_entity_halfextents(entity_id);
+    JPH_Shape *ignore_shape;
+    vec3f_t he;
+    workbench_editor__internal_get_entity_bounds(entity_id, &he, &ignore_shape);
 
     const matrix4f_t view = glcamera_getview(global_workbench->world_camera.handle);
     const matrix4f_t proj = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
