@@ -340,11 +340,11 @@ void glshader_upload_uniforms(const glshader_t * const shader, const gluniforms_
         {
             case GL_UNIFORM_TYPE_MATRIX4F:          GL_CHECK(glUniformMatrix4fv(loc_idx, 1, GL_FALSE, (f32 *)value->mat4.raw));
             break;
-            case GL_UNIFORM_TYPE_VEC4F:              GL_CHECK(glUniform4f(loc_idx, value->vec4.raw[0], value->vec4.raw[1], value->vec4.raw[2], value->vec4.raw[3]));
+            case GL_UNIFORM_TYPE_VEC4F:             GL_CHECK(glUniform4f(loc_idx, value->vec4.raw[0], value->vec4.raw[1], value->vec4.raw[2], value->vec4.raw[3]));
             break;
-            case GL_UNIFORM_TYPE_VEC3F:              GL_CHECK(glUniform3f(loc_idx, value->vec3.raw[0], value->vec3.raw[1], value->vec3.raw[2]));
+            case GL_UNIFORM_TYPE_VEC3F:             GL_CHECK(glUniform3f(loc_idx, value->vec3.raw[0], value->vec3.raw[1], value->vec3.raw[2]));
             break;
-            case GL_UNIFORM_TYPE_VEC2F:              GL_CHECK(glUniform2f(loc_idx, value->vec2.raw[0], value->vec2.raw[1]));
+            case GL_UNIFORM_TYPE_VEC2F:             GL_CHECK(glUniform2f(loc_idx, value->vec2.raw[0], value->vec2.raw[1]));
             break;
             case GL_UNIFORM_TYPE_F32:               GL_CHECK(glUniform1f(loc_idx, value->f32));
             break;
@@ -475,7 +475,6 @@ glshader_t glshader_init(
 
     return shader;
 }
-
 
 u32 glshader_get_uniform_count(const glshader_t * const shader)
 {
