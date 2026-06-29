@@ -43,7 +43,7 @@ void            glcamera_lookat(glcamera_t *const self, const vec3f_t target);
 -----------------------------------------------------------------------------*/
 #ifndef IGNORE_GL_CAMERA_IMPLEMENTATION
 
-void glcamera__internal_update_directions(glcamera_t *self)
+INTERNAL void glcamera__internal_update_directions(glcamera_t *const self)
 {
     //Correctly clamp the Pitch (X axis) using min/max
     const f32 pitch_limit = radians(89.0f);
