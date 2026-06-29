@@ -184,16 +184,23 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
         const JPH_NarrowPhaseQuery *npq = JPH_PhysicsSystem_GetNarrowPhaseQuery(
             global_physics_sys_jolt_instance->physics_system);
         JPH_RayCastResult hit = {0};
-        if (JPH_NarrowPhaseQuery_CastRay(npq, (JPH_Vec3 *)&ray_origin, (JPH_Vec3 *)&dir,
-                &hit, NULL, NULL, NULL)) {
+        const bool cast_ok = JPH_NarrowPhaseQuery_CastRay(npq, (JPH_Vec3 *)&ray_origin, (JPH_Vec3 *)&dir,
+                &hit, NULL, NULL, NULL);
+        if (cast_ok) {
             if (hit.fraction > 0.f) {
                 const u64 ud = JPH_BodyInterface_GetUserData(
                     global_physics_sys_jolt_instance->bodyinterface, hit.bodyID);
+                logging("[EDITOR] Pass1 cast OK fraction=%.2f bodyID=%u userdata=%p",
+                    hit.fraction, hit.bodyID, (void *)ud);
                 if (ud) {
                     picked       = ((ecs_collider_jolt_userdata_t *)ud)->entity_id;
                     closest_dist = hit.fraction;
                     logging("[EDITOR] Pass1 HIT entity=%u dist=%.2f", picked, closest_dist);
                 }
+            }
+        } else {
+            logging("[EDITOR] Pass1 no hit");
+        }
             }
         }
     }
