@@ -215,13 +215,19 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
             glms_scale_make(t->scale));
         const matrix4f_t inv_world = glms_mat4_inv(world_mat);
 
-        vec3f_t local_origin, local_dir;
-        workbench_editor__internal_ray_to_local(ray_origin, dir, inv_world, &local_origin, &local_dir);
+        // JPH_Shape_CastRay treats direction as the ray segment end-point
+        // (fraction ∈ [0,1] along origin→origin+direction). The local direction
+        // |M_inv * world_dir| can be very short when entity has large scale,
+        // so scale it to span the entire scene.
+        const vec3f_t world_dir_long = glms_vec3_scale(dir, 10000.f);
+
+        vec3f_t local_origin, local_dir_long;
+        workbench_editor__internal_ray_to_local(ray_origin, world_dir_long, inv_world, &local_origin, &local_dir_long);
 
         JPH_RayCastResult shape_hit;
-        if (JPH_Shape_CastRay(shape, (JPH_Vec3 *)&local_origin, (JPH_Vec3 *)&local_dir, &shape_hit)) {
+        if (JPH_Shape_CastRay(shape, (JPH_Vec3 *)&local_origin, (JPH_Vec3 *)&local_dir_long, &shape_hit)) {
             if (shape_hit.fraction > 0.f) {
-                const vec3f_t local_hit = glms_vec3_add(local_origin, glms_vec3_scale(local_dir, shape_hit.fraction));
+                const vec3f_t local_hit = glms_vec3_add(local_origin, glms_vec3_scale(local_dir_long, shape_hit.fraction));
                 const vec4f_t world_hit4 = glms_mat4_mulv(world_mat,
                     (vec4f_t){ local_hit.x, local_hit.y, local_hit.z, 1.f });
                 const vec3f_t world_hit = *(vec3f_t *)&world_hit4;
