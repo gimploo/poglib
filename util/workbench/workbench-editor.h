@@ -31,11 +31,11 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
         const matrix4f_t view       = glcamera_getview(cam);
         const matrix4f_t proj       = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 0.1f, 1000.0f);
         const matrix4f_t inv_pv     = glms_mat4_inv(glms_mat4_mul(proj, view));
-        const vec4f_t near          = { ndc.x, ndc.y, -1.0f, 1.0f };
-        const vec4f_t far           = { ndc.x, ndc.y,  1.0f, 1.0f };
+        const vec4f_t cam_near      = { ndc.x, ndc.y, -1.0f, 1.0f };
+        const vec4f_t cam_far       = { ndc.x, ndc.y,  1.0f, 1.0f };
 
-        vec4f_t near_w      = glms_mat4_mulv(inv_pv, near);
-        vec4f_t far_w       = glms_mat4_mulv(inv_pv, far);
+        vec4f_t near_w      = glms_mat4_mulv(inv_pv, cam_near);
+        vec4f_t far_w       = glms_mat4_mulv(inv_pv, cam_far);
         near_w              = glms_vec4_scale(near_w, 1.0f / near_w.w);
         far_w               = glms_vec4_scale(far_w,  1.0f / far_w.w);
 
