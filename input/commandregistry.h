@@ -14,11 +14,19 @@ typedef enum {
   COMMANDINPUTKEY_TYPE_COUNT
 } commandinputkey_type;
 
+typedef enum {
+    COMMANDINPUT_TRIGGER_TYPE_PRESSED       = 0,
+    COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED   = 1,
+    COMMANDINPUT_TRIGGER_TYPE_HELD          = 2,
+} commandinput_trigger_type;
+
 typedef struct {
     commandinputkey_type type;
     union {
         struct {
-            SDL_Scancode scancode;
+            SDL_Scancode                main;
+            SDL_Scancode                modifier;
+            commandinput_trigger_type   trigger;
         } sdl_keyboard_key;
         struct {
             sdl_mousebuttontype key;

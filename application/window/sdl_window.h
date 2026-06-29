@@ -115,9 +115,9 @@ void                window_poll_input_events(window_t *window);
 void                window_set_background(window_t *window, vec4f_t color);
 void                window_update_title(window_t *window, const char *title);
 
-bool                window_keyboard_is_key_just_pressed(window_t *window, SDL_Keycode key);
-bool                window_keyboard_is_key_held(window_t *window, SDL_Keycode key);
-bool                window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key);
+bool                window_keyboard_is_key_just_pressed(const window_t *const window, const SDL_Keycode key);
+bool                window_keyboard_is_key_held(const window_t *const window, const SDL_Keycode key);
+bool                window_keyboard_is_key_pressed(const window_t *const window, const SDL_Keycode key);
 
 bool                window_mouse_button_just_pressed(window_t *window, sdl_mousebuttontype button);
 bool                window_mouse_button_is_pressed(window_t *window, sdl_mousebuttontype button);
@@ -203,35 +203,19 @@ bool window_mouse_button_is_released(
          window->mouse.button == button;
 }
 
-//FIXME: this is bad - this not the pattern we follow else where why is this
-//an exception
-
-bool window_keyboard_is_key_just_pressed(window_t *window, SDL_Keycode key)
+bool window_keyboard_is_key_just_pressed(const window_t *const window, const SDL_Keycode key)
 {
-    bool output = window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)];
-    if (output) {
-        window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)] = false;
-        return output;
-    }
-    return false;
+    return window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)];
 }
 
-bool window_keyboard_is_key_held(window_t *window, SDL_Keycode key)
+bool window_keyboard_is_key_held(const window_t *const window, const SDL_Keycode key)
 {
-    bool output = window->keyboard.is_held[SDL_GetScancodeFromKey(key)];
-    // window->keyboard.is_held[SDL_GetScancodeFromKey(key)] = false;
-    return output;
+    return window->keyboard.is_held[SDL_GetScancodeFromKey(key)];
 }
 
-bool window_keyboard_is_key_pressed(window_t *window, SDL_Keycode key)
+bool window_keyboard_is_key_pressed(const window_t *const window, const SDL_Keycode key)
 {
-    bool output = window->keyboard.is_held[SDL_GetScancodeFromKey(key)] 
-                    || window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)];
-
-    // window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)] = false;
-    // window->keyboard.is_held[SDL_GetScancodeFromKey(key)] = false;
-
-    return output;
+    return window->keyboard.is_held[SDL_GetScancodeFromKey(key)] || window->keyboard.just_pressed[SDL_GetScancodeFromKey(key)];
 }
 
 bool window_mouse_wheel_is_scroll_up(const window_t *const w)
@@ -693,7 +677,7 @@ INTERNAL void __window_handle_sdlwindow_event(window_t *window, SDL_Event *event
     eprint("unkown sub window triggered");
 }
 
-INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_Scancode key)
+INTERNAL void window__internal__keyboard_update_buffers(window_t *const window, const SDL_Keycode act, const SDL_Scancode key)
 {
     switch(act)
     {
@@ -720,21 +704,18 @@ INTERNAL void __keyboard_update_buffers(window_t *window, SDL_Keycode act, SDL_S
 
             } else {
 
-                SDL_Log("Window (%s) KEY_DOWN: %s\n", window->title, SDL_GetScancodeName(key));
-                if (window->keyboard.keystate[key] == true) { 
-
-                    SDL_Log("Window (%s) KEY_HELD: %s\n", window->title, SDL_GetScancodeName(key));
-                    window->keyboard.is_held[key]        = true;
-                    window->keyboard.just_pressed[key]   = false;
-
-                } else if (window->keyboard.keystate[key] == false) {
-
+                if (!window->keyboard.keystate[key]) {
                     SDL_Log("Window (%s) KEY_JUST_PRESSED: %s\n", window->title, SDL_GetScancodeName(key));
-                    window->keyboard.just_pressed[key]   = true;
-                    window->keyboard.is_held[key]        = false;
-
-                    window->keyboard.keystate[key] = true;
+                    window->keyboard.just_pressed[key]  = true;
+                    window->keyboard.keystate[key]      = true;
+                    window->keyboard.is_held[key]       = false;
+                } else {
+                    SDL_Log("Window (%s) KEY_HELD_DOWN: %s\n", window->title, SDL_GetScancodeName(key));
+                    window->keyboard.just_pressed[key]  = false;
+                    window->keyboard.keystate[key]      = true;
+                    window->keyboard.is_held[key]       = true;
                 }
+
             }
         break;
 
@@ -877,13 +858,11 @@ void window_poll_input_events(window_t *window)
             break;
 
             case SDL_KEYDOWN:
-                if (event->key.repeat) 
-                    break;
-                __keyboard_update_buffers(window, SDL_KEYDOWN, event->key.keysym.scancode);
+                window__internal__keyboard_update_buffers(window, SDL_KEYDOWN, event->key.keysym.scancode);
             break;
 
             case SDL_KEYUP:
-                __keyboard_update_buffers(window, SDL_KEYUP, event->key.keysym.scancode);
+                window__internal__keyboard_update_buffers(window, SDL_KEYUP, event->key.keysym.scancode);
             break;
 
             //default:
@@ -993,6 +972,7 @@ void window_flush_transient_data(window_t *const self)
     self->mouse.rel = (vec2i_t){0};
     self->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
 
+    memset(&self->keyboard.just_pressed, 0, sizeof(self->keyboard.just_pressed));
 }
 
 

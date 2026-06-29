@@ -68,6 +68,9 @@ typedef struct {
     void *ref;
     u32 size;
 
+    //NOTE: i dont know what to call this, brought to invert how the offset it applied to the `ref` binding
+    bool invert;
+
 } ui_valuebinding_t;
 
 typedef struct {
@@ -267,7 +270,8 @@ void gui__internal_update_state(gui_t *gui, const ui_config_t config)
 
         if (gui->internal.mouse_lock_on_ui.ui_id == config.internal.id) {
             i32 rel = global_window->mouse.rel.x;
-            *((f32 *)config.binding.ref) += (rel / 10.f);
+            if (config.binding.invert)   *((f32 *)config.binding.ref) -= (rel / 10.f);
+            else                                *((f32 *)config.binding.ref) += (rel / 10.f);
         }
 
         if (window_mouse_button_is_released(global_window, SDL_MOUSEBUTTON_LEFT)) {

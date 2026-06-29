@@ -59,17 +59,39 @@ void commandqueue_flush(commandqueue_t *const self)
 
 void commandqueue_sync(commandqueue_t * const self)
 {
-    const u8 *keyboard_buffer = SDL_GetKeyboardState(NULL);
     const commandregistry_t *commands = &self->registry;
 
     //printf("-------------------- NEW BATCH --------------------------------\n");
     for (u16 command_type = 0; command_type < commands->count; command_type++) {
 
-        if (self->registry.registry[command_type].type == COMMANDINPUTKEY_TYPE_KEYBOARD && keyboard_buffer[self->registry.registry[command_type].sdl_keyboard_key.scancode]) {
+        if (self->registry.registry[command_type].type == COMMANDINPUTKEY_TYPE_KEYBOARD) {
 
-            self->internal.bitmask |= (1 << command_type);
+            const bool mainkey_held             = global_window->keyboard.is_held[self->registry.registry[command_type].sdl_keyboard_key.main];
+            const bool mainkey_justpressed      = global_window->keyboard.just_pressed[self->registry.registry[command_type].sdl_keyboard_key.main];
+            const bool mainkey_pressed          = global_window->keyboard.keystate[self->registry.registry[command_type].sdl_keyboard_key.main];
 
-            //printf("KB Tracked %i\n", command_type);
+            const bool modifier_not_configured_or_configured_and_pressed  = 
+                self->registry.registry[command_type].sdl_keyboard_key.modifier == SDL_SCANCODE_UNKNOWN || 
+                global_window->keyboard.keystate[self->registry.registry[command_type].sdl_keyboard_key.modifier];
+
+            if (!modifier_not_configured_or_configured_and_pressed)
+                continue;
+
+            switch(self->registry.registry[command_type].sdl_keyboard_key.trigger)
+            {
+                case COMMANDINPUT_TRIGGER_TYPE_PRESSED:
+                    if (mainkey_pressed) self->internal.bitmask |= (1 << command_type);
+                break;
+                case COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED:
+                    if (mainkey_justpressed) self->internal.bitmask |= (1 << command_type);
+                break;
+                case COMMANDINPUT_TRIGGER_TYPE_HELD:
+                    if (mainkey_held) self->internal.bitmask |= (1 << command_type);
+                break;
+                default: eprint("trigger type not accounted for");
+            }
+
+            //printf("KB Tracked %i\n | bitmask %i\n", command_type, self->internal.bitmask);
 
         } else if (self->registry.registry[command_type].type == COMMANDINPUTKEY_TYPE_MOUSE) {
 

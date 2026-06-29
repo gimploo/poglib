@@ -5,7 +5,6 @@
 #include "./workbench/common.h"
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
-#include "SDL_keycode.h"
 #include "poglib/application/window/sdl_window.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/gui.h"
@@ -255,19 +254,15 @@ workbench_t * workbench_init(arena_t *const arena)
                 [WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT] = {
                     .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
                     .sdl_keyboard_key = {
-                        .scancode = SDL_SCANCODE_ESCAPE
-                    }
-                },
-                [WORKBENCH_ACTION_TYPE_GIZMO_CYCLE_MODE] = {
-                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
-                    .sdl_keyboard_key = {
-                        .scancode = SDL_SCANCODE_G
+                        .main = SDL_SCANCODE_ESCAPE,
+                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
                     }
                 },
                 [WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME] = {
                     .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
                     .sdl_keyboard_key = {
-                        .scancode = SDL_SCANCODE_TAB
+                        .main = SDL_SCANCODE_TAB,
+                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
                     }
                 },
                 [WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION] = {
@@ -276,6 +271,21 @@ workbench_t * workbench_init(arena_t *const arena)
                         .key = SDL_MOUSEBUTTON_RIGHT,
                         .trigger= SDL_MOUSESTATE_JUST_PRESSED,
                     },
+                },
+                [WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
+                    .sdl_keyboard_key = {
+                        .modifier = SDL_SCANCODE_LCTRL,
+                        .main = SDL_SCANCODE_C,
+                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
+                    }
+                },
+                [WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
+                    .sdl_keyboard_key = {
+                        .main = SDL_SCANCODE_DELETE,
+                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
+                    }
                 }
             },
         }
@@ -549,12 +559,12 @@ void workbench_render_marker(
 
 void workbench_update(const f32 dt)
 {
-    if (!global_workbench->is_active) return;
-
     const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
 
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME)) 
         global_workbench->render_config.wireframe_mode = !global_workbench->render_config.wireframe_mode;
+
+    if (!global_workbench->is_active) return;
 
     workbench_editor_update();
 
@@ -567,13 +577,9 @@ void workbench_update(const f32 dt)
         }
     }
 
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT)) {
-        workbench_editor_savechanges();
-    }
-
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_GIZMO_CYCLE_MODE)) {
-        global_workbench->editor.gizmo_mode = (global_workbench->editor.gizmo_mode + 1) % 3;
-    }
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY))   workbench_editor_copypaste_entity();
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT))          workbench_editor_savechanges();
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY))      workbench_editor_delete_entity();
 
     ecs_patch_entity(
         global_ecs, 
@@ -606,6 +612,8 @@ void workbench_toggle(void)
 
     workbench_editor_savechanges();
 
+
+    logging("workbench toggled status %s", self->is_active ? "enabled" : "disabled");
     if (!self->is_active) return;
 
     ecs_set_active_camera(
