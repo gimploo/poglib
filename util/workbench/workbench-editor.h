@@ -124,7 +124,7 @@ INTERNAL void workbench_editor__internal_get_entity_bounds(const u32 entity_id, 
         he = (vec3f_t){ 1.0f, 1.0f, 1.0f };
     }
 
-    JPH_Shape *shape = JPH_BoxShape_Create((JPH_Vec3 *)&he, 0.f);
+    JPH_Shape *shape = (JPH_Shape *)JPH_BoxShape_Create((JPH_Vec3 *)&he, 0.f);
 
     workbench_editor__internal_cache_bounds(entity_id, he, shape);
     *out_he    = he;
