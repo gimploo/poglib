@@ -206,6 +206,95 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
 
     file_t f = file_init(filepath.data, "r");
 
+    buffer(WORD) line = {0};
+
+    file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
+    if (strncmp((char *)line.raw_data, "ECS v", 5) != 0)
+    {
+        eprint("Invalid save file format");
+        file_destroy(&f);
+        return;
+    }
+
+    u32                      max_entity_id      = 0;
+    bool                     has_pending_bundle = false;
+    ecs_componentbundle_t    pending_bundle     = {0};
+    ecs_component_type       current_cmp        = 0;
+    u8                       current_cmp_idx    = 0;
+
+    while (true)
+    {
+        memset(line.raw_data, 0, sizeof(line.raw_data));
+        file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
+
+        if (line.raw_data[0] == '\0') continue;
+
+        if (strncmp((char *)line.raw_data, "fin", 3) == 0) break;
+
+        if (strncmp((char *)line.raw_data, "assetid:", 8) == 0)
+        {
+            if (has_pending_bundle)
+            {
+                ecs_entity_add(self, pending_bundle);
+                has_pending_bundle = false;
+            }
+
+            do {
+                assetmanager_read_assetmeta_savefile(&global_engine->systems.assets, &f, (char *)line.raw_data, sizeof(line.raw_data));
+            } while (strncmp((char *)line.raw_data, "assetid:", 8) == 0);
+
+            break;
+        }
+
+        if (strncmp((char *)line.raw_data, "entity:", 7) == 0)
+        {
+            if (has_pending_bundle)
+            {
+                ecs_entity_add(self, pending_bundle);
+                has_pending_bundle = false;
+            }
+
+            u32 entity_id;
+            sscanf((char *)line.raw_data, "entity:%u", &entity_id);
+            if (entity_id > max_entity_id) max_entity_id = entity_id;
+
+            memset(line.raw_data, 0, sizeof(line.raw_data));
+            file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
+
+            u32 signature = 0;
+            sscanf((char *)line.raw_data, "component_signature:%u", &signature);
+
+            pending_bundle.signature = signature;
+            memset(pending_bundle.component, 0, sizeof(pending_bundle.component));
+            has_pending_bundle = true;
+            current_cmp = 0;
+            current_cmp_idx = 0;
+            continue;
+        }
+
+        if      (strncmp((char *)line.raw_data, "transform:", 10) == 0) { current_cmp = ECS_CMP_TRANSFORM; current_cmp_idx = ECS_CMP_TRANSFORM_IDX; continue; }
+        else if (strncmp((char *)line.raw_data, "model:",     6) == 0) { current_cmp = ECS_CMP_MODEL;     current_cmp_idx = ECS_CMP_MODEL_IDX;     continue; }
+        else if (strncmp((char *)line.raw_data, "input:",     6) == 0) { current_cmp = ECS_CMP_INPUT;     current_cmp_idx = ECS_CMP_INPUT_IDX;     continue; }
+        else if (strncmp((char *)line.raw_data, "material:",  9) == 0) { current_cmp = ECS_CMP_MATERIAL;  current_cmp_idx = ECS_CMP_MATERIAL_IDX;  continue; }
+        else if (strncmp((char *)line.raw_data, "camera:",    7) == 0) { current_cmp = ECS_CMP_CAMERA;    current_cmp_idx = ECS_CMP_CAMERA_IDX;    continue; }
+        else if (strncmp((char *)line.raw_data, "collider:",  9) == 0) { current_cmp = ECS_CMP_COLLIDER;  current_cmp_idx = ECS_CMP_COLLIDER_IDX;  continue; }
+        else if (strncmp((char *)line.raw_data, "mesh:",      5) == 0) { current_cmp = ECS_CMP_MESH;      current_cmp_idx = ECS_CMP_MESH_IDX;      continue; }
+
+        if (line.raw_data[0] == '\t' && has_pending_bundle)
+        {
+            ecs_deserializer__internal_parse_cmp_data_line(
+                (char *)line.raw_data,
+                current_cmp,
+                &pending_bundle.component[current_cmp_idx]
+            );
+        }
+    }
+
+    if (has_pending_bundle)
+        ecs_entity_add(self, pending_bundle);
+
+    self->internal.entity_generator_counter = max_entity_id;
+
     file_destroy(&f);
 }
 

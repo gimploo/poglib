@@ -192,10 +192,72 @@ void assetmanager_serialize_to_file(const assetmanager_t *const self, file_t *co
     }
 }
 
+INTERNAL void ecs_deserializer__internal_parse_cmp_data_line(
+    const char *const line,
+    const ecs_component_type type,
+    void *const cmp_data)
+{
+    switch (type)
+    {
+        case ECS_CMP_TRANSFORM: {
+            ecs_component_transform_t *t = cmp_data;
+            if      (sscanf(line, "\tposition:[%f,%f,%f]",       &t->position.x,      &t->position.y,      &t->position.z)      == 3) return;
+            else if (sscanf(line, "\torientation:[%f,%f,%f,%f]",  &t->orientation.x,   &t->orientation.y,   &t->orientation.z,   &t->orientation.w) == 4) return;
+            else if (sscanf(line, "\tscale:[%f,%f,%f]",           &t->scale.x,         &t->scale.y,         &t->scale.z)        == 3) return;
+            else if (sscanf(line, "\tvelocity:[%f,%f,%f]",        &t->velocity.x,       &t->velocity.y,       &t->velocity.z)     == 3) return;
+            else if (sscanf(line, "\tsource:%i",                  &t->source)                                                          == 1) return;
+        } break;
+        case ECS_CMP_MODEL: {
+            ecs_component_model_t *m = cmp_data;
+            sscanf(line, "\tasset_id:%lu", &m->asset_id);
+        } break;
+        case ECS_CMP_INPUT: {
+            ecs_component_input_t *in = cmp_data;
+            if      (sscanf(line, "\tdirection_source:%i",        &in->direction_source)                                               == 1) return;
+            else if (strncmp(line, "\tinput_behavior:", 17) == 0) { in->input_behavior = NULL; }
+            else if (sscanf(line, "\tstate.position:[%f,%f,%f]",     &in->internal.state.current_position.x,    &in->internal.state.current_position.y,    &in->internal.state.current_position.z)    == 3) return;
+            else if (sscanf(line, "\tstate.orientation:[%f,%f,%f,%f]",&in->internal.state.current_orientation.x, &in->internal.state.current_orientation.y, &in->internal.state.current_orientation.z, &in->internal.state.current_orientation.w) == 4) return;
+            else if (sscanf(line, "\tstate.front:[%f,%f,%f]",        &in->internal.state.front.x,               &in->internal.state.front.y,               &in->internal.state.front.z)               == 3) return;
+            else if (sscanf(line, "\tstate.right:[%f,%f,%f]",        &in->internal.state.right.x,               &in->internal.state.right.y,               &in->internal.state.right.z)               == 3) return;
+        } break;
+        case ECS_CMP_MATERIAL: {
+            ecs_component_material_t *mat = cmp_data;
+            if      (sscanf(line, "\ttexture_asset_id:%u", &mat->texture_asset_id) == 1) return;
+            else if (sscanf(line, "\tshader_asset_id:%u",  &mat->shader_asset_id)  == 1) return;
+        } break;
+        case ECS_CMP_CAMERA: {
+            ecs_component_camera_t *cam = cmp_data;
+            if      (sscanf(line, "\tposition:[%f,%f,%f]",          &cam->camera.position.x,       &cam->camera.position.y,       &cam->camera.position.z)       == 3) return;
+            else if (sscanf(line, "\teuler_angle:[%f,%f]",           &cam->camera.euler_angle.x,    &cam->camera.euler_angle.y)                    == 2) return;
+            else if (sscanf(line, "\tdirection.front:[%f,%f,%f]",    &cam->camera.direction.front.x,&cam->camera.direction.front.y,&cam->camera.direction.front.z)== 3) return;
+            else if (sscanf(line, "\tdirection.up:[%f,%f,%f]",       &cam->camera.direction.up.x,   &cam->camera.direction.up.y,   &cam->camera.direction.up.z)   == 3) return;
+            else if (sscanf(line, "\tdirection.right:[%f,%f,%f]",    &cam->camera.direction.right.x,&cam->camera.direction.right.y,&cam->camera.direction.right.z)== 3) return;
+            else if (sscanf(line, "\tmode:%i",                       &cam->mode)                                                                    == 1) return;
+            else if (sscanf(line, "\tfollow.orbit_radius:%f",        &cam->follow.orbit_radius)                                                     == 1) return;
+            else if (sscanf(line, "\tfollow.center_offset:[%f,%f,%f]",&cam->follow.center_offset.x,  &cam->follow.center_offset.y,  &cam->follow.center_offset.z)  == 3) return;
+            else if (sscanf(line, "\tfollow.track_entity_id:%u",     &cam->follow.track_entity_id)                                                  == 1) return;
+        } break;
+        case ECS_CMP_COLLIDER: {
+            ecs_component_collider_t *col = cmp_data;
+            if      (sscanf(line, "\tshape_type:%i",             &col->shape_type)                                                            == 1) return;
+            else if (sscanf(line, "\tmotion_type:%i",            &col->motion_type)                                                           == 1) return;
+            else if (sscanf(line, "\tobject_layer_type:%lu",     (unsigned long *)&col->object_layer_type)                                    == 1) return;
+            else if (sscanf(line, "\tdim.cube:[%f,%f,%f]",       &col->dim.cube.half_width,    &col->dim.cube.half_height,    &col->dim.cube.half_depth)     == 3) return;
+            else if (sscanf(line, "\tdim.sphere:[%f]",           &col->dim.sphere.radius)                                                     == 1) return;
+            else if (sscanf(line, "\tdim.capsule:[%f,%f]",       &col->dim.capsule.radius,     &col->dim.capsule.half_height)                                 == 2) return;
+        } break;
+        case ECS_CMP_MESH: {
+            ecs_component_mesh_t *mesh = cmp_data;
+            if      (sscanf(line, "\tasset_id:%lu",              &mesh->asset_id)                                                             == 1) return;
+            else if (sscanf(line, "\tprototype_sprite_type:%i",  &mesh->prototype_sprite_type)                                                == 1) return;
+        } break;
+    }
+}
+
 INTERNAL void ecs_serializer__internal_write_footer(file_t *const file)
 {
     buffer(WORD) buffer = {0};
     snprintf(buffer.raw_data, sizeof(buffer.raw_data), "fin\n");
-    file_writeline(file, buffer.raw_data);
+    file_writeline(file, (char *)buffer.raw_data);
 }
 

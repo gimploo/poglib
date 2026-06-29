@@ -45,6 +45,7 @@ u32                 assetmanager_load_glsl_shader(assetmanager_t *self, const st
 const void *        assetmanager_get_assetresource(const assetmanager_t *const self, const asset_type assettype, const u32 assetId);
 gpu_asset_t *       assetmanager_get_gpu_loaded_asset_async(const assetmanager_t *const self, const u32 asset_id);
 void                assetmanager_write_assetmeta_data_to_file(const assetmanager_t *const self, file_t *const file);
+void                assetmanager_read_assetmeta_savefile(assetmanager_t *const self, file_t *const file, char *line_buf, u32 buf_size);
 
 void                assetmanager_destroy(assetmanager_t *const self);
 
@@ -656,6 +657,197 @@ INTERNAL void assetmanager__internal_add_asset_meta_data(
         (hashtable_key_t) { .u32 = asset_id }, 
         &assetmeta
     );
+}
+
+INTERNAL void assetmanager__internal_load_model_with_id(assetmanager_t *const self, const str_t filepath, const u32 asset_id)
+{
+    taskresponse_t *response = taskresponse(&self->arena, sizeof(glmodel_t));
+    hashtable_insert(
+        &self->assetmaps[ASSET_TYPE_MODEL],
+        (hashtable_key_t){ .u32 = asset_id },
+        response
+    );
+
+    bgtask_manager_pass_task(
+        self->bgtask_manager,
+        (taskconfig_t){
+            .result_dest = response,
+            .payload = {
+                .args = {
+                    .count = 3,
+                    .arg = {
+                        [0].str = filepath,
+                        [1].any = &self->internal.gpu_upload_queue,
+                        [2].u64 = asset_id
+                    }
+                },
+            },
+            .storage = {
+                .arena = arena_init(&self->arena, sizeof(gpu_asset__internal_upload_task_t)),
+            },
+            .callback = assetmanager__internal_thread_callback_load_glmodel,
+        }
+    );
+}
+
+INTERNAL void assetmanager__internal_load_glsl_shader_with_id(assetmanager_t *const self, const str_t vtx_filepath, const str_t frag_filepath, const gluniform_registry_t registry, const u32 asset_id)
+{
+    glshader_t *shader = arena_reserve(&self->arena, sizeof(glshader_t));
+    *shader = glshader_init(vtx_filepath, frag_filepath, registry, &self->arena);
+    hashtable_insert(&self->assetmaps[ASSET_TYPE_GLSL_SHADER], (hashtable_key_t){.u32 = asset_id}, shader);
+    logging("Shader compiled %s, %s", shader->fg.data, shader->vs.data);
+}
+
+INTERNAL void assetmanager__internal_load_spriteatlas_with_id(assetmanager_t *const self, const str_t filepath, const u32 tile_count_width, const u32 tile_count_height, const u32 asset_id)
+{
+    const spriteatlas_t atlas = spriteatlas_init(filepath, tile_count_width, tile_count_height, &self->arena);
+    hashtable_insert(&self->assetmaps[ASSET_TYPE_TEXTURE_SPRITE_ATLAS], (hashtable_key_t){ .u32 = asset_id }, &atlas);
+}
+
+INTERNAL asset_type assetmanager__internal_detect_asset_type(const char *const path)
+{
+    const u64 len = strlen(path);
+    if (len > 4 && (strcmp(path + len - 4, ".glb") == 0 || strcmp(path + len - 5, ".gltf") == 0))
+        return ASSET_TYPE_MODEL;
+    if (len > 5 && strcmp(path + len - 4, ".png") == 0)
+        return ASSET_TYPE_TEXTURE_SPRITE_ATLAS;
+    return ASSET_TYPE_GLSL_SHADER;
+}
+
+void assetmanager_read_assetmeta_savefile(assetmanager_t *const self, file_t *const file, char *line_buf, u32 buf_size)
+{
+    ASSERT(!file->is_closed);
+    (void)buf_size;
+
+    u32 asset_id = 0;
+    sscanf(line_buf, "assetid:%u,", &asset_id);
+
+    const char *path_part = strstr(line_buf, "assetpath:");
+    if (!path_part) { eprint("malformed asset line"); return; }
+    path_part += 10;
+
+    str_t filepath1 = STR_EMPTY;
+    str_t filepath2 = STR_EMPTY;
+    asset_type type;
+
+    if (path_part[0] == '[')
+    {
+        char buf1[256] = {0}, buf2[256] = {0};
+        sscanf(path_part, "[%255[^,],%255[^]]]", buf1, buf2);
+        filepath1 = str_init(&self->arena, buf1);
+        filepath2 = str_init(&self->arena, buf2);
+        type = ASSET_TYPE_GLSL_SHADER;
+    }
+    else
+    {
+        char buf[256] = {0};
+        sscanf(path_part, "%255s", buf);
+        filepath1 = str_init(&self->arena, buf);
+        type = assetmanager__internal_detect_asset_type(buf);
+    }
+
+    gluniform_registry_t  shader_uniforms   = {0};
+    u32                    tile_count_w      = 1;
+    u32                    tile_count_h      = 1;
+    bool                   has_meta          = false;
+
+    buffer(WORD) line = {0};
+
+    switch (type)
+    {
+        case ASSET_TYPE_GLSL_SHADER:
+            while (true)
+            {
+                memset(line.raw_data, 0, sizeof(line.raw_data));
+                file_readline(file, (char *)line.raw_data, sizeof(line.raw_data));
+
+                if (strncmp((char *)line.raw_data, "\tuniform:", 9) == 0)
+                {
+                    memset(line.raw_data, 0, sizeof(line.raw_data));
+                    file_readline(file, (char *)line.raw_data, sizeof(line.raw_data));
+
+                    char uniform_name[128] = {0};
+                    u32  uniform_type      = 0;
+                    if (sscanf((char *)line.raw_data, "\t\tname:%127[^,],type:%u", uniform_name, &uniform_type) == 2)
+                    {
+                        if (shader_uniforms.count < MAX_UNIFORMS_ALLOWED_IN_SHADER)
+                        {
+                            shader_uniforms.data[shader_uniforms.count] = (gluniform_meta_t){
+                                .name = str_init(&self->arena, uniform_name),
+                                .type = (gluniform_type)uniform_type,
+                            };
+                            shader_uniforms.count++;
+                        }
+                    }
+                    has_meta = true;
+                    continue;
+                }
+                break;
+            }
+
+            if (!hashtable_has_key(&self->assetmaps[ASSET_TYPE_GLSL_SHADER], (hashtable_key_t){ .u32 = asset_id }))
+            {
+                assetmanager__internal_load_glsl_shader_with_id(self, filepath1, filepath2, shader_uniforms, asset_id);
+            }
+
+            if (!hashtable_has_key(&self->assetmeta_lookup, (hashtable_key_t){ .u32 = asset_id }))
+            {
+                glshader_t *shader = hashtable_get_value(&self->assetmaps[ASSET_TYPE_GLSL_SHADER], (hashtable_key_t){ .u32 = asset_id });
+                assetmanager__internal_add_asset_meta_data(self, ASSET_TYPE_GLSL_SHADER, asset_id, filepath1, filepath2, shader);
+            }
+            break;
+
+        case ASSET_TYPE_TEXTURE_SPRITE_ATLAS:
+            while (true)
+            {
+                memset(line.raw_data, 0, sizeof(line.raw_data));
+                file_readline(file, (char *)line.raw_data, sizeof(line.raw_data));
+
+                if (strncmp((char *)line.raw_data, "\ttilecount:[", 12) == 0)
+                {
+                    sscanf((char *)line.raw_data, "\ttilecount:[%u,%u]", &tile_count_w, &tile_count_h);
+                    has_meta = true;
+                    continue;
+                }
+                break;
+            }
+
+            if (!hashtable_has_key(&self->assetmaps[ASSET_TYPE_TEXTURE_SPRITE_ATLAS], (hashtable_key_t){ .u32 = asset_id }))
+            {
+                assetmanager__internal_load_spriteatlas_with_id(self, filepath1, tile_count_w, tile_count_h, asset_id);
+            }
+
+            if (!hashtable_has_key(&self->assetmeta_lookup, (hashtable_key_t){ .u32 = asset_id }))
+            {
+                spriteatlas_t *atlas = (spriteatlas_t *)hashtable_get_value(&self->assetmaps[ASSET_TYPE_TEXTURE_SPRITE_ATLAS], (hashtable_key_t){ .u32 = asset_id });
+                assetmanager__internal_add_asset_meta_data(self, ASSET_TYPE_TEXTURE_SPRITE_ATLAS, asset_id, filepath1, STR_EMPTY, atlas);
+            }
+            break;
+
+        case ASSET_TYPE_MODEL:
+            {
+                memset(line.raw_data, 0, sizeof(line.raw_data));
+                file_readline(file, (char *)line.raw_data, sizeof(line.raw_data));
+
+                if (!hashtable_has_key(&self->assetmaps[ASSET_TYPE_MODEL], (hashtable_key_t){ .u32 = asset_id }))
+                {
+                    assetmanager__internal_load_model_with_id(self, filepath1, asset_id);
+                }
+
+                if (!hashtable_has_key(&self->assetmeta_lookup, (hashtable_key_t){ .u32 = asset_id }))
+                {
+                    assetmanager__internal_add_asset_meta_data(self, ASSET_TYPE_MODEL, asset_id, filepath1, STR_EMPTY, NULL);
+                }
+            }
+            break;
+
+        default: break;
+    }
+
+    if (asset_id > self->internal.asset_idx_generator)
+        self->internal.asset_idx_generator = asset_id;
+
+    memcpy(line_buf, line.raw_data, buf_size);
 }
 
 void assetmanager_write_assetmeta_data_to_file(const assetmanager_t *const self, file_t *const file)
