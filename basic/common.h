@@ -21,7 +21,12 @@
 
 #define global      static 
 #define local       static 
+
+#ifndef DEBUG
 #define INTERNAL    static inline
+#else
+#define INTERNAL 
+#endif
 
 //NOTE: this should be truncated along the start of all file paths 
 //TODO: possible to inject string path here via the forge build script ?

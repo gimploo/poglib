@@ -5,7 +5,7 @@
 #include "poglib/external/cglm/struct/vec3.h"
 #include "poglib/util/glcamera.h"
 
-void ecs_system_camera__internal_update_follow_camera(
+INTERNAL void ecs_system_camera__internal_update_follow_camera(
     ecs_componentmanager_t *const cmp_manager,
     ecs_component_camera_t *const camera,
     ecs_entity_query_t camera_view
@@ -25,7 +25,7 @@ void ecs_system_camera__internal_update_follow_camera(
 
 }
 
-void ecs_system_camera__internal_update_free_fly_camera(glcamera_t *const camera, const ecs_component_entry_t transform_entry)
+INTERNAL void ecs_system_camera__internal_update_free_fly_camera(glcamera_t *const camera, const ecs_component_entry_t transform_entry)
 {
     ASSERT(transform_entry.type == ECS_CMP_TRANSFORM);
     const ecs_component_transform_t *const transform = transform_entry.data;

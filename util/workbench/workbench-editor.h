@@ -61,6 +61,7 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
         }
     }
 
+
     global_workbench->editor.mouse_closest_to_entity_id = picked;
 }
 
@@ -124,7 +125,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
     );
 
     ecs_component_transform_t *const transform  = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-    ecs_component_collider_t *const collider    =  query.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
+    ecs_component_collider_t *const collider    = query.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
 
     //NOTE: used in the editor to udpate value for each one of these
     vec3f_t *const transform_bindings[OT_COUNT] = {
