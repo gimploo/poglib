@@ -220,9 +220,17 @@ INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
 
         JPH_RayCastResult shape_hit;
         if (JPH_Shape_CastRay(shape, (JPH_Vec3 *)&local_origin, (JPH_Vec3 *)&local_dir, &shape_hit)) {
-            if (shape_hit.fraction > 0.f && shape_hit.fraction < closest_dist) {
-                closest_dist = shape_hit.fraction;
-                picked       = e->id;
+            if (shape_hit.fraction > 0.f) {
+                const vec3f_t local_hit = glms_vec3_add(local_origin, glms_vec3_scale(local_dir, shape_hit.fraction));
+                const vec4f_t world_hit4 = glms_mat4_mulv(world_mat,
+                    (vec4f_t){ local_hit.x, local_hit.y, local_hit.z, 1.f });
+                const vec3f_t world_hit = *(vec3f_t *)&world_hit4;
+                const f32 dist = glms_vec3_dot(glms_vec3_sub(world_hit, ray_origin), dir);
+
+                if (dist > 0.f && dist < closest_dist) {
+                    closest_dist = dist;
+                    picked       = e->id;
+                }
             }
         }
     }
