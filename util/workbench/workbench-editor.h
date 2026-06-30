@@ -10,6 +10,16 @@
 #include <poglib/util/workbench/common.h>
 #include <poglib/ecs.h>
 
+
+void            workbench_editor_update(void);
+void                workbench_editor_delete_entity(void);
+void                workbench_editor_copypaste_entity(void);
+void                workbench_editor_savechanges(void);
+void            workbench_editor_render(void);
+
+
+#ifndef IGNORE_WORKBENCH_EDITOR_IMPLEMENTATION
+
 INTERNAL void workbench_editor__internal_update_physics_colliders(void);
 
 INTERNAL f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_origin, const vec3f_t ray_dir, const vec3f_t targetpoint)
@@ -95,7 +105,7 @@ INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(v
 
       default: eprint("collider shape type not accounted for");
     }
-    logging("Applied transform scale to physics collider to entity (%i)", global_workbench->editor.current_selected_entity_id);
+    logging("Applied transform's scale to physics collider to entity (%i)", global_workbench->editor.current_selected_entity_id);
 }
 
 INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(void)
@@ -512,7 +522,7 @@ void workbench_editor_render(void)
     workbench_editor__internal_show_entity_info_for_selected_entity();
 }
 
-INTERNAL void workbench_editor_savechanges(void)
+void workbench_editor_savechanges(void)
 {
     if(!global_workbench->editor.current_selected_entity_id) return;
     workbench_editor__internal_update_physics_colliders();
@@ -577,3 +587,4 @@ void workbench_editor_delete_entity(void)
     logging("Deleted entity (%i)", global_workbench->editor.current_selected_entity_id);
 }
 
+#endif

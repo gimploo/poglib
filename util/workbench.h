@@ -10,7 +10,6 @@
 #include "poglib/gui.h"
 #include "poglib/util/workbench/workbench-editor.h"
 
-
 workbench_t *   workbench_init(arena_t * const arena);
 void            workbench_update(const f32 dt);
 void            workbench_render(void);
@@ -250,13 +249,6 @@ workbench_t * workbench_init(arena_t *const arena)
                 [WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT] = {
                     .type = COMMANDINPUTKEY_TYPE_MOUSE,
                     .sdl_mouse.wheel = SDL_MOUSEWHEEL_DOWN,
-                },
-                [WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT] = {
-                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
-                    .sdl_keyboard_key = {
-                        .main = SDL_SCANCODE_ESCAPE,
-                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
-                    }
                 },
                 [WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME] = {
                     .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
@@ -559,16 +551,11 @@ void workbench_render_marker(
 
 void workbench_update(const f32 dt)
 {
-    const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
-
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME)) 
-        global_workbench->render_config.wireframe_mode = !global_workbench->render_config.wireframe_mode;
-
     if (!global_workbench->is_active) return;
 
-    workbench_editor_update();
+    const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
 
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION))   {
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION)) {
 
         if (global_workbench->editor.prev_selected_entity_id != global_workbench->editor.mouse_closest_to_entity_id) {
             global_workbench->editor.prev_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
@@ -577,8 +564,8 @@ void workbench_update(const f32 dt)
         }
     }
 
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME))            global_workbench->render_config.wireframe_mode = !global_workbench->render_config.wireframe_mode;
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY))   workbench_editor_copypaste_entity();
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_EDITOR_CANCEL_EDIT))          workbench_editor_savechanges();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY))      workbench_editor_delete_entity();
 
     ecs_patch_entity(
@@ -591,6 +578,7 @@ void workbench_update(const f32 dt)
         }
     );
 
+    workbench_editor_update();
 }
 
 void workbench_toggle(void)
@@ -599,6 +587,7 @@ void workbench_toggle(void)
     workbench_t *self = global_workbench;
 
     self->is_active = !self->is_active;
+    logging("Workbench toggled status %s", self->is_active ? "enabled" : "disabled");
 
     ecs_patch_entity(
         global_ecs,
@@ -610,11 +599,10 @@ void workbench_toggle(void)
         }
     );
 
-    workbench_editor_savechanges();
-
-
-    logging("workbench toggled status %s", self->is_active ? "enabled" : "disabled");
-    if (!self->is_active) return;
+    if (!self->is_active) {
+        workbench_editor_savechanges();
+        return;
+    }
 
     ecs_set_active_camera(
         global_ecs,

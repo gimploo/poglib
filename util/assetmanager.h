@@ -671,8 +671,9 @@ void assetmanager_write_assetmeta_data_to_file(const assetmanager_t *const self,
         if (assetmeta->filepath1.len && assetmeta->filepath2.len)
             snprintf(
                 buffer.raw_data, sizeof(buffer.raw_data), 
-                "assetid:%u,assetpath:[%.*s,%.*s]\n",
+                "assetid:%u,assettype:%u,assetpath:[%.*s,%.*s]\n",
                 entry->key.u32,
+                assetmeta->type,
                 assetmeta->filepath1.len,
                 assetmeta->filepath1.data,
                 assetmeta->filepath2.len,
@@ -681,16 +682,18 @@ void assetmanager_write_assetmeta_data_to_file(const assetmanager_t *const self,
         else if (!assetmeta->filepath1.len && assetmeta->filepath2.len)
             snprintf(
                 buffer.raw_data, sizeof(buffer.raw_data), 
-                "assetid:%u,assetpath:%.*s\n",
+                "assetid:%u,assettype:%u,assetpath:%.*s\n",
                 entry->key.u32,
+                assetmeta->type,
                 assetmeta->filepath2.len,
                 assetmeta->filepath2.data
             );
         else if (assetmeta->filepath1.len && !assetmeta->filepath2.len)
             snprintf(
                 buffer.raw_data, sizeof(buffer.raw_data), 
-                "assetid:%u,assetpath:%.*s\n",
+                "assetid:%u,assettype:%u,assetpath:%.*s\n",
                 entry->key.u32,
+                assetmeta->type,
                 assetmeta->filepath1.len,
                 assetmeta->filepath1.data
             );
