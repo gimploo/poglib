@@ -409,9 +409,6 @@ void workbench_destroy(void)
     global_workbench = NULL;
 }
 
-
-
-
 void workbench_render(void)
 {
     ASSERT(global_workbench);
@@ -465,7 +462,7 @@ void workbench_render_camera(
         .color = COLOR_GRAY,
     };
 
-    gpu_asset_t * const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAMERA);
+    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAMERA);
     if(!asset) {
         return;
     }
