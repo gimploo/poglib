@@ -3,6 +3,21 @@
 #include "poglib/ecs/component/types.h"
 #include "poglib/util/assetmanager.h"
 
+INTERNAL const struct {
+    ecs_component_type type;
+    u8 idx;
+    const char *prefix;
+    u8 prefix_len;
+} ecs_deserializer__internal_cmp_prefix_map[ECS_CMP_COUNT] = {
+    { ECS_CMP_TRANSFORM, ECS_CMP_TRANSFORM_IDX, "transform:", 10 },
+    { ECS_CMP_MODEL,     ECS_CMP_MODEL_IDX,     "model:",     6  },
+    { ECS_CMP_INPUT,     ECS_CMP_INPUT_IDX,     "input:",     6  },
+    { ECS_CMP_MATERIAL,  ECS_CMP_MATERIAL_IDX,  "material:",  9  },
+    { ECS_CMP_CAMERA,    ECS_CMP_CAMERA_IDX,    "camera:",    7  },
+    { ECS_CMP_COLLIDER,  ECS_CMP_COLLIDER_IDX,  "collider:",  9  },
+    { ECS_CMP_MESH,      ECS_CMP_MESH_IDX,      "mesh:",      5  },
+};
+
 INTERNAL void ecs_serializer__internal_write_header(file_t *const file)
 {
     const u32 magic        = ECS_SAVE_FILE_MAGIC;
