@@ -4,13 +4,6 @@
 #include <poglib/basic.h>
 #include <poglib/ecs/component/types.h>
 
-#define ECS_SAVE_FILE_MAGIC             0x45435346u
-#define ECS_SAVE_FILE_VERSION           1.0
-#define ECS_SAVE_FILEPATH               "ecs.save"
-#define ECS_SAVE_FILE_HEADER_PREFIX     "ECS v"
-#define ECS_SAVE_FILE_HEADER_PREFIX_LEN 5
-
-
 /* -------------------------------- ENTITY -------------------------------------------- */
 
 #define ECS_ENTITY_INVALID_ID   0

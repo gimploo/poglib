@@ -198,6 +198,7 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
     ASSERT(self);
     ASSERT(filepath.data);
     ASSERT(filepath.len > 0);
+    ASSERT(global_engine);
 
     if (!file_check_exist(filepath.data))
     {
@@ -210,7 +211,7 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
     buffer(WORD) line = {0};
 
     file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-    if (strncmp((char *)line.raw_data, ECS_SAVE_FILE_HEADER_PREFIX, ECS_SAVE_FILE_HEADER_PREFIX_LEN) != 0)
+    if (strncmp((char *)line.raw_data, ECS_SAVE_FILE_HEADER_PREFIX.data, ECS_SAVE_FILE_HEADER_PREFIX.len) != 0)
     {
         eprint("Invalid save file format");
         file_destroy(&f);
@@ -231,9 +232,11 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
         memset(line.raw_data, 0, sizeof(line.raw_data));
         file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
 
-        if (line.raw_data[0] == '\0') continue;
+        if (line.raw_data[0] == '\0') 
+            continue;
 
-        if (strncmp((char *)line.raw_data, ECS_DESERIALIZER_FIN.data, ECS_DESERIALIZER_FIN.len) == 0) break;
+        if (strncmp((char *)line.raw_data, ECS_DESERIALIZER_FIN.data, ECS_DESERIALIZER_FIN.len) == 0) 
+            break;
 
         if (strncmp((char *)line.raw_data, ECS_DESERIALIZER_ENTITY_PREFIX.data, ECS_DESERIALIZER_ENTITY_PREFIX.len) == 0)
         {
@@ -305,20 +308,10 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
             entities.data[entities.count++] = pending_bundle;
     }
 
-    if (global_engine)
+    for (u32 i = 0; i < entities.count; i++)
     {
-        assetmanager_t *assets = &global_engine->systems.assets;
-
-        for (u32 i = 0; i < entities.count; i++)
-        {
-            ecs_deserializer__internal_remap_entity_assets(&entities.data[i], assets, &assets_parsed);
-            ecs_entity_add(self, entities.data[i]);
-        }
-    }
-    else
-    {
-        for (u32 i = 0; i < entities.count; i++)
-            ecs_entity_add(self, entities.data[i]);
+        ecs_deserializer__internal_remap_entity_assets(&entities.data[i], &global_engine->systems.assets, &assets_parsed);
+        ecs_entity_add(self, entities.data[i]);
     }
 
     self->internal.entity_generator_counter = max_entity_id;

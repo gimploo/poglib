@@ -1,40 +1,18 @@
 #pragma once
-#include "./common.h"
+#include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/util/assetmanager.h"
 
-/* ================================================================
-   ENUMS
-   ================================================================ */
+#define ECS_SAVE_FILE_MAGIC                             0x45435346u
+#define ECS_SAVE_FILE_VERSION                           1.0
+const str_t ECS_SAVE_FILEPATH                           = str_lit("ecs.save");
+const str_t ECS_SAVE_FILE_HEADER_PREFIX                 = str_lit("ECS v");
+const str_t ECS_DESERIALIZER_ENTITY_PREFIX              = str_lit("entity:");
+const str_t ECS_DESERIALIZER_SIGNATURE_PREFIX           = str_lit("component_signature:");
+const str_t ECS_DESERIALIZER_ASSETID_PREFIX             = str_lit("assetid:");
+const str_t ECS_DESERIALIZER_FIN                        = str_lit("fin");
 
-enum { ECS_LOAD_MAX_ENTITIES = 128, ECS_LOAD_MAX_ASSETS = 32 };
-
-typedef enum {
-    ECS_CMP_FLD_VEC3F,
-    ECS_CMP_FLD_VERSORS,
-    ECS_CMP_FLD_F32,
-    ECS_CMP_FLD_VEC2F,
-    ECS_CMP_FLD_I32,
-    ECS_CMP_FLD_U32,
-    ECS_CMP_FLD_U64,
-    ECS_CMP_FLD_SKIP,
-} ecs_cmp_fld_vtype_t;
-
-/* ================================================================
-   STRUCTS / TYPEDEFS
-   ================================================================ */
-
-typedef struct {
-    str_t              prefix;
-    const char         *scanf_fmt;
-    u64                offset;
-    ecs_cmp_fld_vtype_t vtype;
-} ecs_cmp_field_descriptor_t;
-
-typedef struct {
-    u8 field_count;
-    ecs_cmp_field_descriptor_t fields[9];
-} ecs_cmp_field_map_t;
+enum { ECS_LOAD_MAX_ENTITIES = ECS_ENTITY_MAX_COUNT, ECS_LOAD_MAX_ASSETS = 32 };
 
 typedef struct {
     u32          asset_id;
@@ -51,23 +29,7 @@ typedef struct {
     u32 count;
 } ecs_load__entity_list_t;
 
-/* ================================================================
-   MACROS
-   ================================================================ */
-
-#define CMP_FLD_DESC(PREFIX, FMT, STRUCT, FIELD, FMT_TYPE) \
-    { str_lit(PREFIX), FMT, offsetof(STRUCT, FIELD), FMT_TYPE }
-
-/* ================================================================
-   CONSTANTS
-   ================================================================ */
-
-static const str_t ECS_DESERIALIZER_ENTITY_PREFIX        = str_lit("entity:");
-static const str_t ECS_DESERIALIZER_SIGNATURE_PREFIX    = str_lit("component_signature:");
-static const str_t ECS_DESERIALIZER_ASSETID_PREFIX      = str_lit("assetid:");
-static const str_t ECS_DESERIALIZER_FIN                 = str_lit("fin");
-
-static const struct {
+const struct {
     ecs_component_type type;
     u8 idx;
     str_t prefix;
@@ -80,6 +42,32 @@ static const struct {
     { ECS_CMP_COLLIDER,  ECS_CMP_COLLIDER_IDX,  str_lit("collider:")  },
     { ECS_CMP_MESH,      ECS_CMP_MESH_IDX,      str_lit("mesh:")      },
 };
+
+typedef enum {
+    ECS_CMP_FLD_VEC3F,
+    ECS_CMP_FLD_VERSORS,
+    ECS_CMP_FLD_F32,
+    ECS_CMP_FLD_VEC2F,
+    ECS_CMP_FLD_I32,
+    ECS_CMP_FLD_U32,
+    ECS_CMP_FLD_U64,
+    ECS_CMP_FLD_SKIP,
+} ecs_cmp_fld_vtype_t;
+
+typedef struct {
+    str_t              prefix;
+    const char         *scanf_fmt;
+    u64                offset;
+    ecs_cmp_fld_vtype_t vtype;
+} ecs_cmp_field_descriptor_t;
+
+typedef struct {
+    u8 field_count;
+    ecs_cmp_field_descriptor_t fields[9];
+} ecs_cmp_field_map_t;
+
+#define CMP_FLD_DESC(PREFIX, FMT, STRUCT, FIELD, FMT_TYPE) \
+    { str_lit(PREFIX), FMT, offsetof(STRUCT, FIELD), FMT_TYPE }
 
 static const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS_CMP_COUNT] = {
     [ECS_CMP_TRANSFORM_IDX] = {
@@ -101,12 +89,12 @@ static const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS_C
     [ECS_CMP_INPUT_IDX] = {
         .field_count = 6,
         .fields = {
-            CMP_FLD_DESC("\tdirection_source:",     "\tdirection_source:%i",            ecs_component_input_t, direction_source,                                         ECS_CMP_FLD_I32),
-            CMP_FLD_DESC("\tinput_behavior:",       "\tinput_behavior:%p",              ecs_component_input_t, input_behavior,                                           ECS_CMP_FLD_SKIP),
-            CMP_FLD_DESC("\tstate.position:",       "\tstate.position:[%f,%f,%f]",     ecs_component_input_t, internal.state.current_position,     ECS_CMP_FLD_VEC3F),
-            CMP_FLD_DESC("\tstate.orientation:",    "\tstate.orientation:[%f,%f,%f,%f]",ecs_component_input_t, internal.state.current_orientation, ECS_CMP_FLD_VERSORS),
-            CMP_FLD_DESC("\tstate.front:",          "\tstate.front:[%f,%f,%f]",        ecs_component_input_t, internal.state.front,               ECS_CMP_FLD_VEC3F),
-            CMP_FLD_DESC("\tstate.right:",          "\tstate.right:[%f,%f,%f]",        ecs_component_input_t, internal.state.right,               ECS_CMP_FLD_VEC3F),
+            CMP_FLD_DESC("\tdirection_source:",     "\tdirection_source:%i",                ecs_component_input_t,     direction_source,                    ECS_CMP_FLD_I32),
+            CMP_FLD_DESC("\tinput_behavior:",       "\tinput_behavior:%p",                  ecs_component_input_t,     input_behavior,                      ECS_CMP_FLD_SKIP),
+            CMP_FLD_DESC("\tstate.position:",       "\tstate.position:[%f,%f,%f]",          ecs_component_input_t,     internal.state.current_position,     ECS_CMP_FLD_VEC3F),
+            CMP_FLD_DESC("\tstate.orientation:",    "\tstate.orientation:[%f,%f,%f,%f]",    ecs_component_input_t,     internal.state.current_orientation,  ECS_CMP_FLD_VERSORS),
+            CMP_FLD_DESC("\tstate.front:",          "\tstate.front:[%f,%f,%f]",             ecs_component_input_t,     internal.state.front,                ECS_CMP_FLD_VEC3F),
+            CMP_FLD_DESC("\tstate.right:",          "\tstate.right:[%f,%f,%f]",             ecs_component_input_t,     internal.state.right,                ECS_CMP_FLD_VEC3F),
         }
     },
     [ECS_CMP_MATERIAL_IDX] = {
@@ -119,15 +107,15 @@ static const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS_C
     [ECS_CMP_CAMERA_IDX] = {
         .field_count = 9,
         .fields = {
-            CMP_FLD_DESC("\tposition:",              "\tposition:[%f,%f,%f]",           ecs_component_camera_t, camera.position,          ECS_CMP_FLD_VEC3F),
-            CMP_FLD_DESC("\teuler_angle:",           "\teuler_angle:[%f,%f]",           ecs_component_camera_t, camera.euler_angle,       ECS_CMP_FLD_VEC2F),
-            CMP_FLD_DESC("\tdirection.front:",       "\tdirection.front:[%f,%f,%f]",    ecs_component_camera_t, camera.direction.front,   ECS_CMP_FLD_VEC3F),
-            CMP_FLD_DESC("\tdirection.up:",          "\tdirection.up:[%f,%f,%f]",       ecs_component_camera_t, camera.direction.up,      ECS_CMP_FLD_VEC3F),
-            CMP_FLD_DESC("\tdirection.right:",       "\tdirection.right:[%f,%f,%f]",    ecs_component_camera_t, camera.direction.right,   ECS_CMP_FLD_VEC3F),
-            CMP_FLD_DESC("\tmode:",                  "\tmode:%i",                        ecs_component_camera_t, mode,                     ECS_CMP_FLD_I32),
-            CMP_FLD_DESC("\tfollow.orbit_radius:",   "\tfollow.orbit_radius:%f",        ecs_component_camera_t, follow.orbit_radius,      ECS_CMP_FLD_F32),
+            CMP_FLD_DESC("\tposition:",              "\tposition:[%f,%f,%f]",           ecs_component_camera_t, camera.position,            ECS_CMP_FLD_VEC3F),
+            CMP_FLD_DESC("\teuler_angle:",           "\teuler_angle:[%f,%f]",           ecs_component_camera_t, camera.euler_angle,         ECS_CMP_FLD_VEC2F),
+            CMP_FLD_DESC("\tdirection.front:",       "\tdirection.front:[%f,%f,%f]",    ecs_component_camera_t, camera.direction.front,     ECS_CMP_FLD_VEC3F),
+            CMP_FLD_DESC("\tdirection.up:",          "\tdirection.up:[%f,%f,%f]",       ecs_component_camera_t, camera.direction.up,        ECS_CMP_FLD_VEC3F),
+            CMP_FLD_DESC("\tdirection.right:",       "\tdirection.right:[%f,%f,%f]",    ecs_component_camera_t, camera.direction.right,     ECS_CMP_FLD_VEC3F),
+            CMP_FLD_DESC("\tmode:",                  "\tmode:%i",                        ecs_component_camera_t, mode,                      ECS_CMP_FLD_I32),
+            CMP_FLD_DESC("\tfollow.orbit_radius:",   "\tfollow.orbit_radius:%f",        ecs_component_camera_t, follow.orbit_radius,        ECS_CMP_FLD_F32),
             CMP_FLD_DESC("\tfollow.center_offset:",  "\tfollow.center_offset:[%f,%f,%f]",ecs_component_camera_t, follow.center_offset,      ECS_CMP_FLD_VEC3F),
-            CMP_FLD_DESC("\tfollow.track_entity_id:","\tfollow.track_entity_id:%u",     ecs_component_camera_t, follow.track_entity_id,   ECS_CMP_FLD_U32),
+            CMP_FLD_DESC("\tfollow.track_entity_id:","\tfollow.track_entity_id:%u",     ecs_component_camera_t, follow.track_entity_id,     ECS_CMP_FLD_U32),
         }
     },
     [ECS_CMP_COLLIDER_IDX] = {
@@ -150,16 +138,13 @@ static const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS_C
     },
 };
 
-/* ================================================================
-   SERIALIZER FUNCTIONS
-   ================================================================ */
 
 INTERNAL void ecs_serializer__internal_write_header(file_t *const file)
 {
     const u32 version      = ECS_SAVE_FILE_VERSION;
 
     buffer(WORD) buffer = {0};
-    snprintf(buffer.raw_data, sizeof(buffer.raw_data), "ECS v%i save\n", version);
+    snprintf((char *)buffer.raw_data, sizeof(buffer.raw_data), "ECS v%i save\n", version);
     file_writeline(file, (char *)buffer.raw_data);
 }
 
@@ -268,10 +253,6 @@ INTERNAL void ecs_serializer__internal_write_footer(file_t *const file)
     file_writeline(file, (char *)buffer.raw_data);
 }
 
-/* ================================================================
-   DESERIALIZER FUNCTIONS
-   ================================================================ */
-
 INTERNAL void ecs_deserializer__internal_parse_cmp_data_line(
     const char *const line,
     const ecs_component_type type,
@@ -300,14 +281,16 @@ INTERNAL void ecs_deserializer__internal_parse_cmp_data_line(
                     versors *q = (versors *)dest;
                     sscanf(line, f->scanf_fmt, &q->x, &q->y, &q->z, &q->w);
                 } break;
-                case ECS_CMP_FLD_F32:  sscanf(line, f->scanf_fmt, (f32 *)dest);                          break;
+                case ECS_CMP_FLD_F32:  sscanf(line, f->scanf_fmt, (f32 *)dest);           break;
                 case ECS_CMP_FLD_VEC2F: {
                     vec2f_t *v = (vec2f_t *)dest;
                     sscanf(line, f->scanf_fmt, &v->x, &v->y);
                 } break;
-                case ECS_CMP_FLD_I32:    sscanf(line, f->scanf_fmt, (i32 *)dest);                           break;
-                case ECS_CMP_FLD_U32:   sscanf(line, f->scanf_fmt, (u32 *)dest);                           break;
-                case ECS_CMP_FLD_U64:  sscanf(line, f->scanf_fmt, (u64 *)dest);                           break;
+
+                case ECS_CMP_FLD_I32:       sscanf(line, f->scanf_fmt, (i32 *)dest);     break;
+                case ECS_CMP_FLD_U32:       sscanf(line, f->scanf_fmt, (u32 *)dest);     break;
+                case ECS_CMP_FLD_U64:       sscanf(line, f->scanf_fmt, (u64 *)dest);     break;
+
                 default: break;
             }
             return;
@@ -379,8 +362,6 @@ INTERNAL void ecs_deserializer__internal_remap_entity_assets(ecs_componentbundle
 
 INTERNAL void ecs_deserializer__internal_read_assetmeta_section(file_t *const f, ecs_load__asset_list_t *const assets_parsed, arena_t *arena, char *line_buf, u32 buf_size)
 {
-    (void)buf_size;
-
     while (strncmp(line_buf, ECS_DESERIALIZER_FIN.data, ECS_DESERIALIZER_FIN.len) != 0)
     {
         if (strncmp(line_buf, ECS_DESERIALIZER_ASSETID_PREFIX.data, ECS_DESERIALIZER_ASSETID_PREFIX.len) != 0)
@@ -449,3 +430,5 @@ INTERNAL void ecs_deserializer__internal_read_assetmeta_section(file_t *const f,
         assets_parsed->count++;
     }
 }
+
+
