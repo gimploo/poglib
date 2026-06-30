@@ -501,7 +501,7 @@ glms_quat_forp(vec3s from, vec3s to, vec3s up) {
 }
 
 /*!
- * @brief rotate vector using using quaternion
+ * @brief rotate vector using quaternion
  *
  * @param[in]   q     quaternion
  * @param[in]   v     vector to rotate

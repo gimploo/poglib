@@ -24,6 +24,7 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
             .current_orientation    = transform->orientation,
             .front                  = {0},
             .right                  = {0},
+            .up                     = {0},
         };
 
         switch (input_cmp->direction_source) 
@@ -31,12 +32,15 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
             case ECS_CMP_INPUT_DIRECTION_SOURCE_CAMERA:
                 input_cmp->internal.state.front     = ctx.active_camera->direction.front;
                 input_cmp->internal.state.right     = ctx.active_camera->direction.right;
+                input_cmp->internal.state.up        = ctx.active_camera->direction.up;
             break;
             case ECS_CMP_INPUT_DIRECTION_SOURCE_ENTITY: {
-                vec3f_t front = glms_quat_rotatev(transform->orientation, (vec3f_t){0, 0, -1});
-                vec3f_t right = glms_quat_rotatev(transform->orientation, (vec3f_t){1, 0, 0});
+                const vec3f_t front = glms_quat_rotatev(transform->orientation, (vec3f_t){0, 0, -1});
+                const vec3f_t right = glms_quat_rotatev(transform->orientation, (vec3f_t){1, 0, 0});
+                const vec3f_t up    = glms_cross(right, front);
                 input_cmp->internal.state.front = front;
                 input_cmp->internal.state.right = (vec3f_t){ right.x, 0.f, right.z };
+                input_cmp->internal.state.up    = up;
             } break;
             default: eprint("Input direction source not found");
         }

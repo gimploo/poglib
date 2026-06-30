@@ -2,7 +2,6 @@
 #include "../common.h"
 #include "poglib/ecs/component.h"
 #include "poglib/ecs/component/types.h"
-#include "poglib/external/cglm/struct/vec3.h"
 #include "poglib/util/glcamera.h"
 
 INTERNAL void ecs_system_camera__internal_update_follow_camera(
@@ -32,8 +31,21 @@ INTERNAL void ecs_system_camera__internal_update_free_fly_camera(glcamera_t *con
     ASSERT(transform);
 
     const vec3f_t front = glms_quat_rotatev(transform->orientation, (vec3f_t){0, 0, -1});
-    glcamera_lookat(camera, glms_vec3_add(transform->position, front));
-    camera->position = transform->position;
+    const f32 pitch     = asinf(front.y);
+    const f32 yaw       = atan2f(front.z, front.x);
+
+    glcamera_set(
+        camera, 
+        transform->position,
+        (vec2f_t){ pitch, yaw }
+    );
+
+#if 0
+    printf("cam pos     ");    glms_vec3_print(camera->position,stdout);
+    printf("cam front   ");    glms_vec3_print(camera->direction.front,stdout);
+    printf("cam up      ");    glms_vec3_print(camera->direction.up,stdout);
+    printf("cam right   ");    glms_vec3_print(camera->direction.right,stdout);
+#endif
 }
 
 void ecs_system_camera(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)

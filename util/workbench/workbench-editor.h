@@ -445,24 +445,24 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
     rendercommand_instance_line_t gizmo[3] = {
         //NOTE: X axis
         {
-            .color       = {1.0f, 0.0f, 0.0f, 1.0f},
             .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
             .orientation = {0.0f, 0.0f, 0.0f, 1.0f},
+            .color       = {1.0f, 0.0f, 0.0f, 1.0f},
             .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
         },
         //NOTE: Y axis
         {
-            .color       = {0.0f, 1.0f, 0.0f, 1.0f},
             .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
             .orientation = {0.0f, 0.0f, -0.7071f, 0.7071f},
             .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
+            .color       = {0.0f, 1.0f, 0.0f, 1.0f},
         },
         //NOTE: Z axis
         {
-            .color       = {0.0f, 0.0f, 1.0f, 1.0f},
             .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
-            .orientation = {0.0f, -0.7071f, 0.0f, 0.7071f},
+            .orientation = {0.0f, 0.7071f, 0.0f, 0.7071f},
             .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
+            .color       = {0.0f, 0.0f, 1.0f, 1.0f},
         },
     };
 
@@ -574,6 +574,7 @@ void workbench_editor_update(void)
 void workbench_editor_copypaste_entity(void)
 {
     if (!global_workbench->editor.current_selected_entity_id) return;
+
     ecs_entity_duplicate(global_ecs, global_workbench->editor.current_selected_entity_id);
     logging("Duplicated entity (%i)", global_workbench->editor.current_selected_entity_id);
 }

@@ -5,7 +5,6 @@
 #include "./workbench/common.h"
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
-#include "poglib/application/window/sdl_window.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/gui.h"
 #include "poglib/util/workbench/workbench-editor.h"
@@ -22,74 +21,85 @@ void            workbench_destroy(void);
 
 void workbench__internal_show_colliders(workbench_t *const self);
 
-void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t * const state, const u16 command_bitmask, const f32 dt)
+void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *const state, const u16 bitmask, const f32 dt)
 {
-    const u16 bitmask = command_bitmask;
     if (!bitmask) return;
 
-    const bool drag_look = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG);
-    const bool zoom_in   = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN);
-    const bool zoom_out  = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT);
+    const bool drag_look    = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG);
+    const bool panning      = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_MIDDLE_CLICK_DRAG);
+    const bool zoom_in      = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN);
+    const bool zoom_out     = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT);
 
-    const f32 drag_sensitivity = 0.3f;
-    const f32 zoom_sensitivity = 50.0f;
+    const f32 drag_sensitivity      = 0.3f;
+    const f32 zoom_sensitivity      = 50.0f;
+    f32 z_offset                    = 0.f;
+    const vec2i_t mouse_rel         = window_mouse_get_relative_position(global_window);
+
+    if (panning) {
+        const f32 pane_sensitivity   = 2.f * dt;
+        const vec2s mouse_rel_offset = (vec2s) { 
+            (f32)mouse_rel.x * pane_sensitivity * -1.f,
+            (f32)mouse_rel.y * pane_sensitivity
+        };
+        state->current_position = glms_vec3_add(
+            state->current_position, 
+            glms_vec3_add(
+                glms_vec3_scale(state->right,   mouse_rel_offset.x),
+                glms_vec3_scale(state->up,      mouse_rel_offset.y)
+            )
+        );
+        return;
+    }
 
     vec2f_t mouse_delta = {0};
-    f32 z_offset         = 0.f;
+    if (drag_look) {
+        mouse_delta.x = radians((f32)mouse_rel.y * drag_sensitivity);
+        mouse_delta.y = radians((f32)mouse_rel.x * drag_sensitivity);
+    }
+
+    if (zoom_in)                z_offset = 1.f * zoom_sensitivity * dt;
+    if (zoom_out)               z_offset = -1.f * zoom_sensitivity * dt;
+    if (zoom_in || zoom_out)    state->current_position = glms_vec3_add(state->current_position, glms_vec3_scale(state->front, z_offset));
 
     if (drag_look) {
-        const vec2i_t mouse_pos_delta = window_mouse_get_relative_position(global_window);
-        mouse_delta.x = radians((f32)mouse_pos_delta.y * drag_sensitivity);
-        mouse_delta.y = radians((f32)mouse_pos_delta.x * drag_sensitivity);
+        state->current_orientation = glms_quat_mul(
+            glms_quatv(mouse_delta.y, (vec3f_t){0, 1, 0}),
+            state->current_orientation
+        );
+
+        state->current_orientation = glms_quat_mul(
+            state->current_orientation,
+            glms_quatv(mouse_delta.x, (vec3f_t){1, 0, 0})
+        );
     }
-
-    if (zoom_in) {
-        z_offset = zoom_sensitivity * dt;
-    }
-
-    if(zoom_out) {
-        z_offset = -1.f * zoom_sensitivity * dt;
-    }
-
-    // -- Yaw: rotate mouse X around world Y axis --
-    state->current_orientation = glms_quat_mul(
-        glms_quatv(mouse_delta.y, (vec3f_t){0, 1, 0}),
-        state->current_orientation
-    );
-
-    // -- Pitch: rotate mouse Y around local X axis --
-    state->current_orientation = glms_quat_mul(
-        state->current_orientation,
-        glms_quatv(mouse_delta.x, (vec3f_t){1, 0, 0})
-    );
 
     // -- Clamp pitch to [-89, 89] degrees to prevent gimbal lock --
-    vec3f_t front = glms_quat_rotatev(state->current_orientation, (vec3f_t){0, 0, -1});
-    f32 pitch = asinf(glms_vec3_norm(front) > 0.f ? front.y / glms_vec3_norm(front) : front.y);
+    vec3f_t front   = glms_quat_rotatev(state->current_orientation, (vec3f_t){0, 0, -1});
+    f32 pitch       = asinf(glms_vec3_norm(front) > 0.f ? front.y / glms_vec3_norm(front) : front.y);
+
     if (pitch > GLM_PI_2f - radians(1.f)) {
 
-        pitch = GLM_PI_2f - radians(1.f);
-
-        // reconstruct quaternion with clamped pitch
-        vec3f_t flat_front = glms_vec3_normalize((vec3f_t){front.x, 0, front.z});
-        f32 yaw = atan2f(flat_front.z, flat_front.x);
+        const vec3f_t flat_front    = glms_vec3_normalize((vec3f_t){front.x, 0, front.z});
+        const f32 yaw               = atan2f(flat_front.z, flat_front.x);
+        pitch                       = GLM_PI_2f - radians(1.f);
 
         state->current_orientation = glms_quat_mul(
-            glms_quatv(yaw, (vec3f_t){0, 1, 0}),
-            glms_quatv(pitch, (vec3f_t){1, 0, 0})
+            glms_quatv(yaw,     (vec3f_t){0, 1, 0}),
+            glms_quatv(pitch,   (vec3f_t){1, 0, 0})
         );
+
     } else if (pitch < -GLM_PI_2f + radians(1.f)) {
-        pitch = -GLM_PI_2f + radians(1.f);
-        vec3f_t flat_front = glms_vec3_normalize((vec3f_t){front.x, 0, front.z});
-        f32 yaw = atan2f(flat_front.z, flat_front.x);
+
+        const vec3f_t flat_front    = glms_vec3_normalize((vec3f_t){front.x, 0, front.z});
+        const f32 yaw               = atan2f(flat_front.z, flat_front.x);
+        pitch                       = -GLM_PI_2f + radians(1.f);
 
         state->current_orientation = glms_quat_mul(
-            glms_quatv(yaw, (vec3f_t){0, 1, 0}),
-            glms_quatv(pitch, (vec3f_t){1, 0, 0})
+            glms_quatv(yaw,     (vec3f_t){0, 1, 0}),
+            glms_quatv(pitch,   (vec3f_t){1, 0, 0})
         );
     }
 
-    state->current_position = glms_vec3_add(state->current_position, glms_vec3_scale(state->front, z_offset));
 }
 
 void workbench__internal_ecs_create_world_camera(workbench_t *const self)
@@ -228,11 +238,18 @@ workbench_t * workbench_init(arena_t *const arena)
                         .trigger    = SDL_MOUSESTATE_DRAG,
                     }
                 },
-                [WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED] = {
+                [WORKBENCH_ACTION_TYPE_MOUSE_MIDDLE_CLICK_DRAG] = {
                     .type = COMMANDINPUTKEY_TYPE_MOUSE,
                     .sdl_mouse = {
-                        .key        = SDL_MOUSEBUTTON_LEFT,
-                        .trigger    = SDL_MOUSESTATE_JUST_PRESSED,
+                        .key        = SDL_MOUSEBUTTON_MIDDLE,
+                        .trigger    = SDL_MOUSESTATE_DRAG,
+                    }
+                },
+                [WORKBENCH_ACTION_TYPE_MOUSE_KEYBOARD_UNSELECT_ENTITY] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
+                    .sdl_keyboard_key = {
+                        .main = SDL_SCANCODE_CAPSLOCK,
+                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
                     }
                 },
                 [WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED] = {
@@ -564,9 +581,10 @@ void workbench_update(const f32 dt)
         }
     }
 
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME))            global_workbench->render_config.wireframe_mode = !global_workbench->render_config.wireframe_mode;
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY))   workbench_editor_copypaste_entity();
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY))      workbench_editor_delete_entity();
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_KEYBOARD_UNSELECT_ENTITY))  workbench_editor_savechanges();
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME))                global_workbench->render_config.wireframe_mode = !global_workbench->render_config.wireframe_mode;
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY))       workbench_editor_copypaste_entity();
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY))          workbench_editor_delete_entity();
 
     ecs_patch_entity(
         global_ecs, 

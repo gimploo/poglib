@@ -119,12 +119,18 @@ matrix4f_t glcamera_getview(const glcamera_t *const self)
 
 void glcamera_lookat(glcamera_t *const self, const vec3f_t target)
 {
-    self->direction.front = glms_normalize(glms_vec3_sub(target, self->position));
-    self->direction.right = glms_normalize(glms_cross(self->direction.front, GL_CAMERA_DIRECTION_UP));
-    self->direction.up    = glms_cross(self->direction.right, self->direction.front);
+    self->direction.front   = glms_normalize(glms_vec3_sub(target, self->position));
+    self->direction.right   = glms_normalize(glms_cross(self->direction.front, GL_CAMERA_DIRECTION_UP));
+    self->direction.up      = glms_cross(self->direction.right, self->direction.front);
+    self->euler_angle.x     = asinf(self->direction.front.y);
+    self->euler_angle.y     = atan2f(self->direction.front.z, self->direction.front.x);
 
-    self->euler_angle.x = asinf(self->direction.front.y);
-    self->euler_angle.y = atan2f(self->direction.front.z, self->direction.front.x);
+#if 0
+    printf("cam front");    glms_vec3_print(self->direction.front,stdout);
+    printf("cam up");       glms_vec3_print(self->direction.up,stdout);
+    printf("cam right");    glms_vec3_print(self->direction.right,stdout);
+#endif
+
 }
 
 glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t radians)

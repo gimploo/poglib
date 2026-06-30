@@ -79,6 +79,7 @@ struct ecs_component_input_state_t {
     vec3f_t     current_position;
     vec3f_t     front;
     vec3f_t     right;
+    vec3f_t     up;
 };
 
 struct ecs_component_input_t {
