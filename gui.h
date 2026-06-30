@@ -1,12 +1,8 @@
 #pragma once
-#include "poglib/application.h"
-#include "poglib/application/window/sdl_window.h"
 #include "poglib/basic/arena.h"
-#include "poglib/basic/color.h"
 #include "poglib/basic/common.h"
 #include "poglib/basic/ds/list.h"
 #include "poglib/font/glfreetypefont.h"
-#include "poglib/gfx/gl/common.h"
 #include "poglib/gfx/gl/shader.h"
 #include "poglib/gfx/gl/types.h"
 #include "poglib/gfx/gl/vbo_stream_types.h"
