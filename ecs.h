@@ -204,16 +204,6 @@ typedef struct {
     u32    tile_count_h;
 } ecs_load__asset_meta_t;
 
-INTERNAL asset_type ecs_load__detect_asset_type_from_path(const char *const path)
-{
-    const u64 len = strlen(path);
-    if (len > 4 && (strcmp(path + len - 4, ".glb") == 0 || strcmp(path + len - 5, ".gltf") == 0))
-        return ASSET_TYPE_MODEL;
-    if (len > 5 && strcmp(path + len - 4, ".png") == 0)
-        return ASSET_TYPE_TEXTURE_SPRITE_ATLAS;
-    return ASSET_TYPE_GLSL_SHADER;
-}
-
 INTERNAL u32 ecs_load__ensure_asset_loaded(assetmanager_t *const assets, const u32 asset_id, ecs_load__asset_meta_t *const parsed_assets, const u32 parsed_asset_count)
 {
     if (hashtable_has_key(&assets->assetmeta_lookup, (hashtable_key_t){ .u32 = asset_id }))
@@ -364,19 +354,20 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
                 if (parsed_asset_count >= ECS_LOAD_MAX_ASSETS) break;
 
                 ecs_load__asset_meta_t *meta = &parsed_assets[parsed_asset_count];
-                sscanf((char *)line.raw_data, "assetid:%u,", &meta->asset_id);
+                u32 type_val = 0;
+                sscanf((char *)line.raw_data, "assetid:%u,assettype:%u,", &meta->asset_id, &type_val);
+                meta->type = (asset_type)type_val;
 
                 const char *path_part = strstr((char *)line.raw_data, "assetpath:");
                 if (!path_part) break;
                 path_part += 10;
 
-                if (path_part[0] == '[')
+                if (meta->type == ASSET_TYPE_GLSL_SHADER)
                 {
                     char buf1[256] = {0}, buf2[256] = {0};
                     sscanf(path_part, "[%255[^,],%255[^]]]", buf1, buf2);
                     meta->filepath1 = str_init(&self->arena, buf1);
                     meta->filepath2 = str_init(&self->arena, buf2);
-                    meta->type = ASSET_TYPE_GLSL_SHADER;
 
                     while (true)
                     {
@@ -401,34 +392,34 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
                         break;
                     }
                 }
+                else if (meta->type == ASSET_TYPE_TEXTURE_SPRITE_ATLAS)
+                {
+                    char buf[256] = {0};
+                    sscanf(path_part, "%255s", buf);
+                    meta->filepath1 = str_init(&self->arena, buf);
+                    meta->tile_count_w = 1;
+                    meta->tile_count_h = 1;
+
+                    while (true)
+                    {
+                        memset(line.raw_data, 0, sizeof(line.raw_data));
+                        file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
+                        if (strncmp((char *)line.raw_data, "\ttilecount:[", 12) == 0)
+                        {
+                            sscanf((char *)line.raw_data, "\ttilecount:[%u,%u]", &meta->tile_count_w, &meta->tile_count_h);
+                            continue;
+                        }
+                        break;
+                    }
+                }
                 else
                 {
                     char buf[256] = {0};
                     sscanf(path_part, "%255s", buf);
                     meta->filepath1 = str_init(&self->arena, buf);
-                    meta->type = ecs_load__detect_asset_type_from_path(buf);
 
-                    if (meta->type == ASSET_TYPE_TEXTURE_SPRITE_ATLAS)
-                    {
-                        meta->tile_count_w = 1;
-                        meta->tile_count_h = 1;
-                        while (true)
-                        {
-                            memset(line.raw_data, 0, sizeof(line.raw_data));
-                            file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-                            if (strncmp((char *)line.raw_data, "\ttilecount:[", 12) == 0)
-                            {
-                                sscanf((char *)line.raw_data, "\ttilecount:[%u,%u]", &meta->tile_count_w, &meta->tile_count_h);
-                                continue;
-                            }
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        memset(line.raw_data, 0, sizeof(line.raw_data));
-                        file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-                    }
+                    memset(line.raw_data, 0, sizeof(line.raw_data));
+                    file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
                 }
                 parsed_asset_count++;
             }
