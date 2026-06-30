@@ -184,7 +184,8 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
             ecs_serializer__internal_entity_cmp_data(&f, cmp_type, query.entity_cmp_data[cmp_idx]);
         }
     }
-    assetmanager_write_assetmeta_data_to_file(&global_engine->systems.assets, &f);
+    if (global_engine)
+        assetmanager_write_assetmeta_data_to_file(&global_engine->systems.assets, &f);
 
     ecs_serializer__internal_write_footer(&f);
 
@@ -278,16 +279,18 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
             break;
         }
 
+        bool prefix_matched = false;
         for (u8 i = 0; i < ECS_CMP_COUNT; i++)
         {
             if (strncmp((char *)line.raw_data, ecs_deserializer__internal_cmp_prefix_map[i].prefix.data, ecs_deserializer__internal_cmp_prefix_map[i].prefix.len) == 0)
             {
                 current_cmp     = ecs_deserializer__internal_cmp_prefix_map[i].type;
                 current_cmp_idx = ecs_deserializer__internal_cmp_prefix_map[i].idx;
+                prefix_matched  = true;
                 break;
             }
         }
-        if (current_cmp) continue;
+        if (prefix_matched) continue;
 
         if (line.raw_data[0] == '\t' && has_pending_bundle)
         {
@@ -305,12 +308,20 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
             entity_bundles[entity_count++] = pending_bundle;
     }
 
-    assetmanager_t *assets = &global_engine->systems.assets;
-
-    for (u32 i = 0; i < entity_count; i++)
+    if (global_engine)
     {
-        ecs_deserializer__internal_remap_entity_assets(&entity_bundles[i], assets, parsed_assets, parsed_asset_count);
-        ecs_entity_add(self, entity_bundles[i]);
+        assetmanager_t *assets = &global_engine->systems.assets;
+
+        for (u32 i = 0; i < entity_count; i++)
+        {
+            ecs_deserializer__internal_remap_entity_assets(&entity_bundles[i], assets, parsed_assets, parsed_asset_count);
+            ecs_entity_add(self, entity_bundles[i]);
+        }
+    }
+    else
+    {
+        for (u32 i = 0; i < entity_count; i++)
+            ecs_entity_add(self, entity_bundles[i]);
     }
 
     self->internal.entity_generator_counter = max_entity_id;
