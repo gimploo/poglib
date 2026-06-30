@@ -7,21 +7,17 @@
 INTERNAL void ecs_system_camera__internal_update_follow_camera(
     ecs_componentmanager_t *const cmp_manager,
     ecs_component_camera_t *const camera,
-    ecs_entity_query_t camera_view
+    const ecs_entity_query_t camera_view
 ) {
-    ecs_component_transform_t *const cam_tf = camera_view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-    const ecs_component_entry_t player      = ecs_componentmanager_get_component(cmp_manager, camera->follow.track_entity_id, ECS_CMP_TRANSFORM);
-    const ecs_component_transform_t *const player_tf = player.data;
+    ecs_component_transform_t *const cam_tf             = camera_view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+    const ecs_component_transform_t *const target_tf    = ecs_componentmanager_get_component(cmp_manager, camera->follow.track_entity_id, ECS_CMP_TRANSFORM).data;
+    const vec3f_t target_center                         = glms_vec3_add(target_tf->position, camera->follow.center_offset);
+    const f32 orbit_dist                                = camera->follow.orbit_radius;
+    const vec3f_t dir                                   = glms_quat_rotatev(cam_tf->orientation, (vec3f_t){0, 0, -1});
+    cam_tf->position                                    = glms_vec3_add(target_center, glms_vec3_scale(dir, orbit_dist));
+    camera->camera.position                             = cam_tf->position;
 
-    const vec3f_t players_center    = glms_vec3_add(player_tf->position, camera->follow.center_offset);
-    const f32 orbit_dist            = camera->follow.orbit_radius;
-
-    const vec3f_t dir   = glms_quat_rotatev(cam_tf->orientation, (vec3f_t){0, 0, -1});
-    cam_tf->position    = glms_vec3_add(players_center, glms_vec3_scale(dir, orbit_dist));
-
-    camera->camera.position = cam_tf->position;
-    glcamera_lookat(&camera->camera, players_center);
-
+    glcamera_lookat(&camera->camera, target_center);
 }
 
 INTERNAL void ecs_system_camera__internal_update_free_fly_camera(glcamera_t *const camera, const ecs_component_entry_t transform_entry)

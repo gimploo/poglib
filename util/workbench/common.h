@@ -3,6 +3,7 @@
 #include <poglib/gui.h>
 #include <poglib/util/glcamera.h>
 #include "./workbench-debug-renderer.h"
+#include "poglib/ecs/component/types.h"
 
 typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG = 0,
@@ -56,8 +57,9 @@ typedef struct {
 
         //NOTE: these are used for entity selection
         u32 mouse_closest_to_entity_id;
-        u32 current_selected_entity_id;
         u32 prev_selected_entity_id;
+        u32 current_selected_entity_id;
+        ecs_component_transform_t *selected_entity_transform;
 
     } editor;
 
