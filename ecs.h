@@ -191,70 +191,6 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
     file_destroy(&f);
 }
 
-enum { ECS_LOAD_MAX_ENTITIES = 128, ECS_LOAD_MAX_ASSETS = 32 };
-
-typedef struct {
-    u32          asset_id;
-    asset_meta_t meta;
-    gluniform_registry_t uniforms;
-} ecs_load__asset_entry_t;
-
-INTERNAL u32 ecs_load__ensure_asset_loaded(assetmanager_t *const assets, const u32 asset_id, ecs_load__asset_entry_t *const parsed_assets, const u32 parsed_asset_count)
-{
-    if (hashtable_has_key(&assets->assetmeta_lookup, (hashtable_key_t){ .u32 = asset_id }))
-        return asset_id;
-
-    for (u32 i = 0; i < parsed_asset_count; i++)
-    {
-        if (parsed_assets[i].asset_id == asset_id)
-        {
-            ecs_load__asset_entry_t *e = &parsed_assets[i];
-            u32 new_id = 0;
-            switch (e->meta.type)
-            {
-                case ASSET_TYPE_MODEL:
-                    new_id = assetmanager_load_model_async(assets, e->meta.filepath1);
-                    break;
-                case ASSET_TYPE_GLSL_SHADER:
-                    new_id = assetmanager_load_glsl_shader(assets, e->meta.filepath1, e->meta.filepath2, e->uniforms);
-                    break;
-                case ASSET_TYPE_TEXTURE_SPRITE_ATLAS:
-                    new_id = assetmanager_load_spriteatlas(assets, e->meta.filepath1, e->meta.meta.tile_counts.x, e->meta.meta.tile_counts.y);
-                    break;
-                default: break;
-            }
-            return new_id ? new_id : asset_id;
-        }
-    }
-    return asset_id;
-}
-
-INTERNAL void ecs_load__remap_entity_assets(ecs_componentbundle_t *const bundle, assetmanager_t *const assets, ecs_load__asset_entry_t *const parsed_assets, const u32 parsed_asset_count)
-{
-    for (u8 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
-    {
-        const ecs_component_type cmp_type = 1 << cmp_idx;
-        if ((bundle->signature & cmp_type) == 0) continue;
-
-        switch (cmp_type)
-        {
-            case ECS_CMP_MODEL: {
-                ecs_component_model_t *m = &bundle->component[cmp_idx].model;
-                m->asset_id = ecs_load__ensure_asset_loaded(assets, m->asset_id, parsed_assets, parsed_asset_count);
-            } break;
-            case ECS_CMP_MESH: {
-                ecs_component_mesh_t *mesh = &bundle->component[cmp_idx].mesh;
-                mesh->asset_id = ecs_load__ensure_asset_loaded(assets, mesh->asset_id, parsed_assets, parsed_asset_count);
-            } break;
-            case ECS_CMP_MATERIAL: {
-                ecs_component_material_t *mat = &bundle->component[cmp_idx].material;
-                mat->texture_asset_id = ecs_load__ensure_asset_loaded(assets, mat->texture_asset_id, parsed_assets, parsed_asset_count);
-                mat->shader_asset_id  = ecs_load__ensure_asset_loaded(assets, mat->shader_asset_id,  parsed_assets, parsed_asset_count);
-            } break;
-        }
-    }
-}
-
 void ecs_load_savefile(ecs_t *const self, const str_t filepath)
 {
     if (self->internal.entity_generator_counter) eprint("Clear existing ecs before loading a save file");
@@ -337,87 +273,7 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
                 has_pending_bundle = false;
             }
 
-            while (strncmp((char *)line.raw_data, "fin", 3) != 0)
-            {
-                if (strncmp((char *)line.raw_data, "assetid:", 8) != 0)
-                {
-                    memset(line.raw_data, 0, sizeof(line.raw_data));
-                    file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-                    continue;
-                }
-
-                if (parsed_asset_count >= ECS_LOAD_MAX_ASSETS) break;
-
-                ecs_load__asset_entry_t *entry = &parsed_assets[parsed_asset_count];
-                asset_meta_t            *meta  = &entry->meta;
-                u32 type_val = 0;
-                sscanf((char *)line.raw_data, "assetid:%u,assettype:%u,", &entry->asset_id, &type_val);
-                meta->type = (asset_type)type_val;
-
-                const char *path_part = strstr((char *)line.raw_data, "assetpath:");
-                if (!path_part) break;
-                path_part += 10;
-
-                if (meta->type == ASSET_TYPE_GLSL_SHADER)
-                {
-                    char buf1[256] = {0}, buf2[256] = {0};
-                    sscanf(path_part, "[%255[^,],%255[^]]]", buf1, buf2);
-                    meta->filepath1 = str_init(&self->arena, buf1);
-                    meta->filepath2 = str_init(&self->arena, buf2);
-
-                    while (true)
-                    {
-                        memset(line.raw_data, 0, sizeof(line.raw_data));
-                        file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-                        if (strncmp((char *)line.raw_data, "\tuniform:", 9) == 0)
-                        {
-                            memset(line.raw_data, 0, sizeof(line.raw_data));
-                            file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-                            char name[128] = {0};
-                            u32  utype     = 0;
-                            if (sscanf((char *)line.raw_data, "\t\tname:%127[^,],type:%u", name, &utype) == 2
-                                && entry->uniforms.count < MAX_UNIFORMS_ALLOWED_IN_SHADER)
-                            {
-                                entry->uniforms.data[entry->uniforms.count++] = (gluniform_meta_t){
-                                    .name = str_init(&self->arena, name),
-                                    .type = (gluniform_type)utype,
-                                };
-                            }
-                            continue;
-                        }
-                        break;
-                    }
-                }
-                else if (meta->type == ASSET_TYPE_TEXTURE_SPRITE_ATLAS)
-                {
-                    char buf[256] = {0};
-                    sscanf(path_part, "%255s", buf);
-                    meta->filepath1 = str_init(&self->arena, buf);
-                    meta->meta.tile_counts = (vec2i_t){1, 1};
-
-                    while (true)
-                    {
-                        memset(line.raw_data, 0, sizeof(line.raw_data));
-                        file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-                        if (strncmp((char *)line.raw_data, "\ttilecount:[", 12) == 0)
-                        {
-                            sscanf((char *)line.raw_data, "\ttilecount:[%u,%u]", &meta->meta.tile_counts.x, &meta->meta.tile_counts.y);
-                            continue;
-                        }
-                        break;
-                    }
-                }
-                else
-                {
-                    char buf[256] = {0};
-                    sscanf(path_part, "%255s", buf);
-                    meta->filepath1 = str_init(&self->arena, buf);
-
-                    memset(line.raw_data, 0, sizeof(line.raw_data));
-                    file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-                }
-                parsed_asset_count++;
-            }
+            ecs_deserializer__internal_read_assetmeta_section(&f, parsed_assets, &parsed_asset_count, &self->arena, (char *)line.raw_data, sizeof(line.raw_data));
 
             break;
         }
@@ -453,7 +309,7 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
 
     for (u32 i = 0; i < entity_count; i++)
     {
-        ecs_load__remap_entity_assets(&entity_bundles[i], assets, parsed_assets, parsed_asset_count);
+        ecs_deserializer__internal_remap_entity_assets(&entity_bundles[i], assets, parsed_assets, parsed_asset_count);
         ecs_entity_add(self, entity_bundles[i]);
     }
 
