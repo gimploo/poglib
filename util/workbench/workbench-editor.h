@@ -505,13 +505,6 @@ INTERNAL void workbench_editor__internal__draw_gizmo_on_entity_selection(void)
 {
     if (!global_workbench->editor.current_selected_entity_id) return;
 
-    if (!global_workbench->editor.selected_entity_transform) {
-        ecs_component_transform_t *const transform = ecs_entity_query_components(
-            global_ecs, global_workbench->editor.current_selected_entity_id, ECS_CMP_TRANSFORM
-        ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-        global_workbench->editor.selected_entity_transform = transform;
-    }
-
     const ecs_component_transform_t *const transform = global_workbench->editor.selected_entity_transform;
     if (!transform) return;
 
@@ -534,6 +527,16 @@ void workbench_editor_savechanges(void)
 
     global_workbench->editor.current_selected_entity_id = 0;
     global_workbench->editor.selected_entity_transform = NULL;
+
+    //NOTE: switches the worldcamera back to freefly 
+    {
+        ecs_component_camera_t *const cam = ecs_entity_query_components(
+            global_ecs, global_workbench->world_camera.entity_id, ECS_CMP_CAMERA
+        ).entity_cmp_data[ECS_CMP_CAMERA_IDX];
+
+        cam->mode = ECS_CMP_CAMERA_MODE_FREE_FLY;
+        memset(&cam->follow, 0, sizeof(cam->follow));
+    }
 }
 
 INTERNAL void workbench_editor__internal_update_physics_colliders(void)
@@ -575,9 +578,19 @@ INTERNAL void workbench_editor__internal_update_physics_colliders(void)
 INTERNAL void workbench_editor__internal__change_worldcamera_to_orbit_type_on_entity_selection(void)
 {
     if (!global_workbench->editor.current_selected_entity_id) return;
+    if (!global_workbench->editor.selected_entity_transform) return;
 
     const ecs_component_transform_t *const transform = global_workbench->editor.selected_entity_transform;
-    ASSERT(transform);
+
+    ecs_component_camera_t *const cam = ecs_entity_query_components(
+        global_ecs, global_workbench->world_camera.entity_id, ECS_CMP_CAMERA
+    ).entity_cmp_data[ECS_CMP_CAMERA_IDX];
+    ASSERT(cam);
+
+    cam->mode                   = ECS_CMP_CAMERA_MODE_ORBIT_FOLLOW;
+    cam->follow.orbit_radius    = -1.f * glms_vec3_distance(cam->camera.position, transform->position);
+    cam->follow.center_offset   = (vec3f_t){0};
+    cam->follow.track_entity_id = global_workbench->editor.current_selected_entity_id;
 
 }
 
@@ -592,9 +605,8 @@ void workbench_editor_copypaste_entity(void)
 {
     if (!global_workbench->editor.current_selected_entity_id) return;
 
-    const u32 target_entity_id                          = global_workbench->editor.current_selected_entity_id;
-    global_workbench->editor.current_selected_entity_id = ecs_entity_duplicate(global_ecs, global_workbench->editor.current_selected_entity_id);
-
+    const u32 target_entity_id = global_workbench->editor.current_selected_entity_id;
+    ecs_entity_duplicate(global_ecs, global_workbench->editor.current_selected_entity_id);
     logging("Duplicated entity (%i)", target_entity_id);
 }
 
@@ -609,12 +621,24 @@ void workbench_editor_delete_entity(void)
 
 void workbench_editor_select_closest_entity(void)
 {
-    if (global_workbench->editor.prev_selected_entity_id != global_workbench->editor.mouse_closest_to_entity_id) {
-        global_workbench->editor.prev_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
-    } else {
-        global_workbench->editor.current_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
-        global_workbench->editor.selected_entity_transform = NULL;
+    //NOTE: select closest entity to the mouse 
+    {
+        if (global_workbench->editor.prev_selected_entity_id != global_workbench->editor.mouse_closest_to_entity_id) 
+        {
+            global_workbench->editor.prev_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
+
+        } else if (global_workbench->editor.mouse_closest_to_entity_id != ECS_ENTITY_INVALID_ID) 
+        {
+            global_workbench->editor.current_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
+            global_workbench->editor.selected_entity_transform  = ecs_entity_query_components(
+                global_ecs, 
+                global_workbench->editor.current_selected_entity_id,
+                ECS_CMP_TRANSFORM
+            ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+        }
     }
+
+    if (global_workbench->editor.current_selected_entity_id)    workbench_editor__internal__change_worldcamera_to_orbit_type_on_entity_selection();
 }
 
 
