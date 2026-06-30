@@ -3,18 +3,18 @@
 #include "poglib/ecs/component/types.h"
 #include "poglib/util/assetmanager.h"
 
-INTERNAL const str_t ECS_DESERIALIZER_ENTITY_PREFIX        = str_lit("entity:");
-INTERNAL const str_t ECS_DESERIALIZER_SIGNATURE_PREFIX    = str_lit("component_signature:");
-INTERNAL const str_t ECS_DESERIALIZER_ASSETID_PREFIX      = str_lit("assetid:");
-INTERNAL const str_t ECS_DESERIALIZER_FIN                 = str_lit("fin");
+static const str_t ECS_DESERIALIZER_ENTITY_PREFIX        = str_lit("entity:");
+static const str_t ECS_DESERIALIZER_SIGNATURE_PREFIX    = str_lit("component_signature:");
+static const str_t ECS_DESERIALIZER_ASSETID_PREFIX      = str_lit("assetid:");
+static const str_t ECS_DESERIALIZER_FIN                 = str_lit("fin");
 
 enum { ECS_LOAD_MAX_ENTITIES = 128, ECS_LOAD_MAX_ASSETS = 32 };
 
-INTERNAL const struct {
+static const struct {
     ecs_component_type type;
     u8 idx;
     str_t prefix;
-} ecs_deserializer__internal_cmp_prefix_map[ECS_CMP_COUNT] = {
+} ECS_DESERIALIZER__INTERNAL_CMP_PREFIX_MAP[ECS_CMP_COUNT] = {
     { ECS_CMP_TRANSFORM, ECS_CMP_TRANSFORM_IDX, str_lit("transform:") },
     { ECS_CMP_MODEL,     ECS_CMP_MODEL_IDX,     str_lit("model:")     },
     { ECS_CMP_INPUT,     ECS_CMP_INPUT_IDX,     str_lit("input:")     },
@@ -239,7 +239,7 @@ typedef struct {
 #define CMP_FLD_DESC(PREFIX, FMT, STRUCT, FIELD, FMT_TYPE) \
     { str_lit(PREFIX), FMT, offsetof(STRUCT, FIELD), FMT_TYPE }
 
-INTERNAL const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS_CMP_COUNT] = {
+static const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS_CMP_COUNT] = {
     [ECS_CMP_TRANSFORM_IDX] = {
         .field_count = 5,
         .fields = {

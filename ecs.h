@@ -282,10 +282,10 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
         bool prefix_matched = false;
         for (u8 i = 0; i < ECS_CMP_COUNT; i++)
         {
-            if (strncmp((char *)line.raw_data, ecs_deserializer__internal_cmp_prefix_map[i].prefix.data, ecs_deserializer__internal_cmp_prefix_map[i].prefix.len) == 0)
+            if (strncmp((char *)line.raw_data, ECS_DESERIALIZER__INTERNAL_CMP_PREFIX_MAP[i].prefix.data, ECS_DESERIALIZER__INTERNAL_CMP_PREFIX_MAP[i].prefix.len) == 0)
             {
-                current_cmp     = ecs_deserializer__internal_cmp_prefix_map[i].type;
-                current_cmp_idx = ecs_deserializer__internal_cmp_prefix_map[i].idx;
+                current_cmp     = ECS_DESERIALIZER__INTERNAL_CMP_PREFIX_MAP[i].type;
+                current_cmp_idx = ECS_DESERIALIZER__INTERNAL_CMP_PREFIX_MAP[i].idx;
                 prefix_matched  = true;
                 break;
             }
