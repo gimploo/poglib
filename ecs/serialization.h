@@ -206,67 +206,136 @@ void assetmanager_serialize_to_file(const assetmanager_t *const self, file_t *co
     }
 }
 
+typedef enum {
+    ECS_CMP_FLD_FLOAT3,
+    ECS_CMP_FLD_FLOAT4,
+    ECS_CMP_FLD_FLOAT1,
+    ECS_CMP_FLD_FLOAT2,
+    ECS_CMP_FLD_INT1,
+    ECS_CMP_FLD_UINT1,
+    ECS_CMP_FLD_ULONG1,
+    ECS_CMP_FLD_SKIP,
+} ecs_cmp_fld_fmt_t;
+
+typedef struct {
+    str_t            prefix;
+    const char       *scanf_fmt;
+    u64              offset;
+    ecs_cmp_fld_fmt_t fmt;
+} ecs_cmp_field_descriptor_t;
+
+typedef struct {
+    u8 field_count;
+    ecs_cmp_field_descriptor_t fields[9];
+} ecs_cmp_field_map_t;
+
+#define CMP_FLD_DESC(PREFIX, FMT, STRUCT, FIELD, FMT_TYPE) \
+    { str_lit(PREFIX), FMT, offsetof(STRUCT, FIELD), FMT_TYPE }
+
+INTERNAL const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS_CMP_COUNT] = {
+    [ECS_CMP_TRANSFORM_IDX] = {
+        .field_count = 5,
+        .fields = {
+            CMP_FLD_DESC("\tposition:",    "\tposition:[%f,%f,%f]",       ecs_component_transform_t, position.x,      ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\torientation:", "\torientation:[%f,%f,%f,%f]", ecs_component_transform_t, orientation.x,   ECS_CMP_FLD_FLOAT4),
+            CMP_FLD_DESC("\tscale:",       "\tscale:[%f,%f,%f]",          ecs_component_transform_t, scale.x,         ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tvelocity:",    "\tvelocity:[%f,%f,%f]",       ecs_component_transform_t, velocity.x,      ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tsource:",      "\tsource:%i",                 ecs_component_transform_t, source,          ECS_CMP_FLD_INT1),
+        }
+    },
+    [ECS_CMP_MODEL_IDX] = {
+        .field_count = 1,
+        .fields = {
+            CMP_FLD_DESC("\tasset_id:", "\tasset_id:%lu", ecs_component_model_t, asset_id, ECS_CMP_FLD_ULONG1),
+        }
+    },
+    [ECS_CMP_INPUT_IDX] = {
+        .field_count = 6,
+        .fields = {
+            CMP_FLD_DESC("\tdirection_source:",     "\tdirection_source:%i",            ecs_component_input_t, direction_source,                                         ECS_CMP_FLD_INT1),
+            CMP_FLD_DESC("\tinput_behavior:",       "\tinput_behavior:%p",              ecs_component_input_t, input_behavior,                                           ECS_CMP_FLD_SKIP),
+            CMP_FLD_DESC("\tstate.position:",       "\tstate.position:[%f,%f,%f]",     ecs_component_input_t, internal.state.current_position.x,     ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tstate.orientation:",    "\tstate.orientation:[%f,%f,%f,%f]",ecs_component_input_t, internal.state.current_orientation.x, ECS_CMP_FLD_FLOAT4),
+            CMP_FLD_DESC("\tstate.front:",          "\tstate.front:[%f,%f,%f]",        ecs_component_input_t, internal.state.front.x,               ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tstate.right:",          "\tstate.right:[%f,%f,%f]",        ecs_component_input_t, internal.state.right.x,               ECS_CMP_FLD_FLOAT3),
+        }
+    },
+    [ECS_CMP_MATERIAL_IDX] = {
+        .field_count = 2,
+        .fields = {
+            CMP_FLD_DESC("\ttexture_asset_id:", "\ttexture_asset_id:%u", ecs_component_material_t, texture_asset_id, ECS_CMP_FLD_UINT1),
+            CMP_FLD_DESC("\tshader_asset_id:",  "\tshader_asset_id:%u",  ecs_component_material_t, shader_asset_id,  ECS_CMP_FLD_UINT1),
+        }
+    },
+    [ECS_CMP_CAMERA_IDX] = {
+        .field_count = 9,
+        .fields = {
+            CMP_FLD_DESC("\tposition:",              "\tposition:[%f,%f,%f]",           ecs_component_camera_t, camera.position.x,        ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\teuler_angle:",           "\teuler_angle:[%f,%f]",           ecs_component_camera_t, camera.euler_angle.x,     ECS_CMP_FLD_FLOAT2),
+            CMP_FLD_DESC("\tdirection.front:",       "\tdirection.front:[%f,%f,%f]",    ecs_component_camera_t, camera.direction.front.x, ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tdirection.up:",          "\tdirection.up:[%f,%f,%f]",       ecs_component_camera_t, camera.direction.up.x,    ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tdirection.right:",       "\tdirection.right:[%f,%f,%f]",    ecs_component_camera_t, camera.direction.right.x, ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tmode:",                  "\tmode:%i",                        ecs_component_camera_t, mode,                     ECS_CMP_FLD_INT1),
+            CMP_FLD_DESC("\tfollow.orbit_radius:",   "\tfollow.orbit_radius:%f",        ecs_component_camera_t, follow.orbit_radius,      ECS_CMP_FLD_FLOAT1),
+            CMP_FLD_DESC("\tfollow.center_offset:",  "\tfollow.center_offset:[%f,%f,%f]",ecs_component_camera_t, follow.center_offset.x,   ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tfollow.track_entity_id:","\tfollow.track_entity_id:%u",     ecs_component_camera_t, follow.track_entity_id,   ECS_CMP_FLD_UINT1),
+        }
+    },
+    [ECS_CMP_COLLIDER_IDX] = {
+        .field_count = 6,
+        .fields = {
+            CMP_FLD_DESC("\tshape_type:",        "\tshape_type:%i",           ecs_component_collider_t, shape_type,              ECS_CMP_FLD_INT1),
+            CMP_FLD_DESC("\tmotion_type:",       "\tmotion_type:%i",          ecs_component_collider_t, motion_type,             ECS_CMP_FLD_INT1),
+            CMP_FLD_DESC("\tobject_layer_type:", "\tobject_layer_type:%lu",   ecs_component_collider_t, object_layer_type,       ECS_CMP_FLD_ULONG1),
+            CMP_FLD_DESC("\tdim.cube:",          "\tdim.cube:[%f,%f,%f]",     ecs_component_collider_t, dim.cube.half_width,     ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tdim.sphere:",        "\tdim.sphere:[%f]",         ecs_component_collider_t, dim.sphere.radius,       ECS_CMP_FLD_FLOAT1),
+            CMP_FLD_DESC("\tdim.capsule:",       "\tdim.capsule:[%f,%f]",     ecs_component_collider_t, dim.capsule.radius,      ECS_CMP_FLD_FLOAT2),
+        }
+    },
+    [ECS_CMP_MESH_IDX] = {
+        .field_count = 2,
+        .fields = {
+            CMP_FLD_DESC("\tasset_id:",              "\tasset_id:%lu",              ecs_component_mesh_t, asset_id,              ECS_CMP_FLD_ULONG1),
+            CMP_FLD_DESC("\tprototype_sprite_type:", "\tprototype_sprite_type:%i",  ecs_component_mesh_t, prototype_sprite_type, ECS_CMP_FLD_INT1),
+        }
+    },
+};
+
 INTERNAL void ecs_deserializer__internal_parse_cmp_data_line(
     const char *const line,
     const ecs_component_type type,
     void *const cmp_data)
 {
-    switch (type)
+    for (u8 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
     {
-        case ECS_CMP_TRANSFORM: {
-            ecs_component_transform_t *t = cmp_data;
-            if      (sscanf(line, "\tposition:[%f,%f,%f]",       &t->position.x,      &t->position.y,      &t->position.z)      == 3) return;
-            else if (sscanf(line, "\torientation:[%f,%f,%f,%f]",  &t->orientation.x,   &t->orientation.y,   &t->orientation.z,   &t->orientation.w) == 4) return;
-            else if (sscanf(line, "\tscale:[%f,%f,%f]",           &t->scale.x,         &t->scale.y,         &t->scale.z)        == 3) return;
-            else if (sscanf(line, "\tvelocity:[%f,%f,%f]",        &t->velocity.x,       &t->velocity.y,       &t->velocity.z)     == 3) return;
-            else if (sscanf(line, "\tsource:%i",                  &t->source)                                                          == 1) return;
-        } break;
-        case ECS_CMP_MODEL: {
-            ecs_component_model_t *m = cmp_data;
-            sscanf(line, "\tasset_id:%lu", &m->asset_id);
-        } break;
-        case ECS_CMP_INPUT: {
-            ecs_component_input_t *in = cmp_data;
-            if      (sscanf(line, "\tdirection_source:%i",        &in->direction_source)                                               == 1) return;
-            else if (strncmp(line, "\tinput_behavior:", 17) == 0) { in->input_behavior = NULL; }
-            else if (sscanf(line, "\tstate.position:[%f,%f,%f]",     &in->internal.state.current_position.x,    &in->internal.state.current_position.y,    &in->internal.state.current_position.z)    == 3) return;
-            else if (sscanf(line, "\tstate.orientation:[%f,%f,%f,%f]",&in->internal.state.current_orientation.x, &in->internal.state.current_orientation.y, &in->internal.state.current_orientation.z, &in->internal.state.current_orientation.w) == 4) return;
-            else if (sscanf(line, "\tstate.front:[%f,%f,%f]",        &in->internal.state.front.x,               &in->internal.state.front.y,               &in->internal.state.front.z)               == 3) return;
-            else if (sscanf(line, "\tstate.right:[%f,%f,%f]",        &in->internal.state.right.x,               &in->internal.state.right.y,               &in->internal.state.right.z)               == 3) return;
-        } break;
-        case ECS_CMP_MATERIAL: {
-            ecs_component_material_t *mat = cmp_data;
-            if      (sscanf(line, "\ttexture_asset_id:%u", &mat->texture_asset_id) == 1) return;
-            else if (sscanf(line, "\tshader_asset_id:%u",  &mat->shader_asset_id)  == 1) return;
-        } break;
-        case ECS_CMP_CAMERA: {
-            ecs_component_camera_t *cam = cmp_data;
-            if      (sscanf(line, "\tposition:[%f,%f,%f]",          &cam->camera.position.x,       &cam->camera.position.y,       &cam->camera.position.z)       == 3) return;
-            else if (sscanf(line, "\teuler_angle:[%f,%f]",           &cam->camera.euler_angle.x,    &cam->camera.euler_angle.y)                    == 2) return;
-            else if (sscanf(line, "\tdirection.front:[%f,%f,%f]",    &cam->camera.direction.front.x,&cam->camera.direction.front.y,&cam->camera.direction.front.z)== 3) return;
-            else if (sscanf(line, "\tdirection.up:[%f,%f,%f]",       &cam->camera.direction.up.x,   &cam->camera.direction.up.y,   &cam->camera.direction.up.z)   == 3) return;
-            else if (sscanf(line, "\tdirection.right:[%f,%f,%f]",    &cam->camera.direction.right.x,&cam->camera.direction.right.y,&cam->camera.direction.right.z)== 3) return;
-            else if (sscanf(line, "\tmode:%i",                       &cam->mode)                                                                    == 1) return;
-            else if (sscanf(line, "\tfollow.orbit_radius:%f",        &cam->follow.orbit_radius)                                                     == 1) return;
-            else if (sscanf(line, "\tfollow.center_offset:[%f,%f,%f]",&cam->follow.center_offset.x,  &cam->follow.center_offset.y,  &cam->follow.center_offset.z)  == 3) return;
-            else if (sscanf(line, "\tfollow.track_entity_id:%u",     &cam->follow.track_entity_id)                                                  == 1) return;
-        } break;
-        case ECS_CMP_COLLIDER: {
-            ecs_component_collider_t *col = cmp_data;
-            if      (sscanf(line, "\tshape_type:%i",             &col->shape_type)                                                            == 1) return;
-            else if (sscanf(line, "\tmotion_type:%i",            &col->motion_type)                                                           == 1) return;
-            else if (sscanf(line, "\tobject_layer_type:%lu",     (unsigned long *)&col->object_layer_type)                                    == 1) return;
-            else if (sscanf(line, "\tdim.cube:[%f,%f,%f]",       &col->dim.cube.half_width,    &col->dim.cube.half_height,    &col->dim.cube.half_depth)     == 3) return;
-            else if (sscanf(line, "\tdim.sphere:[%f]",           &col->dim.sphere.radius)                                                     == 1) return;
-            else if (sscanf(line, "\tdim.capsule:[%f,%f]",       &col->dim.capsule.radius,     &col->dim.capsule.half_height)                                 == 2) return;
-        } break;
-        case ECS_CMP_MESH: {
-            ecs_component_mesh_t *mesh = cmp_data;
-            if      (sscanf(line, "\tasset_id:%lu",              &mesh->asset_id)                                                             == 1) return;
-            else if (sscanf(line, "\tprototype_sprite_type:%i",  &mesh->prototype_sprite_type)                                                == 1) return;
-        } break;
+        if (type != (1 << cmp_idx)) continue;
+
+        const ecs_cmp_field_map_t *map = &ecs_deserializer__internal_cmp_field_maps[cmp_idx];
+        for (u8 i = 0; i < map->field_count; i++)
+        {
+            const ecs_cmp_field_descriptor_t *f = &map->fields[i];
+            if (strncmp(line, f->prefix.data, f->prefix.len) != 0) continue;
+
+            if (f->fmt == ECS_CMP_FLD_SKIP) return;
+
+            u8 *dest = (u8 *)cmp_data + f->offset;
+            switch (f->fmt)
+            {
+                case ECS_CMP_FLD_FLOAT3:  sscanf(line, f->scanf_fmt, (f32 *)dest, (f32 *)dest + 1, (f32 *)dest + 2);          break;
+                case ECS_CMP_FLD_FLOAT4:  sscanf(line, f->scanf_fmt, (f32 *)dest, (f32 *)dest + 1, (f32 *)dest + 2, (f32 *)dest + 3); break;
+                case ECS_CMP_FLD_FLOAT1:  sscanf(line, f->scanf_fmt, (f32 *)dest);                          break;
+                case ECS_CMP_FLD_FLOAT2:  sscanf(line, f->scanf_fmt, (f32 *)dest, (f32 *)dest + 1);           break;
+                case ECS_CMP_FLD_INT1:    sscanf(line, f->scanf_fmt, (i32 *)dest);                           break;
+                case ECS_CMP_FLD_UINT1:   sscanf(line, f->scanf_fmt, (u32 *)dest);                           break;
+                case ECS_CMP_FLD_ULONG1:  sscanf(line, f->scanf_fmt, (u64 *)dest);                           break;
+                default: break;
+            }
+            return;
+        }
     }
 }
+
+#undef CMP_FLD_DESC
 
 INTERNAL void ecs_serializer__internal_write_footer(file_t *const file)
 {
