@@ -23,7 +23,8 @@ void workbench__internal_show_colliders(workbench_t *const self);
 
 void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *const state, const u16 bitmask, const f32 dt)
 {
-    if (global_workbench->editor.current_selected_entity_id) return;
+    //NOTE: zoom_in, zoom_out and panning wont work for oribiting camera since the cameras position is overwritten by the offset logic 
+    //in the camera system - just an FYI
 
     const bool drag_look    = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG);
     const bool panning      = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_MIDDLE_CLICK_DRAG);

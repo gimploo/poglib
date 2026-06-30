@@ -306,7 +306,7 @@ ecs_component_entry_t ecs_componentmanager_get_component(const ecs_componentmana
 ecs_entity_query_t ecs_componentmanager__internal_query_components(const ecs_componentmanager_t * const self, const u32 entity_id, const u32 component_signature)
 {
     ASSERT(self);
-    ASSERT(entity_id >= 0);
+    ASSERT(entity_id > 0);
     ASSERT(component_signature > 0);
 
     ecs_entity_query_t result = {0};
