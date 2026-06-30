@@ -7,6 +7,9 @@
 #include <SDL2/SDL.h>
 #endif
 #include <poglib/basic.h>
+#ifdef _WIN64
+#include <timeapi.h>
+#endif
 
 
 /*=============================================================================
@@ -38,11 +41,7 @@ f32                 stopwatch_get_tick(void);
 
 f32 stopwatch_get_tick(void)
 {
-#if defined(WINDOW_GLFW)
-    return (f32)glfwGetTime() * 1000.0f;
-#else
     return (f32)SDL_GetTicks();
-#endif
 }
 
 void stopwatch_delay(const f32 ms)
@@ -60,6 +59,9 @@ void stopwatch_delay(const f32 ms)
 
 stopwatch_t stopwatch(void)
 {
+#ifdef _WIN64
+    timeBeginPeriod(1);
+#endif
     stopwatch_t output = {0};
     output.now = stopwatch_get_tick();
     output.raw_dt = 0.01f;

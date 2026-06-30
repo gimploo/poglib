@@ -134,7 +134,7 @@ void application_run(application_t *const app)
     app->window.aspect_ratio = (f32)app->window.width / (f32)app->window.height;
     app->context.base_dir = __get_base_dir();
 
-    window_t * win = window_init(
+    window_t *win = window_init(
             app->window.title, 
             app->window.width, 
             app->window.height, 
