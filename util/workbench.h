@@ -23,7 +23,7 @@ void workbench__internal_show_colliders(workbench_t *const self);
 
 void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *const state, const u16 bitmask, const f32 dt)
 {
-    if (!bitmask) return;
+    if (global_workbench->editor.current_selected_entity_id) return;
 
     const bool drag_look    = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG);
     const bool panning      = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_MIDDLE_CLICK_DRAG);
@@ -124,11 +124,20 @@ void workbench__internal_ecs_create_world_camera(workbench_t *const self)
         }
     );
 
-    const ecs_entity_query_t view = ecs_entity_query_components(
-        global_ecs, world_camera_entity_id, ECS_CMP_CAMERA);
+    const ecs_entity_query_t view = ecs_entity_query_components(global_ecs, world_camera_entity_id, ECS_CMP_CAMERA);
     ASSERT(view.entity_cmp_data[ECS_CMP_CAMERA_IDX]);
-    self->world_camera.handle = &((ecs_component_camera_t *)view.entity_cmp_data[ECS_CMP_CAMERA_IDX])->camera;
-    self->world_camera.entity_id = world_camera_entity_id;
+    self->world_camera.handle       = &((ecs_component_camera_t *)view.entity_cmp_data[ECS_CMP_CAMERA_IDX])->camera;
+    self->world_camera.entity_id    = world_camera_entity_id;
+
+    ecs_patch_entity(
+        global_ecs, 
+        world_camera_entity_id, 
+        (ecs_cmp_patch_payload_t) {
+            .patch_type = ECS_PATCH_CMP_ACTIVE_FIELD,
+            .is_active = false,
+            .signature = ECS_CMP_TRANSFORM
+        }
+    );
 }
 
 workbench_t * workbench_init(arena_t *const arena)
@@ -565,36 +574,17 @@ void workbench_render_marker(
     renderqueue_pass_command(renderqueue, rendercommand);
 }
 
-
 void workbench_update(const f32 dt)
 {
     if (!global_workbench->is_active) return;
 
     const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
 
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION)) {
-
-        if (global_workbench->editor.prev_selected_entity_id != global_workbench->editor.mouse_closest_to_entity_id) {
-            global_workbench->editor.prev_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
-        } else {
-            global_workbench->editor.current_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
-        }
-    }
-
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION))          workbench_editor_select_closest_entity();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_KEYBOARD_UNSELECT_ENTITY))  workbench_editor_savechanges();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME))                global_workbench->render_config.wireframe_mode = !global_workbench->render_config.wireframe_mode;
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY))       workbench_editor_copypaste_entity();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY))          workbench_editor_delete_entity();
-
-    ecs_patch_entity(
-        global_ecs, 
-        global_workbench->world_camera.entity_id, 
-        (ecs_cmp_patch_payload_t) {
-            .patch_type = ECS_PATCH_CMP_ACTIVE_FIELD,
-            .is_active = global_workbench->editor.current_selected_entity_id == ECS_ENTITY_INVALID_ID,
-            .signature = ECS_CMP_TRANSFORM
-        }
-    );
 
     workbench_editor_update();
 }

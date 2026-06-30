@@ -14,6 +14,7 @@
 void            workbench_editor_update(void);
 void                workbench_editor_delete_entity(void);
 void                workbench_editor_copypaste_entity(void);
+void                workbench_editor_select_closest_entity(void);
 void                workbench_editor_savechanges(void);
 void            workbench_editor_render(void);
 
@@ -31,7 +32,7 @@ INTERNAL f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_o
     return glms_vec3_distance(closest, targetpoint);
 }
 
-INTERNAL void workbench_editor__internal_check_mouse_closest_entity(void)
+INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
 {
     vec2f_t ndc = window_mouse_get_norm_position(global_window);
     glcamera_t *cam = global_workbench->world_camera.handle;
@@ -500,14 +501,18 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
     }
 }
 
-INTERNAL void workbench_editor__internal_draw_gizmo_on_entity_selection(void)
+INTERNAL void workbench_editor__internal__draw_gizmo_on_entity_selection(void)
 {
     if (!global_workbench->editor.current_selected_entity_id) return;
 
-    const ecs_component_transform_t *const transform = ecs_entity_query_components(
-        global_ecs, global_workbench->editor.current_selected_entity_id, ECS_CMP_TRANSFORM
-    ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+    if (!global_workbench->editor.selected_entity_transform) {
+        ecs_component_transform_t *const transform = ecs_entity_query_components(
+            global_ecs, global_workbench->editor.current_selected_entity_id, ECS_CMP_TRANSFORM
+        ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+        global_workbench->editor.selected_entity_transform = transform;
+    }
 
+    const ecs_component_transform_t *const transform = global_workbench->editor.selected_entity_transform;
     if (!transform) return;
 
     workbench_editor__internal_gizmo_draw_axis(
@@ -528,6 +533,7 @@ void workbench_editor_savechanges(void)
     workbench_editor__internal_update_physics_colliders();
 
     global_workbench->editor.current_selected_entity_id = 0;
+    global_workbench->editor.selected_entity_transform = NULL;
 }
 
 INTERNAL void workbench_editor__internal_update_physics_colliders(void)
@@ -565,18 +571,31 @@ INTERNAL void workbench_editor__internal_update_physics_colliders(void)
     }
 }
 
+
+INTERNAL void workbench_editor__internal__change_worldcamera_to_orbit_type_on_entity_selection(void)
+{
+    if (!global_workbench->editor.current_selected_entity_id) return;
+
+    const ecs_component_transform_t *const transform = global_workbench->editor.selected_entity_transform;
+    ASSERT(transform);
+
+}
+
 void workbench_editor_update(void)
 {
-    workbench_editor__internal_check_mouse_closest_entity();
-    workbench_editor__internal_draw_gizmo_on_entity_selection();
+    workbench_editor__internal__check_mouse_closest_entity();
+    workbench_editor__internal__draw_gizmo_on_entity_selection();
+    workbench_editor__internal__change_worldcamera_to_orbit_type_on_entity_selection();
 }
 
 void workbench_editor_copypaste_entity(void)
 {
     if (!global_workbench->editor.current_selected_entity_id) return;
 
-    ecs_entity_duplicate(global_ecs, global_workbench->editor.current_selected_entity_id);
-    logging("Duplicated entity (%i)", global_workbench->editor.current_selected_entity_id);
+    const u32 target_entity_id                          = global_workbench->editor.current_selected_entity_id;
+    global_workbench->editor.current_selected_entity_id = ecs_entity_duplicate(global_ecs, global_workbench->editor.current_selected_entity_id);
+
+    logging("Duplicated entity (%i)", target_entity_id);
 }
 
 void workbench_editor_delete_entity(void)
@@ -587,5 +606,17 @@ void workbench_editor_delete_entity(void)
     global_workbench->editor.current_selected_entity_id = 0;
     logging("Deleted entity (%i)", global_workbench->editor.current_selected_entity_id);
 }
+
+void workbench_editor_select_closest_entity(void)
+{
+    if (global_workbench->editor.prev_selected_entity_id != global_workbench->editor.mouse_closest_to_entity_id) {
+        global_workbench->editor.prev_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
+    } else {
+        global_workbench->editor.current_selected_entity_id = global_workbench->editor.mouse_closest_to_entity_id;
+        global_workbench->editor.selected_entity_transform = NULL;
+    }
+}
+
+
 
 #endif
