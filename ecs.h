@@ -191,6 +191,85 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
     file_destroy(&f);
 }
 
+#define ECS_LOAD_MAX_ENTITIES 128
+#define ECS_LOAD_MAX_ASSETS   32
+
+typedef struct {
+    u32    asset_id;
+    asset_type type;
+    str_t  filepath1;
+    str_t  filepath2;
+    gluniform_registry_t uniforms;
+    u32    tile_count_w;
+    u32    tile_count_h;
+} ecs_load__asset_meta_t;
+
+INTERNAL asset_type ecs_load__detect_asset_type_from_path(const char *const path)
+{
+    const u64 len = strlen(path);
+    if (len > 4 && (strcmp(path + len - 4, ".glb") == 0 || strcmp(path + len - 5, ".gltf") == 0))
+        return ASSET_TYPE_MODEL;
+    if (len > 5 && strcmp(path + len - 4, ".png") == 0)
+        return ASSET_TYPE_TEXTURE_SPRITE_ATLAS;
+    return ASSET_TYPE_GLSL_SHADER;
+}
+
+INTERNAL u32 ecs_load__ensure_asset_loaded(assetmanager_t *const assets, const u32 asset_id, ecs_load__asset_meta_t *const parsed_assets, const u32 parsed_asset_count)
+{
+    if (hashtable_has_key(&assets->assetmeta_lookup, (hashtable_key_t){ .u32 = asset_id }))
+        return asset_id;
+
+    for (u32 i = 0; i < parsed_asset_count; i++)
+    {
+        if (parsed_assets[i].asset_id == asset_id)
+        {
+            ecs_load__asset_meta_t *meta = &parsed_assets[i];
+            u32 new_id = 0;
+            switch (meta->type)
+            {
+                case ASSET_TYPE_MODEL:
+                    new_id = assetmanager_load_model_async(assets, meta->filepath1);
+                    break;
+                case ASSET_TYPE_GLSL_SHADER:
+                    new_id = assetmanager_load_glsl_shader(assets, meta->filepath1, meta->filepath2, meta->uniforms);
+                    break;
+                case ASSET_TYPE_TEXTURE_SPRITE_ATLAS:
+                    new_id = assetmanager_load_spriteatlas(assets, meta->filepath1, meta->tile_count_w, meta->tile_count_h);
+                    break;
+                default: break;
+            }
+            return new_id ? new_id : asset_id;
+        }
+    }
+    return asset_id;
+}
+
+INTERNAL void ecs_load__remap_entity_assets(ecs_componentbundle_t *const bundle, assetmanager_t *const assets, ecs_load__asset_meta_t *const parsed_assets, const u32 parsed_asset_count)
+{
+    for (u8 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
+    {
+        const ecs_component_type cmp_type = 1 << cmp_idx;
+        if ((bundle->signature & cmp_type) == 0) continue;
+
+        switch (cmp_type)
+        {
+            case ECS_CMP_MODEL: {
+                ecs_component_model_t *m = &bundle->component[cmp_idx].model;
+                m->asset_id = ecs_load__ensure_asset_loaded(assets, m->asset_id, parsed_assets, parsed_asset_count);
+            } break;
+            case ECS_CMP_MESH: {
+                ecs_component_mesh_t *mesh = &bundle->component[cmp_idx].mesh;
+                mesh->asset_id = ecs_load__ensure_asset_loaded(assets, mesh->asset_id, parsed_assets, parsed_asset_count);
+            } break;
+            case ECS_CMP_MATERIAL: {
+                ecs_component_material_t *mat = &bundle->component[cmp_idx].material;
+                mat->texture_asset_id = ecs_load__ensure_asset_loaded(assets, mat->texture_asset_id, parsed_assets, parsed_asset_count);
+                mat->shader_asset_id  = ecs_load__ensure_asset_loaded(assets, mat->shader_asset_id,  parsed_assets, parsed_asset_count);
+            } break;
+        }
+    }
+}
+
 void ecs_load_savefile(ecs_t *const self, const str_t filepath)
 {
     if (self->internal.entity_generator_counter) eprint("Clear existing ecs before loading a save file");
@@ -209,18 +288,24 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
     buffer(WORD) line = {0};
 
     file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-    if (strncmp((char *)line.raw_data, "ECS v", 5) != 0)
+    if (strncmp((char *)line.raw_data, ECS_SAVE_FILE_HEADER_PREFIX, ECS_SAVE_FILE_HEADER_PREFIX_LEN) != 0)
     {
         eprint("Invalid save file format");
         file_destroy(&f);
         return;
     }
 
-    u32                      max_entity_id      = 0;
-    bool                     has_pending_bundle = false;
-    ecs_componentbundle_t    pending_bundle     = {0};
-    ecs_component_type       current_cmp        = 0;
-    u8                       current_cmp_idx    = 0;
+    u32                      max_entity_id       = 0;
+    bool                     has_pending_bundle  = false;
+    ecs_componentbundle_t    pending_bundle      = {0};
+    ecs_component_type       current_cmp         = 0;
+    u8                       current_cmp_idx     = 0;
+
+    ecs_componentbundle_t    entity_bundles[ECS_LOAD_MAX_ENTITIES] = {0};
+    u32                      entity_count                         = 0;
+
+    ecs_load__asset_meta_t   parsed_assets[ECS_LOAD_MAX_ASSETS] = {0};
+    u32                      parsed_asset_count                 = 0;
 
     while (true)
     {
@@ -231,28 +316,12 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
 
         if (strncmp((char *)line.raw_data, "fin", 3) == 0) break;
 
-        if (strncmp((char *)line.raw_data, "assetid:", 8) == 0)
-        {
-            if (has_pending_bundle)
-            {
-                ecs_entity_add(self, pending_bundle);
-                has_pending_bundle = false;
-            }
-
-            while (strncmp((char *)line.raw_data, "fin", 3) != 0)
-            {
-                memset(line.raw_data, 0, sizeof(line.raw_data));
-                file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-            }
-
-            break;
-        }
-
         if (strncmp((char *)line.raw_data, "entity:", 7) == 0)
         {
             if (has_pending_bundle)
             {
-                ecs_entity_add(self, pending_bundle);
+                if (entity_count < ECS_LOAD_MAX_ENTITIES)
+                    entity_bundles[entity_count++] = pending_bundle;
                 has_pending_bundle = false;
             }
 
@@ -274,9 +343,102 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
             continue;
         }
 
+        if (strncmp((char *)line.raw_data, "assetid:", 8) == 0)
+        {
+            if (has_pending_bundle)
+            {
+                if (entity_count < ECS_LOAD_MAX_ENTITIES)
+                    entity_bundles[entity_count++] = pending_bundle;
+                has_pending_bundle = false;
+            }
+
+            while (strncmp((char *)line.raw_data, "fin", 3) != 0)
+            {
+                if (strncmp((char *)line.raw_data, "assetid:", 8) != 0)
+                {
+                    memset(line.raw_data, 0, sizeof(line.raw_data));
+                    file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
+                    continue;
+                }
+
+                if (parsed_asset_count >= ECS_LOAD_MAX_ASSETS) break;
+
+                ecs_load__asset_meta_t *meta = &parsed_assets[parsed_asset_count];
+                sscanf((char *)line.raw_data, "assetid:%u,", &meta->asset_id);
+
+                const char *path_part = strstr((char *)line.raw_data, "assetpath:");
+                if (!path_part) break;
+                path_part += 10;
+
+                if (path_part[0] == '[')
+                {
+                    char buf1[256] = {0}, buf2[256] = {0};
+                    sscanf(path_part, "[%255[^,],%255[^]]]", buf1, buf2);
+                    meta->filepath1 = str_init(&self->arena, buf1);
+                    meta->filepath2 = str_init(&self->arena, buf2);
+                    meta->type = ASSET_TYPE_GLSL_SHADER;
+
+                    while (true)
+                    {
+                        memset(line.raw_data, 0, sizeof(line.raw_data));
+                        file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
+                        if (strncmp((char *)line.raw_data, "\tuniform:", 9) == 0)
+                        {
+                            memset(line.raw_data, 0, sizeof(line.raw_data));
+                            file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
+                            char name[128] = {0};
+                            u32  utype     = 0;
+                            if (sscanf((char *)line.raw_data, "\t\tname:%127[^,],type:%u", name, &utype) == 2
+                                && meta->uniforms.count < MAX_UNIFORMS_ALLOWED_IN_SHADER)
+                            {
+                                meta->uniforms.data[meta->uniforms.count++] = (gluniform_meta_t){
+                                    .name = str_init(&self->arena, name),
+                                    .type = (gluniform_type)utype,
+                                };
+                            }
+                            continue;
+                        }
+                        break;
+                    }
+                }
+                else
+                {
+                    char buf[256] = {0};
+                    sscanf(path_part, "%255s", buf);
+                    meta->filepath1 = str_init(&self->arena, buf);
+                    meta->type = ecs_load__detect_asset_type_from_path(buf);
+
+                    if (meta->type == ASSET_TYPE_TEXTURE_SPRITE_ATLAS)
+                    {
+                        meta->tile_count_w = 1;
+                        meta->tile_count_h = 1;
+                        while (true)
+                        {
+                            memset(line.raw_data, 0, sizeof(line.raw_data));
+                            file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
+                            if (strncmp((char *)line.raw_data, "\ttilecount:[", 12) == 0)
+                            {
+                                sscanf((char *)line.raw_data, "\ttilecount:[%u,%u]", &meta->tile_count_w, &meta->tile_count_h);
+                                continue;
+                            }
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        memset(line.raw_data, 0, sizeof(line.raw_data));
+                        file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
+                    }
+                }
+                parsed_asset_count++;
+            }
+
+            break;
+        }
+
         for (u8 i = 0; i < ECS_CMP_COUNT; i++)
         {
-            if (strncmp((char *)line.raw_data, ecs_deserializer__internal_cmp_prefix_map[i].prefix, ecs_deserializer__internal_cmp_prefix_map[i].prefix_len) == 0)
+            if (strncmp((char *)line.raw_data, ecs_deserializer__internal_cmp_prefix_map[i].prefix.data, ecs_deserializer__internal_cmp_prefix_map[i].prefix.len) == 0)
             {
                 current_cmp     = ecs_deserializer__internal_cmp_prefix_map[i].type;
                 current_cmp_idx = ecs_deserializer__internal_cmp_prefix_map[i].idx;
@@ -296,11 +458,25 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
     }
 
     if (has_pending_bundle)
-        ecs_entity_add(self, pending_bundle);
+    {
+        if (entity_count < ECS_LOAD_MAX_ENTITIES)
+            entity_bundles[entity_count++] = pending_bundle;
+    }
+
+    assetmanager_t *assets = &global_engine->systems.assets;
+
+    for (u32 i = 0; i < entity_count; i++)
+    {
+        ecs_load__remap_entity_assets(&entity_bundles[i], assets, parsed_assets, parsed_asset_count);
+        ecs_entity_add(self, entity_bundles[i]);
+    }
 
     self->internal.entity_generator_counter = max_entity_id;
 
     file_destroy(&f);
 }
+
+#undef ECS_LOAD_MAX_ENTITIES
+#undef ECS_LOAD_MAX_ASSETS
 
 #endif
