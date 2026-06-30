@@ -3,6 +3,11 @@
 #include "poglib/ecs/component/types.h"
 #include "poglib/util/assetmanager.h"
 
+INTERNAL const str_t ECS_DESERIALIZER_ENTITY_PREFIX        = str_lit("entity:");
+INTERNAL const str_t ECS_DESERIALIZER_SIGNATURE_PREFIX    = str_lit("component_signature:");
+INTERNAL const str_t ECS_DESERIALIZER_ASSETID_PREFIX      = str_lit("assetid:");
+INTERNAL const str_t ECS_DESERIALIZER_FIN                 = str_lit("fin");
+
 INTERNAL const struct {
     ecs_component_type type;
     u8 idx;
@@ -236,11 +241,11 @@ INTERNAL const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS
     [ECS_CMP_TRANSFORM_IDX] = {
         .field_count = 5,
         .fields = {
-            CMP_FLD_DESC("\tposition:",    "\tposition:[%f,%f,%f]",       ecs_component_transform_t, position.x,      ECS_CMP_FLD_FLOAT3),
-            CMP_FLD_DESC("\torientation:", "\torientation:[%f,%f,%f,%f]", ecs_component_transform_t, orientation.x,   ECS_CMP_FLD_FLOAT4),
-            CMP_FLD_DESC("\tscale:",       "\tscale:[%f,%f,%f]",          ecs_component_transform_t, scale.x,         ECS_CMP_FLD_FLOAT3),
-            CMP_FLD_DESC("\tvelocity:",    "\tvelocity:[%f,%f,%f]",       ecs_component_transform_t, velocity.x,      ECS_CMP_FLD_FLOAT3),
-            CMP_FLD_DESC("\tsource:",      "\tsource:%i",                 ecs_component_transform_t, source,          ECS_CMP_FLD_INT1),
+            CMP_FLD_DESC("\tposition:",    "\tposition:[%f,%f,%f]",       ecs_component_transform_t, position,      ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\torientation:", "\torientation:[%f,%f,%f,%f]", ecs_component_transform_t, orientation,   ECS_CMP_FLD_FLOAT4),
+            CMP_FLD_DESC("\tscale:",       "\tscale:[%f,%f,%f]",          ecs_component_transform_t, scale,         ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tvelocity:",    "\tvelocity:[%f,%f,%f]",       ecs_component_transform_t, velocity,      ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tsource:",      "\tsource:%i",                 ecs_component_transform_t, source,        ECS_CMP_FLD_INT1),
         }
     },
     [ECS_CMP_MODEL_IDX] = {
@@ -254,10 +259,10 @@ INTERNAL const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS
         .fields = {
             CMP_FLD_DESC("\tdirection_source:",     "\tdirection_source:%i",            ecs_component_input_t, direction_source,                                         ECS_CMP_FLD_INT1),
             CMP_FLD_DESC("\tinput_behavior:",       "\tinput_behavior:%p",              ecs_component_input_t, input_behavior,                                           ECS_CMP_FLD_SKIP),
-            CMP_FLD_DESC("\tstate.position:",       "\tstate.position:[%f,%f,%f]",     ecs_component_input_t, internal.state.current_position.x,     ECS_CMP_FLD_FLOAT3),
-            CMP_FLD_DESC("\tstate.orientation:",    "\tstate.orientation:[%f,%f,%f,%f]",ecs_component_input_t, internal.state.current_orientation.x, ECS_CMP_FLD_FLOAT4),
-            CMP_FLD_DESC("\tstate.front:",          "\tstate.front:[%f,%f,%f]",        ecs_component_input_t, internal.state.front.x,               ECS_CMP_FLD_FLOAT3),
-            CMP_FLD_DESC("\tstate.right:",          "\tstate.right:[%f,%f,%f]",        ecs_component_input_t, internal.state.right.x,               ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tstate.position:",       "\tstate.position:[%f,%f,%f]",     ecs_component_input_t, internal.state.current_position,     ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tstate.orientation:",    "\tstate.orientation:[%f,%f,%f,%f]",ecs_component_input_t, internal.state.current_orientation, ECS_CMP_FLD_FLOAT4),
+            CMP_FLD_DESC("\tstate.front:",          "\tstate.front:[%f,%f,%f]",        ecs_component_input_t, internal.state.front,               ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tstate.right:",          "\tstate.right:[%f,%f,%f]",        ecs_component_input_t, internal.state.right,               ECS_CMP_FLD_FLOAT3),
         }
     },
     [ECS_CMP_MATERIAL_IDX] = {
@@ -270,14 +275,14 @@ INTERNAL const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS
     [ECS_CMP_CAMERA_IDX] = {
         .field_count = 9,
         .fields = {
-            CMP_FLD_DESC("\tposition:",              "\tposition:[%f,%f,%f]",           ecs_component_camera_t, camera.position.x,        ECS_CMP_FLD_FLOAT3),
-            CMP_FLD_DESC("\teuler_angle:",           "\teuler_angle:[%f,%f]",           ecs_component_camera_t, camera.euler_angle.x,     ECS_CMP_FLD_FLOAT2),
-            CMP_FLD_DESC("\tdirection.front:",       "\tdirection.front:[%f,%f,%f]",    ecs_component_camera_t, camera.direction.front.x, ECS_CMP_FLD_FLOAT3),
-            CMP_FLD_DESC("\tdirection.up:",          "\tdirection.up:[%f,%f,%f]",       ecs_component_camera_t, camera.direction.up.x,    ECS_CMP_FLD_FLOAT3),
-            CMP_FLD_DESC("\tdirection.right:",       "\tdirection.right:[%f,%f,%f]",    ecs_component_camera_t, camera.direction.right.x, ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tposition:",              "\tposition:[%f,%f,%f]",           ecs_component_camera_t, camera.position,          ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\teuler_angle:",           "\teuler_angle:[%f,%f]",           ecs_component_camera_t, camera.euler_angle,       ECS_CMP_FLD_FLOAT2),
+            CMP_FLD_DESC("\tdirection.front:",       "\tdirection.front:[%f,%f,%f]",    ecs_component_camera_t, camera.direction.front,   ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tdirection.up:",          "\tdirection.up:[%f,%f,%f]",       ecs_component_camera_t, camera.direction.up,      ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tdirection.right:",       "\tdirection.right:[%f,%f,%f]",    ecs_component_camera_t, camera.direction.right,   ECS_CMP_FLD_FLOAT3),
             CMP_FLD_DESC("\tmode:",                  "\tmode:%i",                        ecs_component_camera_t, mode,                     ECS_CMP_FLD_INT1),
             CMP_FLD_DESC("\tfollow.orbit_radius:",   "\tfollow.orbit_radius:%f",        ecs_component_camera_t, follow.orbit_radius,      ECS_CMP_FLD_FLOAT1),
-            CMP_FLD_DESC("\tfollow.center_offset:",  "\tfollow.center_offset:[%f,%f,%f]",ecs_component_camera_t, follow.center_offset.x,   ECS_CMP_FLD_FLOAT3),
+            CMP_FLD_DESC("\tfollow.center_offset:",  "\tfollow.center_offset:[%f,%f,%f]",ecs_component_camera_t, follow.center_offset,      ECS_CMP_FLD_FLOAT3),
             CMP_FLD_DESC("\tfollow.track_entity_id:","\tfollow.track_entity_id:%u",     ecs_component_camera_t, follow.track_entity_id,   ECS_CMP_FLD_UINT1),
         }
     },
@@ -321,10 +326,19 @@ INTERNAL void ecs_deserializer__internal_parse_cmp_data_line(
             u8 *dest = (u8 *)cmp_data + f->offset;
             switch (f->fmt)
             {
-                case ECS_CMP_FLD_FLOAT3:  sscanf(line, f->scanf_fmt, (f32 *)dest, (f32 *)dest + 1, (f32 *)dest + 2);          break;
-                case ECS_CMP_FLD_FLOAT4:  sscanf(line, f->scanf_fmt, (f32 *)dest, (f32 *)dest + 1, (f32 *)dest + 2, (f32 *)dest + 3); break;
+                case ECS_CMP_FLD_FLOAT3: {
+                    vec3f_t *v = (vec3f_t *)dest;
+                    sscanf(line, f->scanf_fmt, &v->x, &v->y, &v->z);
+                } break;
+                case ECS_CMP_FLD_FLOAT4: {
+                    versors *q = (versors *)dest;
+                    sscanf(line, f->scanf_fmt, &q->x, &q->y, &q->z, &q->w);
+                } break;
                 case ECS_CMP_FLD_FLOAT1:  sscanf(line, f->scanf_fmt, (f32 *)dest);                          break;
-                case ECS_CMP_FLD_FLOAT2:  sscanf(line, f->scanf_fmt, (f32 *)dest, (f32 *)dest + 1);           break;
+                case ECS_CMP_FLD_FLOAT2: {
+                    vec2f_t *v = (vec2f_t *)dest;
+                    sscanf(line, f->scanf_fmt, &v->x, &v->y);
+                } break;
                 case ECS_CMP_FLD_INT1:    sscanf(line, f->scanf_fmt, (i32 *)dest);                           break;
                 case ECS_CMP_FLD_UINT1:   sscanf(line, f->scanf_fmt, (u32 *)dest);                           break;
                 case ECS_CMP_FLD_ULONG1:  sscanf(line, f->scanf_fmt, (u64 *)dest);                           break;
@@ -345,7 +359,18 @@ typedef struct {
 INTERNAL u32 ecs_deserializer__internal_ensure_asset_loaded(assetmanager_t *const assets, const u32 asset_id, ecs_load__asset_entry_t *const parsed_assets, const u32 parsed_asset_count)
 {
     if (hashtable_has_key(&assets->assetmeta_lookup, (hashtable_key_t){ .u32 = asset_id }))
+    {
+        const asset_meta_t *existing = hashtable_get_value(&assets->assetmeta_lookup, (hashtable_key_t){ .u32 = asset_id });
+        for (u32 i = 0; i < parsed_asset_count; i++)
+        {
+            if (parsed_assets[i].asset_id == asset_id)
+            {
+                if (existing->filepath1.len && !str_cmp(existing->filepath1, parsed_assets[i].meta.filepath1)) return asset_id;
+                if (existing->filepath2.len && !str_cmp(existing->filepath2, parsed_assets[i].meta.filepath2)) return asset_id;
+            }
+        }
         return asset_id;
+    }
 
     for (u32 i = 0; i < parsed_asset_count; i++)
     {
@@ -406,9 +431,9 @@ INTERNAL void ecs_deserializer__internal_read_assetmeta_section(file_t *const f,
 {
     (void)buf_size;
 
-    while (strncmp(line_buf, "fin", 3) != 0)
+    while (strncmp(line_buf, ECS_DESERIALIZER_FIN.data, ECS_DESERIALIZER_FIN.len) != 0)
     {
-        if (strncmp(line_buf, "assetid:", 8) != 0)
+        if (strncmp(line_buf, ECS_DESERIALIZER_ASSETID_PREFIX.data, ECS_DESERIALIZER_ASSETID_PREFIX.len) != 0)
         {
             memset(line_buf, 0, buf_size);
             file_readline(f, line_buf, buf_size);

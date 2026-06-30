@@ -235,9 +235,9 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
 
         if (line.raw_data[0] == '\0') continue;
 
-        if (strncmp((char *)line.raw_data, "fin", 3) == 0) break;
+        if (strncmp((char *)line.raw_data, ECS_DESERIALIZER_FIN.data, ECS_DESERIALIZER_FIN.len) == 0) break;
 
-        if (strncmp((char *)line.raw_data, "entity:", 7) == 0)
+        if (strncmp((char *)line.raw_data, ECS_DESERIALIZER_ENTITY_PREFIX.data, ECS_DESERIALIZER_ENTITY_PREFIX.len) == 0)
         {
             if (has_pending_bundle)
             {
@@ -264,7 +264,7 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
             continue;
         }
 
-        if (strncmp((char *)line.raw_data, "assetid:", 8) == 0)
+        if (strncmp((char *)line.raw_data, ECS_DESERIALIZER_ASSETID_PREFIX.data, ECS_DESERIALIZER_ASSETID_PREFIX.len) == 0)
         {
             if (has_pending_bundle)
             {
