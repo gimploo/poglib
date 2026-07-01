@@ -5,6 +5,7 @@
 #include "./workbench/common.h"
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
+#include "SDL_scancode.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/gui.h"
 #include "poglib/util/workbench/workbench-editor.h"
@@ -31,9 +32,10 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
     const bool panning      = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_MIDDLE_CLICK_DRAG);
     const bool zoom_in      = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN);
     const bool zoom_out     = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT);
+    const bool zoom_fast    = bitmask & ((1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN_FAST) | (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT_FAST));
 
     const f32 drag_sensitivity      = 0.3f;
-    const f32 zoom_sensitivity      = 50.0f;
+    const f32 zoom_sensitivity      = !zoom_fast ? 50.0f : 200.f;
     f32 z_offset                    = 0.f;
     const vec2i_t mouse_rel         = window_mouse_get_relative_position(global_window);
 
@@ -64,43 +66,26 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
     if (zoom_in || zoom_out)    state->current_position = glms_vec3_add(state->current_position, glms_vec3_scale(state->front, z_offset));
 
     if (drag_look) {
-        state->current_orientation = glms_quat_mul(
-            glms_quatv(mouse_delta.y, (vec3f_t){0, 1, 0}),
-            state->current_orientation
-        );
 
-        state->current_orientation = glms_quat_mul(
-            state->current_orientation,
-            glms_quatv(mouse_delta.x, (vec3f_t){1, 0, 0})
-        );
+        const vec3f_t front     = glms_quat_rotatev(state->current_orientation, (vec3f_t){0, 0, -1});
+        f32 pitch               = asinf(front.y);
+        f32 yaw                 = atan2f(front.z, front.x);
+
+        pitch   -= radians((f32)mouse_rel.y * drag_sensitivity);
+        yaw     += radians((f32)mouse_rel.x * drag_sensitivity);
+        pitch   = fmaxf(-radians(89.f), fminf(radians(89.f), pitch));
+
+        const vec3f_t axis    = { sinf(pitch), -cosf(yaw) * cosf(pitch), 0.f };
+        const f32 angle       = acosf(-sinf(yaw) * cosf(pitch));
+        state->current_orientation = glms_quatv(angle, glms_vec3_normalize(axis));
     }
 
-    // -- Clamp pitch to [-89, 89] degrees to prevent gimbal lock --
-    vec3f_t front   = glms_quat_rotatev(state->current_orientation, (vec3f_t){0, 0, -1});
-    f32 pitch       = asinf(glms_vec3_norm(front) > 0.f ? front.y / glms_vec3_norm(front) : front.y);
-
-    if (pitch > GLM_PI_2f - radians(1.f)) {
-
-        const vec3f_t flat_front    = glms_vec3_normalize((vec3f_t){front.x, 0, front.z});
-        const f32 yaw               = atan2f(flat_front.z, flat_front.x);
-        pitch                       = GLM_PI_2f - radians(1.f);
-
-        state->current_orientation = glms_quat_mul(
-            glms_quatv(yaw,     (vec3f_t){0, 1, 0}),
-            glms_quatv(pitch,   (vec3f_t){1, 0, 0})
-        );
-
-    } else if (pitch < -GLM_PI_2f + radians(1.f)) {
-
-        const vec3f_t flat_front    = glms_vec3_normalize((vec3f_t){front.x, 0, front.z});
-        const f32 yaw               = atan2f(flat_front.z, flat_front.x);
-        pitch                       = -GLM_PI_2f + radians(1.f);
-
-        state->current_orientation = glms_quat_mul(
-            glms_quatv(yaw,     (vec3f_t){0, 1, 0}),
-            glms_quatv(pitch,   (vec3f_t){1, 0, 0})
-        );
-    }
+#if 0
+    printf("front ");glms_vec3_print(state->front, stdout);
+    printf("right ");glms_vec3_print(state->right, stdout);
+    printf("up ");glms_vec3_print(state->up, stdout);
+    //glms_versor_print(state->current_orientation, stdout);
+#endif
 
 }
 
@@ -281,6 +266,20 @@ workbench_t * workbench_init(arena_t *const arena)
                 [WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT] = {
                     .type = COMMANDINPUTKEY_TYPE_MOUSE,
                     .sdl_mouse.wheel = SDL_MOUSEWHEEL_DOWN,
+                },
+                [WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN_FAST] = {
+                    .type = COMMANDINPUTKEY_TYPE_MOUSE,
+                    .sdl_mouse = {
+                        .wheel = SDL_MOUSEWHEEL_UP,
+                        .modifier = SDL_SCANCODE_LSHIFT,
+                    }
+                },
+                [WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT_FAST] = {
+                    .type = COMMANDINPUTKEY_TYPE_MOUSE,
+                    .sdl_mouse = {
+                        .wheel = SDL_MOUSEWHEEL_DOWN,
+                        .modifier = SDL_SCANCODE_LSHIFT,
+                    }
                 },
                 [WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME] = {
                     .type = COMMANDINPUTKEY_TYPE_KEYBOARD,

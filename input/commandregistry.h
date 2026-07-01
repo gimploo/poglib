@@ -9,8 +9,8 @@
 //
 //
 typedef enum {
-  COMMANDINPUTKEY_TYPE_KEYBOARD = 0,
-  COMMANDINPUTKEY_TYPE_MOUSE = 1,
+  COMMANDINPUTKEY_TYPE_KEYBOARD             = 0,
+  COMMANDINPUTKEY_TYPE_MOUSE                = 1,
   COMMANDINPUTKEY_TYPE_COUNT
 } commandinputkey_type;
 
@@ -29,6 +29,7 @@ typedef struct {
             commandinput_trigger_type   trigger;
         } sdl_keyboard_key;
         struct {
+            SDL_Scancode        modifier;
             sdl_mousebuttontype key;
             sdl_mousewheelstate wheel;
             sdl_mousestate      trigger;

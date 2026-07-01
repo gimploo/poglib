@@ -95,6 +95,13 @@ void commandqueue_sync(commandqueue_t * const self)
 
         } else if (self->registry.registry[command_type].type == COMMANDINPUTKEY_TYPE_MOUSE) {
 
+            const bool modifier_not_configured_or_configured_and_pressed  = 
+                self->registry.registry[command_type].sdl_mouse.modifier == SDL_SCANCODE_UNKNOWN || 
+                global_window->keyboard.keystate[self->registry.registry[command_type].sdl_mouse.modifier];
+
+            if (!modifier_not_configured_or_configured_and_pressed)
+                continue;
+
             const sdl_mousebuttontype key   = self->registry.registry[command_type].sdl_mouse.key;
             const sdl_mousewheelstate wheel = self->registry.registry[command_type].sdl_mouse.wheel;
 
