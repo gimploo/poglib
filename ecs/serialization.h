@@ -15,8 +15,9 @@ const str_t ECS_DESERIALIZER_FIN                        = str_lit("fin");
 enum { ECS_LOAD_MAX_ENTITIES = 128, ECS_LOAD_MAX_ASSETS = 32 };
 
 typedef struct {
-    u32          asset_id;
-    asset_meta_t meta;
+    u32                   asset_id;
+    asset_meta_t          meta;
+    gluniform_registry_t  uniforms;
 } ecs_load__asset_entry_t;
 
 typedef struct {
@@ -312,8 +313,8 @@ INTERNAL u32 ecs_deserializer__internal_ensure_asset_loaded(assetmanager_t *cons
         const hashtable_entry_t *entry     = iter;
         const asset_meta_t      *existing  = entry->value;
         if (existing->type != parsed->meta.type) continue;
-        if (existing->filepath1.len && str_cmp(existing->filepath1, parsed->meta.filepath1)) continue;
-        if (existing->filepath2.len && str_cmp(existing->filepath2, parsed->meta.filepath2)) continue;
+        if (existing->filepath1.len && !str_cmp(existing->filepath1, parsed->meta.filepath1)) continue;
+        if (existing->filepath2.len && !str_cmp(existing->filepath2, parsed->meta.filepath2)) continue;
         return entry->key.u32;
     }
 
@@ -324,8 +325,8 @@ INTERNAL u32 ecs_deserializer__internal_ensure_asset_loaded(assetmanager_t *cons
             new_id = assetmanager_load_model_async(assets, parsed->meta.filepath1);
             break;
         case ASSET_TYPE_GLSL_SHADER:
-            eprint("cannot load shader %u without uniform data - load assets before calling ecs_load_savefile", asset_id);
-            return asset_id;
+            new_id = assetmanager_load_glsl_shader(assets, parsed->meta.filepath1, parsed->meta.filepath2, parsed->uniforms);
+            break;
         case ASSET_TYPE_TEXTURE_SPRITE_ATLAS:
             new_id = assetmanager_load_spriteatlas(assets, parsed->meta.filepath1, parsed->meta.meta.tile_counts.x, parsed->meta.meta.tile_counts.y);
             break;
@@ -397,6 +398,16 @@ INTERNAL void ecs_deserializer__internal_read_assetmeta_section(file_t *const f,
                 if (strncmp(line_buf, "\tuniform:", 9) != 0) break;
                 memset(line_buf, 0, buf_size);
                 file_readline(f, line_buf, buf_size);
+                char name[128] = {0};
+                u32  utype     = 0;
+                if (sscanf(line_buf, "\t\tname:%127[^,],type:%u", name, &utype) == 2
+                    && entry->uniforms.count < MAX_UNIFORMS_ALLOWED_IN_SHADER)
+                {
+                    entry->uniforms.data[entry->uniforms.count++] = (gluniform_meta_t){
+                        .name = str_init(arena, name),
+                        .type = (gluniform_type)utype,
+                    };
+                }
             }
         }
         else if (meta->type == ASSET_TYPE_TEXTURE_SPRITE_ATLAS)

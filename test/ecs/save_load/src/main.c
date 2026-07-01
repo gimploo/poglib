@@ -26,6 +26,9 @@ static arena_t           g_eng_arena;
 
 static void engine_setup(void)
 {
+    g_bgtask_mgr = (bgtask_manager_t){
+        .tasks = queue_init(4,	bgtask__internal_t, NULL),
+    };
     global_bgtask_manager = &g_bgtask_mgr;
     g_eng_arena = arena_init(NULL, 1 * MB);
     global_engine = arena_store(&g_eng_arena,
@@ -206,8 +209,42 @@ static void test_all_component_types(void)
     { u32 new_id = ecs_entity_add(ecs2, (ecs_componentbundle_t){
         .signature = ECS_CMP_TRANSFORM,
         .component = { [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .scale={1,1,1} }}
-      });
+             });
       TEST_ASSERT(new_id == 10, "counter: new entity gets id 10"); }
+
+    ecs_teardown(ecs2);
+}
+
+static void test_asset_loading_from_save(void)
+{
+    printf("\n--- test_asset_loading_from_save ---\n");
+    ecs_setup();
+
+    /* step 1: load a model asset */
+    u32 model_id = assetmanager_load_model_async(&global_engine->systems.assets,
+        str("../../../res/models/scorpi.gltf"));
+    TEST_ASSERT(model_id > 0, "asset_load: model loaded, got id");
+
+    /* step 2: create entity referencing the model */
+    ecs_t *ecs = ecs_init();
+    ecs_entity_add(ecs, (ecs_componentbundle_t){
+        .signature = ECS_CMP_TRANSFORM | ECS_CMP_MODEL | ECS_CMP_MATERIAL,
+        .component = {
+            [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .scale={1,1,1}, .source=ECS_CMP_TRANSFORM_SOURCE_NONE },
+            [ECS_CMP_MODEL_IDX].model = (ecs_component_model_t){ .asset_id = model_id },
+            [ECS_CMP_MATERIAL_IDX].material = (ecs_component_material_t){ .texture_asset_id=0, .shader_asset_id=0 },
+        }
+    });
+    SAVE_AND_DESTROY(ecs);
+
+    /* step 3: load from save — ensure_asset_loaded iterates assetmeta_lookup, finds match by filepath */
+    ecs_t *ecs2 = ecs_init();
+    ecs_load_savefile(ecs2, str(TEST_FILE));
+
+    const ecs_entity_query_t q = ecs_entity_query_components(ecs2, 1, ECS_CMP_MODEL);
+    ecs_component_model_t *model = q.entity_cmp_data[ECS_CMP_MODEL_IDX];
+    TEST_ASSERT(model, "asset_load: model component present after load");
+    TEST_ASSERT(model->asset_id == model_id, "asset_load: model asset_id preserved via filepath match");
 
     ecs_teardown(ecs2);
 }
@@ -223,6 +260,7 @@ int main(void)
     printf("ecs save/load tests\n===================\n");
 
     test_all_component_types();
+    test_asset_loading_from_save();
 
     printf("\nResults: %d passed, %d failed\n", tests_passed, tests_failed);
     engine_teardown();
