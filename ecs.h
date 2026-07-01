@@ -225,7 +225,6 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
     file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
     if (strncmp((char *)line.raw_data, ECS_SAVE_FILE_HEADER_PREFIX.data, ECS_SAVE_FILE_HEADER_PREFIX.len) != 0)
     {
-        eprint("Invalid save file format");
         file_destroy(&f);
         return false;
     }
