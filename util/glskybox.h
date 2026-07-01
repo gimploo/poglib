@@ -7,7 +7,8 @@
 #include <poglib/gfx/glrenderer3d.h>
 
 typedef enum SKYBOX_TYPE {
-    SKYBOX_TYPE_BLOOD = 0,
+    SKYBOX_TYPE_BLOOD   = 0,
+    SKYBOX_TYPE_ABLAZE  = 1,
     SKYBOX_TYPE_COUNT
 } SKYBOX_TYPE;
 
@@ -19,6 +20,14 @@ const str_t AVAILABLE_SKYBOXES[SKYBOX_TYPE_COUNT][TOTAL_CUBE_FACES] = {
         [BOTTOM]    = str_lit(POGLIB_ROOT_DIR "/res/skybox/blood/bottom.png"),
         [LEFT]      = str_lit(POGLIB_ROOT_DIR "/res/skybox/blood/left.png"),
         [RIGHT]     = str_lit(POGLIB_ROOT_DIR "/res/skybox/blood/right.png")
+    },
+    [SKYBOX_TYPE_ABLAZE] = {
+        [FRONT]     = str_lit(POGLIB_ROOT_DIR "/res/skybox/ablaze/front.png"),
+        [BACK]      = str_lit(POGLIB_ROOT_DIR "/res/skybox/ablaze/back.png"),
+        [TOP]       = str_lit(POGLIB_ROOT_DIR "/res/skybox/ablaze/top.png"),
+        [BOTTOM]    = str_lit(POGLIB_ROOT_DIR "/res/skybox/ablaze/bottom.png"),
+        [LEFT]      = str_lit(POGLIB_ROOT_DIR "/res/skybox/ablaze/left.png"),
+        [RIGHT]     = str_lit(POGLIB_ROOT_DIR "/res/skybox/ablaze/right.png")
     }
 };
 
