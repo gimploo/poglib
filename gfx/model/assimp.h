@@ -59,7 +59,7 @@ boneinfo_t boneinfo(matrix4f_t offset) {
 typedef struct glmodel_t {
 
     str_t directory_path;
-    char *filepath[1024];
+    char *filepath[KB];
     list_t meshes;
     list_t textures;
     list_t colors;
@@ -453,25 +453,12 @@ glmodel_t glmodel_init(const char *filepath)
 
 void glmodel_destroy(glmodel_t *const self) 
 {
-    for (u32 i = 0; i < self->meshes.len; i++) 
-        list_destroy(&self->transforms[i]);
-
-    list_iterator(&self->meshes, iter) { 
-        glmesh_destroy((glmesh_t *)iter); 
-    }
-    list_destroy(&self->meshes);
-
-    list_iterator(&self->textures, iter) { gltexture2d_destroy(iter); }
-    list_destroy(&self->textures);
-
-    list_destroy(&self->colors);
-
-    list_destroy(&self->bone_infos);
-
-    animator_destroy(&self->animator);
+    list_iterator(&self->meshes, iter)          glmesh_destroy((glmesh_t *)iter); 
+    list_iterator(&self->textures, iter)        gltexture2d_destroy(iter); 
 
     aiReleaseImport(self->scene);
     arena_destroy(self->arena);
+    //TODO: change arena from ptr to non ptr type
     free(self->arena);
 
     memset(self->filepath, 0, sizeof(self->filepath));

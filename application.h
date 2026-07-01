@@ -60,7 +60,7 @@ typedef struct application_t {
 void            application_run(application_t * const app);
 
 #define         application_alloc_content(PAPP, TYPE)\
-                    (TYPE *)application__internal_alloc_content((PAPP), sizeof(TYPE))
+                    (TYPE *)application__internal__alloc_content((PAPP), sizeof(TYPE))
 
 #define         application_get_content(PAPP)               (void *)(PAPP)->content.raw_data
 #define         application_get_window(PAPP)                (PAPP)->handle.window
@@ -198,6 +198,7 @@ void application_run(application_t *const app)
     arena_destroy(&app->handle.arena);
     runtimectx_destroy();
 
+
 #ifdef DEBUG
     dbg_destroy();
 #endif
@@ -215,7 +216,7 @@ str_t application_get_absolute_filepath(application_t *app, const char *filepath
 }
 
 
-void * application__internal_alloc_content(application_t *const app, const u64 content_size)
+INTERNAL void * application__internal__alloc_content(application_t *const app, const u64 content_size)
 {
     void *const content = arena_reserve(
         &app->handle.arena,
