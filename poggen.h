@@ -205,7 +205,6 @@ void poggen_destroy(poggen_t *const self)
     renderqueue_destroy(&self->systems.renderqueue);
     arena_destroy(&self->arena);
 
-    self->current_scene = NULL;
     global_engine = NULL;
 }
 

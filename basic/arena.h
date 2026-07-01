@@ -195,17 +195,15 @@ void arena_destroy(arena_t *const self)
 
     while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
     {
-        if (self->freelist.count) {
-            free_chunks_t *cur = self->freelist.head;
-            while(cur != NULL) {
-                free_chunks_t *chunk = cur;
-                cur = cur->next;
-                free(chunk);
-            }
-            free(self->memory);
+        free_chunks_t *cur = self->freelist.head;
+        while(cur != NULL) {
+            free_chunks_t *chunk = cur;
+            cur = cur->next;
+            free(chunk);
         }
     }
     atomic_flag_clear(&self->meta.lock);
+    free(self->memory);
 }
 
 void * arena_reserve(arena_t *self, u64 memory_size)
