@@ -167,17 +167,17 @@ INTERNAL void ecs_serializer__internal_write_cmp_field(const ecs_cmp_field_descr
     switch (f->vtype)
     {
         case ECS_CMP_FLD_VEC3F: {
-            const vec3f_t *v = (const vec3f_t *)src;
-            len = snprintf((char *)buf.raw_data, sizeof(buf.raw_data), f->scanf_fmt, v->x, v->y, v->z);
+            const vec3f_t *v    = (const vec3f_t *)src;
+            len                 = snprintf((char *)buf.raw_data, sizeof(buf.raw_data), f->scanf_fmt, v->x, v->y, v->z);
         } break;
         case ECS_CMP_FLD_VERSORS: {
-            const versors *q = (const versors *)src;
-            len = snprintf((char *)buf.raw_data, sizeof(buf.raw_data), f->scanf_fmt, q->x, q->y, q->z, q->w);
+            const versors *q    = (const versors *)src;
+            len                 = snprintf((char *)buf.raw_data, sizeof(buf.raw_data), f->scanf_fmt, q->x, q->y, q->z, q->w);
         } break;
         case ECS_CMP_FLD_F32:   len = snprintf((char *)buf.raw_data, sizeof(buf.raw_data), f->scanf_fmt, *(const f32 *)src);  break;
         case ECS_CMP_FLD_VEC2F: {
-            const vec2f_t *v = (const vec2f_t *)src;
-            len = snprintf((char *)buf.raw_data, sizeof(buf.raw_data), f->scanf_fmt, v->x, v->y);
+            const vec2f_t *v    = (const vec2f_t *)src;
+            len                 = snprintf((char *)buf.raw_data, sizeof(buf.raw_data), f->scanf_fmt, v->x, v->y);
         } break;
         case ECS_CMP_FLD_I32:   len = snprintf((char *)buf.raw_data, sizeof(buf.raw_data), f->scanf_fmt, *(const i32 *)src);  break;
         case ECS_CMP_FLD_U32:   len = snprintf((char *)buf.raw_data, sizeof(buf.raw_data), f->scanf_fmt, *(const u32 *)src);  break;
@@ -191,28 +191,37 @@ INTERNAL void ecs_serializer__internal_write_cmp_field(const ecs_cmp_field_descr
     }
 }
 
-INTERNAL void ecs_serializer__internal_entity_cmp_data(file_t *const file, ecs_component_type type, void *cmp_data)
+INTERNAL void ecs_serializer__internal_entity_cmp_data(file_t *const file, const ecs_component_type type, const void *const cmp_data)
 {
     for (u8 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
     {
         if (type != (1 << cmp_idx)) continue;
 
-        u16 total_members = 0;
-        u16 bytesize = 0;
+        u16 total_members   = 0;
+        u16 bytesize        = 0;
+
         switch (type)
         {
-            case ECS_CMP_TRANSFORM: total_members = 5; bytesize = sizeof(ecs_component_transform_t); break;
-            case ECS_CMP_MODEL:     total_members = 2; bytesize = sizeof(ecs_component_model_t);     break;
-            case ECS_CMP_INPUT:     total_members = 3; bytesize = sizeof(ecs_component_input_t);     break;
-            case ECS_CMP_MATERIAL:  total_members = 2; bytesize = sizeof(ecs_component_material_t);  break;
-            case ECS_CMP_CAMERA:    total_members = 3; bytesize = sizeof(ecs_component_camera_t);    break;
-            case ECS_CMP_COLLIDER:  total_members = 5; bytesize = sizeof(ecs_component_collider_t);  break;
-            case ECS_CMP_MESH:      total_members = 2; bytesize = sizeof(ecs_component_mesh_t);      break;
+            case ECS_CMP_TRANSFORM:     total_members = 5;   bytesize = sizeof(ecs_component_transform_t);   break;
+            case ECS_CMP_MODEL:         total_members = 2;   bytesize = sizeof(ecs_component_model_t);       break;
+            case ECS_CMP_INPUT:         total_members = 3;   bytesize = sizeof(ecs_component_input_t);       break;
+            case ECS_CMP_MATERIAL:      total_members = 2;   bytesize = sizeof(ecs_component_material_t);    break;
+            case ECS_CMP_CAMERA:        total_members = 3;   bytesize = sizeof(ecs_component_camera_t);      break;
+            case ECS_CMP_COLLIDER:      total_members = 5;   bytesize = sizeof(ecs_component_collider_t);    break;
+            case ECS_CMP_MESH:          total_members = 2;   bytesize = sizeof(ecs_component_mesh_t);        break;
+            default: eprint("implementation missing");
         }
 
         buffer(WORD) header = {0};
-        snprintf((char *)header.raw_data, sizeof(header.raw_data), "%s{totalmembers:%u,bytesize:%u}\n",
-            ECS_DESERIALIZER__INTERNAL_CMP_PREFIX_MAP[cmp_idx].prefix.data, total_members, bytesize);
+        snprintf(
+            (char *)header.raw_data, 
+            sizeof(header.raw_data), 
+            "%s{totalmembers:%u,bytesize:%u}\n",
+            ECS_DESERIALIZER__INTERNAL_CMP_PREFIX_MAP[cmp_idx].prefix.data, 
+            total_members, 
+            bytesize
+        );
+
         file_writebytes(file, header.raw_data, strlen((char *)header.raw_data));
 
         const ecs_cmp_field_map_t *map = &ecs_deserializer__internal_cmp_field_maps[cmp_idx];
@@ -220,8 +229,7 @@ INTERNAL void ecs_serializer__internal_entity_cmp_data(file_t *const file, ecs_c
         {
             const ecs_cmp_field_descriptor_t *f = &map->fields[i];
             if (f->vtype == ECS_CMP_FLD_SKIP) continue;
-            const u8 *src = (const u8 *)cmp_data + f->offset;
-            ecs_serializer__internal_write_cmp_field(f, src, file);
+            ecs_serializer__internal_write_cmp_field(f, (u8 *)cmp_data + f->offset, file);
         }
         return;
     }
@@ -350,18 +358,26 @@ INTERNAL void ecs_deserializer__internal_remap_entity_assets(ecs_componentbundle
             } break;
             case ECS_CMP_MESH: {
                 ecs_component_mesh_t *mesh = &bundle->component[cmp_idx].mesh;
+                //NOTE: assets with such ids are coming from the workbench's primitve types that already loaded by the workbench, although
+                //when shipping the game workbench needs to be disabled along with this primitves replaced with proper optimized meshes
+                if (mesh->asset_id < GL_MESH_PRIMITIVE_TYPE_COUNT) {
+#ifndef DEBUG
+                    eprint("workbench meshes are not to be used in the release build of the game - replace those meshes with proper optimized ones");
+#endif
+                    continue;
+                }
                 mesh->asset_id = ecs_deserializer__internal_ensure_asset_loaded(assets, mesh->asset_id, assets_parsed);
             } break;
             case ECS_CMP_MATERIAL: {
                 ecs_component_material_t *mat = &bundle->component[cmp_idx].material;
-                mat->texture_asset_id = ecs_deserializer__internal_ensure_asset_loaded(assets, mat->texture_asset_id, assets_parsed);
-                mat->shader_asset_id  = ecs_deserializer__internal_ensure_asset_loaded(assets, mat->shader_asset_id,  assets_parsed);
+                if (mat->texture_asset_id)  mat->texture_asset_id = ecs_deserializer__internal_ensure_asset_loaded(assets, mat->texture_asset_id, assets_parsed);
+                if (mat->shader_asset_id)   mat->shader_asset_id  = ecs_deserializer__internal_ensure_asset_loaded(assets, mat->shader_asset_id,  assets_parsed);
             } break;
         }
     }
 }
 
-INTERNAL void ecs_deserializer__internal_read_assetmeta_section(file_t *const f, ecs_load__asset_list_t *const assets_parsed, arena_t *arena, char *line_buf, u32 buf_size)
+INTERNAL void ecs_deserializer__internal__read_assetmeta_section(file_t *const f, ecs_load__asset_list_t *const assets_parsed, arena_t *arena, char *line_buf, u32 buf_size)
 {
     while (strncmp(line_buf, ECS_DESERIALIZER_FIN.data, ECS_DESERIALIZER_FIN.len) != 0)
     {
@@ -429,7 +445,7 @@ INTERNAL void ecs_deserializer__internal_read_assetmeta_section(file_t *const f,
                 break;
             }
         }
-        else
+        else if (meta->type == ASSET_TYPE_MODEL)
         {
             char buf[256] = {0};
             sscanf(path_part, "%255s", buf);
@@ -437,6 +453,10 @@ INTERNAL void ecs_deserializer__internal_read_assetmeta_section(file_t *const f,
 
             memset(line_buf, 0, buf_size);
             file_readline(f, line_buf, buf_size);
+
+        } else {
+
+            eprint("implementation missing");
         }
         assets_parsed->count++;
     }

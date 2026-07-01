@@ -161,6 +161,7 @@ void ecs_destroy(ecs_t * const self)
 void ecs_save_to_file(ecs_t *const self, const str_t filepath)
 {
     ASSERT(self);
+    ASSERT(global_engine);
 
     file_t f = file_init(filepath.data, "w");
 
@@ -184,15 +185,15 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
             ecs_serializer__internal_entity_cmp_data(&f, cmp_type, query.entity_cmp_data[cmp_idx]);
         }
     }
-    if (global_engine)
-        assetmanager_write_assetmeta_data_to_file(&global_engine->systems.assets, &f);
+
+    assetmanager_write_assetmeta_data_to_file(&global_engine->systems.assets, &f);
 
     ecs_serializer__internal_write_footer(&f);
 
     file_destroy(&f);
 }
 
-void ecs_load_savefile(ecs_t *const self, const str_t filepath)
+bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
 {
     if (self->internal.entity_generator_counter) eprint("Clear existing ecs before loading a save file");
     ASSERT(self);
@@ -202,8 +203,8 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
 
     if (!file_check_exist(filepath.data))
     {
-        eprint("save file not found: `%s`", filepath.data);
-        return;
+        //eprint("save file not found: `%s`", filepath.data);
+        return false;
     }
 
     file_t f = file_init(filepath.data, "r");
@@ -215,7 +216,7 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
     {
         eprint("Invalid save file format");
         file_destroy(&f);
-        return;
+        return false;
     }
 
     u32                      max_entity_id       = 0;
@@ -242,14 +243,17 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
         {
             if (has_pending_bundle)
             {
-                if (entities.count < ECS_LOAD_MAX_ENTITIES)
+                if (entities.count < ECS_LOAD_MAX_ENTITIES) {
                     entities.data[entities.count++] = pending_bundle;
+                }
                 has_pending_bundle = false;
             }
 
             u32 entity_id;
             sscanf((char *)line.raw_data, "entity:%u", &entity_id);
-            if (entity_id > max_entity_id) max_entity_id = entity_id;
+            if (entity_id > max_entity_id) {
+                max_entity_id = entity_id;
+            }
 
             memset(line.raw_data, 0, sizeof(line.raw_data));
             file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
@@ -259,9 +263,10 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
 
             pending_bundle.signature = signature;
             memset(pending_bundle.component, 0, sizeof(pending_bundle.component));
-            has_pending_bundle = true;
-            current_cmp = 0;
-            current_cmp_idx = 0;
+
+            has_pending_bundle  = true;
+            current_cmp         = 0;
+            current_cmp_idx     = 0;
             continue;
         }
 
@@ -274,7 +279,7 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
                 has_pending_bundle = false;
             }
 
-            ecs_deserializer__internal_read_assetmeta_section(&f, &assets_parsed, &self->arena, (char *)line.raw_data, sizeof(line.raw_data));
+            ecs_deserializer__internal__read_assetmeta_section(&f, &assets_parsed, &self->arena, (char *)line.raw_data, sizeof(line.raw_data));
 
             break;
         }
@@ -317,6 +322,7 @@ void ecs_load_savefile(ecs_t *const self, const str_t filepath)
     self->internal.entity_generator_counter = max_entity_id;
 
     file_destroy(&f);
+    return true;
 }
 
 #endif
