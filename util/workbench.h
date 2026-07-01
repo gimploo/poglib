@@ -315,6 +315,8 @@ workbench_t * workbench_init(arena_t *const arena)
         }
     };
 
+    workbench_ecs_populate_entities();
+
     assetmanager_load_all_primitives(&global_engine->systems.assets);
 
     gui_set_composition(&workbench.gui.handle, (ui_composition)workbench_compose_ui);
