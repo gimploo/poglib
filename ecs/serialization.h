@@ -12,7 +12,7 @@ const str_t ECS_DESERIALIZER_SIGNATURE_PREFIX           = str_lit("component_sig
 const str_t ECS_DESERIALIZER_ASSETID_PREFIX             = str_lit("assetid:");
 const str_t ECS_DESERIALIZER_FIN                        = str_lit("fin");
 
-enum { ECS_LOAD_MAX_ENTITIES = ECS_ENTITY_MAX_COUNT, ECS_LOAD_MAX_ASSETS = 32 };
+enum { ECS_LOAD_MAX_ENTITIES = 128, ECS_LOAD_MAX_ASSETS = 32 };
 
 typedef struct {
     u32          asset_id;

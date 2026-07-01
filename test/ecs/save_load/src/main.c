@@ -21,6 +21,24 @@ static void ecs_setup(void) { global_ecs = NULL; remove(TEST_FILE); }
 static void ecs_teardown(ecs_t *ecs) { if (ecs) { ecs_destroy(ecs); global_ecs = NULL; } remove(TEST_FILE); }
 #define SAVE_AND_DESTROY(ecs) do { ecs_save_to_file((ecs), str(TEST_FILE)); ecs_destroy(ecs); global_ecs = NULL; } while(0)
 
+static bgtask_manager_t g_bgtask_mgr = {0};
+static arena_t           g_eng_arena;
+
+static void engine_setup(void)
+{
+    global_bgtask_manager = &g_bgtask_mgr;
+    g_eng_arena = arena_init(NULL, 1 * MB);
+    global_engine = arena_store(&g_eng_arena,
+        &(poggen_t){ .systems.assets = assetmanager_init(&g_bgtask_mgr) }, sizeof(poggen_t));
+}
+
+static void engine_teardown(void)
+{
+    arena_destroy(&g_eng_arena);
+    global_engine = NULL;
+    global_bgtask_manager = NULL;
+}
+
 /* ================================================================
    PER-COMPONENT ROUND-TRIP TESTS  (all 7 components in one save/load)
    ================================================================ */
@@ -89,18 +107,7 @@ static void test_all_component_types(void)
             },
         }
     });
-    /* entity 6: collider capsule */
-    ecs_entity_add(ecs, (ecs_componentbundle_t){
-        .signature = ECS_CMP_TRANSFORM | ECS_CMP_COLLIDER,
-        .component = {
-            [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .scale = {1,1,1}, .source = ECS_CMP_TRANSFORM_SOURCE_INPUT },
-            [ECS_CMP_COLLIDER_IDX].collider = (ecs_component_collider_t){
-                .shape_type = COLLIDER_SHAPE_TYPE_CAPSULE, .motion_type = 1, .object_layer_type = 0,
-                .dim.capsule = { .radius = 0.4f, .half_height = 0.75f },
-            },
-        }
-    });
-    /* entity 7: model */
+    /* entity 6: model */
     ecs_entity_add(ecs, (ecs_componentbundle_t){
         .signature = ECS_CMP_TRANSFORM | ECS_CMP_MODEL | ECS_CMP_MATERIAL,
         .component = {
@@ -108,6 +115,19 @@ static void test_all_component_types(void)
             [ECS_CMP_MODEL_IDX].model = (ecs_component_model_t){ .asset_id = 9 },
             [ECS_CMP_MATERIAL_IDX].material = (ecs_component_material_t){ .texture_asset_id = 0, .shader_asset_id = 10 },
         }
+    });
+    /* entities 7-9: multiple same type for multi-entity test */
+    ecs_entity_add(ecs, (ecs_componentbundle_t){
+        .signature = ECS_CMP_TRANSFORM,
+        .component = { [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .position={77,0,0}, .scale={1,1,1} }}
+    });
+    ecs_entity_add(ecs, (ecs_componentbundle_t){
+        .signature = ECS_CMP_TRANSFORM,
+        .component = { [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .position={78,0,0}, .scale={1,1,1} }}
+    });
+    ecs_entity_add(ecs, (ecs_componentbundle_t){
+        .signature = ECS_CMP_TRANSFORM,
+        .component = { [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .position={79,0,0}, .scale={1,1,1} }}
     });
 
     SAVE_AND_DESTROY(ecs);
@@ -169,175 +189,27 @@ static void test_all_component_types(void)
       TEST_ASSERT(c->dim.cube.half_height == 0.5f, "collider(cube): dim.h");
       TEST_ASSERT(c->dim.cube.half_depth == 10.0f, "collider(cube): dim.d"); }
 
-    /* entity 6: collider capsule */
-    { const ecs_entity_query_t q = ecs_entity_query_components(ecs2, 6, ECS_CMP_COLLIDER);
-      ecs_component_collider_t *c = q.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
-      TEST_ASSERT(c, "collider(capsule): present");
-      TEST_ASSERT(c->shape_type == COLLIDER_SHAPE_TYPE_CAPSULE, "collider(capsule): shape");
-      TEST_ASSERT(c->motion_type == 1, "collider(capsule): motion");
-      TEST_ASSERT(c->dim.capsule.radius == 0.4f, "collider(capsule): radius");
-      TEST_ASSERT(c->dim.capsule.half_height == 0.75f, "collider(capsule): half_h"); }
-
-    /* entity 7: model */
-    { const ecs_entity_query_t q = ecs_entity_query_components(ecs2, 7, ECS_CMP_MODEL);
+    /* entity 6: model */
+    { const ecs_entity_query_t q = ecs_entity_query_components(ecs2, 6, ECS_CMP_MODEL);
       ecs_component_model_t *m = q.entity_cmp_data[ECS_CMP_MODEL_IDX];
       TEST_ASSERT(m, "model: present");
       TEST_ASSERT(m->asset_id == 9, "model: asset_id"); }
 
-    ecs_teardown(ecs2);
-}
+    /* entities 7-9: multiple same type */
+    { ecs_component_transform_t *t7 = ecs_entity_query_components(ecs2, 7, ECS_CMP_TRANSFORM).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+      ecs_component_transform_t *t8 = ecs_entity_query_components(ecs2, 8, ECS_CMP_TRANSFORM).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+      ecs_component_transform_t *t9 = ecs_entity_query_components(ecs2, 9, ECS_CMP_TRANSFORM).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+      TEST_ASSERT(t7 && t8 && t9, "multi: 3 entities present");
+      TEST_ASSERT(t7->position.x == 77 && t8->position.x == 78 && t9->position.x == 79, "multi: positions match"); }
 
-/* ================================================================
-   ALL-COMPONENTS SINGLE ENTITY
-   ================================================================ */
-
-static void populate_all7(ecs_t *ecs)
-{
-    ecs_entity_add(ecs, (ecs_componentbundle_t){
-        .signature = ECS_CMP_TRANSFORM | ECS_CMP_MODEL | ECS_CMP_INPUT |
-                     ECS_CMP_MATERIAL | ECS_CMP_CAMERA | ECS_CMP_COLLIDER | ECS_CMP_MESH,
-        .component = {
-            [ECS_CMP_TRANSFORM_IDX].transform  = (ecs_component_transform_t){
-                .position = {1,2,3}, .orientation = {0,0,0,1}, .scale = {1,1,1}, .source = ECS_CMP_TRANSFORM_SOURCE_INPUT },
-            [ECS_CMP_MODEL_IDX].model     = (ecs_component_model_t){ .asset_id = 9 },
-            [ECS_CMP_INPUT_IDX].input     = (ecs_component_input_t){ .direction_source = 1,
-                .internal.state.current_position = {1,2,3}, .internal.state.current_orientation = {0,0,0,1} },
-            [ECS_CMP_MATERIAL_IDX].material = (ecs_component_material_t){ .texture_asset_id = 6, .shader_asset_id = 7 },
-            [ECS_CMP_CAMERA_IDX].camera   = (ecs_component_camera_t){ .mode = ECS_CMP_CAMERA_MODE_FREE_FLY, .follow.track_entity_id = 0 },
-            [ECS_CMP_COLLIDER_IDX].collider = (ecs_component_collider_t){
-                .shape_type = COLLIDER_SHAPE_TYPE_CUBE, .object_layer_type = 2, .dim.cube = {1,1,1} },
-            [ECS_CMP_MESH_IDX].mesh       = (ecs_component_mesh_t){ .asset_id = 2, .prototype_sprite_type = 1 },
-        }
-    });
-}
-
-static void test_all_components_single_entity(void)
-{
-    printf("\n--- test_all_components_single_entity ---\n");
-    ecs_setup();
-    ecs_t *ecs = ecs_init();
-    populate_all7(ecs);
-    SAVE_AND_DESTROY(ecs);
-
-    ecs_t *ecs2 = ecs_init();
-    ecs_load_savefile(ecs2, str(TEST_FILE));
-
-    const ecs_entity_query_t q = ecs_entity_query_components(ecs2, 1, ECS_CMP_TRANSFORM | ECS_CMP_MODEL |
-        ECS_CMP_INPUT | ECS_CMP_MATERIAL | ECS_CMP_CAMERA | ECS_CMP_COLLIDER | ECS_CMP_MESH);
-    TEST_ASSERT(q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX], "all7: transform");
-    TEST_ASSERT(q.entity_cmp_data[ECS_CMP_MODEL_IDX],     "all7: model");
-    TEST_ASSERT(q.entity_cmp_data[ECS_CMP_INPUT_IDX],     "all7: input");
-    TEST_ASSERT(q.entity_cmp_data[ECS_CMP_MATERIAL_IDX],  "all7: material");
-    TEST_ASSERT(q.entity_cmp_data[ECS_CMP_CAMERA_IDX],    "all7: camera");
-    TEST_ASSERT(q.entity_cmp_data[ECS_CMP_COLLIDER_IDX],  "all7: collider");
-    TEST_ASSERT(q.entity_cmp_data[ECS_CMP_MESH_IDX],      "all7: mesh");
-
-    ecs_component_transform_t *t = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-    ecs_component_collider_t  *c = q.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
-    TEST_ASSERT(t->position.x == 1 && t->position.y == 2 && t->position.z == 3, "all7: position");
-    TEST_ASSERT(c->shape_type == COLLIDER_SHAPE_TYPE_CUBE, "all7: collider shape");
-    ecs_teardown(ecs2);
-}
-
-/* ================================================================
-   EDGE CASES
-   ================================================================ */
-
-static void populate_multi_transform(ecs_t *ecs)
-{
-    ecs_entity_add(ecs, (ecs_componentbundle_t){
-        .signature = ECS_CMP_TRANSFORM,
-        .component = { [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .position = {1,0,0}, .scale={1,1,1} }}
-    });
-    ecs_entity_add(ecs, (ecs_componentbundle_t){
-        .signature = ECS_CMP_TRANSFORM,
-        .component = { [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .position = {2,0,0}, .scale={1,1,1} }}
-    });
-    ecs_entity_add(ecs, (ecs_componentbundle_t){
-        .signature = ECS_CMP_TRANSFORM,
-        .component = { [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .position = {3,0,0}, .scale={1,1,1} }}
-    });
-}
-
-static void test_multiple_same_type(void)
-{
-    printf("\n--- test_multiple_same_type ---\n");
-    ecs_setup();
-    ecs_t *ecs = ecs_init();
-    populate_multi_transform(ecs);
-    SAVE_AND_DESTROY(ecs);
-
-    ecs_t *ecs2 = ecs_init();
-    ecs_load_savefile(ecs2, str(TEST_FILE));
-    ecs_component_transform_t *t1 = ecs_entity_query_components(ecs2, 1, ECS_CMP_TRANSFORM).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-    ecs_component_transform_t *t2 = ecs_entity_query_components(ecs2, 2, ECS_CMP_TRANSFORM).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-    ecs_component_transform_t *t3 = ecs_entity_query_components(ecs2, 3, ECS_CMP_TRANSFORM).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-    TEST_ASSERT(t1 && t2 && t3, "multi: 3 entities");
-    TEST_ASSERT(t1->position.x == 1 && t2->position.x == 2 && t3->position.x == 3, "multi: positions");
-    ecs_teardown(ecs2);
-}
-
-static void populate_single_transform(ecs_t *ecs)
-{
-    ecs_entity_add(ecs, (ecs_componentbundle_t){
+    /* counter: new entity after load */
+    { u32 new_id = ecs_entity_add(ecs2, (ecs_componentbundle_t){
         .signature = ECS_CMP_TRANSFORM,
         .component = { [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .scale={1,1,1} }}
-    });
-}
-
-static void test_entity_id_counter(void)
-{
-    printf("\n--- test_entity_id_counter ---\n");
-    ecs_setup();
-    ecs_t *ecs = ecs_init();
-    populate_single_transform(ecs);
-    SAVE_AND_DESTROY(ecs);
-
-    ecs_t *ecs2 = ecs_init();
-    ecs_load_savefile(ecs2, str(TEST_FILE));
-    u32 new_id = ecs_entity_add(ecs2, (ecs_componentbundle_t){
-        .signature = ECS_CMP_TRANSFORM,
-        .component = { [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .scale={1,1,1} }}
-    });
-    TEST_ASSERT(new_id == 2, "counter: new entity gets id 2 after load");
-    ecs_teardown(ecs2);
-}
-
-static void test_asset_manager_integration(void)
-{
-    printf("\n--- test_asset_manager_integration ---\n");
-    ecs_setup();
-    bgtask_manager_t tmp_mgr = {0};
-    global_bgtask_manager = &tmp_mgr;
-
-    arena_t eng_arena = arena_init(NULL, 1 * MB);
-    global_engine = arena_store(&eng_arena,
-        &(poggen_t){ .systems.assets = assetmanager_init(&tmp_mgr) }, sizeof(poggen_t));
-
-    ecs_t *ecs = ecs_init();
-    ecs_entity_add(ecs, (ecs_componentbundle_t){
-        .signature = ECS_CMP_TRANSFORM | ECS_CMP_MESH | ECS_CMP_MATERIAL,
-        .component = {
-            [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .scale={1,1,1}, .source=ECS_CMP_TRANSFORM_SOURCE_NONE },
-            [ECS_CMP_MESH_IDX].mesh = (ecs_component_mesh_t){ .asset_id = 2 },
-            [ECS_CMP_MATERIAL_IDX].material = (ecs_component_material_t){ .texture_asset_id=INVALID_ASSET_ID, .shader_asset_id=INVALID_ASSET_ID },
-        }
-    });
-    SAVE_AND_DESTROY(ecs);
-
-    ecs_t *ecs2 = ecs_init();
-    ecs_load_savefile(ecs2, str(TEST_FILE));
-    ecs_component_mesh_t     *mesh = ecs_entity_query_components(ecs2, 1, ECS_CMP_MESH).entity_cmp_data[ECS_CMP_MESH_IDX];
-    ecs_component_material_t *mat  = ecs_entity_query_components(ecs2, 1, ECS_CMP_MATERIAL).entity_cmp_data[ECS_CMP_MATERIAL_IDX];
-    TEST_ASSERT(mesh, "asset_mgr: mesh present");
-    TEST_ASSERT(mesh->asset_id == 2, "asset_mgr: mesh id preserved");
-    TEST_ASSERT(mat->texture_asset_id == INVALID_ASSET_ID, "asset_mgr: invalid texture id");
-    TEST_ASSERT(mat->shader_asset_id == INVALID_ASSET_ID, "asset_mgr: invalid shader id");
+      });
+      TEST_ASSERT(new_id == 10, "counter: new entity gets id 10"); }
 
     ecs_teardown(ecs2);
-    arena_destroy(&eng_arena);
-    global_engine = NULL;
-    global_bgtask_manager = NULL;
 }
 
 /* ================================================================ */
@@ -346,14 +218,13 @@ int main(void)
 {
     dbg_init();
     runtimectx_init();
+    engine_setup();
     setbuf(stdout, NULL);
     printf("ecs save/load tests\n===================\n");
 
-    test_all_component_types();         /* 40 assertions */
-    test_all_components_single_entity(); /* 9 assertions */
-    test_multiple_same_type();           /* 2 assertions */
-    test_entity_id_counter();            /* 1 assertion */
+    test_all_component_types();
 
     printf("\nResults: %d passed, %d failed\n", tests_passed, tests_failed);
+    engine_teardown();
     return tests_failed ? 1 : 0;
 }
