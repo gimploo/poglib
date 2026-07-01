@@ -312,7 +312,10 @@ INTERNAL u32 ecs_deserializer__internal_ensure_asset_loaded(assetmanager_t *cons
     const ecs_load__asset_entry_t *parsed = NULL;
     for (u32 i = 0; i < assets_parsed->count; i++)
     {
-        if (assets_parsed->data[i].asset_id == asset_id) { parsed = &assets_parsed->data[i]; break; }
+        if (assets_parsed->data[i].asset_id == asset_id) {
+            parsed = &assets_parsed->data[i]; 
+            break;
+        }
     }
     if (!parsed) return asset_id;
 
@@ -320,7 +323,8 @@ INTERNAL u32 ecs_deserializer__internal_ensure_asset_loaded(assetmanager_t *cons
     {
         const hashtable_entry_t *entry     = iter;
         const asset_meta_t      *existing  = entry->value;
-        if (existing->type != parsed->meta.type) continue;
+        if (existing->type != parsed->meta.type) 
+            continue;
         if (existing->filepath1.len && !str_cmp(existing->filepath1, parsed->meta.filepath1)) continue;
         if (existing->filepath2.len && !str_cmp(existing->filepath2, parsed->meta.filepath2)) continue;
         return entry->key.u32;

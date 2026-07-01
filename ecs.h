@@ -3,9 +3,11 @@
 #include "./ecs/entity.h"
 #include "./ecs/component.h"
 #include "poglib/application.h"
+#include "poglib/basic/arena.h"
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/ecs/serialization.h"
+#include "poglib/ecs/system.h"
 #include "poglib/poggen.h"
 #include "poglib/util/assetmanager.h"
 
@@ -29,7 +31,7 @@ void                ecs_save_to_file(ecs_t *const self, const str_t filepath);
 bool                ecs_load_savefile(ecs_t *const self, const str_t filepath);
 
 void            ecs_update(ecs_t *const self);
-void            ecs_destroy(ecs_t * const self);
+void            ecs_destroy(ecs_t *const self);
 
 #ifndef IGNORE_ECS_IMPLEMENTATION
 
@@ -39,20 +41,23 @@ ecs_t * ecs_init(void)
 
     //FIXME: WTF it needs 500 MB ??
     //TODO: Figure out a way to visualize know where memory is distributed in the system 
-    arena_t arena = arena_init(NULL, 500 * MB);
-    ecs_t result = {
+    arena_t arena   = arena_init(NULL, 500 * MB);
+    global_ecs      = arena_reserve(&arena, sizeof(ecs_t));
+
+    *global_ecs = (ecs_t){
         .internal = {
             .entity_generator_counter = ECS_ENTITY_INVALID_ID,
             .active_camera = NULL,
         },
         .managers = {
-            .entitymanager = ecs_entitymanager(&arena),
-            .componentmanager = ecs_componentmanager(&arena),
-            .systemmanager = {0},
-        }
+            .entitymanager      = ecs_entitymanager(&arena),
+            .componentmanager   = ecs_componentmanager(&arena),
+            .systemmanager      = {0},
+        },
+        .arena = arena
     };
-    result.arena = arena;
-    global_ecs = arena_store(&arena, &result, sizeof(ecs_t));
+
+    ecs_add_all_core_systems(global_ecs);
     return global_ecs;
 }
 
@@ -65,8 +70,8 @@ glcamera_t * ecs_get_active_camera(ecs_t *const self)
 
 void ecs_set_active_camera(ecs_t *const self, const u32 entity_id)
 {
-    const ecs_entity_query_t view = ecs_entity_query_components(self, entity_id, ECS_CMP_CAMERA);
-    ecs_component_camera_t *const camera = view.entity_cmp_data[ECS_CMP_CAMERA_IDX];
+    const ecs_entity_query_t view           = ecs_entity_query_components(self, entity_id, ECS_CMP_CAMERA);
+    ecs_component_camera_t *const camera    = view.entity_cmp_data[ECS_CMP_CAMERA_IDX];
     ASSERT(camera);
 
     self->internal.active_camera = &camera->camera;
@@ -84,9 +89,10 @@ void ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patc
 u32 ecs_entity_add(ecs_t *const self, const ecs_componentbundle_t component_config)
 {
     const ecs_entity_t new_entity = {
-        .id = ++self->internal.entity_generator_counter,
-        .component_signature = component_config.signature,
+        .id                     = ++self->internal.entity_generator_counter,
+        .component_signature    = component_config.signature,
     };
+
     ecs_entitymanager_add(
         &self->managers.entitymanager, 
         new_entity
@@ -115,7 +121,7 @@ u32 ecs_entity_duplicate(ecs_t *const self, const u32 entity_id)
     return ecs_entity_add(self, component_config);
 }
 
-void ecs_entity_remove(ecs_t * const self, const u32 entityId)
+void ecs_entity_remove(ecs_t *const self, const u32 entityId)
 {
     ecs_entitymanager_remove(&self->managers.entitymanager, entityId);
     ecs_componentmanager_removeall(
@@ -130,13 +136,12 @@ void ecs_update(ecs_t *const self)
 
     ecs_componentmanager_update(&self->managers.componentmanager);
 
-    const ecs_systemmanager_t * const manager = &self->managers.systemmanager;
+    const ecs_systemmanager_t *const manager = &self->managers.systemmanager;
     if (!manager->count) return;
 
     for (u8 idx = 0; idx < ECS_SYSTEM_MAX_COUNT; idx++)
     {
-        if (!manager->systems[idx].callback)
-            continue;
+        if (!manager->systems[idx].callback) continue;
 
         manager->systems[idx].callback(
             &self->managers.componentmanager,
@@ -171,6 +176,8 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
     {
         const ecs_entity_t *const entity = iter;
 
+        if (entity->id < WORKBENCH_RESERVED_ENTITY_ID_COUNT) continue;
+
         ecs_serializer__internal_write_entity_data(&f, entity->id, entity->component_signature);
 
         ecs_entity_query_t query = ecs_entity_query_components(
@@ -195,7 +202,9 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
 
 bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
 {
-    if (self->internal.entity_generator_counter) eprint("Clear existing ecs before loading a save file");
+    if (self->internal.entity_generator_counter >= WORKBENCH_RESERVED_ENTITY_ID_COUNT) 
+        eprint("Clear scene's ecs before loading a save file");
+
     ASSERT(self);
     ASSERT(filepath.data);
     ASSERT(filepath.len > 0);
@@ -225,10 +234,8 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
     ecs_component_type       current_cmp         = 0;
     u8                       current_cmp_idx     = 0;
 
-    ecs_load__entity_list_t *entities      = arena_reserve(&self->arena, sizeof(ecs_load__entity_list_t));
-    ecs_load__asset_list_t  *assets_parsed = arena_reserve(&self->arena, sizeof(ecs_load__asset_list_t));
-    memset(entities, 0, sizeof(*entities));
-    memset(assets_parsed, 0, sizeof(*assets_parsed));
+    ecs_load__entity_list_t *const entities      = arena_reserve(&self->arena, sizeof(ecs_load__entity_list_t));
+    ecs_load__asset_list_t  *const assets_parsed = arena_reserve(&self->arena, sizeof(ecs_load__asset_list_t));
 
     while (true)
     {
@@ -320,8 +327,6 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
         ecs_deserializer__internal_remap_entity_assets(&entities->data[i], &global_engine->systems.assets, assets_parsed);
         ecs_entity_add(self, entities->data[i]);
     }
-
-    self->internal.entity_generator_counter = max_entity_id;
 
     file_destroy(&f);
     return true;
