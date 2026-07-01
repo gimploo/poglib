@@ -26,7 +26,7 @@ glcamera_t *        ecs_get_active_camera(ecs_t *const self);
 void                ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
 
 void                ecs_save_to_file(ecs_t *const self, const str_t filepath);
-void                ecs_load_savefile(ecs_t *const self, const str_t filepath);
+bool                ecs_load_savefile(ecs_t *const self, const str_t filepath);
 
 void            ecs_update(ecs_t *const self);
 void            ecs_destroy(ecs_t * const self);
@@ -225,8 +225,10 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
     ecs_component_type       current_cmp         = 0;
     u8                       current_cmp_idx     = 0;
 
-    ecs_load__entity_list_t  entities      = {0};
-    ecs_load__asset_list_t   assets_parsed = {0};
+    ecs_load__entity_list_t *entities      = arena_reserve(&self->arena, sizeof(ecs_load__entity_list_t));
+    ecs_load__asset_list_t  *assets_parsed = arena_reserve(&self->arena, sizeof(ecs_load__asset_list_t));
+    memset(entities, 0, sizeof(*entities));
+    memset(assets_parsed, 0, sizeof(*assets_parsed));
 
     while (true)
     {
@@ -243,8 +245,8 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
         {
             if (has_pending_bundle)
             {
-                if (entities.count < ECS_LOAD_MAX_ENTITIES) {
-                    entities.data[entities.count++] = pending_bundle;
+                if (entities->count < ECS_LOAD_MAX_ENTITIES) {
+                    entities->data[entities->count++] = pending_bundle;
                 }
                 has_pending_bundle = false;
             }
@@ -274,12 +276,12 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
         {
             if (has_pending_bundle)
             {
-                if (entities.count < ECS_LOAD_MAX_ENTITIES)
-                    entities.data[entities.count++] = pending_bundle;
+                if (entities->count < ECS_LOAD_MAX_ENTITIES)
+                    entities->data[entities->count++] = pending_bundle;
                 has_pending_bundle = false;
             }
 
-            ecs_deserializer__internal__read_assetmeta_section(&f, &assets_parsed, &self->arena, (char *)line.raw_data, sizeof(line.raw_data));
+            ecs_deserializer__internal__read_assetmeta_section(&f, assets_parsed, &self->arena, (char *)line.raw_data, sizeof(line.raw_data));
 
             break;
         }
@@ -309,14 +311,14 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
 
     if (has_pending_bundle)
     {
-        if (entities.count < ECS_LOAD_MAX_ENTITIES)
-            entities.data[entities.count++] = pending_bundle;
+        if (entities->count < ECS_LOAD_MAX_ENTITIES)
+            entities->data[entities->count++] = pending_bundle;
     }
 
-    for (u32 i = 0; i < entities.count; i++)
+    for (u32 i = 0; i < entities->count; i++)
     {
-        ecs_deserializer__internal_remap_entity_assets(&entities.data[i], &global_engine->systems.assets, &assets_parsed);
-        ecs_entity_add(self, entities.data[i]);
+        ecs_deserializer__internal_remap_entity_assets(&entities->data[i], &global_engine->systems.assets, assets_parsed);
+        ecs_entity_add(self, entities->data[i]);
     }
 
     self->internal.entity_generator_counter = max_entity_id;
