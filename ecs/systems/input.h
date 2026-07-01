@@ -45,6 +45,8 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
             default: eprint("Input direction source not found");
         }
 
+        if (!input_cmp->input_behavior) eprint("input_behavior is missing in `ecs_component_input_t`");
+
         input_cmp->input_behavior(
             &input_cmp->internal.state, 
             commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue),

@@ -63,17 +63,17 @@ assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
     arena_t arena = arena_init(NULL, 1 * MB);
     assetmanager_t result = {
         .assetmaps = {
-            [ASSET_TYPE_MODEL] = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(async(glmodel_t)), .type = HT_STORAGE_BY_REFERENCE }, &arena),
-            [ASSET_TYPE_GLSL_SHADER] = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(glshader_t), .type = HT_STORAGE_BY_REFERENCE }, &arena),
-            [ASSET_TYPE_TEXTURE] = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gltexture2d_t),  .type = HT_STORAGE_BY_REFERENCE }, &arena),
-            [ASSET_TYPE_TEXTURE_SPRITE_ATLAS] = hashtable_init(3, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(spriteatlas_t),  .type = HT_STORAGE_BY_VALUE }, &arena),
+            [ASSET_TYPE_MODEL]                  = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(async(glmodel_t)), .type = HT_STORAGE_BY_REFERENCE }, &arena),
+            [ASSET_TYPE_GLSL_SHADER]            = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(glshader_t), .type = HT_STORAGE_BY_REFERENCE }, &arena),
+            [ASSET_TYPE_TEXTURE]                = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gltexture2d_t),  .type = HT_STORAGE_BY_REFERENCE }, &arena),
+            [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = hashtable_init(3, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(spriteatlas_t),  .type = HT_STORAGE_BY_VALUE }, &arena),
         },
-        .bgtask_manager = taskmanager,
-        .assetmeta_lookup = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT, HT_KEY_TYPE_U32, (ht_value_type){ .size = sizeof(asset_meta_t), .type = HT_STORAGE_BY_VALUE } , &arena),
-        .gpu_uploaded_assets = hashtable_init(ASSET_TYPE_COUNT * MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gpu_asset_t), .type = HT_STORAGE_BY_REFERENCE }, &arena),
+        .bgtask_manager         = taskmanager,
+        .assetmeta_lookup       = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT, HT_KEY_TYPE_U32, (ht_value_type){ .size = sizeof(asset_meta_t), .type = HT_STORAGE_BY_VALUE } , &arena),
+        .gpu_uploaded_assets    = hashtable_init(ASSET_TYPE_COUNT * MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gpu_asset_t), .type = HT_STORAGE_BY_REFERENCE }, &arena),
         .internal = {
-            .asset_idx_generator = GL_MESH_PRIMITIVE_TYPE_COUNT,
-            .gpu_upload_queue = mpsc_queue(&arena, MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT)
+            .asset_idx_generator    = GL_MESH_PRIMITIVE_TYPE_COUNT,
+            .gpu_upload_queue       = mpsc_queue(&arena, MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT)
         }
     };
     result.arena = arena;

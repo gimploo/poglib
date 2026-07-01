@@ -60,7 +60,9 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
     {
         if (!slot_iterator_index) continue;
 
-        const ecs_entity_t *const e         = iter;
+        const ecs_entity_t *const e = iter;
+        if (e->id == global_workbench->world_camera.entity_id) continue;
+
         const ecs_entity_query_t q          = ecs_entity_query_components(global_ecs, e->id, ECS_CMP_TRANSFORM);
         const ecs_component_transform_t *t  = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
         if (!t) continue;
@@ -71,7 +73,6 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
             picked = e->id;
         }
     }
-
 
     global_workbench->editor.mouse_closest_to_entity_id = picked;
 }

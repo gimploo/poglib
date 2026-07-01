@@ -23,7 +23,7 @@ colliderbatchqueue_t colliderbatchqueue(arena_t *const arena)
 {
     ASSERT(arena);
     colliderbatchqueue_t result = {0};
-    result.queue = queue_init(10, ecs_component_collider_t *, arena);
+    result.queue = queue_init(20, ecs_component_collider_t *, arena);
     result.arena = arena_init(arena, KB);
     return result;
 }

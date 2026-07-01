@@ -10,6 +10,7 @@
 #include "poglib/util/workbench/workbench-editor.h"
 
 workbench_t *   workbench_init(arena_t * const arena);
+void            workbench_ecs_populate_entities(void);
 void            workbench_update(const f32 dt);
 void            workbench_render(void);
 void                workbench_toggle(void);
@@ -103,7 +104,7 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
 
 }
 
-void workbench__internal_ecs_create_world_camera(workbench_t *const self)
+INTERNAL void workbench__internal__ecs_create_world_camera(workbench_t *const self)
 {
     const u32 world_camera_entity_id  = ecs_entity_add(
         global_ecs,
@@ -124,6 +125,7 @@ void workbench__internal_ecs_create_world_camera(workbench_t *const self)
             }
         }
     );
+    ASSERT(world_camera_entity_id == WORKBENCH_RESERVED_ENTITY_ID_WORLDCAMERA);
 
     const ecs_entity_query_t view = ecs_entity_query_components(global_ecs, world_camera_entity_id, ECS_CMP_CAMERA);
     ASSERT(view.entity_cmp_data[ECS_CMP_CAMERA_IDX]);
@@ -141,14 +143,17 @@ void workbench__internal_ecs_create_world_camera(workbench_t *const self)
     );
 }
 
+void workbench_ecs_populate_entities(void)
+{
+    ASSERT(global_workbench);
+    ASSERT(global_ecs);
+    workbench__internal__ecs_create_world_camera(global_workbench);
+}
+
 workbench_t * workbench_init(arena_t *const arena)
 {
     ASSERT(global_engine);
     ASSERT(!global_workbench);
-
-    if (!global_ecs) {
-        eprint("ECS required to use workbench");
-    }
 
     assetmanager_t *const assetmanager = &global_engine->systems.assets;
 
@@ -309,8 +314,6 @@ workbench_t * workbench_init(arena_t *const arena)
             },
         }
     };
-
-    workbench__internal_ecs_create_world_camera(&workbench);
 
     assetmanager_load_all_primitives(&global_engine->systems.assets);
 

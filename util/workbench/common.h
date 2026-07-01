@@ -5,6 +5,14 @@
 #include "./workbench-debug-renderer.h"
 #include "poglib/ecs/component/types.h"
 
+typedef enum WORKBENCH_RESERVED_ENTITY_ID {
+
+    WORKBENCH_RESERVED_ENTITY_ID_WORLDCAMERA    = 1,
+
+    WORKBENCH_RESERVED_ENTITY_ID_COUNT,
+
+} WORKBENCH_RESERVED_ENTITY_ID;
+
 typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_DRAG = 0,
     WORKBENCH_ACTION_TYPE_MOUSE_MIDDLE_CLICK_DRAG,

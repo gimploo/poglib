@@ -9,6 +9,8 @@
  *                      -- ARENA MEMORY ALLOCATOR --
 ================================================================================*/
 
+//TODO: have arena_init return a ptr
+
 //NOTE: supports only 16 byte alignment
 
 typedef struct arena_t arena_t;
