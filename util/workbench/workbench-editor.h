@@ -370,6 +370,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                 });
                     if (gui_ui_isclicked(gui, reset_id)) {
                         if (idx == OT_SCALE)    *transform_bindings[idx] = (vec3f_t){1.f,1.f,1.f};
+                        if (idx == OT_ROTATION) *(versors *)transform_bindings[idx] = GLMS_QUAT_IDENTITY;
                         else                    *transform_bindings[idx] = (vec3f_t){0};
                         workbench_editor__internal_update_physics_colliders();
                     }

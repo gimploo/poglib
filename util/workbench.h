@@ -315,7 +315,6 @@ workbench_t * workbench_init(arena_t *const arena)
         }
     };
 
-    workbench_ecs_populate_entities();
 
     assetmanager_load_all_primitives(&global_engine->systems.assets);
 
@@ -323,6 +322,7 @@ workbench_t * workbench_init(arena_t *const arena)
 
     global_workbench = arena_store(arena, &workbench, sizeof(workbench));
 
+    workbench_ecs_populate_entities();
     workbench_debug_renderer_init(&global_workbench->debug_renderer, arena);
 
     return global_workbench;
