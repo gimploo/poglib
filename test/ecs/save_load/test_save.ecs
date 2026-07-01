@@ -1,0 +1,106 @@
+ECS v1 save
+entity:2
+component_signature:73
+transform:{totalmembers:5,bytesize:64}
+	position:[0.000000,0.000000,0.000000]
+	orientation:[0.000000,0.000000,0.000000,1.000000]
+	scale:[1.000000,1.000000,1.000000]
+	velocity:[0.000000,0.000000,0.000000]
+	source:0
+material:{totalmembers:2,bytesize:8}
+	texture_asset_id:6
+	shader_asset_id:7
+mesh:{totalmembers:2,bytesize:8}
+	asset_id:2
+	prototype_sprite_type:20
+entity:3
+component_signature:5
+transform:{totalmembers:5,bytesize:64}
+	position:[3.000000,1.000000,-7.000000]
+	orientation:[0.000000,0.000000,0.000000,1.000000]
+	scale:[0.000000,0.000000,0.000000]
+	velocity:[0.000000,0.000000,0.000000]
+	source:1
+input:{totalmembers:3,bytesize:80}
+	direction_source:1
+	state.position:[3.000000,1.000000,-7.000000]
+	state.orientation:[0.000000,0.000000,0.000000,1.000000]
+	state.front:[0.500000,0.300000,-0.800000]
+	state.right:[0.800000,0.000000,0.500000]
+entity:4
+component_signature:21
+transform:{totalmembers:5,bytesize:64}
+	position:[0.000000,0.000000,0.000000]
+	orientation:[0.000000,0.000000,0.000000,1.000000]
+	scale:[0.000000,0.000000,0.000000]
+	velocity:[0.000000,0.000000,0.000000]
+	source:1
+input:{totalmembers:3,bytesize:80}
+	direction_source:0
+	state.position:[0.000000,0.000000,0.000000]
+	state.orientation:[0.000000,0.000000,0.000000,0.000000]
+	state.front:[0.000000,0.000000,0.000000]
+	state.right:[0.000000,0.000000,0.000000]
+camera:{totalmembers:3,bytesize:80}
+	position:[10.000000,2.000000,-5.000000]
+	euler_angle:[0.500000,-1.200000]
+	direction.front:[0.300000,0.100000,-0.900000]
+	direction.up:[-0.100000,0.900000,0.100000]
+	direction.right:[0.900000,0.000000,0.300000]
+	mode:1
+	follow.orbit_radius:8.000000
+	follow.center_offset:[0.000000,1.500000,0.000000]
+	follow.track_entity_id:5
+entity:5
+component_signature:33
+transform:{totalmembers:5,bytesize:64}
+	position:[0.000000,-1.000000,0.000000]
+	orientation:[0.000000,0.000000,0.000000,1.000000]
+	scale:[10.000000,0.500000,10.000000]
+	velocity:[0.000000,0.000000,0.000000]
+	source:0
+collider:{totalmembers:5,bytesize:96}
+	shape_type:3
+	motion_type:0
+	object_layer_type:2
+	dim.cube:[10.000000,0.500000,10.000000]
+	dim.sphere:[10.000000]
+	dim.capsule:[10.000000,0.500000]
+entity:6
+component_signature:11
+transform:{totalmembers:5,bytesize:64}
+	position:[0.000000,0.000000,0.000000]
+	orientation:[0.000000,0.000000,0.000000,1.000000]
+	scale:[1.000000,1.000000,1.000000]
+	velocity:[0.000000,0.000000,0.000000]
+	source:0
+model:{totalmembers:2,bytesize:16}
+	asset_id:9
+material:{totalmembers:2,bytesize:8}
+	texture_asset_id:0
+	shader_asset_id:10
+entity:7
+component_signature:1
+transform:{totalmembers:5,bytesize:64}
+	position:[77.000000,0.000000,0.000000]
+	orientation:[0.000000,0.000000,0.000000,1.000000]
+	scale:[1.000000,1.000000,1.000000]
+	velocity:[0.000000,0.000000,0.000000]
+	source:0
+entity:8
+component_signature:1
+transform:{totalmembers:5,bytesize:64}
+	position:[78.000000,0.000000,0.000000]
+	orientation:[0.000000,0.000000,0.000000,1.000000]
+	scale:[1.000000,1.000000,1.000000]
+	velocity:[0.000000,0.000000,0.000000]
+	source:0
+entity:9
+component_signature:1
+transform:{totalmembers:5,bytesize:64}
+	position:[79.000000,0.000000,0.000000]
+	orientation:[0.000000,0.000000,0.000000,1.000000]
+	scale:[1.000000,1.000000,1.000000]
+	velocity:[0.000000,0.000000,0.000000]
+	source:0
+fin
