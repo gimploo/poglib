@@ -27,7 +27,7 @@ static arena_t           g_eng_arena;
 static void engine_setup(void)
 {
     g_bgtask_mgr = (bgtask_manager_t){
-        .tasks = queue_init(4,	bgtask__internal_t, NULL),
+        .tasks = queue_init(4, bgtask__internal_t, NULL),
     };
     global_bgtask_manager = &g_bgtask_mgr;
     g_eng_arena = arena_init(NULL, 1 * MB);
@@ -288,7 +288,7 @@ static void test_shader_uniform_parsing(void)
     /* read next line (first asset) and parse */
     memset(line.raw_data, 0, sizeof(line.raw_data));
     file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-    ecs_deserializer__internal_read_assetmeta_section(&f, &assets, &tmp_arena, (char *)line.raw_data, sizeof(line.raw_data));
+    ecs_deserializer__internal__read_assetmeta_section(&f, &assets, &tmp_arena, (char *)line.raw_data, sizeof(line.raw_data));
 
     /* verify the parsed data */
     TEST_ASSERT(assets.count == 2, "shader_parse: 2 assets parsed");
@@ -310,6 +310,49 @@ static void test_shader_uniform_parsing(void)
     remove(TEST_FILE);
 }
 
+static void test_roundtrip_no_corruption(void)
+{
+    printf("\n--- test_roundtrip_no_corruption ---\n");
+    ecs_setup();
+
+    /* step 1: load a known-good save file */
+    ecs_t *ecs = ecs_init();
+    ecs_load_savefile(ecs, str("./test_corruption.ecs"));
+
+    /* step 2: verify loaded values are not garbage */
+    { const ecs_entity_query_t q = ecs_entity_query_components(ecs, 2, ECS_CMP_COLLIDER | ECS_CMP_MODEL);
+      ecs_component_collider_t *c = q.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
+      ecs_component_model_t   *m = q.entity_cmp_data[ECS_CMP_MODEL_IDX];
+      TEST_ASSERT(c && m, "corruption: entity 2 loaded");
+      TEST_ASSERT(c->object_layer_type == 0, "corruption: collider object_layer_type not garbage");
+      TEST_ASSERT(c->shape_type == COLLIDER_SHAPE_TYPE_CAPSULE, "corruption: collider shape_type correct");
+      TEST_ASSERT(m->asset_id == 9, "corruption: model asset_id not garbage"); }
+
+    { const ecs_entity_query_t q = ecs_entity_query_components(ecs, 4, ECS_CMP_COLLIDER | ECS_CMP_MESH);
+      ecs_component_collider_t *c = q.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
+      ecs_component_mesh_t    *m = q.entity_cmp_data[ECS_CMP_MESH_IDX];
+      TEST_ASSERT(c && m, "corruption: entity 4 loaded");
+      TEST_ASSERT(c->object_layer_type == 4, "corruption: entity 4 obj_layer not garbage");
+      TEST_ASSERT(m->asset_id == 2, "corruption: mesh asset_id not garbage"); }
+
+    /* step 3: re-save and re-load — verify no corruption on round-trip */
+    ecs_save_to_file(ecs, str(TEST_FILE));
+    ecs_destroy(ecs); global_ecs = NULL;
+
+    ecs_t *ecs2 = ecs_init();
+    ecs_load_savefile(ecs2, str(TEST_FILE));
+
+    { const ecs_entity_query_t q = ecs_entity_query_components(ecs2, 2, ECS_CMP_COLLIDER | ECS_CMP_MODEL);
+      ecs_component_collider_t *c = q.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
+      ecs_component_model_t   *m = q.entity_cmp_data[ECS_CMP_MODEL_IDX];
+      TEST_ASSERT(c && m, "corruption: roundtrip entity 2 loaded");
+      TEST_ASSERT(c->object_layer_type == 0, "corruption: roundtrip obj_layer preserved");
+      TEST_ASSERT(c->dim.capsule.radius == 0.4f, "corruption: roundtrip capsule radius preserved");
+      TEST_ASSERT(m->asset_id == 9, "corruption: roundtrip model id preserved"); }
+
+    ecs_teardown(ecs2);
+}
+
 int main(void)
 {
     dbg_init();
@@ -321,6 +364,7 @@ int main(void)
     test_all_component_types();
     test_asset_loading_from_save();
     test_shader_uniform_parsing();
+    test_roundtrip_no_corruption();
 
     printf("\nResults: %d passed, %d failed\n", tests_passed, tests_failed);
     engine_teardown();

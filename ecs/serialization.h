@@ -84,7 +84,7 @@ static const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS_C
     [ECS_CMP_MODEL_IDX] = {
         .field_count = 1,
         .fields = {
-            CMP_FLD_DESC("\tasset_id:", "\tasset_id:%lu", ecs_component_model_t, asset_id, ECS_CMP_FLD_U64),
+            CMP_FLD_DESC("\tasset_id:", "\tasset_id:%u", ecs_component_model_t, asset_id, ECS_CMP_FLD_U32),
         }
     },
     [ECS_CMP_INPUT_IDX] = {
@@ -124,7 +124,7 @@ static const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS_C
         .fields = {
             CMP_FLD_DESC("\tshape_type:",        "\tshape_type:%i",           ecs_component_collider_t, shape_type,              ECS_CMP_FLD_I32),
             CMP_FLD_DESC("\tmotion_type:",       "\tmotion_type:%i",          ecs_component_collider_t, motion_type,             ECS_CMP_FLD_I32),
-            CMP_FLD_DESC("\tobject_layer_type:", "\tobject_layer_type:%lu",   ecs_component_collider_t, object_layer_type,       ECS_CMP_FLD_U64),
+            CMP_FLD_DESC("\tobject_layer_type:", "\tobject_layer_type:%u",   ecs_component_collider_t, object_layer_type,       ECS_CMP_FLD_U32),
             CMP_FLD_DESC("\tdim.cube:",          "\tdim.cube:[%f,%f,%f]",     ecs_component_collider_t, dim.cube.half_width,     ECS_CMP_FLD_VEC3F),
             CMP_FLD_DESC("\tdim.sphere:",        "\tdim.sphere:[%f]",         ecs_component_collider_t, dim.sphere.radius,       ECS_CMP_FLD_F32),
             CMP_FLD_DESC("\tdim.capsule:",       "\tdim.capsule:[%f,%f]",     ecs_component_collider_t, dim.capsule.radius,      ECS_CMP_FLD_VEC2F),
@@ -133,7 +133,7 @@ static const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS_C
     [ECS_CMP_MESH_IDX] = {
         .field_count = 2,
         .fields = {
-            CMP_FLD_DESC("\tasset_id:",              "\tasset_id:%lu",              ecs_component_mesh_t, asset_id,              ECS_CMP_FLD_U64),
+            CMP_FLD_DESC("\tasset_id:",              "\tasset_id:%u",              ecs_component_mesh_t, asset_id,              ECS_CMP_FLD_U32),
             CMP_FLD_DESC("\tprototype_sprite_type:", "\tprototype_sprite_type:%i",  ecs_component_mesh_t, prototype_sprite_type, ECS_CMP_FLD_I32),
         }
     },

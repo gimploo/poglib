@@ -7,9 +7,8 @@
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/ecs/serialization.h"
-#include "poglib/ecs/system.h"
-#include "poglib/poggen.h"
 #include "poglib/util/assetmanager.h"
+#include "poglib/poggen.h"
 
 
 ecs_t * global_ecs = NULL;
@@ -32,6 +31,8 @@ bool                ecs_load_savefile(ecs_t *const self, const str_t filepath);
 
 void            ecs_update(ecs_t *const self);
 void            ecs_destroy(ecs_t *const self);
+
+#include "poglib/ecs/system.h"
 
 #ifndef IGNORE_ECS_IMPLEMENTATION
 
@@ -333,3 +334,4 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
 }
 
 #endif
+

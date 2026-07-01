@@ -1,0 +1,70 @@
+ECS v1 save
+entity:2
+component_signature:47
+transform:{totalmembers:5,bytesize:64}
+	position:[2.000000,0.000000,0.000000]
+	orientation:[0.000000,0.000000,0.000000,1.000000]
+	scale:[1.000000,1.000000,1.000000]
+	velocity:[0.000000,0.000000,0.000000]
+	source:1
+model:{totalmembers:2,bytesize:16}
+	asset_id:9
+input:{totalmembers:3,bytesize:80}
+	direction_source:1
+	state.position:[2.000000,0.000000,0.000000]
+	state.orientation:[0.000000,0.000000,0.000000,1.000000]
+	state.front:[-0.185430,-0.268920,-0.945144]
+	state.right:[0.981293,0.000000,-0.192522]
+material:{totalmembers:2,bytesize:8}
+	texture_asset_id:0
+	shader_asset_id:10
+collider:{totalmembers:5,bytesize:96}
+	shape_type:1
+	motion_type:1
+	object_layer_type:0
+	dim.cube:[0.400000,0.750000,0.000000]
+	dim.sphere:[0.400000]
+	dim.capsule:[0.400000,0.750000]
+entity:4
+component_signature:105
+transform:{totalmembers:5,bytesize:64}
+	position:[-2.800000,1.500000,0.000000]
+	orientation:[0.000000,0.000000,0.000000,1.000000]
+	scale:[1.000000,1.000000,1.000000]
+	velocity:[0.000000,0.000000,0.000000]
+	source:0
+material:{totalmembers:2,bytesize:8}
+	texture_asset_id:6
+	shader_asset_id:7
+collider:{totalmembers:5,bytesize:96}
+	shape_type:3
+	motion_type:0
+	object_layer_type:4
+	dim.cube:[1.000000,1.000000,1.000000]
+	dim.sphere:[1.000000]
+	dim.capsule:[1.000000,1.000000]
+mesh:{totalmembers:2,bytesize:8}
+	asset_id:2
+	prototype_sprite_type:20
+entity:5
+component_signature:105
+transform:{totalmembers:5,bytesize:64}
+	position:[-8.000000,0.500000,0.000000]
+	orientation:[0.000000,0.000000,0.000000,1.000000]
+	scale:[1.000000,2.500000,1.000000]
+	velocity:[0.000000,0.000000,0.000000]
+	source:0
+material:{totalmembers:2,bytesize:8}
+	texture_asset_id:6
+	shader_asset_id:7
+collider:{totalmembers:5,bytesize:96}
+	shape_type:3
+	motion_type:0
+	object_layer_type:5
+	dim.cube:[1.000000,2.500000,1.000000]
+	dim.sphere:[1.000000]
+	dim.capsule:[1.000000,2.500000]
+mesh:{totalmembers:2,bytesize:8}
+	asset_id:2
+	prototype_sprite_type:20
+fin
