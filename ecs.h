@@ -178,6 +178,7 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
         const ecs_entity_t *const entity = iter;
 
         if (entity->id < WORKBENCH_RESERVED_ENTITY_ID_COUNT) continue;
+        if (!entity->component_signature) continue;
 
         ecs_serializer__internal_write_entity_data(&f, entity->id, entity->component_signature);
 
