@@ -236,8 +236,6 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
 
     ecs_load__entity_list_t *const entities      = arena_reserve(&self->arena, sizeof(ecs_load__entity_list_t));
     ecs_load__asset_list_t  *const assets_parsed = arena_reserve(&self->arena, sizeof(ecs_load__asset_list_t));
-    memset(entities, 0, sizeof(*entities));
-    memset(assets_parsed, 0, sizeof(*assets_parsed));
 
     while (true)
     {
