@@ -251,6 +251,65 @@ static void test_asset_loading_from_save(void)
 
 /* ================================================================ */
 
+static void test_shader_uniform_parsing(void)
+{
+    printf("\n--- test_shader_uniform_parsing ---\n");
+
+    /* manually write a save file with shader asset metadata including uniforms */
+    file_t f = file_init(TEST_FILE, "w");
+    file_writeline(&f, "ECS v1 save\n");
+    file_writeline(&f, "fin\n");
+    file_destroy(&f);
+
+    /* reopen and append shader metadata for testing the parser */
+    f = file_init(TEST_FILE, "w");
+    file_writeline(&f, "ECS v1 save\n");
+    file_writeline(&f, "assetid:5,assettype:1,assetpath:[test_vtx.glsl,test_frag.glsl]\n");
+    file_writeline(&f, "\tuniform:\n");
+    file_writeline(&f, "\t\tname:projection,type:0\n");
+    file_writeline(&f, "\tuniform:\n");
+    file_writeline(&f, "\t\tname:view,type:0\n");
+    file_writeline(&f, "\tuniform:\n");
+    file_writeline(&f, "\t\tname:color,type:1\n");
+    file_writeline(&f, "assetid:6,assettype:3,assetpath:test_atlas.png\n");
+    file_writeline(&f, "\ttilecount:[8,4]\n");
+    file_writeline(&f, "fin\n");
+    file_destroy(&f);
+
+    /* read header */
+    f = file_init(TEST_FILE, "r");
+    buffer(WORD) line = {0};
+    file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
+
+    /* set up a temporary arena and parse */
+    arena_t tmp_arena = arena_init(NULL, 1 * KB);
+    ecs_load__asset_list_t assets = {0};
+
+    /* read next line (first asset) and parse */
+    memset(line.raw_data, 0, sizeof(line.raw_data));
+    file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
+    ecs_deserializer__internal_read_assetmeta_section(&f, &assets, &tmp_arena, (char *)line.raw_data, sizeof(line.raw_data));
+
+    /* verify the parsed data */
+    TEST_ASSERT(assets.count == 2, "shader_parse: 2 assets parsed");
+    TEST_ASSERT(assets.data[0].asset_id == 5, "shader_parse: asset 0 id");
+    TEST_ASSERT(assets.data[0].meta.type == ASSET_TYPE_GLSL_SHADER, "shader_parse: asset 0 type is shader");
+    TEST_ASSERT(assets.data[0].uniforms.count == 3, "shader_parse: 3 uniforms parsed");
+    TEST_ASSERT(strcmp(assets.data[0].uniforms.data[0].name.data, "projection") == 0, "shader_parse: uniform 0 name");
+    TEST_ASSERT(assets.data[0].uniforms.data[0].type == GL_UNIFORM_TYPE_MATRIX4F, "shader_parse: uniform 0 type");
+    TEST_ASSERT(strcmp(assets.data[0].uniforms.data[1].name.data, "view") == 0, "shader_parse: uniform 1 name");
+    TEST_ASSERT(strcmp(assets.data[0].uniforms.data[2].name.data, "color") == 0, "shader_parse: uniform 2 name");
+    TEST_ASSERT(assets.data[0].uniforms.data[2].type == GL_UNIFORM_TYPE_VEC4F, "shader_parse: uniform 2 type");
+    TEST_ASSERT(assets.data[1].asset_id == 6, "shader_parse: asset 1 id");
+    TEST_ASSERT(assets.data[1].meta.type == ASSET_TYPE_TEXTURE_SPRITE_ATLAS, "shader_parse: asset 1 type is atlas");
+    TEST_ASSERT(assets.data[1].meta.meta.tile_counts.x == 8, "shader_parse: tilecount w");
+    TEST_ASSERT(assets.data[1].meta.meta.tile_counts.y == 4, "shader_parse: tilecount h");
+
+    file_destroy(&f);
+    arena_destroy(&tmp_arena);
+    remove(TEST_FILE);
+}
+
 int main(void)
 {
     dbg_init();
@@ -261,6 +320,7 @@ int main(void)
 
     test_all_component_types();
     test_asset_loading_from_save();
+    test_shader_uniform_parsing();
 
     printf("\nResults: %d passed, %d failed\n", tests_passed, tests_failed);
     engine_teardown();
