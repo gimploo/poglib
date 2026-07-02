@@ -228,6 +228,9 @@ workbench_t * workbench_init(arena_t *const arena)
             }),
             .enable = true
         },
+        .editor = {
+            .workbench_editor_action_history = stack_init(100, workbench_editor_ecs_action_t, arena)
+        },
         .commandregistry = (commandregistry_t){
             .count = WORKBENCH_ACTION_TYPE_COUNT,
             .registry = {
@@ -309,6 +312,14 @@ workbench_t * workbench_init(arena_t *const arena)
                         .main = SDL_SCANCODE_DELETE,
                         .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
                     }
+                },
+                [WORKBENCH_ACTION_TYPE_UNDO] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
+                    .sdl_keyboard_key = {
+                        .modifier   = SDL_SCANCODE_LCTRL,
+                        .main       = SDL_SCANCODE_Z,
+                        .trigger    = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
+                    }
                 }
             },
         }
@@ -316,8 +327,6 @@ workbench_t * workbench_init(arena_t *const arena)
 
 
     assetmanager_load_all_primitives(&global_engine->systems.assets);
-
-    gui_set_composition(&workbench.gui.handle, (ui_composition)workbench_compose_ui);
 
     global_workbench = arena_store(arena, &workbench, sizeof(workbench));
 
@@ -439,11 +448,9 @@ void workbench_render(void)
         workbench__internal_show_colliders(self);
     }
 
-    if (self->gui.enable) {
-        gui_run(&self->gui.handle, self->render_config.wireframe_mode);
-    }
-
+    workbench_editor_render();
 }
+
 
 void workbench_render_camera(
     const vec3f_t position,
@@ -587,6 +594,7 @@ void workbench_update(const f32 dt)
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME))                global_workbench->render_config.wireframe_mode = !global_workbench->render_config.wireframe_mode;
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY))       workbench_editor_copypaste_entity();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY))          workbench_editor_delete_entity();
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_UNDO))                            workbench_editor_action_history_pop(global_workbench, global_ecs);
 
     workbench_editor_update();
 }
