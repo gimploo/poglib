@@ -31,7 +31,7 @@ void                stack_pop(stack_t *);
 #define             stack_is_empty(pstack)\
                         ((pstack)->__top == -1 ? true : false)
 #define             stack_is_full(pstack)\
-                        ((pstack)->__top == ((pstack)->capacity - 1) ? true : false)
+                        ((pstack)->__top == (i64)((pstack)->__capacity - 1) ? true : false)
 void                stack_print(stack_t *stack, void (*print_elem)(void *));
 void                stack_destroy(stack_t *);
 
@@ -125,10 +125,16 @@ void stack_destroy(stack_t *stack)
     stack->len = 0;
 }
 
-void * stack_peek(const stack_t * const self)
+void * stack_peek(const stack_t *const self)
 {
     ASSERT(self->len);
     return self->__data + self->__elem_size * self->__top;
+}
+
+void stack_clear(stack_t *const self)
+{
+    self->len   = 0;
+    self->__top = -1;
 }
 
 #endif 

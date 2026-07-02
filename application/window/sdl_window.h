@@ -791,6 +791,9 @@ void window_poll_input_events(window_t *const window)
         if (window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED) {
             window->mouse.state = SDL_MOUSESTATE_HELD;
         }
+        if (window->mouse.state == SDL_MOUSESTATE_RELEASED) {
+            window->mouse.state = SDL_MOUSESTATE_NONE;
+        }
     }
 
     bool is_mouse_moving = false;

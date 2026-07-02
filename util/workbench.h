@@ -327,7 +327,7 @@ workbench_t * workbench_init(arena_t *const arena)
     return global_workbench;
 }
 
-matrix4f_t workbench__internal_get_camera_view(const workbench_t *const self)
+INTERNAL matrix4f_t workbench__internal__get_camera_view(const workbench_t *const self)
 {
     glcamera_t *camera = ecs_get_active_camera(global_ecs);
     return glcamera_getview(camera);
@@ -424,7 +424,7 @@ void workbench_render(void)
     if (!self->disable_grid) {
         workbench__internal_render_grid(
             &self->shader,
-            workbench__internal_get_camera_view(self),
+            workbench__internal__get_camera_view(self),
             glms_perspective(
                 radians(45), 
                 global_engine->handle.app->window.aspect_ratio, 
@@ -493,7 +493,7 @@ void workbench_render_camera(
                        },
                        [1] = {
                            .name = str("view"),
-                           .value = workbench__internal_get_camera_view(global_workbench)
+                           .value = workbench__internal__get_camera_view(global_workbench)
                        }
                     }
                 }
@@ -564,7 +564,7 @@ void workbench_render_marker(
                        },
                        [1] = {
                            .name = str("view"),
-                           .value = workbench__internal_get_camera_view(self)
+                           .value = workbench__internal__get_camera_view(self)
                        }
                     }
                 }
@@ -682,7 +682,7 @@ void workbench__internal_show_colliders(workbench_t *const self)
         );
     }
 
-    const matrix4f_t view = workbench__internal_get_camera_view(self);
+    const matrix4f_t view = workbench__internal__get_camera_view(self);
     const matrix4f_t proj = glms_perspective(
         radians(45),
         global_engine->handle.app->window.aspect_ratio,
