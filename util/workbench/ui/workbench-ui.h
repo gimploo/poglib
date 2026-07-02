@@ -4,17 +4,10 @@
 #include "poglib/basic/color.h"
 #include "poglib/basic/str.h"
 #include "poglib/poggen.h"
-#include "poglib/util/workbench/workbench-editor.h"
 #include <poglib/gui.h>
 
-typedef enum WORKBENCH_GUI_BUTTON_IDS {
 
-    WB_COLLIDER_TOGGLE = 69,
-
-} WORKBENCH_GUI_BUTTON_IDS;
-
-
-void workbench_compose_ui(gui_t *const gui)
+void workbench_editor_render_header(gui_t *const gui, const vec3f_t camera_pos, bool *const enable_collider)
 {
     char tempbuffer[32] = {0};
 
@@ -153,7 +146,6 @@ void workbench_compose_ui(gui_t *const gui)
         }
     }); 
     {
-        const vec3f_t camera_pos = global_workbench->world_camera.handle->position;
         memset(tempbuffer, 0, sizeof(tempbuffer));
         snprintf(tempbuffer, sizeof(tempbuffer), "cam pos [ %.2f, %.2f, %.2f ]", camera_pos.x, camera_pos.y, camera_pos.z);
         gui_ui_compose_begin(gui, (ui_config_t){ 
@@ -181,7 +173,7 @@ void workbench_compose_ui(gui_t *const gui)
             .traits = UI_BEHAVIOR_CLICKABLE | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_TRACK_STATE_TOGGLE
         },
         .binding = {
-            .ref = &global_workbench->enable_collider,
+            .ref = enable_collider,
             .size = sizeof(bool)
         },
         .dim = {
@@ -222,8 +214,5 @@ void workbench_compose_ui(gui_t *const gui)
     }
     gui_ui_compose_end(gui);
     gui_ui_compose_end(gui);
-
-
-    workbench_editor_render();
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 #include "poglib/basic/color.h"
+#include "poglib/basic/util.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/external/joltc/include/joltc.h"
 #include "poglib/gui.h"
@@ -15,6 +16,8 @@ void            workbench_editor_update(void);
 void                workbench_editor_delete_entity(void);
 void                workbench_editor_copypaste_entity(void);
 void                workbench_editor_select_closest_entity(void);
+void                workbench_editor_action_history_push(workbench_t *const self, const workbench_editor_ecs_action_t action);
+void                workbench_editor_action_history_pop(workbench_t *const self, ecs_t *const ecs);
 void                workbench_editor_savechanges(void);
 void            workbench_editor_render(void);
 
@@ -22,6 +25,7 @@ void            workbench_editor_render(void);
 #ifndef IGNORE_WORKBENCH_EDITOR_IMPLEMENTATION
 
 INTERNAL void workbench_editor__internal_update_physics_colliders(void);
+INTERNAL void workbench_editor__internal__slider_on_release(void);
 
 INTERNAL f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_origin, const vec3f_t ray_dir, const vec3f_t targetpoint)
 {
@@ -114,8 +118,9 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
 {
     if (!global_workbench->editor.current_selected_entity_id) return;
 
-    gui_t *const gui = &global_workbench->gui.handle;
-    char tempbuffer[32] = {0};
+    const u32 entity_id     = global_workbench->editor.current_selected_entity_id;
+    gui_t *const gui        = &global_workbench->gui.handle;
+    char tempbuffer[32]     = {0};
 
     enum option_type {
         OT_TRANSLATION  = 0,
@@ -132,12 +137,13 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
 
     const ecs_entity_query_t query = ecs_entity_query_components(
         global_ecs, 
-        global_workbench->editor.current_selected_entity_id, 
+        entity_id,
         ECS_CMP_TRANSFORM | ECS_CMP_COLLIDER
     );
 
     ecs_component_transform_t *const transform  = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
     ecs_component_collider_t *const collider    = query.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
+
 
     //NOTE: used in the editor to udpate value for each one of these
     vec3f_t *const transform_bindings[OT_COUNT] = {
@@ -237,7 +243,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                 };
 
                 //NOTE: Slider
-                gui_ui_compose_begin(gui, (ui_config_t){
+                const u32 x_id = gui_ui_compose_begin(gui, (ui_config_t){
                     .composition = {
                         .traits = UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
                     },
@@ -268,12 +274,17 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         break;
                     }
 
+                    if (gui_ui_isclicked(gui, x_id)) {
+                        global_workbench->editor.workbench_editor_action_snapshot.entity_id = entity_id;
+                        global_workbench->editor.workbench_editor_action_snapshot.transform = *transform;
+                    }
+
                     value_style.text = str_from_cstr(tempbuffer, sizeof(tempbuffer));
                     gui_ui_compose_begin(gui, value_style);
                     gui_ui_compose_end(gui);
                 gui_ui_compose_end(gui);
 
-                gui_ui_compose_begin(gui, (ui_config_t){
+                const u32 y_id = gui_ui_compose_begin(gui, (ui_config_t){
                     .composition = {
                         .traits = UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
                     },
@@ -306,12 +317,17 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         break;
                     }
 
+                    if (gui_ui_isclicked(gui, y_id)) {
+                        global_workbench->editor.workbench_editor_action_snapshot.entity_id = entity_id;
+                        global_workbench->editor.workbench_editor_action_snapshot.transform = *transform;
+                    }
+
                     value_style.text = str_from_cstr(tempbuffer, sizeof(tempbuffer));
                     gui_ui_compose_begin(gui, value_style);
                     gui_ui_compose_end(gui);
                 gui_ui_compose_end(gui);
 
-                gui_ui_compose_begin(gui, (ui_config_t){
+                const u32 z_id = gui_ui_compose_begin(gui, (ui_config_t){
                     .color = {
                         .base = COLOR_BLUE,
                         .highlight = COLOR_LIGHTBLUE,
@@ -342,6 +358,11 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         break;
                         case OT_SCALE:          snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.z);
                         break;
+                    }
+
+                    if (gui_ui_isclicked(gui, z_id)) {
+                        global_workbench->editor.workbench_editor_action_snapshot.entity_id = entity_id;
+                        global_workbench->editor.workbench_editor_action_snapshot.transform = *transform;
                     }
 
                     value_style.text = str_from_cstr(tempbuffer, sizeof(tempbuffer));
@@ -519,7 +540,13 @@ INTERNAL void workbench_editor__internal__draw_gizmo_on_entity_selection(void)
 
 void workbench_editor_render(void)
 {
-    workbench_editor__internal_show_entity_info_for_selected_entity();
+    //NOTE: UI design goes here
+    {
+        workbench_editor_render_header(&global_workbench->gui.handle, global_workbench->world_camera.handle->position, &global_workbench->enable_collider);
+        workbench_editor__internal_show_entity_info_for_selected_entity();
+    }
+
+    if (gui_ui_mouse_on_drag_release(&global_workbench->gui.handle)) workbench_editor__internal__slider_on_release();
 }
 
 void workbench_editor_unselect_entity(void)
@@ -598,14 +625,12 @@ INTERNAL void workbench_editor__internal__change_worldcamera_to_orbit_type_on_en
     cam->follow.orbit_radius    = -1.f * glms_vec3_distance(cam->camera.position, transform->position);
     cam->follow.center_offset   = (vec3f_t){0};
     cam->follow.track_entity_id = global_workbench->editor.current_selected_entity_id;
-
 }
 
 void workbench_editor_update(void)
 {
     workbench_editor__internal__check_mouse_closest_entity();
     workbench_editor__internal__draw_gizmo_on_entity_selection();
-    workbench_editor__internal__change_worldcamera_to_orbit_type_on_entity_selection();
 }
 
 void workbench_editor_copypaste_entity(void)
@@ -649,5 +674,47 @@ void workbench_editor_select_closest_entity(void)
 }
 
 
+void workbench_editor_action_history_pop(workbench_t *const self, ecs_t *const ecs)
+{
+    if (stack_is_empty(&self->editor.workbench_editor_action_history)) return;
+
+    const workbench_editor_ecs_action_t *action = stack_peek(&self->editor.workbench_editor_action_history);
+    ecs_entity_query_t query        = ecs_entity_query_components(ecs, action->entity_id, action->component_type);
+    const u32 cmp_idx               = get_index_from_bitflag(action->component_type);
+    if (!query.entity_cmp_data[cmp_idx])
+        goto pop_from_stack;
+
+    switch(action->component_type)
+    {
+        case ECS_CMP_TRANSFORM: {
+            ecs_component_transform_t *const transform = query.entity_cmp_data[cmp_idx];
+            *transform = action->component_data.transform;
+        } break;
+    }
+
+pop_from_stack:
+    stack_pop(&self->editor.workbench_editor_action_history);
+}
+
+void workbench_editor_action_history_push(workbench_t *const self, const workbench_editor_ecs_action_t action)
+{
+    if (stack_is_full(&self->editor.workbench_editor_action_history)) {
+        stack_clear(&self->editor.workbench_editor_action_history);
+    }
+
+    stack_push(&self->editor.workbench_editor_action_history, action);
+}
+
+INTERNAL void workbench_editor__internal__slider_on_release(void)
+{
+    workbench_editor_action_history_push(
+        global_workbench, 
+        (workbench_editor_ecs_action_t) {
+            .component_data = global_workbench->editor.workbench_editor_action_snapshot.transform,
+            .component_type = ECS_CMP_TRANSFORM,
+            .entity_id = global_workbench->editor.workbench_editor_action_snapshot.entity_id
+        }
+    );
+}
 
 #endif

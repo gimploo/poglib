@@ -26,8 +26,17 @@ typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION,
     WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY,
     WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY,
+    WORKBENCH_ACTION_TYPE_UNDO,
     WORKBENCH_ACTION_TYPE_COUNT
 } workbench_action_type;
+
+typedef struct {
+    u32 entity_id;
+    ecs_component_type component_type;
+    union {
+        ecs_component_transform_t transform;
+    } component_data;
+} workbench_editor_ecs_action_t;
 
 typedef struct {
 
@@ -70,6 +79,12 @@ typedef struct {
         u32 prev_selected_entity_id;
         u32 current_selected_entity_id;
         ecs_component_transform_t *selected_entity_transform;
+
+        struct {
+            u32 entity_id;
+            ecs_component_transform_t transform;
+        } workbench_editor_action_snapshot;
+        stack_t workbench_editor_action_history;
 
     } editor;
 

@@ -154,6 +154,7 @@ struct gui_t {
 
         struct {
             u32 ui_id;
+            u32 last_mouseclick_released_ui_id;
         } mouse_lock_on_ui;
 
         //NOTE: `is_mouse_on_ui` is to track whether mouse is on ui during the immediate mode rendering
@@ -174,17 +175,16 @@ struct gui_t {
 gui_t   gui_init(arena_t *const arena, const ui_region_t starting_region);
 
 //INFO: define this in a function
-u32     gui_ui_compose_begin(gui_t * const gui, const ui_config_t config);
-void    gui_ui_compose_end(gui_t *gui);
+u32         gui_ui_compose_begin(gui_t * const gui, const ui_config_t config);
+void        gui_ui_compose_end(gui_t *gui);
 
 //INFO: pass above declared function that includes the gui compisition into here
-void    gui_set_composition(gui_t * const self, ui_composition callback);
+void        gui_set_composition(gui_t * const self, ui_composition callback);
 
-bool    gui_ui_ishovered(gui_t *const self, const u32 id);
-bool    gui_ui_isclicked(gui_t *const self, const u32 id);
+bool        gui_ui_ishovered(gui_t *const self, const u32 id);
+bool        gui_ui_isclicked(gui_t *const self, const u32 id);
 
-void    gui_run(gui_t *const self, const bool render_as_wireframe);
-
+void    gui_render(gui_t *const self, const bool render_as_wireframe);
 void    gui_destroy(gui_t *const self);
 
 
@@ -266,11 +266,16 @@ void gui__internal_update_state(gui_t *gui, const ui_config_t config)
 
         if (gui->internal.mouse_lock_on_ui.ui_id == config.internal.id) {
             i32 rel = global_window->mouse.rel.x;
-            if (config.binding.invert)   *((f32 *)config.binding.ref) -= (rel / 10.f);
-            else                                *((f32 *)config.binding.ref) += (rel / 10.f);
+            const f32 prev_val = *(f32 *)config.binding.ref;
+            {
+                if (config.binding.invert)   *((f32 *)config.binding.ref) -= (rel / 10.f);
+                else                         *((f32 *)config.binding.ref) += (rel / 10.f);
+            }
+            const f32 new_val = *(f32 *)config.binding.ref;
         }
 
-        if (window_mouse_button_is_released(global_window, SDL_MOUSEBUTTON_LEFT)) {
+        if (gui->internal.mouse_lock_on_ui.ui_id && window_mouse_button_is_released(global_window, SDL_MOUSEBUTTON_LEFT)) {
+            gui->internal.mouse_lock_on_ui.last_mouseclick_released_ui_id = gui->internal.mouse_lock_on_ui.ui_id;
             gui->internal.mouse_lock_on_ui.ui_id = 0;
         }
     }
@@ -531,20 +536,12 @@ void gui__internal_reset_internals(gui_t *self)
     self->state.hovered_ui_id = 0;
     self->internal.is_mouse_on_ui = false;
     self->internal.ui_id_generator = 0;
+    self->internal.mouse_lock_on_ui.last_mouseclick_released_ui_id = 0;
 }
 
-void gui_run(gui_t *const self, const bool render_as_wireframe)
+void gui_render(gui_t *const self, const bool render_as_wireframe)
 {
-    if (!self->callback) {
-        eprint("No ui composition provided!");
-    }
-
-    gui__internal_reset_internals(self);
-
-    //NOTE: update starts here
-
-    self->callback(self);
-
+    ASSERT(self);
 
     //NOTE: render starts here
     glrenderer3d_draw((glrendererconfig_t) {
@@ -664,11 +661,22 @@ void gui_run(gui_t *const self, const bool render_as_wireframe)
     });
 
     list_clear(&self->gfx.instanced_attrs);
+    gui__internal_reset_internals(self);
 }
 
 void gui_set_composition(gui_t * const self, ui_composition callback)
 {
     self->callback = callback;
+}
+
+bool gui_ui_mouse_lock_release(gui_t *const self, const u32 id)
+{
+    return self->internal.mouse_lock_on_ui.last_mouseclick_released_ui_id == id;
+}
+
+bool gui_ui_mouse_on_drag_release(gui_t *const self)
+{
+    return self->internal.mouse_lock_on_ui.last_mouseclick_released_ui_id > 0;
 }
 
 bool gui_ui_ishovered(gui_t *const self, const u32 id)
