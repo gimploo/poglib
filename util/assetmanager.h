@@ -471,6 +471,91 @@ void assetmanager__internal_upload_capsule_to_gpu(assetmanager_t *const self)
 }
 
 
+void assetmanager__internal_upload_cylinder_to_gpu(assetmanager_t *const self)
+{
+    const u32 asset_id = GL_MESH_PRIMITIVE_TYPE_CYLINDER;
+
+    vao_t vao = vao_init();
+    vao_bind(&vao);
+
+    vbo_t vbo = vbo_init((vbo_config_t) {
+        .usage = GL_STATIC_DRAW,
+        .chunks = {
+            [VBO_STREAM_TYPE_GEOMETRY] = { 
+                .buffer = {
+                    .raw_data = (u8 *)DEFAULT_CYLINDER_VERTICES_WITH_NORMALS_AND_UVS,
+                    .size = sizeof(DEFAULT_CYLINDER_VERTICES_WITH_NORMALS_AND_UVS),
+                }, 
+                .index_count = ARRAY_LEN(DEFAULT_CYLINDER_INDICES)
+            },
+            [VBO_STREAM_TYPE_INSTANCE] = {0},
+        }
+    });
+
+    const ebo_t ebo = ebo_init(&vbo, DEFAULT_CYLINDER_INDICES, ARRAY_LEN(DEFAULT_CYLINDER_INDICES));
+
+    vao_set_attributes(
+        &vao,
+        &vbo, 
+        3, 
+        GL_FLOAT, 
+        false, 
+        sizeof(f32) * 8, 
+        0, 
+        false,
+        VBO_STREAM_TYPE_GEOMETRY
+    );
+
+    vao_set_attributes(
+        &vao,
+        &vbo, 
+        3, 
+        GL_FLOAT, 
+        false, 
+        sizeof(f32) * 8, 
+        sizeof(f32) * 3, 
+        false,
+        VBO_STREAM_TYPE_GEOMETRY
+    );
+
+    vao_set_attributes(
+        &vao,
+        &vbo, 
+        2, 
+        GL_FLOAT, 
+        false, 
+        sizeof(f32) * 8, 
+        sizeof(f32) * 6, 
+        false,
+        VBO_STREAM_TYPE_GEOMETRY
+    );
+    vao_unbind();
+
+    gpu_mesh_t * const gpu_mesh = arena_store(
+        &self->arena, 
+        &(gpu_mesh_t) {
+            .vao_id = vao.id,
+            .index_count = ebo.indices_count,
+            .attribute_count = vbo.internals.attribute_index + 1
+        },
+        sizeof(gpu_mesh_t)
+    );
+
+    gpu_asset_t * const gpu_asset = arena_store(
+        &self->arena, 
+        &(gpu_asset_t) {
+            .asset_id = asset_id,
+            .meshes = {
+            .count = 1,
+                .data = gpu_mesh
+            }
+        },
+        sizeof(gpu_asset_t));
+
+    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
+}
+
+
 void assetmanager__internal_upload_camera_model(assetmanager_t *const self)
 {
     const u32 asset_id = GL_MESH_PRIMITIVE_TYPE_CAMERA;
@@ -609,6 +694,7 @@ void assetmanager_load_all_primitives(assetmanager_t *const self)
     assetmanager__internal_upload_line_to_gpu(self);
     assetmanager__internal_upload_cube_to_gpu(self);
     assetmanager__internal_upload_capsule_to_gpu(self);
+    assetmanager__internal_upload_cylinder_to_gpu(self);
     assetmanager__internal_upload_camera_model(self);
 }
 

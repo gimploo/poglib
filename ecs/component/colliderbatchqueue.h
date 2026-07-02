@@ -89,6 +89,9 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
             case COLLIDER_SHAPE_TYPE_SPHERE:
                 shape = (JPH_Shape *)JPH_SphereShape_Create(collider->dim.sphere.radius);
             break;
+            case COLLIDER_SHAPE_TYPE_CYLINDER:
+                shape = (JPH_Shape *)JPH_CylinderShape_Create(collider->dim.cylinder.half_height, collider->dim.cylinder.radius);
+            break;
 
             default: eprint("Collider shape type not accounted for here");
         }

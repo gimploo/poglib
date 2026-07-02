@@ -91,7 +91,8 @@ INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(v
     switch(collider->shape_type)
     {
         case COLLIDER_SHAPE_TYPE_SPHERE:
-        case COLLIDER_SHAPE_TYPE_CAPSULE: {
+        case COLLIDER_SHAPE_TYPE_CAPSULE:
+        case COLLIDER_SHAPE_TYPE_CYLINDER: {
             JPH_Shape *scaled = JPH_Shape_ScaleShape(collider->internal.shape, (JPH_Vec3 *)&transform->scale);
             JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)scaled, false, JPH_Activation_DontActivate);
             JPH_Shape_Destroy(scaled);
