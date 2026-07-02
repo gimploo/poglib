@@ -23,7 +23,7 @@ colliderbatchqueue_t colliderbatchqueue(arena_t *const arena)
 {
     ASSERT(arena);
     colliderbatchqueue_t result = {0};
-    result.queue = queue_init(20, ecs_component_collider_t *, arena);
+    result.queue = queue_init(100, ecs_component_collider_t *, arena);
     result.arena = arena_init(arena, KB);
     return result;
 }
@@ -162,7 +162,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
 
         if (optimize_broadphase) {
             JPH_PhysicsSystem_OptimizeBroadPhase(global_physics_sys_jolt_instance->physics_system);
-            printf("optimizied broadphase\n");
+            logging("optimizied broadphase\n");
         }
 
 #ifndef DEBUG

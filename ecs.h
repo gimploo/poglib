@@ -200,6 +200,8 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
     ecs_serializer__internal_write_footer(&f);
 
     file_destroy(&f);
+
+    logging("ECS state saved to file `%.*s`", filepath.len, filepath.data);
 }
 
 bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
@@ -214,9 +216,10 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
 
     if (!file_check_exist(filepath.data))
     {
-        //eprint("save file not found: `%s`", filepath.data);
         return false;
     }
+
+    logging("ESC save file `%.*s` exist, loading it.", filepath.len, filepath.data);
 
     file_t f = file_init(filepath.data, "r");
 
