@@ -21,7 +21,7 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
 
         //HACK: is this good ? - who tf knows - keep this till i get smarter :p
         if (transform->source == ECS_CMP_TRANSFORM_SOURCE_ANIMATION || global_workbench->is_active)
-            break;
+            continue;
 
         switch(collider->motion_type)
         {
