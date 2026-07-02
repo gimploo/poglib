@@ -128,6 +128,7 @@ typedef enum {
     COLLIDER_SHAPE_TYPE_CAPSULE = 1,
     COLLIDER_SHAPE_TYPE_SPHERE  = 2,
     COLLIDER_SHAPE_TYPE_CUBE    = 3,
+    COLLIDER_SHAPE_TYPE_CYLINDER = 4,
     COLLIDER_SHAPE_TYPE_COUNT,
 } collider_shape_type;
 
@@ -144,6 +145,10 @@ typedef union {
         f32 radius;
         f32 half_height;
     } capsule;
+    struct {
+        f32 radius;
+        f32 half_height;
+    } cylinder;
 } collider_shape_dimension_t;
 
 struct ecs_component_collider_t {
