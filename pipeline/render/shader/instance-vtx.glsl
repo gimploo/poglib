@@ -1,9 +1,5 @@
 #version 430 core
 
-layout (location = 0) in vec3 v_vtx; 
-layout (location = 1) in vec3 v_normal; 
-layout (location = 2) in vec2 v_uv; 
-
 struct renderinstance_t {
     vec4 uv;
     vec4 color;
@@ -11,6 +7,10 @@ struct renderinstance_t {
     vec4 rotation;
     vec4 scale;
 };
+
+layout (location = 0) in vec3 v_vtx; 
+layout (location = 1) in vec3 v_normal; 
+layout (location = 2) in vec2 v_uv; 
 
 layout(std430, binding = 0) buffer InstanceBuffer {
     renderinstance_t instances[];

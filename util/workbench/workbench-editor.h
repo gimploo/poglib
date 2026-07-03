@@ -94,9 +94,15 @@ INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(v
 
     switch(collider->shape_type)
     {
-        case COLLIDER_SHAPE_TYPE_SPHERE:
-        case COLLIDER_SHAPE_TYPE_CAPSULE:
         case COLLIDER_SHAPE_TYPE_CYLINDER: {
+            collider->dim.cylinder.radius       = transform->scale.x;
+            collider->dim.cylinder.half_height  = transform->scale.y;
+            JPH_Shape *newShape = (JPH_Shape *)JPH_CylinderShape_Create(collider->dim.cylinder.half_height, collider->dim.cylinder.radius);
+            JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
+            JPH_Shape_Destroy((JPH_Shape *)newShape);
+        } break;
+        case COLLIDER_SHAPE_TYPE_SPHERE:
+        case COLLIDER_SHAPE_TYPE_CAPSULE: {
             JPH_Shape *scaled = JPH_Shape_ScaleShape(collider->internal.shape, (JPH_Vec3 *)&transform->scale);
             JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)scaled, false, JPH_Activation_DontActivate);
             JPH_Shape_Destroy(scaled);
@@ -261,7 +267,6 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         .size = sizeof(f32)
                     },
                 });
-                {
                     //Label
                     memset(tempbuffer, 0, sizeof(tempbuffer));
 
@@ -328,50 +333,46 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                     gui_ui_compose_end(gui);
                 gui_ui_compose_end(gui);
 
-                const u32 z_id = gui_ui_compose_begin(gui, (ui_config_t){
-                    .color = {
-                        .base = COLOR_BLUE,
-                        .highlight = COLOR_LIGHTBLUE,
-                    },
-                    .composition = {
-                        .traits = UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
-                    },
-                    .dim = {
-                        .min_width = 50,
-                        .min_height = 30,
-                    },
-                    .binding = {
-                        .ref = (void *)&transform_bindings[idx]->z,
-                        .size = sizeof(f32)
-                    },
-                    .margin = {
-                        .left = 10.f 
-                    }
-                });
-                    //Label
-                    memset(tempbuffer, 0, sizeof(tempbuffer));
+                {
+                    //NOTE: disabling z scale for cylinder collider types
+                    void *const binding_ref = collider->shape_type == COLLIDER_SHAPE_TYPE_CYLINDER && idx == OT_SCALE
+                        ? (void *)&transform_bindings[idx]->x
+                        : (void *)&transform_bindings[idx]->z;
 
-                    switch(idx)
-                    {
-                        case OT_TRANSLATION:    snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->position.z);
-                        break;
-                        case OT_ROTATION:       snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->orientation.z);
-                        break;
-                        case OT_SCALE:          snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", transform->scale.z);
-                        break;
-                    }
+                    const u32 z_id = gui_ui_compose_begin(gui, (ui_config_t){
+                        .color = {
+                            .base = COLOR_BLUE,
+                            .highlight = COLOR_LIGHTBLUE,
+                        },
+                        .composition = {
+                            .traits = UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
+                        },
+                        .dim = {
+                            .min_width = 50,
+                            .min_height = 30,
+                        },
+                        .binding = {
+                            .ref = binding_ref,
+                            .size = sizeof(f32)
+                        },
+                        .margin = {
+                            .left = 10.f 
+                        }
+                    });
+                        //Label
+                        memset(tempbuffer, 0, sizeof(tempbuffer));
+                        snprintf(tempbuffer, sizeof(tempbuffer), "%.2f", *(f32 *)binding_ref);
 
-                    if (gui_ui_isclicked(gui, z_id)) {
-                        global_workbench->editor.workbench_editor_action_snapshot.entity_id = entity_id;
-                        global_workbench->editor.workbench_editor_action_snapshot.transform = *transform;
-                    }
+                        if (gui_ui_isclicked(gui, z_id)) {
+                            global_workbench->editor.workbench_editor_action_snapshot.entity_id = entity_id;
+                            global_workbench->editor.workbench_editor_action_snapshot.transform = *transform;
+                        }
 
-                    value_style.text = str_from_cstr(tempbuffer, sizeof(tempbuffer));
-                    gui_ui_compose_begin(gui, value_style);
-                    gui_ui_compose_end(gui);
-
+                        value_style.text = str_from_cstr(tempbuffer, sizeof(tempbuffer));
+                        gui_ui_compose_begin(gui, value_style);
+                        gui_ui_compose_end(gui);
+                    gui_ui_compose_end(gui); //NOTE: slider for x, y, z
                 }
-                gui_ui_compose_end(gui); //NOTE: slider for x, y, z
 
                 const u32 reset_id = gui_ui_compose_begin(gui, (ui_config_t) {
                     .composition = {
@@ -458,7 +459,11 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
     transform->orientation = glms_quat_normalize(transform->orientation);
 
     //NOTE: Jolt requires scales to be +ve value always
-    transform->scale = glms_vec3_abs(transform->scale);
+    transform->scale = (vec3f_t){
+        .x = MAX(transform->scale.x, 1.0f),
+        .y = MAX(transform->scale.y, 1.0f),
+        .z = collider->shape_type == COLLIDER_SHAPE_TYPE_CYLINDER ? MAX(transform->scale.x, 1.0f) : MAX(transform->scale.z, 1.0f)
+    };
 }
 
 INTERNAL void workbench_editor__internal_gizmo_draw_axis(
