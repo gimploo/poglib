@@ -23,6 +23,9 @@
 //BUG:
 //1. WDC coordinates text are not wrapping around to next line of NDC coordinates text while enclosed in the same composition
 
+#define GUI_ZORDER_LIMIT 1000000
+#define UI_ZORDER_RESERVE 200
+
 typedef enum {
     UI_BEHAVIOR_NONE                                 = 0,
     UI_BEHAVIOR_HOVERABLE                            = 1 << 0,
@@ -468,7 +471,7 @@ void gui__internal_ui_create_text_internal(gui_t * const gui, const ui_region_t 
                 .width = glyph_w,
             },
             .color = config.color.base,
-            .zorder = gui->internal.layout_cursor_stack.top,
+            .zorder = GUI_ZORDER_LIMIT - UI_ZORDER_RESERVE + gui->internal.layout_cursor_stack.top - 1,
             .uv = quad,
             .is_text = true,
         };
@@ -498,7 +501,7 @@ u32 gui_ui_compose_begin(gui_t *const gui, ui_config_t config)
     const ui_attr_t attr = {
         .position = child_region,
         .color = computed_color,
-        .zorder = gui->internal.layout_cursor_stack.top,
+        .zorder = GUI_ZORDER_LIMIT - UI_ZORDER_RESERVE + gui->internal.layout_cursor_stack.top - 1,
         .uv = {0},
         .corner_radius = (config.composition.styles & UI_STYLE_ROUNDED_CORNERS)
             ? (f32)config.corner_radius
@@ -576,7 +579,7 @@ void gui_render(gui_t *const self, const bool render_as_wireframe)
                             .data = {
                                 [0] = {
                                     .name = str_lit("projection"),
-                                    .value.mat4 = glms_ortho(0.0f, global_window->width, global_window->height, 0.0f, -2.0f * MAX_UI_NESTING_ALLOWED, 2.0f * MAX_UI_NESTING_ALLOWED)
+                                    .value.mat4 = glms_ortho(0.0f, global_window->width, global_window->height, 0.0f, -1.f * GUI_ZORDER_LIMIT, GUI_ZORDER_LIMIT)
                                 },
                             }
                         }
