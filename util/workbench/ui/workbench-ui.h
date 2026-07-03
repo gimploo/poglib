@@ -7,9 +7,9 @@
 #include <poglib/gui.h>
 
 
-void workbench_editor_render_header(gui_t *const gui, const vec3f_t camera_pos, bool *const enable_collider)
+void workbench_editor_render_header(gui_t *const gui, const vec3f_t camera_pos, const vec2f_t cam_orientation, bool *const enable_collider)
 {
-    char tempbuffer[32] = {0};
+    char tempbuffer[1024] = {0};
 
     gui_ui_compose_begin(gui, (ui_config_t){
         .color = {
@@ -148,6 +148,48 @@ void workbench_editor_render_header(gui_t *const gui, const vec3f_t camera_pos, 
     {
         memset(tempbuffer, 0, sizeof(tempbuffer));
         snprintf(tempbuffer, sizeof(tempbuffer), "cam pos [ %.2f, %.2f, %.2f ]", camera_pos.x, camera_pos.y, camera_pos.z);
+        gui_ui_compose_begin(gui, (ui_config_t){ 
+            .composition = {
+                .styles = UI_STYLE_ONLY_TEXT
+            },
+            .color = {
+                .base = COLOR_SOFT_WHITE,
+            },
+            .dim = {
+                .min_height = 40,
+                .min_width = 80 
+            },
+            .padding = {0},
+            .margin = {0},
+            .text = str_from_cstr(tempbuffer, sizeof(tempbuffer))
+        });
+        gui_ui_compose_end(gui);
+    } 
+    gui_ui_compose_end(gui);
+
+    //NOTE: Camera euler angle 
+    gui_ui_compose_begin(gui, (ui_config_t){ 
+        .composition = {
+            .styles = UI_STYLE_ROUNDED_CORNERS,
+        },
+        .color = {
+            .base = COLOR_BLACK,
+        },
+        .dim = {
+            .min_height = 30,
+            .min_width = 210 
+        },
+        .padding = {4,4,4,8},
+        .margin = {
+            .left = 5, 
+            .right = 5,
+            .top = 10,
+            .bottom = 10 
+        }
+    }); 
+    {
+        memset(tempbuffer, 0, sizeof(tempbuffer));
+        snprintf(tempbuffer, sizeof(tempbuffer), "cam euler angle [ %.2f, %.2f ]", cam_orientation.x, cam_orientation.y);
         gui_ui_compose_begin(gui, (ui_config_t){ 
             .composition = {
                 .styles = UI_STYLE_ONLY_TEXT

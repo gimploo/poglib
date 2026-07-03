@@ -30,9 +30,9 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
         switch (input_cmp->direction_source) 
         {
             case ECS_CMP_INPUT_DIRECTION_SOURCE_CAMERA:
-                input_cmp->internal.state.front     = ctx.active_camera->direction.front;
-                input_cmp->internal.state.right     = ctx.active_camera->direction.right;
-                input_cmp->internal.state.up        = ctx.active_camera->direction.up;
+                input_cmp->internal.state.front         = ctx.active_camera->direction.front;
+                input_cmp->internal.state.right         = ctx.active_camera->direction.right;
+                input_cmp->internal.state.up            = ctx.active_camera->direction.up;
             break;
             case ECS_CMP_INPUT_DIRECTION_SOURCE_ENTITY: {
                 const vec3f_t front = glms_quat_rotatev(transform->orientation, (vec3f_t){0, 0, -1});

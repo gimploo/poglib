@@ -61,10 +61,10 @@ INTERNAL void glcamera__internal_update_directions(glcamera_t *const self)
 void glcamera_set(
     glcamera_t *const self, 
     const vec3f_t absolute_position,         //NOTE: this needs to account in delta time also
-    const vec2f_t absolute_orientation
+    const vec2f_t euler_angle
 ) {
     self->position      = absolute_position;
-    self->euler_angle   = absolute_orientation;
+    self->euler_angle   = euler_angle;
 
     glcamera__internal_update_directions(self);
 
