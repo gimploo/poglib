@@ -55,36 +55,36 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
         return;
     }
 
-    vec2f_t mouse_delta = {0};
-    if (drag_look) {
-        mouse_delta.x = radians((f32)mouse_rel.y * drag_sensitivity);
-        mouse_delta.y = radians((f32)mouse_rel.x * drag_sensitivity);
-    }
-
     if (zoom_in)                z_offset = 1.f * zoom_sensitivity * dt;
     if (zoom_out)               z_offset = -1.f * zoom_sensitivity * dt;
     if (zoom_in || zoom_out)    state->current_position = glms_vec3_add(state->current_position, glms_vec3_scale(state->front, z_offset));
 
     if (drag_look) {
 
-        const vec3f_t front     = glms_quat_rotatev(state->current_orientation, (vec3f_t){0, 0, -1});
-        f32 pitch               = asinf(front.y);
-        f32 yaw                 = atan2f(front.z, front.x);
+        static f32 pitch    = 0.f; 
+        static f32 yaw      = 0.f;
 
-        pitch   -= radians((f32)mouse_rel.y * drag_sensitivity);
-        yaw     += radians((f32)mouse_rel.x * drag_sensitivity);
-        pitch   = fmaxf(-radians(89.f), fminf(radians(89.f), pitch));
+        const vec2f_t mouse_delta = {
+            .x = radians((f32)mouse_rel.x * drag_sensitivity),
+            .y = radians((f32)mouse_rel.y * drag_sensitivity),
+        };
 
-        const vec3f_t axis    = { sinf(pitch), -cosf(yaw) * cosf(pitch), 0.f };
-        const f32 angle       = acosf(-sinf(yaw) * cosf(pitch));
-        state->current_orientation = glms_quatv(angle, glms_vec3_normalize(axis));
+        pitch   += mouse_delta.y;
+        yaw     += mouse_delta.x;
+
+        pitch = glm_clamp(pitch, radians(-89), radians(89));
+
+        const versors pitch_quat = glms_quatv(pitch, (vec3s){1.f, 0.f, 0.f});
+        const versors yaw_quat = glms_quatv(yaw, (vec3s){0.f, 1.f, 0.f});
+
+        state->current_orientation = glms_quat_mul(yaw_quat, pitch_quat);
     }
 
 #if 0
-    printf("front ");glms_vec3_print(state->front, stdout);
-    printf("right ");glms_vec3_print(state->right, stdout);
-    printf("up ");glms_vec3_print(state->up, stdout);
-    //glms_versor_print(state->current_orientation, stdout);
+    printf("front       ");glms_vec3_print(state->front, stdout);
+    printf("right       ");glms_vec3_print(state->right, stdout);
+    printf("up          ");glms_vec3_print(state->up, stdout);
+    printf("orientation ");glms_versor_print(state->current_orientation, stdout);
 #endif
 
 }
