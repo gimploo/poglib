@@ -1,10 +1,13 @@
 #pragma once
 #include "./common.h"
 
+#define INSTANCE_BUFFER_COUNT 3
+
 typedef struct {
-    u32       ssbo_id;
+    u32       ssbo_ids[INSTANCE_BUFFER_COUNT];
     u64       capacity;
-    void *    mem_offset;
+    void *    mem_offsets[INSTANCE_BUFFER_COUNT];
+    u8        active_index;
     struct {
         u64 current_offset;
     } internal;
@@ -26,7 +29,7 @@ void glinstancebuffer_bind(glinstancebuffer_t * const self, const u32 offset, co
     GL_CHECK(glBindBufferRange(
         GL_SHADER_STORAGE_BUFFER, 
         0, // instance buffer binding location
-        self->ssbo_id,
+        self->ssbo_ids[self->active_index],
         offset, 
         size
     ));
@@ -34,30 +37,33 @@ void glinstancebuffer_bind(glinstancebuffer_t * const self, const u32 offset, co
 
 glinstancebuffer_t glinstancebuffer_init(const u32 capacity)
 {
-    u32 global_instance_vbo;
-    GL_CHECK(glGenBuffers(1, &global_instance_vbo));
-    GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, global_instance_vbo));
-    GL_CHECK(glBufferStorage(GL_SHADER_STORAGE_BUFFER, capacity, NULL, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
+    glinstancebuffer_t buf = {0};
 
-    void *mem_offset = NULL;
-    GL_CHECK(mem_offset = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, capacity, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
-    ASSERT(mem_offset);
+    buf.capacity = capacity;
+    buf.active_index = 0;
+
+    GL_CHECK(glGenBuffers(INSTANCE_BUFFER_COUNT, buf.ssbo_ids));
+
+    for (u8 i = 0; i < INSTANCE_BUFFER_COUNT; i++)
+    {
+        GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, buf.ssbo_ids[i]));
+        GL_CHECK(glBufferStorage(GL_SHADER_STORAGE_BUFFER, capacity, NULL, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
+
+        void *mem = NULL;
+        GL_CHECK(mem = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, capacity, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT));
+        ASSERT(mem);
+        buf.mem_offsets[i] = mem;
+    }
 
     GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
 
-    return (glinstancebuffer_t) {
-        .mem_offset = mem_offset,
-        .capacity = capacity,
-        .ssbo_id = global_instance_vbo,
-        .internal = {
-            .current_offset = 0
-        }
-    };
+    return buf;
 }
 
 void glinstancebuffer_unbind(glinstancebuffer_t * const self)
 {
     self->internal.current_offset = 0;
+    self->active_index = (self->active_index + 1) % INSTANCE_BUFFER_COUNT;
     GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
 }
 
@@ -72,13 +78,20 @@ void glinstancebuffer_push(glinstancebuffer_t * const self, const void * const m
     if ((size + self->internal.current_offset) > self->capacity)
         eprint("Exceeded allowed GL instance buffer size, requires `%u` bytes but only `%u` bytes available", size, self->capacity - self->internal.current_offset);
 
-    memcpy((u8 *)self->mem_offset + self->internal.current_offset, mem, size);
+    memcpy((u8 *)self->mem_offsets[self->active_index] + self->internal.current_offset, mem, size);
     self->internal.current_offset += size;
 }
 
 void glinstancebuffer_destroy(glinstancebuffer_t * const self)
 {
     ASSERT(self);
-    GL_CHECK(glDeleteBuffers(1, &self->ssbo_id));
-    self->mem_offset = NULL;
+
+    for (u8 i = 0; i < INSTANCE_BUFFER_COUNT; i++)
+    {
+        GL_CHECK(glBindBuffer(GL_SHADER_STORAGE_BUFFER, self->ssbo_ids[i]));
+        GL_CHECK(glUnmapBuffer(GL_SHADER_STORAGE_BUFFER));
+    }
+
+    GL_CHECK(glDeleteBuffers(INSTANCE_BUFFER_COUNT, self->ssbo_ids));
+    memset(self, 0, sizeof(*self));
 }
