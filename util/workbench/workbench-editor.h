@@ -335,7 +335,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
 
                 {
                     //NOTE: disabling z scale for cylinder collider types
-                    void *const binding_ref = collider->shape_type == COLLIDER_SHAPE_TYPE_CYLINDER && idx == OT_SCALE
+                    void *const binding_ref = collider && collider->shape_type == COLLIDER_SHAPE_TYPE_CYLINDER && idx == OT_SCALE
                         ? (void *)&transform_bindings[idx]->x
                         : (void *)&transform_bindings[idx]->z;
 
@@ -462,7 +462,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
     transform->scale = (vec3f_t){
         .x = MAX(transform->scale.x, 1.0f),
         .y = MAX(transform->scale.y, 1.0f),
-        .z = collider->shape_type == COLLIDER_SHAPE_TYPE_CYLINDER ? MAX(transform->scale.x, 1.0f) : MAX(transform->scale.z, 1.0f)
+        .z = (collider && collider->shape_type == COLLIDER_SHAPE_TYPE_CYLINDER) ? MAX(transform->scale.x, 1.0f) : MAX(transform->scale.z, 1.0f)
     };
 }
 
