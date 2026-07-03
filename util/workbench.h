@@ -5,7 +5,6 @@
 #include "./workbench/common.h"
 #include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
-#include "SDL_scancode.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/gui.h"
 #include "poglib/util/workbench/workbench-editor.h"

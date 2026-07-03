@@ -150,7 +150,7 @@ void poggen_change_scene(poggen_t *self, const str_t scene_label)
     self->current_scene = scene;
 }
 
-void poggen_render(poggen_t *self, const f32 dt)
+void poggen_render(poggen_t *const self, const f32 dt)
 {
     ASSERT(self);
     self->current_scene->__render(self->current_scene, dt);
