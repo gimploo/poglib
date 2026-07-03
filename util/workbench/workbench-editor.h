@@ -546,7 +546,7 @@ INTERNAL void workbench_editor__internal__draw_gizmo_on_entity_selection(void)
 
 void workbench_editor_render(void)
 {
-    //NOTE: UI design goes here
+    //NOTE: Editor UI design goes here
     {
         workbench_editor_render_header(&global_workbench->gui.handle, global_workbench->world_camera.handle->position, global_workbench->world_camera.handle->euler_angle, &global_workbench->enable_collider);
         workbench_editor__internal_show_entity_info_for_selected_entity();
