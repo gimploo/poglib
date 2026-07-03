@@ -124,11 +124,11 @@ typedef struct ecs_component_collider_t ecs_component_collider_t;
 typedef struct ecs_collider_jolt_userdata_t ecs_collider_jolt_userdata_t;
 
 typedef enum {
-    COLLIDER_SHAPE_TYPE_NONE    = 0,
-    COLLIDER_SHAPE_TYPE_CAPSULE = 1,
-    COLLIDER_SHAPE_TYPE_SPHERE  = 2,
-    COLLIDER_SHAPE_TYPE_CUBE    = 3,
-    COLLIDER_SHAPE_TYPE_CYLINDER = 4,
+    COLLIDER_SHAPE_TYPE_NONE        = 0,
+    COLLIDER_SHAPE_TYPE_CAPSULE     = 1,
+    COLLIDER_SHAPE_TYPE_SPHERE      = 2,
+    COLLIDER_SHAPE_TYPE_CUBE        = 3,
+    COLLIDER_SHAPE_TYPE_CYLINDER    = 4,
     COLLIDER_SHAPE_TYPE_COUNT,
 } collider_shape_type;
 
