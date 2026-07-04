@@ -226,7 +226,7 @@ workbench_t * workbench_init(arena_t *const arena)
             .enable = true
         },
         .editor = {
-            .workbench_editor_action_history = stack_init(100, workbench_editor_ecs_action_t, arena)
+            .workbench_editor_action_history = stack_init(100, workbench_editor_ecs_action_t, arena),
         },
         .commandregistry = (commandregistry_t){
             .count = WORKBENCH_ACTION_TYPE_COUNT,
@@ -315,6 +315,14 @@ workbench_t * workbench_init(arena_t *const arena)
                     .sdl_keyboard_key = {
                         .modifier   = SDL_SCANCODE_LCTRL,
                         .main       = SDL_SCANCODE_Z,
+                        .trigger    = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
+                    }
+                },
+                [WORKBENCH_ACTION_TYPE_SAVE] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
+                    .sdl_keyboard_key = {
+                        .modifier   = SDL_SCANCODE_LCTRL,
+                        .main       = SDL_SCANCODE_S,
                         .trigger    = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
                     }
                 }
@@ -592,6 +600,7 @@ void workbench_update(const f32 dt)
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY))       workbench_editor_copypaste_entity();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY))          workbench_editor_delete_entity();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_UNDO))                            workbench_editor_action_history_pop(global_workbench, global_ecs);
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_SAVE))                            workbench_editor_save_to_file(global_workbench, global_ecs);
 
     workbench_editor_update();
 }

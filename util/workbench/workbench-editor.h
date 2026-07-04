@@ -792,4 +792,11 @@ INTERNAL void workbench_editor__internal__check_to_lock_camera(const workbench_t
     );
 }
 
+void workbench_editor_save_to_file(const workbench_t *const self, ecs_t *const ecs)
+{
+    (void)self;
+    workbench_editor_savechanges();
+    ecs_save_to_file(ecs, str("./save/save.ecs"));
+}
+
 #endif
