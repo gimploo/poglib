@@ -1,4 +1,5 @@
 #pragma once
+#include "poglib/external/cglm/struct/quat.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
 
@@ -27,7 +28,7 @@ glcamera_t      glcamera_perspective(const vec3f_t pos, const vec2f_t theta);
 void            glcamera_set(
                     glcamera_t *const self, 
                     const vec3f_t absolute_position, 
-                    const vec2f_t absolute_orientation
+                    const vec2f_t euler_angle
                 );
 void            glcamera_update(
                     glcamera_t *const self, 
@@ -35,7 +36,7 @@ void            glcamera_update(
                     const vec2f_t delta_rot
                 );
 matrix4f_t      glcamera_getview(const glcamera_t *const self);
-void            glcamera_lookat(glcamera_t *const self, const vec3f_t target);
+void            glcamera_lookat(glcamera_t *const self, const vec3f_t target, const vec3f_t up);
 
 
 /*-----------------------------------------------------------------------------
@@ -45,9 +46,6 @@ void            glcamera_lookat(glcamera_t *const self, const vec3f_t target);
 
 INTERNAL void glcamera__internal_update_directions(glcamera_t *const self)
 {
-    const f32 pitch_limit   = radians(89.0f);
-    self->euler_angle.x     = fmaxf(-pitch_limit, fminf(self->euler_angle.x, pitch_limit));
-    self->euler_angle.y     = fmodf(self->euler_angle.y, 2.0f * PI);
     const vec3f_t new_front = {
         .x = cosf(self->euler_angle.y) * cosf(self->euler_angle.x),
         .y = sinf(self->euler_angle.x),
@@ -110,11 +108,11 @@ matrix4f_t glcamera_getview(const glcamera_t *const self)
     );
 }
 
-void glcamera_lookat(glcamera_t *const self, const vec3f_t target)
+void glcamera_lookat(glcamera_t *const self, const vec3f_t target, const vec3f_t up)
 {
+    self->direction.up      = up;
     self->direction.front   = glms_normalize(glms_vec3_sub(target, self->position));
-    self->direction.right   = glms_normalize(glms_cross(self->direction.front, GL_CAMERA_DIRECTION_UP));
-    self->direction.up      = glms_cross(self->direction.right, self->direction.front);
+    self->direction.right   = glms_normalize(glms_cross(self->direction.front, up));
     self->euler_angle.x     = asinf(self->direction.front.y);
     self->euler_angle.y     = atan2f(self->direction.front.z, self->direction.front.x);
 
