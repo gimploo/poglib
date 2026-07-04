@@ -13,6 +13,24 @@ ecs_entitymanager_t ecs_entitymanager(arena_t * const arena)
     };
 }
 
+bool ecs_entitymanager_does_entity_exist(const ecs_entitymanager_t *const self, const u32 entity_id)
+{
+    return hashtable_has_key(
+        &self->entityid_to_entityidx_lookup, 
+        (hashtable_key_t){ .u32 = entity_id} 
+    );
+}
+
+ecs_entity_t ecs_entitymanager_get_entity(const ecs_entitymanager_t *const self, const u32 entity_id)
+{
+    const u64 entity_idx = (u64)hashtable_get_value(
+        &self->entityid_to_entityidx_lookup, 
+        (hashtable_key_t){ .u32 = entity_id} 
+    );
+
+    return *(ecs_entity_t *)slot_get_value(&self->entities, entity_idx);
+}
+
 void ecs_entitymanager_add(ecs_entitymanager_t * const self, const ecs_entity_t entityconfig)
 {
     slot_append(

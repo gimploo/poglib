@@ -3,10 +3,8 @@
 #include <poglib/ecs.h>
 
 #include "./workbench/common.h"
-#include "./workbench/ui/workbench-ui.h"
 #include "./workbench/workbench-grid.h"
 #include "poglib/ecs/component/types.h"
-#include "poglib/gui.h"
 #include "poglib/util/workbench/workbench-editor.h"
 
 workbench_t *   workbench_init(arena_t * const arena);

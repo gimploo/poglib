@@ -10,6 +10,7 @@
 #include "poglib/util/assetmanager.h"
 #include <poglib/util/workbench/common.h>
 #include <poglib/ecs.h>
+#include "./ui/workbench-ui.h"
 
 
 void            workbench_editor_update(void);
@@ -647,17 +648,37 @@ void workbench_editor_copypaste_entity(void)
     if (!global_workbench->editor.current_selected_entity_id) return;
 
     const u32 target_entity_id = global_workbench->editor.current_selected_entity_id;
-    ecs_entity_duplicate(global_ecs, global_workbench->editor.current_selected_entity_id);
-    logging("Duplicated entity (%i)", target_entity_id);
+    const u32 new_entity_id = ecs_entity_duplicate(global_ecs, global_workbench->editor.current_selected_entity_id);
+
+    workbench_editor_action_history_push(global_workbench, (workbench_editor_ecs_action_t) {
+        .entity_id = new_entity_id,
+        .is_created = true,
+    });
+
+    logging("Duplicated entity (%u) - new entity id (%u)", target_entity_id, new_entity_id);
 }
 
 void workbench_editor_delete_entity(void)
 {
     if (!global_workbench->editor.current_selected_entity_id) return;
 
-    ecs_entity_remove(global_ecs, global_workbench->editor.current_selected_entity_id);
+    const u32 delete_entity_id = global_workbench->editor.current_selected_entity_id;
+
+    const ecs_componentbundle_t bundle = ecs_entity_get_componentbundle(global_ecs, delete_entity_id);
+    workbench_editor_action_history_push(
+        global_workbench, 
+        (workbench_editor_ecs_action_t) {
+            .is_deleted = true,
+            .cmp_data = bundle,
+            .entity_id = delete_entity_id
+        }
+    );
+
+    ecs_entity_remove(global_ecs, delete_entity_id);
+
     workbench_editor_unselect_entity();
-    logging("Deleted entity (%i)", global_workbench->editor.current_selected_entity_id);
+
+    logging("Deleted entity (%u)", delete_entity_id);
 }
 
 void workbench_editor_select_closest_entity(void)
@@ -688,17 +709,35 @@ void workbench_editor_action_history_pop(workbench_t *const self, ecs_t *const e
     if (stack_is_empty(&self->editor.workbench_editor_action_history)) return;
 
     const workbench_editor_ecs_action_t *action = stack_peek(&self->editor.workbench_editor_action_history);
-    ecs_entity_query_t query        = ecs_entity_query_components(ecs, action->entity_id, action->component_type);
-    const u32 cmp_idx               = get_index_from_bitflag(action->component_type);
-    if (!query.entity_cmp_data[cmp_idx])
-        goto pop_from_stack;
 
-    switch(action->component_type)
+    if (action->is_created) {
+        ecs_entity_remove(global_ecs, action->entity_id);
+        goto pop_from_stack;
+    }
+
+    if (action->is_deleted) {
+        ecs_entity_add_at_index(global_ecs, action->entity_id, action->cmp_data);
+        goto pop_from_stack;
+    }
+
+    ecs_entity_query_t query = ecs_entity_query_components(ecs, action->entity_id, action->cmp_data.signature);
+
+    for (u32 cmpidx = 0; cmpidx < ECS_CMP_COUNT; cmpidx++)
     {
-        case ECS_CMP_TRANSFORM: {
-            ecs_component_transform_t *const transform = query.entity_cmp_data[cmp_idx];
-            *transform = action->component_data.transform;
-        } break;
+        const ecs_component_type cmp_type = (1 << cmpidx);
+        if (!(action->cmp_data.signature & cmp_type)) continue;
+
+        switch(cmp_type)
+        {
+            case ECS_CMP_TRANSFORM: {
+                ecs_component_transform_t *const transform = query.entity_cmp_data[cmpidx];
+                *transform = action->cmp_data.component[ECS_CMP_TRANSFORM_IDX].transform;
+            } break;
+            case ECS_CMP_COLLIDER: {
+                ecs_component_collider_t *const collider = query.entity_cmp_data[cmpidx];
+                *collider = action->cmp_data.component[ECS_CMP_COLLIDER_IDX].collider;
+            } break;
+        }
     }
 
 pop_from_stack:
@@ -719,8 +758,8 @@ INTERNAL void workbench_editor__internal__slider_on_release(void)
     workbench_editor_action_history_push(
         global_workbench, 
         (workbench_editor_ecs_action_t) {
-            .component_data = global_workbench->editor.workbench_editor_action_snapshot.transform,
-            .component_type = ECS_CMP_TRANSFORM,
+            .cmp_data.signature = ECS_CMP_TRANSFORM,
+            .cmp_data.component[ECS_CMP_TRANSFORM_IDX] = global_workbench->editor.workbench_editor_action_snapshot.transform,
             .entity_id = global_workbench->editor.workbench_editor_action_snapshot.entity_id
         }
     );
