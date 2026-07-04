@@ -16,7 +16,7 @@ INTERNAL void ecs_system_camera__internal_update_follow_camera(
     cam_tf->position                                    = glms_vec3_add(target_center, glms_vec3_scale(dir, camera->follow.orbit_radius));
     camera->camera.position                             = cam_tf->position;
 
-    glcamera_lookat(&camera->camera, target_center);
+    glcamera_lookat(&camera->camera, target_center, (vec3f_t){0.f, 1.f, 0.f});
 }
 
 INTERNAL void ecs_system_camera__internal_update_free_fly_camera(glcamera_t *const camera, const ecs_component_entry_t transform_entry)
