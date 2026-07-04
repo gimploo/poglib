@@ -73,8 +73,8 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
 
         pitch = glm_clamp(pitch, radians(-89), radians(89));
 
-        const versors pitch_quat = glms_quatv(pitch, (vec3s){1.f, 0.f, 0.f});
-        const versors yaw_quat = glms_quatv(yaw, (vec3s){0.f, 1.f, 0.f});
+        const versors pitch_quat = glms_quatv(pitch, (vec3s){-1.f, 0.f, 0.f});
+        const versors yaw_quat = glms_quatv(yaw, (vec3s){0.f, -1.f, 0.f});
 
         state->current_orientation = glms_quat_mul(yaw_quat, pitch_quat);
     }
