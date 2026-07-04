@@ -26,6 +26,7 @@ void            workbench_editor_render(void);
 
 INTERNAL void workbench_editor__internal_update_physics_colliders(void);
 INTERNAL void workbench_editor__internal__slider_on_release(void);
+INTERNAL void workbench_editor__internal__check_to_lock_camera(const workbench_t *const self, ecs_t *const ecs);
 
 INTERNAL f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_origin, const vec3f_t ray_dir, const vec3f_t targetpoint)
 {
@@ -392,7 +393,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                     },
                 });
                     if (gui_ui_isclicked(gui, reset_id)) {
-                        if (idx == OT_SCALE)    *transform_bindings[idx] = (vec3f_t){1.f,1.f,1.f};
+                        if (idx == OT_SCALE)    *transform_bindings[idx] = (vec3f_t){0.1f,0.1f,0.1f};
                         if (idx == OT_ROTATION) *(versors *)transform_bindings[idx] = GLMS_QUAT_IDENTITY;
                         else                    *transform_bindings[idx] = (vec3f_t){0};
                         workbench_editor__internal_update_physics_colliders();
@@ -460,9 +461,9 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
 
     //NOTE: Jolt requires scales to be +ve value always
     transform->scale = (vec3f_t){
-        .x = MAX(transform->scale.x, 1.0f),
-        .y = MAX(transform->scale.y, 1.0f),
-        .z = (collider && collider->shape_type == COLLIDER_SHAPE_TYPE_CYLINDER) ? MAX(transform->scale.x, 1.0f) : MAX(transform->scale.z, 1.0f)
+        .x = MAX(transform->scale.x, 0.1f),
+        .y = MAX(transform->scale.y, 0.1f),
+        .z = (collider && collider->shape_type == COLLIDER_SHAPE_TYPE_CYLINDER) ? MAX(transform->scale.x, 0.1f) : MAX(transform->scale.z, 0.1f)
     };
 }
 
@@ -553,6 +554,8 @@ void workbench_editor_render(void)
     }
 
     if (gui_ui_mouse_on_drag_release(&global_workbench->gui.handle)) workbench_editor__internal__slider_on_release();
+
+    workbench_editor__internal__check_to_lock_camera(global_workbench, global_ecs);
 }
 
 void workbench_editor_unselect_entity(void)
@@ -719,6 +722,33 @@ INTERNAL void workbench_editor__internal__slider_on_release(void)
             .component_data = global_workbench->editor.workbench_editor_action_snapshot.transform,
             .component_type = ECS_CMP_TRANSFORM,
             .entity_id = global_workbench->editor.workbench_editor_action_snapshot.entity_id
+        }
+    );
+}
+
+INTERNAL void workbench_editor__internal__check_to_lock_camera(const workbench_t *const self, ecs_t *const ecs)
+{
+    if (gui_is_mouse_captured(&self->gui.handle))
+    {
+        ecs_patch_entity(
+            ecs, 
+            self->world_camera.entity_id, 
+            (ecs_cmp_patch_payload_t) {
+                .patch_type = ECS_PATCH_CMP_ACTIVE_FIELD,
+                .is_active = false,
+                .signature = ECS_CMP_INPUT | ECS_CMP_TRANSFORM
+            }
+        );
+        return;
+    }
+
+    ecs_patch_entity(
+        ecs, 
+        self->world_camera.entity_id, 
+        (ecs_cmp_patch_payload_t) {
+            .patch_type = ECS_PATCH_CMP_ACTIVE_FIELD,
+            .is_active = true,
+            .signature = ECS_CMP_INPUT | ECS_CMP_TRANSFORM
         }
     );
 }
