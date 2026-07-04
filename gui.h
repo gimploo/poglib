@@ -186,6 +186,7 @@ void        gui_set_composition(gui_t * const self, ui_composition callback);
 
 bool        gui_ui_ishovered(gui_t *const self, const u32 id);
 bool        gui_ui_isclicked(gui_t *const self, const u32 id);
+bool        gui_is_mouse_captured(const gui_t *const gui);
 
 void    gui_render(gui_t *const self, const bool render_as_wireframe);
 void    gui_destroy(gui_t *const self);
@@ -536,11 +537,13 @@ void gui__internal_reset_internals(gui_t *self)
 {
     gui__internal_reset_layout_cursor(self);
 
-    self->state.hovered_ui_id = 0;
+    memset(&self->state, 0, sizeof(self->state));
+
     self->internal.is_mouse_on_ui = false;
     self->internal.ui_id_generator = 0;
     self->internal.mouse_lock_on_ui.last_mouseclick_released_ui_id = 0;
 }
+
 
 void gui_render(gui_t *const self, const bool render_as_wireframe)
 {
@@ -680,6 +683,11 @@ bool gui_ui_mouse_lock_release(gui_t *const self, const u32 id)
 bool gui_ui_mouse_on_drag_release(gui_t *const self)
 {
     return self->internal.mouse_lock_on_ui.last_mouseclick_released_ui_id > 0;
+}
+
+bool gui_is_mouse_captured(const gui_t *const gui)
+{
+    return gui->state.hovered_ui_id != 0 || gui->internal.mouse_lock_on_ui.ui_id != 0;
 }
 
 bool gui_ui_ishovered(gui_t *const self, const u32 id)
