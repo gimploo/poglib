@@ -31,11 +31,10 @@ typedef enum workbench_action_type {
 } workbench_action_type;
 
 typedef struct {
-    u32 entity_id;
-    ecs_component_type component_type;
-    union {
-        ecs_component_transform_t transform;
-    } component_data;
+    u32                     entity_id;
+    ecs_componentbundle_t   cmp_data;
+    bool                    is_created;
+    bool                    is_deleted;
 } workbench_editor_ecs_action_t;
 
 typedef struct {

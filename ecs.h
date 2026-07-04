@@ -9,6 +9,7 @@
 #include "poglib/ecs/serialization.h"
 #include "poglib/util/assetmanager.h"
 #include "poglib/poggen.h"
+#include "poglib/ecs/system.h"
 
 
 ecs_t * global_ecs = NULL;
@@ -16,6 +17,10 @@ ecs_t * global_ecs = NULL;
 ecs_t *         ecs_init(void);
 
 u32                 ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config);
+
+u32                 ecs_entity_add_at_index(ecs_t *const self, const u32 entity_id, const ecs_componentbundle_t component_config);
+
+void                ecs_entity_deactivate(ecs_t *const self, const u32 entity_id);
 u32                 ecs_entity_duplicate(ecs_t *const self, const u32 entity_id);
 void                ecs_entity_remove(ecs_t * const self, const u32 entityId);
 
@@ -29,10 +34,11 @@ void                ecs_patch_entity(ecs_t *const self, const u32 entity_id, con
 void                ecs_save_to_file(ecs_t *const self, const str_t filepath);
 bool                ecs_load_savefile(ecs_t *const self, const str_t filepath);
 
+ecs_componentbundle_t ecs_entity_get_componentbundle(ecs_t *const self, const u32 entity_id);
+
 void            ecs_update(ecs_t *const self);
 void            ecs_destroy(ecs_t *const self);
 
-#include "poglib/ecs/system.h"
 
 #ifndef IGNORE_ECS_IMPLEMENTATION
 
@@ -107,6 +113,29 @@ u32 ecs_entity_add(ecs_t *const self, const ecs_componentbundle_t component_conf
     return new_entity.id;
 }
 
+u32 ecs_entity_add_at_index(ecs_t *const self, const u32 entity_id, const ecs_componentbundle_t component_config)
+{
+    if (ecs_entitymanager_does_entity_exist(&self->managers.entitymanager, entity_id))
+        eprint("entity id (%u) already exist", entity_id);
+
+    const ecs_entity_t new_entity = {
+        .id                     = entity_id,
+        .component_signature    = component_config.signature,
+    };
+
+    ecs_entitymanager_add(
+        &self->managers.entitymanager, 
+        new_entity
+    );
+
+    ecs_componentmanager_add(
+        &self->managers.componentmanager,
+        new_entity.id,
+        component_config
+    );
+    return new_entity.id;
+}
+
 u32 ecs_entity_duplicate(ecs_t *const self, const u32 entity_id)
 {
     const u64 entity_idx = (u64)hashtable_get_value(
@@ -120,6 +149,43 @@ u32 ecs_entity_duplicate(ecs_t *const self, const u32 entity_id)
     );
 
     return ecs_entity_add(self, component_config);
+}
+
+
+ecs_componentbundle_t ecs_entity_get_componentbundle(ecs_t *const self, const u32 entity_id)
+{
+    const ecs_entity_t entity = ecs_entitymanager_get_entity(&self->managers.entitymanager, entity_id);
+    const ecs_entity_query_t query = ecs_entity_query_components(
+        self, entity.id, entity.component_signature
+    );
+
+    const ecs_componentbundle_t bundle = {
+        .signature = entity.component_signature,
+        .component = {0}
+    };
+
+    for (u32 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
+    {
+        const ecs_component_type cmp_type = 1 << cmp_idx;
+        if ((entity.component_signature & cmp_type) == 0) continue;
+
+        const void *const src   = query.entity_cmp_data[cmp_idx];
+        void *const dest        = (void *)&bundle.component[cmp_idx];
+        const u64 cmp_size      = ecs_component__internal_get_componenttype_size(cmp_type);
+        memcpy(dest, src, cmp_size);
+    }
+    return bundle;
+}
+
+void ecs_entity_deactivate(ecs_t *const self, const u32 entity_id)
+{
+    const ecs_entity_t entity = ecs_entitymanager_get_entity(&self->managers.entitymanager, entity_id);
+
+    ecs_patch_entity(self, entity_id, (ecs_cmp_patch_payload_t) {
+        .patch_type = ECS_PATCH_CMP_ACTIVE_FIELD,
+        .is_active = false,
+        .signature = entity.component_signature
+    });
 }
 
 void ecs_entity_remove(ecs_t *const self, const u32 entityId)
