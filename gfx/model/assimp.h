@@ -599,12 +599,19 @@ void glmodel_set_animation(glmodel_t *const self, const char *animation_label, c
         return;
     }
 
+    // Clear previous transforms
+    for (u32 i = 0; i < self->meshes.len; i++) {
+        list_clear(&self->transforms[i]);
+    }
+
     // Track current animation and time to reset time on animation change
     if (str_cmp(self->internal.active_playing_animation, str_from_cstr(animation_label, strlen(animation_label))) == 0) {
         self->current_time = 0.0f; // Reset time when switching animations
         self->internal.playing_animation_iteration_count = 0;
         self->internal.active_playing_animation = str_from_cstr(animation_label, strlen(animation_label));
     }
+
+    //logging(STR_FMT, STR_ARG(&self->internal.active_playing_animation));
 
     // Increment animation time (convert dt from seconds to ticks)
     self->current_time += dt * current_anim->ticks_per_second;
@@ -613,17 +620,12 @@ void glmodel_set_animation(glmodel_t *const self, const char *animation_label, c
             self->internal.playing_animation_iteration_count += 1;
         }
         self->current_time = fmod(self->current_time, current_anim->duration); // Loop animation
-    } else {
-        if (self->current_time > current_anim->duration) {
-            self->internal.active_playing_animation = (str_t){0};
-            self->internal.playing_animation_iteration_count += 1;
-            return;
-        }
     }
 
-    // Clear previous transforms
-    for (u32 i = 0; i < self->meshes.len; i++) {
-        list_clear(&self->transforms[i]);
+    if (!loop && (self->current_time > current_anim->duration)) {
+        self->internal.active_playing_animation = (str_t){0};
+        self->internal.playing_animation_iteration_count += 1;
+        return;
     }
 
     // Traverse node hierarchy starting from root
