@@ -432,6 +432,10 @@ void workbench_render(void)
     ASSERT(global_workbench);
     workbench_t *self = global_workbench;
 
+    if (self->enable_collider) {
+        workbench__internal_show_colliders(self);
+    }
+
     if (!self->is_active) return;
 
 
@@ -448,10 +452,6 @@ void workbench_render(void)
     }
 
 //    workbench__internal_render_lightsources(self);
-
-    if (self->enable_collider) {
-        workbench__internal_show_colliders(self);
-    }
 
     workbench_editor_render();
 }
