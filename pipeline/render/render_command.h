@@ -40,14 +40,14 @@ struct rendercommand_t {
         } textures;
     } material;
 
-    buffer(WORD)                instance;
+    buffer_t                    instance;
     rendercommand_draw_mode     draw_mode;
     bool                        enable_wireframe;
 };
 
 #ifndef IGNORE_RENDER_COMMAND_IMPLEMENTATION
 
-bool rendercommand__internal_compare_textures_ids(const rendercommand_t * const rc1, const rendercommand_t * const rc2)
+bool rendercommand__internal_compare_textures_ids(const rendercommand_t *const rc1, const rendercommand_t *const rc2)
 {
     ASSERT(rc1 && rc2);
 

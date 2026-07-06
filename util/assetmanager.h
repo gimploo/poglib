@@ -177,7 +177,7 @@ const void * assetmanager_get_assetresource(const assetmanager_t *const self, co
         (hashtable_key_t){ .u32 = assetId }
     );
 
-    const taskresponse_t *response = (taskresponse_t *)entry;
+    const taskresponse_t *const response = (taskresponse_t *)entry;
     return ASSET_ASYNC_LOADING_SUPPORT[assettype]
         ? (response->is_done ? response->resource : NULL)
         : entry;

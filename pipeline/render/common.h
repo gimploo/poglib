@@ -19,7 +19,8 @@ typedef struct {
     list_t buckets[MAX_RENDER_BUCKETS_ALLOWED];
     arena_t arena;
     struct {
-        glinstancebuffer_t instancebuffer;
+        glinstancebuffer_t  instancebuffer;
+        arena_t             frame_arena;
     } internal;
 } renderqueue_t;
 

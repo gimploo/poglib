@@ -503,7 +503,7 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
         rendercommand_t rendercommand = {
             .draw_mode = RENDER_COMMAND_DRAW_MODE_LINES,
             .instance = {
-                .raw_data = {0},
+                .raw_data = &gizmo[idx],
                 .size = sizeof(rendercommand_instance_line_t),
             },
             .material = {
@@ -526,8 +526,6 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
             },
             .mesh = assetmanager_get_gpu_loaded_asset_async(&global_engine->systems.assets, GL_MESH_PRIMITIVE_TYPE_LINE)->meshes.data,
         };
-
-        memcpy(rendercommand.instance.raw_data, &gizmo[idx], sizeof(gizmo[idx]));
         renderqueue_pass_command(&global_engine->systems.renderqueue, rendercommand);
     }
 }

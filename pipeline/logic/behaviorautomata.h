@@ -20,9 +20,9 @@ struct behaviorautomata_ctx_t {
 struct behaviorautomata_state_t {
     u16                             state_type;
     behaviorautomata_ctx_t          ctx;
-    void (*start)(behaviorautomata_t * const, behaviorautomata_ctx_t *const ctx);
-    void (*update)(behaviorautomata_t * const, const commandqueue_t * const queue, behaviorautomata_ctx_t * const ctx, const f32 delta_time);
-    void (*exit)(behaviorautomata_t * const, behaviorautomata_ctx_t *const ctx);
+    void (*start)(behaviorautomata_t *const, behaviorautomata_ctx_t *const ctx);
+    void (*update)(behaviorautomata_t *const, const commandqueue_t * const queue, behaviorautomata_ctx_t * const ctx, const f32 delta_time);
+    void (*exit)(behaviorautomata_t *const, behaviorautomata_ctx_t *const ctx);
 };
 
 struct behaviorautomata_t {
