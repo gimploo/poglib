@@ -26,7 +26,12 @@ typedef struct {
 } ecs_load__asset_list_t;
 
 typedef struct {
-    ecs_componentbundle_t data[ECS_LOAD_MAX_ENTITIES];
+    u32 entity_id;
+    ecs_componentbundle_t cmps;
+} ecs_load_entity_t;
+
+typedef struct {
+    ecs_load_entity_t entity[ECS_LOAD_MAX_ENTITIES];
     u32 count;
 } ecs_load__entity_list_t;
 
