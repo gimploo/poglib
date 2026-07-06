@@ -55,20 +55,19 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
 
         const bool is_editor_selected = global_workbench->editor.current_selected_entity_id == entry->entity_id;
 
-        const rendercommand_instance_primitive_mesh_t instance = {
-            .translation = (vec4f_t) { transform->position.x, transform->position.y, transform->position.z, 0.f },
-            .scale = (vec4f_t) { transform->scale.x, transform->scale.y,  transform->scale.z,  0.f },
-            .orientation = *(vec4f_t *)&transform->orientation,
-            .color = is_editor_selected ? COLOR_RED : COLOR_WHITE,
-            .uv = spriteatlas_get_sprite(atlas, mesh->prototype_sprite_type),
-        };
 
         rendercommand_t command = {
             .mesh = gpu_loaded_asset->meshes.data,
             .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
             .enable_wireframe = false,
             .instance = {
-                .raw_data = {0},
+                .raw_data = &(rendercommand_instance_primitive_mesh_t) {
+                    .translation = (vec4f_t) { transform->position.x, transform->position.y, transform->position.z, 0.f },
+                    .scale = (vec4f_t) { transform->scale.x, transform->scale.y,  transform->scale.z,  0.f },
+                    .orientation = *(vec4f_t *)&transform->orientation,
+                    .color = is_editor_selected ? COLOR_RED : COLOR_WHITE,
+                    .uv = spriteatlas_get_sprite(atlas, mesh->prototype_sprite_type),
+                },
                 .size = sizeof(rendercommand_instance_primitive_mesh_t)
             },
             .material = {
@@ -96,8 +95,6 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 }
             }
         };
-
-        memcpy(&command.instance.raw_data, &instance, sizeof(instance));
         renderqueue_pass_command(&global_engine->systems.renderqueue, command);
     }
 }

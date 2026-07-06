@@ -471,12 +471,6 @@ void workbench_render_camera(
         10000.0f
     );
 
-    const rendercommand_instance_primitive_mesh_t instance = {
-        .translation = { position.x, position.y, position.z, 0.f },
-        .orientation = { orientation.x, orientation.y, orientation.z, orientation.w }, 
-        .scale = vec4f(0.5f),
-        .color = COLOR_GRAY,
-    };
 
     gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAMERA);
     if(!asset) {
@@ -489,7 +483,12 @@ void workbench_render_camera(
         .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
         .mesh = asset->meshes.data,
         .instance = {
-            .raw_data = {0},
+            .raw_data = &(rendercommand_instance_primitive_mesh_t) {
+                .translation = { position.x, position.y, position.z, 0.f },
+                .orientation = { orientation.x, orientation.y, orientation.z, orientation.w }, 
+                .scale = vec4f(0.5f),
+                .color = COLOR_GRAY,
+            },
             .size = sizeof(rendercommand_instance_primitive_mesh_t)
         },
         .material = {
@@ -513,7 +512,6 @@ void workbench_render_camera(
         },
     };
 
-    memcpy(rendercommand.instance.raw_data, &instance, sizeof(instance));
     renderqueue_pass_command(renderqueue, rendercommand);
 }
 
@@ -537,13 +535,6 @@ void workbench_render_marker(
     spriteatlas_t *atlas = (spriteatlas_t *)assetmanager_get_assetresource(
         assetmanager, ASSET_TYPE_TEXTURE_SPRITE_ATLAS, self->primitives.atlas_id);
 
-    const rendercommand_instance_primitive_mesh_t instance = {
-        .translation = { translation.x, translation.y, translation.z, 0.f },
-        .scale = vec4f(0.05f),
-        .orientation = {0.f, 0.f, 0.f, 1.f},
-        .color = color,
-        .uv = spriteatlas_get_sprite(atlas, PROTOTYPE_SPRITE_YELLOW_T),
-    };
 
     gpu_asset_t * const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE);
     if(!asset) {
@@ -555,7 +546,13 @@ void workbench_render_marker(
         .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
         .mesh = asset->meshes.data,
         .instance = {
-            .raw_data = {0},
+            .raw_data = &(rendercommand_instance_primitive_mesh_t) {
+                .translation = { translation.x, translation.y, translation.z, 0.f },
+                .scale = vec4f(0.05f),
+                .orientation = {0.f, 0.f, 0.f, 1.f},
+                .color = color,
+                .uv = spriteatlas_get_sprite(atlas, PROTOTYPE_SPRITE_YELLOW_T),
+            },
             .size = sizeof(rendercommand_instance_primitive_mesh_t)
         },
         .material = {
@@ -584,7 +581,6 @@ void workbench_render_marker(
         },
     };
 
-    memcpy(rendercommand.instance.raw_data, &instance, sizeof(instance));
     renderqueue_pass_command(renderqueue, rendercommand);
 }
 

@@ -73,7 +73,7 @@ u32 glinstancebuffer_get_current_offest(const glinstancebuffer_t * const self)
     return self->internal.current_offset;
 }
 
-void glinstancebuffer_push(glinstancebuffer_t * const self, const void * const mem, const u32 size)
+void glinstancebuffer_push(glinstancebuffer_t *const self, const void *const mem, const u32 size)
 {
     if ((size + self->internal.current_offset) > self->capacity)
         eprint("Exceeded allowed GL instance buffer size, requires `%u` bytes but only `%u` bytes available", size, self->capacity - self->internal.current_offset);

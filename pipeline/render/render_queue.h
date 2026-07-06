@@ -10,14 +10,14 @@
 #include "poglib/util/asset.h"
 
 renderqueue_t       renderqueue_init(void);
-void                renderqueue_pass_command(renderqueue_t * const self, const rendercommand_t command);
+void                renderqueue_pass_command(renderqueue_t *const self, const rendercommand_t command);
 void                renderqueue_dispatch(renderqueue_t * const self);
 void                renderqueue_flush(renderqueue_t * const self);
 void                renderqueue_destroy(renderqueue_t * const self);
 
 #ifndef IGNORE_RENDER_QUEUE_IMPLEMENTATION
 
-void renderqueue__internal_validate_command(rendercommand_t);
+void renderqueue__internal_validate_command(renderqueue_t *const, const rendercommand_t);
 bool renderqueue__internal_check_for_batchable_commands(renderqueue_t * const queue, const rendercommand_t command);
 void renderqueue__internal_add_to_bucket(list_t * const render_commands, const rendercommand_t command);
 void rendercommand__internal_shader_upload_uniforms(const rendercommand_t * const command);
@@ -25,26 +25,37 @@ void rendercommand__internal_shader_upload_uniforms(const rendercommand_t * cons
 renderqueue_t renderqueue_init(void)
 {
     return (renderqueue_t) {
-        .buckets = {0},
-        .arena = arena_init(NULL, 2 * MB),
-        .internal = {
-            .instancebuffer = glinstancebuffer_init(2 * MB),
-        }
+        .buckets    = {0},
+        .arena      = arena_init(NULL, 2 * MB),
+        .internal   = {
+            .instancebuffer     = glinstancebuffer_init(2 * MB),
+            .frame_arena        = arena_init(NULL, 5 * KB)
+        },
     };
 }
 
-void renderqueue__internal_bucket_init_and_add_command(renderqueue_t *const self, const rendercommand_t command, const u16 idx)
+INTERNAL void renderqueue__internal_bucket_init_and_add_command(renderqueue_t *const self, const rendercommand_t command, const u16 idx)
 {
     self->buckets[idx] = list_init(rendercommand_t, &self->arena);
     list_append(&self->buckets[idx], command);
 }
 
-void renderqueue_pass_command(renderqueue_t *const self, rendercommand_t command)
+INTERNAL rendercommand_t renderqueue__internal__configure_instance_buffer(renderqueue_t *const self, const rendercommand_t cmd)
+{
+    ASSERT(cmd.instance.raw_data && cmd.instance.size);
+    rendercommand_t result = cmd;
+    result.instance.raw_data = arena_store(&self->internal.frame_arena, cmd.instance.raw_data, cmd.instance.size);
+    return result;
+}
+
+void renderqueue_pass_command(renderqueue_t *const self, const rendercommand_t cmd)
 {
     ASSERT(self);
-    ASSERT(command.instance.size <= sizeof(command.instance.raw_data));
+    renderqueue__internal_validate_command(self, cmd);
 
-    renderqueue__internal_validate_command(command);
+    const rendercommand_t command = cmd.instance.size 
+        ? renderqueue__internal__configure_instance_buffer(self, cmd) 
+        : cmd;
 
     if (renderqueue__internal_check_for_batchable_commands(self, command)) {
         return;
@@ -77,9 +88,10 @@ void renderqueue_destroy(renderqueue_t *const self)
     }
     glinstancebuffer_destroy(&self->internal.instancebuffer);
     arena_destroy(&self->arena);
+    arena_destroy(&self->internal.frame_arena);
 }
 
-void renderqueue__internal_validate_command(const rendercommand_t command)
+void renderqueue__internal_validate_command(renderqueue_t *const queue, const rendercommand_t command)
 {
     //TODO: validation for textures also (solution - sort the command texture ids in desc order before compare to avoid
     //unintentional mismatches - or through an error during runtime to reorder the textures (better) so we can avoid the sorting
@@ -100,6 +112,14 @@ void renderqueue__internal_validate_command(const rendercommand_t command)
             eprint("render command is missing uniform value, check shader `%.*s` or `%.*s` to find missing uniforms", 
                 command.material.shader.data->vs.len, command.material.shader.data->vs.data, 
                 command.material.shader.data->fg.len, command.material.shader.data->fg.data);
+    }
+
+    {
+        //NOTE: instance data is passed as stack pointer references - will use the arena to allocate to better simplify the API.
+        //Also this would reduce the memory layout for entire renderqueue since we eariler was sticking to WORD size buffer for each command
+        if (command.instance.raw_data && !command.instance.size) eprint("Found instance data but size not specified");
+        if (!command.instance.raw_data && command.instance.size) eprint("instance size initalized but instance data is null");
+
     }
 }
 
@@ -239,7 +259,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
             instance_starting_offset = glinstancebuffer_get_current_offest(&self->internal.instancebuffer);
             list_iterator(bucket_commands, iter)
             {
-                const rendercommand_t * const cmd = (rendercommand_t *)iter;
+                const rendercommand_t *const cmd = (rendercommand_t *)iter;
                 glinstancebuffer_push(
                     &self->internal.instancebuffer,
                     cmd->instance.raw_data,
@@ -281,6 +301,8 @@ void renderqueue_flush(renderqueue_t *const self)
         if (list_is_init(&self->buckets[idx]))
             list_clear(&self->buckets[idx]);
     }
+
+    arena_clear(&self->internal.frame_arena);
 }
 
 #endif

@@ -6,7 +6,9 @@ struct renderinstance_t {
     vec4 color;
     vec4 translation;
     vec4 rotation;
-    vec4 scale;
+    //FIXME: this shouldnt be vec4 switch to f32 - 
+    //also make sure its aligned proper after also
+    vec4 scale; 
 };
 
 layout(std430, binding = 0) buffer InstanceBuffer {
