@@ -324,7 +324,7 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
             if (has_pending_bundle)
             {
                 if (entities->count < ECS_LOAD_MAX_ENTITIES) {
-                    entities->data[entities->count++] = pending_bundle;
+                    entities->entity[entities->count++].cmps = pending_bundle;
                 }
                 has_pending_bundle = false;
             }
@@ -334,7 +334,6 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
             if (entity_id > max_entity_id) {
                 max_entity_id = entity_id;
             }
-
             memset(line.raw_data, 0, sizeof(line.raw_data));
             file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
 
@@ -347,6 +346,8 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
             has_pending_bundle  = true;
             current_cmp         = 0;
             current_cmp_idx     = 0;
+
+            entities->entity[entities->count].entity_id = entity_id;
             continue;
         }
 
@@ -355,7 +356,7 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
             if (has_pending_bundle)
             {
                 if (entities->count < ECS_LOAD_MAX_ENTITIES)
-                    entities->data[entities->count++] = pending_bundle;
+                    entities->entity[entities->count++].cmps = pending_bundle;
                 has_pending_bundle = false;
             }
 
@@ -390,14 +391,16 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
     if (has_pending_bundle)
     {
         if (entities->count < ECS_LOAD_MAX_ENTITIES)
-            entities->data[entities->count++] = pending_bundle;
+            entities->entity[entities->count++].cmps = pending_bundle;
     }
 
     for (u32 i = 0; i < entities->count; i++)
     {
-        ecs_deserializer__internal_remap_entity_assets(&entities->data[i], &global_engine->systems.assets, assets_parsed);
-        ecs_entity_add(self, entities->data[i]);
+        ecs_deserializer__internal_remap_entity_assets(&entities->entity[i].cmps, &global_engine->systems.assets, assets_parsed);
+        ecs_entity_add_at_index(self, entities->entity[i].entity_id, entities->entity[i].cmps);
     }
+
+    self->internal.entity_generator_counter = max_entity_id;
 
     file_destroy(&f);
     return true;
