@@ -14,7 +14,6 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
         ecs_component_input_t *const input_cmp          = (ecs_component_input_t *)entry->entity_cmpdata;
         input_cmp->internal.state                       = (ecs_component_input_state_t){0};
 
-        if (!entry->is_active) continue;
 
         const ecs_entity_query_t view                   = ecs_componentmanager__internal_query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM);
         const ecs_component_transform_t *transform      = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
@@ -45,6 +44,7 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
             default: eprint("Input direction source not found");
         }
 
+        if (!entry->is_active) continue;
         if (!input_cmp->input_behavior) eprint("input_behavior is missing in `ecs_component_input_t`");
 
         input_cmp->input_behavior(
