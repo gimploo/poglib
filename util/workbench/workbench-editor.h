@@ -25,7 +25,7 @@ void            workbench_editor_render(void);
 
 #ifndef IGNORE_WORKBENCH_EDITOR_IMPLEMENTATION
 
-INTERNAL void workbench_editor__internal_update_physics_colliders(void);
+INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collider(void);
 INTERNAL void workbench_editor__internal__slider_on_release(void);
 INTERNAL void workbench_editor__internal__check_to_lock_camera(const workbench_t *const self, ecs_t *const ecs);
 INTERNAL void workbench_editor__internal__select_entity_id(workbench_t *const self, ecs_t *const ecs, const u32 entity_id);
@@ -398,7 +398,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                         if (idx == OT_SCALE)    *transform_bindings[idx] = (vec3f_t){0.1f,0.1f,0.1f};
                         if (idx == OT_ROTATION) *(versors *)transform_bindings[idx] = GLMS_QUAT_IDENTITY;
                         else                    *transform_bindings[idx] = (vec3f_t){0};
-                        workbench_editor__internal_update_physics_colliders();
+                        workbench_editor__internal_update_position_and_rotation_of_collider();
                     }
                 gui_ui_compose_end(gui);
 
@@ -450,7 +450,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
 
             if (gui_ui_isclicked(gui, apply_collider_button_id)) {
                 workbench_editor__internal_apply_transform_scale_to_phy_collider();
-                workbench_editor__internal_update_physics_colliders();
+                workbench_editor__internal_update_position_and_rotation_of_collider();
             }
 
             gui_ui_compose_end(gui);
@@ -578,11 +578,11 @@ void workbench_editor_savechanges(void)
 {
     if(!global_workbench->editor.current_selected_entity_id) return;
 
-    workbench_editor__internal_update_physics_colliders();
+    workbench_editor__internal_update_position_and_rotation_of_collider();
     workbench_editor_unselect_entity();
 }
 
-INTERNAL void workbench_editor__internal_update_physics_colliders(void)
+INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collider(void)
 {
     if(!global_workbench->editor.current_selected_entity_id) return;
 
@@ -684,6 +684,10 @@ void workbench_editor_delete_entity(void)
 
 INTERNAL void workbench_editor__internal__select_entity_id(workbench_t *const self, ecs_t *const ecs, const u32 entity_id)
 {
+    if (self->editor.current_selected_entity_id) {
+        workbench_editor__internal_update_position_and_rotation_of_collider();
+    }
+
     self->editor.current_selected_entity_id = entity_id;
     self->editor.selected_entity_transform  = ecs_entity_query_components(
         ecs, 

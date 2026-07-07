@@ -619,11 +619,6 @@ void workbench_toggle(void)
         }
     );
 
-    if (!self->is_active) {
-        workbench_editor_savechanges();
-        return;
-    }
-
     ecs_set_active_camera(
         global_ecs,
         self->world_camera.entity_id
