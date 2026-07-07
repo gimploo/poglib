@@ -227,7 +227,7 @@ void * ecs_componentmanager__internal_get_cmpdata_from_pooldata(const void * con
     return pooldata;
 }
 
-void ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 entity_id, const ecs_component_type type)
+void ecs_componentmanager_remove(ecs_componentmanager_t *const self, const u32 entity_id, const ecs_component_type type)
 {
     const u32 cmp_idx           = get_index_from_bitflag(type);
     slot_t *const componentpool = slot_get_value(&self->componentpool_slots, cmp_idx);
@@ -248,23 +248,23 @@ void ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 
     ecs_component_poolentry_t *entry                = slot_get_value(componentpool, index_of_cmp_to_remove);
 
     ecs_componentmanager__internal_cmp_cleanup(type, entry);
-    slot_delete(componentpool, index_of_cmp_to_remove);
 
     if (is_last_element) {
+        slot_delete(componentpool, index_of_cmp_to_remove);
         return;
     }
 
     //NOTE: swaps last item to deleted item's index
 
-    const u32 last_element_data_idx                 = componentpool->len;
-    ecs_component_poolentry_t *last_element_data    = slot_get_value(componentpool, last_element_data_idx);
-    const u32 moved_entity_id                       = ecs_componentmanager__internal_get_entity_id_from_pooldata(last_element_data);
-    i16 *const cmp_buf                              = hashtable_get_value(&self->entity2components_lookup, (hashtable_key_t){ .u32 = moved_entity_id });
+    const u32 last_element_data_idx                 = componentpool->len - 1;
+    ecs_component_poolentry_t *last_poolentry       = slot_get_value(componentpool, last_element_data_idx);
+    i16 *const cmp_buf                              = hashtable_get_value(&self->entity2components_lookup, (hashtable_key_t){ .u32 = last_poolentry->entity_id });
     cmp_buf[get_index_from_bitflag(type)]           = index_of_cmp_to_remove;
-    hashtable_insert(&self->entity2components_lookup, (hashtable_key_t){ .u32 = moved_entity_id }, cmp_buf);
+    hashtable_insert(&self->entity2components_lookup, (hashtable_key_t){ .u32 = last_poolentry->entity_id }, cmp_buf);
 
     const u32 full_allocation_size = ECS_CMP_POOL_HEADER_SIZE + ecs_component__internal_get_componenttype_size(type);
-    slot_insert(componentpool, index_of_cmp_to_remove, last_element_data, full_allocation_size);
+    slot_delete(componentpool, index_of_cmp_to_remove);
+    slot_insert(componentpool, index_of_cmp_to_remove, last_poolentry, full_allocation_size);
     slot_delete(componentpool, last_element_data_idx);
 }
 

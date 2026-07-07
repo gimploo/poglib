@@ -690,6 +690,8 @@ INTERNAL void workbench_editor__internal__select_entity_id(workbench_t *const se
         self->editor.current_selected_entity_id,
         ECS_CMP_TRANSFORM
     ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+
+    workbench_editor__internal__change_worldcamera_to_orbit_type_on_entity_selection();
 }
 
 void workbench_editor_select_closest_entity(void)
@@ -705,8 +707,6 @@ void workbench_editor_select_closest_entity(void)
             workbench_editor__internal__select_entity_id(global_workbench, global_ecs, global_workbench->editor.mouse_closest_to_entity_id);
         }
     }
-
-    if (global_workbench->editor.current_selected_entity_id)    workbench_editor__internal__change_worldcamera_to_orbit_type_on_entity_selection();
 }
 
 

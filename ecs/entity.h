@@ -51,19 +51,19 @@ void ecs_entitymanager_remove(ecs_entitymanager_t * const self, const u32 entity
     const bool is_entity_at_far_end = remove_entity_idx == (self->entities.len - 1);
 
     hashtable_delete(&self->entityid_to_entityidx_lookup, (hashtable_key_t){ .u32 = entityId });
-    slot_delete(&self->entities, remove_entity_idx);
 
     if (is_entity_at_far_end) {
+        slot_delete(&self->entities, remove_entity_idx);
         return;
     }
 
     //NOTE: swap last entity in the list to removed index
-    const u32 swap_entity_idx = self->entities.len;
+    const u32 swap_entity_idx = self->entities.len - 1;
     const ecs_entity_t *swap_entity =  slot_get_value(&self->entities, swap_entity_idx);
 
+    slot_delete(&self->entities, remove_entity_idx);
     slot_insert(&self->entities, remove_entity_idx, swap_entity, sizeof(ecs_entity_t));
     slot_delete(&self->entities, swap_entity_idx);
-
-    hashtable_insert(&self->entityid_to_entityidx_lookup, (hashtable_key_t){ .u32 = swap_entity->id }, swap_entity_idx);
+    hashtable_insert(&self->entityid_to_entityidx_lookup, (hashtable_key_t){ .u32 = swap_entity->id }, remove_entity_idx);
 }
 
