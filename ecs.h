@@ -143,7 +143,7 @@ u32 ecs_entity_duplicate(ecs_t *const self, const u32 entity_id)
             .u32 = entity_id
         });
 
-    ecs_componentbundle_t component_config = ecs_componentmanager_get_componentbundle_from_existing_entity(
+    const ecs_componentbundle_t component_config = ecs_componentmanager_get_componentbundle_from_existing_entity(
         &self->managers.componentmanager, 
         *(ecs_entity_t *)slot_get_value(&self->managers.entitymanager.entities, entity_idx)
     );

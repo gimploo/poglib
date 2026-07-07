@@ -27,7 +27,7 @@ void *              slot_update(slot_t *, const u64 index, const void *value, co
 void                slot_insert_multiple(slot_t *self, const u8 *arraybuffer, const u32 arraylen, const u32 elem_size);
 bool                slot_is_index_occupied(const slot_t * const self, const u32 index);
 #define             slot_append(PSLOTARRAY, VALUE)                         slot_insert((PSLOTARRAY), (PSLOTARRAY)->len, &(VALUE), sizeof(VALUE))
-#define             slot_delete(PSLOTARRAY, INDEX)                         __impl_slot_delete((PSLOTARRAY), (INDEX))
+void                slot_delete(slot_t *const table, const u64 index);
 slot_t              slot_clone(const slot_t *slot);
 void *              slot_get_value(const slot_t *table, const u64 index);
 #define             slot_iterator(PSLOTARRAY, ITER)                        __impl_slot_for_loop_iterator((PSLOTARRAY), (ITER))
@@ -159,7 +159,7 @@ void * slot_update(
     return slot__internal_get_reference_to_only_value_at_index(table, index);
 }
 
-void __impl_slot_delete(slot_t *table, const u64 index)
+void slot_delete(slot_t *const table, const u64 index)
 {
     if (table == NULL) eprint("table argument is null");
 
