@@ -129,14 +129,18 @@ void ecs_component__internal_bundle_validate_and_initalize_internals(ecs_compone
             } break;
             case ECS_CMP_COLLIDER: {
                 ASSERT(config->signature & (ECS_CMP_TRANSFORM));
+                memset(&config->component[ECS_CMP_COLLIDER_IDX].collider.internal, 0, sizeof(config->component[ECS_CMP_COLLIDER_IDX].collider.internal));
+
                 const ecs_component_transform_t t = config->component[ECS_CMP_TRANSFORM_IDX].transform;
                 config->component[ECS_CMP_COLLIDER_IDX].collider.internal.orientation   = t.orientation;
                 config->component[ECS_CMP_COLLIDER_IDX].collider.internal.position      = t.position;
+
             } break;
 
             case ECS_CMP_MODEL: 
                 ASSERT(config->signature & (ECS_CMP_TRANSFORM));
                 ASSERT(config->signature & (ECS_CMP_MATERIAL));
+                memset(&config->component[ECS_CMP_MODEL_IDX].model.internal, 0, sizeof(config->component[ECS_CMP_MODEL_IDX].model.internal));
             break;
             case ECS_CMP_INPUT:
                 ASSERT(config->signature & (ECS_CMP_TRANSFORM));
@@ -398,6 +402,7 @@ void ecs_componentmanager__internal_cmp_cleanup(const ecs_component_type type, c
         default: return;
     }
 }
+
 
 ecs_componentbundle_t ecs_componentmanager_get_componentbundle_from_existing_entity(ecs_componentmanager_t *const self, const ecs_entity_t entity)
 {
