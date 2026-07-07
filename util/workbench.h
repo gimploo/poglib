@@ -18,10 +18,11 @@ void            workbench_destroy(void);
 #define WORKBENCH_CAMERA_DEFAULT_POSITION (vec3f_t){0.f, 0.f, 10.f}
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
 
-void workbench__internal_show_colliders(workbench_t *const self);
+INTERNAL void workbench__internal__show_colliders(workbench_t *const self);
 
-void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *const state, const u16 bitmask, const f32 dt)
+INTERNAL void workbench__internal__worldcamera_input_handler(ecs_component_input_state_t *const state, const u16 bitmask, const f32 dt)
 {
+
     //NOTE: zoom_in, zoom_out and panning wont work for oribiting camera since the cameras position is overwritten by the offset logic 
     //in the camera system - just an FYI
 
@@ -52,9 +53,40 @@ void workbench__internal_worldcamera_input_handler(ecs_component_input_state_t *
         return;
     }
 
-    if (zoom_in)                z_offset = 1.f * zoom_sensitivity * dt;
-    if (zoom_out)               z_offset = -1.f * zoom_sensitivity * dt;
-    if (zoom_in || zoom_out)    state->current_position = glms_vec3_add(state->current_position, glms_vec3_scale(state->front, z_offset));
+    //NOTE: Zoom in and out
+    {
+        if (zoom_in)                z_offset = 1.f * zoom_sensitivity * dt;
+        if (zoom_out)               z_offset = -1.f * zoom_sensitivity * dt;
+
+        if (zoom_in || zoom_out)
+        {
+            ecs_component_camera_t *const camera_cmp = ecs_entity_query_components(
+                global_ecs, global_workbench->world_camera.entity_id, ECS_CMP_CAMERA
+            ).entity_cmp_data[ECS_CMP_CAMERA_IDX];
+
+            if (camera_cmp->mode == ECS_CMP_CAMERA_MODE_ORBIT_FOLLOW) 
+            {
+                ecs_component_transform_t *target_transform = ecs_entity_query_components(
+                    global_ecs, camera_cmp->follow.track_entity_id, ECS_CMP_TRANSFORM
+                ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+
+                ecs_component_transform_t *const camera_transform = ecs_entity_query_components(
+                    global_ecs, global_workbench->world_camera.entity_id, ECS_CMP_TRANSFORM
+                ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+
+                const f32 distance = glms_vec3_distance(target_transform->position, camera_transform->position);
+                if (distance > 2.f || zoom_out) {
+                    camera_cmp->follow.orbit_radius += z_offset;
+                    state->current_position = glms_vec3_add(state->current_position, glms_vec3_scale(state->front, z_offset));
+                }
+
+            } else {
+
+                state->current_position = glms_vec3_add(state->current_position, glms_vec3_scale(state->front, z_offset));
+            }
+        }
+    }
+
 
     if (drag_look) {
 
@@ -101,8 +133,8 @@ INTERNAL void workbench__internal__ecs_create_world_camera(workbench_t *const se
                     .camera = glcamera_perspective((vec3f_t){2.0f, 4.f, -4.0f}, (vec2f_t){-0.32f, 1.59f}),
                     .mode = ECS_CMP_CAMERA_MODE_FREE_FLY,
                 },
-                [ECS_CMP_INPUT_IDX].input = (ecs_component_input_t){
-                    .input_behavior = workbench__internal_worldcamera_input_handler
+                [ECS_CMP_INPUT_IDX].input = (ecs_component_input_t ){
+                    .input_behavior = workbench__internal__worldcamera_input_handler
                 }
             }
         }
@@ -433,7 +465,7 @@ void workbench_render(void)
     workbench_t *self = global_workbench;
 
     if (self->enable_collider) {
-        workbench__internal_show_colliders(self);
+        workbench__internal__show_colliders(self);
     }
 
     if (!self->is_active) return;
@@ -619,6 +651,10 @@ void workbench_toggle(void)
         }
     );
 
+    //NOTE: when you have someting selected and immedialty go to playmode - we want the entity unselected and saved if 
+    //there were any changes done it
+    if (!self->is_active)   workbench_editor_savechanges();
+
     ecs_set_active_camera(
         global_ecs,
         self->world_camera.entity_id
@@ -627,7 +663,7 @@ void workbench_toggle(void)
     poggen_update_commandqueue_registry(global_engine, self->commandregistry);
 }
 
-void workbench__internal_show_colliders(workbench_t *const self)
+void workbench__internal__show_colliders(workbench_t *const self)
 {
     ASSERT(global_engine);
     ASSERT(global_physics_sys_jolt_instance);
