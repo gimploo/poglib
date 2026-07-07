@@ -77,18 +77,19 @@ typedef struct glmodel_t {
     arena_t *arena;
 
     struct {
-        str_t active_playing_animation;
-        u16 playing_animation_iteration_count;
-        i64 root_channel_idx;
+        animation_t     *active_animation;
+        u16             active_animation_iteration_count;
+        i64             root_channel_idx;
     } internal;
 
 } glmodel_t;
 
-glmodel_t       glmodel_init(const char *filepath);
-void            glmodel_set_animation(glmodel_t *self, const char *animation_label, const f32 dt, const bool loop);
-str_t           glmodel_get_current_playing_animation(const glmodel_t *const self);
-vec3f_t         glmodel_get_rootnode_position(const glmodel_t *self, const char *animation_label, f32 time);
-void            glmodel_destroy(glmodel_t *self);
+glmodel_t               glmodel_init(const char *filepath);
+void                    glmodel_set_animation(glmodel_t *const self, const str_t animation_label);
+animation_t *           glmodel_get_playing_animation(const glmodel_t *const self);
+u32                     glmodel_get_playing_animation_loop_count(const glmodel_t *const self);
+vec3f_t                 glmodel_get_rootnode_position(const glmodel_t *self, const char *animation_label, f32 time);
+void                    glmodel_destroy(glmodel_t *self);
 
 #ifndef IGNORE_ASSIMP_IMPLEMENTATION
 
@@ -575,72 +576,58 @@ void assimp__internal_process_node_anim(glmodel_t *self, struct aiNode *node, co
     }
 }
 
-str_t glmodel_get_current_playing_animation(const glmodel_t *const self)
+animation_t * glmodel_get_playing_animation(const glmodel_t *const self)
 {
-    return self->internal.active_playing_animation;
+    return self->internal.active_animation;
 }
 
-bool glmodel_get_playing_animation_iteration_count(const glmodel_t *const self)
+u32 glmodel_get_playing_animation_loop_count(const glmodel_t *const self)
 {
-    return self->internal.playing_animation_iteration_count;
+    return self->internal.active_animation_iteration_count;
 }
 
-void glmodel_set_animation(glmodel_t *const self, const char *animation_label, const f32 dt, const bool loop)
+void glmodel_play_animation(glmodel_t *const self, const f32 dt)
 {
-    if (self->animator.animations.len == 0) {
-        logging("No animations to process");
-        return;
-    }
+    if (!self->internal.active_animation) return;
 
-    // Get the specified animation
-    const animation_t *const current_anim = animator_get_animation(&self->animator, animation_label);
-    if (!current_anim || current_anim->ticks_per_second == 0.0f) {
-        logging("Invalid animation or ticks per second is zero");
-        return;
-    }
+    for (u32 idx = 0; idx < self->meshes.len; idx++) 
+        list_clear(&self->transforms[idx]);
 
-    // Clear previous transforms
-    for (u32 i = 0; i < self->meshes.len; i++) {
-        list_clear(&self->transforms[i]);
-    }
-
-    // Track current animation and time to reset time on animation change
-    if (str_cmp(self->internal.active_playing_animation, str_from_cstr(animation_label, strlen(animation_label))) == 0) {
-        self->current_time = 0.0f; // Reset time when switching animations
-        self->internal.playing_animation_iteration_count = 0;
-        self->internal.active_playing_animation = str_from_cstr(animation_label, strlen(animation_label));
-    }
-
-    //logging(STR_FMT, STR_ARG(&self->internal.active_playing_animation));
-
-    // Increment animation time (convert dt from seconds to ticks)
+    animation_t *const current_anim = self->internal.active_animation;
     self->current_time += dt * current_anim->ticks_per_second;
-    if (loop) {
-        if (self->current_time > current_anim->duration) {
-            self->internal.playing_animation_iteration_count += 1;
-        }
-        self->current_time = fmod(self->current_time, current_anim->duration); // Loop animation
+
+    {
+        logging("playing animation %s", current_anim->name);
     }
 
-    if (!loop && (self->current_time > current_anim->duration)) {
-        self->internal.active_playing_animation = (str_t){0};
-        self->internal.playing_animation_iteration_count += 1;
-        return;
-    }
+    if (self->current_time > current_anim->duration) 
+        self->internal.active_animation_iteration_count += 1;
 
-    // Traverse node hierarchy starting from root
-    if (self->scene->mRootNode) {
-        assimp__internal_process_node_anim(self, self->scene->mRootNode, MATRIX4F_IDENTITY, &current_anim->channels, current_anim);
-    } else {
-        eprint("No root node available.");
-    }
+    self->current_time = fmod(self->current_time, current_anim->duration);
 
-    // Pad transforms to MAX_BONES
+    if (self->scene->mRootNode)     assimp__internal_process_node_anim(self, self->scene->mRootNode, MATRIX4F_IDENTITY, &current_anim->channels, current_anim);
+    else                            eprint("No root node available.");
+
     for (u32 mesh_idx = 0; mesh_idx < self->meshes.len; mesh_idx++) {
         while (self->transforms[mesh_idx].len < MAX_BONES) {
             list_append(&self->transforms[mesh_idx], MATRIX4F_IDENTITY);
         }
     }
+
+}
+
+void glmodel_set_animation(glmodel_t *const self, const str_t animation_label)
+{
+    if (!self->animator.animations.len) eprint("No animations in model");
+
+    if (self->internal.active_animation && strcmp(self->internal.active_animation->name, animation_label.data) == 0) {
+        return;
+    }
+
+    animation_t *const current_anim = animator_get_animation(&self->animator, animation_label.data);
+    self->current_time = 0.0f;
+    self->internal.active_animation_iteration_count = 0;
+    self->internal.active_animation = current_anim;
 }
 
 gltexturelist_t glmodel_get_texuturelist(const glmodel_t *self)

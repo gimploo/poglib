@@ -26,6 +26,7 @@ typedef struct {
 } node_anim_t;
 
 typedef struct {
+    //TODO: change this to str_t
     const char *name;      // Animation name
     f32 duration;          // Duration in ticks
     f32 ticks_per_second;  // Ticks per second for time conversion
@@ -161,6 +162,8 @@ void animator_load_all_animations(animator_t *self, const struct aiScene *scene,
     for (u32 i = 0; i < scene->mNumAnimations; i++)
     {
         const struct aiAnimation* ai = scene->mAnimations[i];
+
+        if (!ai->mTicksPerSecond) eprint("ticks are zero? for this animation %.*s", ai->mName.length, ai->mName.data);
 
         animation_t item = __animation_init(
             ai->mName.data,
