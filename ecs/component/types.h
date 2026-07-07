@@ -133,6 +133,7 @@ typedef enum {
 } collider_shape_type;
 
 typedef union {
+    f32 raw[3];
     struct {
         f32 half_width;
         f32 half_height;
