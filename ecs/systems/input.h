@@ -21,6 +21,7 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
         input_cmp->internal.state = (ecs_component_input_state_t){
             .current_position       = transform->position,
             .current_orientation    = transform->orientation,
+            .velocity               = transform->velocity,
             .front                  = {0},
             .right                  = {0},
             .up                     = {0},

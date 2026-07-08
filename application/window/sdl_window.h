@@ -987,6 +987,7 @@ void window_lock_mouse(const window_t *const self, const bool lock_mouse)
 {
     (void)self;
     SDL_SetRelativeMouseMode(lock_mouse);
+    SDL_GetRelativeMouseState(NULL, NULL);
 }
 
 #endif 
