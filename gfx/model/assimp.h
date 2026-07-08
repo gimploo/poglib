@@ -597,7 +597,7 @@ void glmodel_play_animation(glmodel_t *const self, const f32 dt)
     self->current_time += dt * current_anim->ticks_per_second;
 
     {
-        logging("playing animation %s", current_anim->name);
+        //logging("playing animation %s", current_anim->name);
     }
 
     if (self->current_time > current_anim->duration) 

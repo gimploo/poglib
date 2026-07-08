@@ -70,6 +70,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
         ASSERT(gpu_loaded_asset->meshes.count == model->meshes.len);
         for (u8 idx = 0; idx < model->meshes.len; idx++)
         {
+            //printf("[RENDER] mesh=%i bones=%f data=%p\n", idx, model->transforms[idx].len, model->transforms[idx].data);
             renderqueue_pass_command(
                 &global_engine->systems.renderqueue, 
                 (rendercommand_t) {

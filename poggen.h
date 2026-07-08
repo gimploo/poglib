@@ -51,6 +51,7 @@ void                                poggen_remove_scene(poggen_t *self, str_t la
 void                                poggen_change_scene(poggen_t *self, str_t scene_label);
 
 void                                poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt_rules_config_t config);
+void *                              poggen_get_scene_content(const poggen_t *const self); 
 window_t *                          poggen_get_window(const poggen_t *self);
 physics_sys_jolt_event_queue_t *    poggen_get_physics_collision_events(const poggen_t * const self);
 
@@ -231,6 +232,11 @@ void poggen_update_commandqueue_registry(poggen_t *const self, const commandregi
 {
     ASSERT(self);
     commandqueue_update_registry(&self->systems.commandqueue, registry);
+}
+
+void * poggen_get_scene_content(const poggen_t *const self)
+{
+    return self->current_scene->content;
 }
 
 #endif
