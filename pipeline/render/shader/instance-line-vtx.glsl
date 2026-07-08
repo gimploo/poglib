@@ -32,9 +32,9 @@ void main()
     float tyy = ty * q.y, tyz = tz * q.y, tzz = tz * q.z;
 
     mat3 rot = mat3(
-        1.0 - (tyy + tzz),      txy - twz,              txz + twy,
-        txy + twz,              1.0 - (txx + tzz),      tyz - twx,
-        txz - twy,              tyz + twx,              1.0 - (txx + tyy)
+        1.0 - (tyy + tzz),      txy + twz,              txz - twy,
+        txy - twz,              1.0 - (txx + tzz),      tyz + twx,
+        txz + twy,              tyz - twx,              1.0 - (txx + tyy)
     );
 
     vec3 transformed_pos = (rot * (v_vtx * data.scale.xyz)) + data.translation.xyz;
