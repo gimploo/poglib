@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 
 /*================================================================================
  *                      -- ARENA MEMORY ALLOCATOR --
@@ -330,6 +331,16 @@ bool arena_is_init(const arena_t * const self)
     return self->memory != NULL || self->capacity > 0;
 }
 
+static u32 arena__frame_idx(const char *name, char fnames[][256], u32 *count)
+{
+    for (u32 i = 0; i < *count; i++) {
+        if (strcmp(fnames[i], name) == 0) return i;
+    }
+    strncpy(fnames[*count], name, 255);
+    fnames[*count][255] = '\0';
+    return (*count)++;
+}
+
 void arena_dump_json(const char *filepath)
 {
     FILE *f = fopen(filepath, "w");
@@ -338,37 +349,90 @@ void arena_dump_json(const char *filepath)
         return;
     }
 
-    fprintf(f, "{\n  \"generated_at\": %lu,\n  \"arenas\": [\n", (unsigned long)time(NULL));
+    char fname[1024][256];
+    u32  fc = 0;
 
-    u32 arena_idx = 0;
+    // Pass 1 — collect all frame names
     for (arena_t *a = arena_registry; a; a = a->next_in_registry) {
-        if (arena_idx > 0) fprintf(f, ",\n");
-        fprintf(f, "    {\n");
-        fprintf(f, "      \"init_at\": \"%s:%d\",\n", a->init_file ? a->init_file : "unknown", a->init_line);
-        fprintf(f, "      \"capacity\": %lu,\n", (unsigned long)a->capacity);
-        fprintf(f, "      \"used\": %lu,\n", (unsigned long)a->size);
-        fprintf(f, "      \"usage_pct\": %.1f,\n", a->capacity ? 100.0 * (double)a->size / (double)a->capacity : 0.0);
-        fprintf(f, "      \"free_chunks\": %u,\n", a->freelist.count);
-        fprintf(f, "      \"alloc_count\": %u,\n", a->alloc_log.count);
-        fprintf(f, "      \"allocations\": [\n");
+        char buf[256];
+        snprintf(buf, sizeof(buf), "%s:%d (%lu MB)",
+                 a->init_file ? a->init_file : "?", a->init_line,
+                 (unsigned long)(a->capacity / MB));
+        arena__frame_idx(buf, fname, &fc);
 
-        u32 alloc_idx = 0;
         for (arena_alloc_record_t *r = a->alloc_log.head; r; r = r->next) {
-            if (alloc_idx > 0) fprintf(f, ",\n");
-            fprintf(f, "        {");
-            fprintf(f, "\"file\": \"%s\", ", r->file);
-            fprintf(f, "\"line\": %d, ", r->line);
-            fprintf(f, "\"func\": \"%s\", ", r->func);
-            fprintf(f, "\"bytes\": %lu", (unsigned long)r->size);
-            fprintf(f, "}");
-            alloc_idx++;
+            const char *sf = strrchr(r->file, '/');
+            sf = sf ? sf + 1 : r->file;
+            arena__frame_idx(sf, fname, &fc);
+            arena__frame_idx(r->func, fname, &fc);
+            snprintf(buf, sizeof(buf), "L%03d [%lu B]",
+                     r->line, (unsigned long)r->size);
+            arena__frame_idx(buf, fname, &fc);
+        }
+    }
+    arena__frame_idx("(unused)", fname, &fc);
+
+    // Header + frames
+    fprintf(f, "{\n");
+    fprintf(f, "  \"$schema\": \"https://www.speedscope.app/file-format-schema.json\",\n");
+    fprintf(f, "  \"shared\": {\n    \"frames\": [\n");
+    for (u32 i = 0; i < fc; i++) {
+        fprintf(f, "      {\"name\": \"%s\"}%s\n", fname[i], i + 1 < fc ? "," : "");
+    }
+    fprintf(f, "    ]\n  },\n");
+    fprintf(f, "  \"profiles\": [{\n");
+    fprintf(f, "    \"type\": \"evented\",\n");
+    fprintf(f, "    \"unit\": \"bytes\",\n");
+    fprintf(f, "    \"name\": \"Arena Memory Map\",\n");
+    fprintf(f, "    \"events\": [\n");
+
+    // Pass 2 — emit O/C events
+    bool first = true;
+    u64  base  = 0;
+
+    for (arena_t *a = arena_registry; a; a = a->next_in_registry) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "%s:%d (%lu MB)",
+                 a->init_file ? a->init_file : "?", a->init_line,
+                 (unsigned long)(a->capacity / MB));
+        u32 arena_f = arena__frame_idx(buf, fname, &fc);
+
+        if (!first) fprintf(f, ",\n");
+        fprintf(f, "      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)base, arena_f);
+        first = false;
+
+        u64 cur = base;
+        for (arena_alloc_record_t *r = a->alloc_log.head; r; r = r->next) {
+            const char *sf = strrchr(r->file, '/');
+            sf = sf ? sf + 1 : r->file;
+            u32 file_f = arena__frame_idx(sf, fname, &fc);
+            u32 func_f = arena__frame_idx(r->func, fname, &fc);
+            snprintf(buf, sizeof(buf), "L%03d [%lu B]", r->line, (unsigned long)r->size);
+            u32 detail_f = arena__frame_idx(buf, fname, &fc);
+
+            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, file_f);
+            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, func_f);
+            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, detail_f);
+
+            cur += r->size;
+
+            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, detail_f);
+            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, func_f);
+            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, file_f);
         }
 
-        fprintf(f, "\n      ]\n    }");
-        arena_idx++;
+        u64 end = base + a->capacity;
+        if (cur < end) {
+            u32 unused_f = arena__frame_idx("(unused)", fname, &fc);
+            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, unused_f);
+            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)end, unused_f);
+        }
+
+        fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)end, arena_f);
+        base = end;
     }
 
-    fprintf(f, "\n  ]\n}\n");
+    fprintf(f, "\n    ]\n  }]\n}\n");
     fclose(f);
 }
 
