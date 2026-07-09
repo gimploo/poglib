@@ -1,4 +1,5 @@
 #pragma once
+#include "poglib/external/cglm/struct/vec3.h"
 #include <poglib/basic.h>
 #define CGLM_USE_ANONYMOUS_STRUCT 1
 #include <poglib/external/cglm/struct.h>
@@ -32,6 +33,14 @@ typedef mat3s matrix3f_t ;
 typedef mat4s matrix4f_t ;
 
 static const vec3f_t ORIGIN = { .x = 0.f, .y = 0.f, .z = 0.f};
+
+const struct {
+    vec3s x, y, z;
+} AXIS = {
+    .x = GLMS_XUP,
+    .y = GLMS_YUP,
+    .z = GLMS_ZUP,
+};
 
 #define vec2i(x) (vec2i_t ){x,x}
 #define vec3i(x) (vec3i_t ){x,x,x}
