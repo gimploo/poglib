@@ -76,7 +76,7 @@ void *      arena__internal__reserve_tracked(arena_t *const self, const u64 memo
 
 INTERNAL u32   arena__internal__frame_lookup(const char *name, char fnames[][256], u32 *count);
 
-INTERNAL arena_t *arena_registry = NULL;
+static arena_t *arena_registry = NULL;
 
 INTERNAL void arena__internal__registry_add(arena_t *a)
 {
@@ -283,6 +283,11 @@ void arena_giveback(arena_t *const self, void *const ptr, const u64 size)
             }
         } else {
             new_chunk = calloc(1, sizeof(free_chunks_t));
+            if (new_chunk) {
+                new_chunk->memory = ptr;
+                new_chunk->size = size;
+                new_chunk->next = NULL;
+            }
         }
         ASSERT(new_chunk);
 
