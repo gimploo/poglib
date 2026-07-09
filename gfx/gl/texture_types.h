@@ -1,7 +1,24 @@
 #pragma once
 
 typedef enum {
-    GL_TEXTURE_TYPE_NORMAL = 0,
-    GL_TEXTURE_TYPE_CUBEMAP = 1,
-    GL_TEXTURE_TYPE_COUNT = 1,
+    GL_TEXTURE_TYPE_NORMAL              = 0,
+    GL_TEXTURE_TYPE_DIFFUSE             = 1,
+    GL_TEXTURE_TYPE_SPECULAR            = 2,
+    GL_TEXTURE_TYPE_AMBIENT             = 3,
+    GL_TEXTURE_TYPE_EMISSIVE            = 4,
+    GL_TEXTURE_TYPE_HEIGHT              = 5,
+    GL_TEXTURE_TYPE_NORMALS             = 6,
+    GL_TEXTURE_TYPE_SHININESS           = 7,
+    GL_TEXTURE_TYPE_OPACITY             = 8,
+    GL_TEXTURE_TYPE_DISPLACEMENT        = 9,
+    GL_TEXTURE_TYPE_LIGHTMAP            = 10,
+    GL_TEXTURE_TYPE_REFLECTION          = 11,
+    GL_TEXTURE_TYPE_BASE_COLOR          = 12,
+    GL_TEXTURE_TYPE_NORMAL_CAMERA       = 13,
+    GL_TEXTURE_TYPE_EMISSION_COLOR      = 14,
+    GL_TEXTURE_TYPE_METALNESS           = 15,
+    GL_TEXTURE_TYPE_DIFFUSE_ROUGHNESS   = 16,
+    GL_TEXTURE_TYPE_AMBIENT_OCCLUSION   = 17,
+    GL_TEXTURE_TYPE_CUBEMAP             = 18,
+    GL_TEXTURE_TYPE_COUNT
 } gltexturetype;
