@@ -352,7 +352,17 @@ void arena_dump_json(const char *filepath)
     char fname[1024][256];
     u32  fc = 0;
 
-    // Pass 1 — collect all frame names
+    // Compute total capacity for normalization
+    u64 total_capacity = 0;
+    for (arena_t *a = arena_registry; a; a = a->next_in_registry) {
+        total_capacity += a->capacity;
+    }
+
+    // Normalize: scale byte offsets into a 0..TARGET_MAX range
+    const u64 TARGET_MAX = 1000000;
+    double scale = total_capacity ? (double)TARGET_MAX / (double)total_capacity : 1.0;
+
+    // Pass 1 — collect frame names
     for (arena_t *a = arena_registry; a; a = a->next_in_registry) {
         char buf[256];
         snprintf(buf, sizeof(buf), "%s:%d (%lu MB)",
@@ -382,11 +392,13 @@ void arena_dump_json(const char *filepath)
     fprintf(f, "    ]\n  },\n");
     fprintf(f, "  \"profiles\": [{\n");
     fprintf(f, "    \"type\": \"evented\",\n");
-    fprintf(f, "    \"unit\": \"bytes\",\n");
+    fprintf(f, "    \"unit\": \"none\",\n");
     fprintf(f, "    \"name\": \"Arena Memory Map\",\n");
+    fprintf(f, "    \"startValue\": 0,\n");
+    fprintf(f, "    \"endValue\": %lu,\n", (unsigned long)TARGET_MAX);
     fprintf(f, "    \"events\": [\n");
 
-    // Pass 2 — emit O/C events
+    // Pass 2 — emit O/C events with normalized at values
     bool first = true;
     u64  base  = 0;
 
@@ -397,38 +409,44 @@ void arena_dump_json(const char *filepath)
                  (unsigned long)(a->capacity / MB));
         u32 arena_f = arena__frame_idx(buf, fname, &fc);
 
+        u64 norm_base = (u64)((double)base * scale);
+
         if (!first) fprintf(f, ",\n");
-        fprintf(f, "      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)base, arena_f);
+        fprintf(f, "      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_base, arena_f);
         first = false;
 
         u64 cur = base;
         for (arena_alloc_record_t *r = a->alloc_log.head; r; r = r->next) {
             const char *sf = strrchr(r->file, '/');
             sf = sf ? sf + 1 : r->file;
-            u32 file_f = arena__frame_idx(sf, fname, &fc);
-            u32 func_f = arena__frame_idx(r->func, fname, &fc);
+            u32 file_f   = arena__frame_idx(sf, fname, &fc);
+            u32 func_f   = arena__frame_idx(r->func, fname, &fc);
             snprintf(buf, sizeof(buf), "L%03d [%lu B]", r->line, (unsigned long)r->size);
             u32 detail_f = arena__frame_idx(buf, fname, &fc);
 
-            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, file_f);
-            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, func_f);
-            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, detail_f);
-
+            u64 norm_cur = (u64)((double)cur * scale);
             cur += r->size;
+            u64 norm_end = (u64)((double)cur * scale);
 
-            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, detail_f);
-            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, func_f);
-            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, file_f);
+            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_cur, file_f);
+            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_cur, func_f);
+            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_cur, detail_f);
+            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_end, detail_f);
+            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_end, func_f);
+            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_end, file_f);
         }
 
         u64 end = base + a->capacity;
+        u64 norm_end = (u64)((double)end * scale);
+
         if (cur < end) {
+            u64 norm_cur = (u64)((double)cur * scale);
             u32 unused_f = arena__frame_idx("(unused)", fname, &fc);
-            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)cur, unused_f);
-            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)end, unused_f);
+            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_cur, unused_f);
+            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_end, unused_f);
         }
 
-        fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)end, arena_f);
+        fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_end, arena_f);
         base = end;
     }
 
