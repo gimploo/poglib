@@ -389,6 +389,23 @@ void glrenderer3d_draw(const glrendererconfig_t config)
             switch(config.calls.call[call_idx].textures.items[txt_idx].type)
             {
                 case GL_TEXTURE_TYPE_NORMAL:
+                case GL_TEXTURE_TYPE_DIFFUSE:
+                case GL_TEXTURE_TYPE_SPECULAR:
+                case GL_TEXTURE_TYPE_AMBIENT:
+                case GL_TEXTURE_TYPE_EMISSIVE:
+                case GL_TEXTURE_TYPE_HEIGHT:
+                case GL_TEXTURE_TYPE_NORMALS:
+                case GL_TEXTURE_TYPE_SHININESS:
+                case GL_TEXTURE_TYPE_OPACITY:
+                case GL_TEXTURE_TYPE_DISPLACEMENT:
+                case GL_TEXTURE_TYPE_LIGHTMAP:
+                case GL_TEXTURE_TYPE_REFLECTION:
+                case GL_TEXTURE_TYPE_BASE_COLOR:
+                case GL_TEXTURE_TYPE_NORMAL_CAMERA:
+                case GL_TEXTURE_TYPE_EMISSION_COLOR:
+                case GL_TEXTURE_TYPE_METALNESS:
+                case GL_TEXTURE_TYPE_DIFFUSE_ROUGHNESS:
+                case GL_TEXTURE_TYPE_AMBIENT_OCCLUSION:
                     gltexture2d_bind(
                         config.calls.call[call_idx].textures.items[txt_idx].source.normal_texture,
                         txt_idx
