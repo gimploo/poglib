@@ -5,7 +5,6 @@
 #include <threads.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <time.h>
 #include <string.h>
 
 /*================================================================================
@@ -18,15 +17,6 @@
 
 typedef struct arena_t arena_t;
 typedef struct free_chunks_t free_chunks_t;
-typedef struct arena_alloc_record_t arena_alloc_record_t;
-
-struct arena_alloc_record_t {
-    const char *file;
-    int         line;
-    const char *func;
-    u64         size;
-    arena_alloc_record_t *next;
-};
 
 struct arena_t {
     u8 *memory;
@@ -40,13 +30,6 @@ struct arena_t {
         atomic_flag lock;
         struct arena_t *lifetime_owner;
     } meta;
-    struct {
-        arena_alloc_record_t *head;
-        u32 count;
-    } alloc_log;
-    const char *init_file;
-    int         init_line;
-    arena_t    *next_in_registry;
 };
 
 struct free_chunks_t {
@@ -56,7 +39,7 @@ struct free_chunks_t {
 };
 
 #define arena_init(arena, capacity) \
-    arena__internal__init((arena), (capacity), __FILE__, __LINE__)
+    arena__internal__init((arena), (capacity))
 
 #define arena_reserve(self, memory_size) \
     arena__internal__reserve_tracked((self), (memory_size), __FILE__, __LINE__, __func__)
@@ -70,70 +53,11 @@ void        arena_dump_json(const char *filepath);
 
 #ifndef IGNORE_ARENA_IMPLEMENTATION
 
-arena_t     arena__internal__init(arena_t *const, const u64 capacity, const char *file, int line);
+arena_t     arena__internal__init(arena_t *const, const u64 capacity);
 void *      arena__internal__reserve_memory_16byte_aligned(arena_t * const self, const u64 memory_size);
 void *      arena__internal__reserve_tracked(arena_t *const self, const u64 memory_size, const char *file, int line, const char *func);
 
-INTERNAL u32   arena__internal__frame_lookup(const char *name, char fnames[][256], u32 *count);
-
-static arena_t *arena_registry = NULL;
-
-INTERNAL void arena__internal__registry_add(arena_t *a)
-{
-    a->next_in_registry = arena_registry;
-    arena_registry = a;
-}
-
-INTERNAL void arena__internal__registry_remove(arena_t *a)
-{
-    if (arena_registry == a) {
-        arena_registry = a->next_in_registry;
-        a->next_in_registry = NULL;
-        return;
-    }
-    for (arena_t *cur = arena_registry; cur; cur = cur->next_in_registry) {
-        if (cur->next_in_registry == a) {
-            cur->next_in_registry = a->next_in_registry;
-            a->next_in_registry = NULL;
-            return;
-        }
-    }
-}
-
-INTERNAL void arena__internal__ensure_registered(arena_t *self)
-{
-    if (self->meta.lifetime_owner) return;
-    if (!self->init_file) return;
-
-    for (arena_t *cur = arena_registry; cur; cur = cur->next_in_registry) {
-        if (cur == self) return;
-    }
-    arena__internal__registry_add(self);
-}
-
-INTERNAL void arena__internal__log_alloc(arena_t *const self, u64 size, const char *file, int line, const char *func)
-{
-    arena_alloc_record_t *rec = calloc(1, sizeof(*rec));
-    rec->file = file;
-    rec->line = line;
-    rec->func = func;
-    rec->size = size;
-    rec->next = self->alloc_log.head;
-    self->alloc_log.head = rec;
-    self->alloc_log.count++;
-}
-
-INTERNAL void arena__internal__free_alloc_log(arena_t *const self)
-{
-    arena_alloc_record_t *cur = self->alloc_log.head;
-    while (cur) {
-        arena_alloc_record_t *next = cur->next;
-        free(cur);
-        cur = next;
-    }
-    self->alloc_log.head = NULL;
-    self->alloc_log.count = 0;
-}
+static u32  arena__internal__frame_lookup(const char *name, char fnames[][256], u32 *count);
 
 void * arena__internal_check_in_freelist(arena_t *const self, const u64 memory_size)
 {
@@ -220,10 +144,11 @@ void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const
 
 void * arena__internal__reserve_tracked(arena_t *const self, const u64 memory_size, const char *file, int line, const char *func)
 {
-    arena__internal__ensure_registered(self);
+    if (!self->meta.lifetime_owner)
+        arena_logger_init(self, file, line);
     void *mem = arena__internal_reserve_memory_16byte_aligned(self, memory_size);
     if (mem) {
-        arena__internal__log_alloc(self, memory_size, file, line, func);
+        arena_logger_log_alloc(self, memory_size, file, line, func);
     }
     return mem;
 }
@@ -237,7 +162,7 @@ void * arena_store(arena_t * const self, const void * const mem, const u64 mem_s
     return raw_mem;
 }
 
-arena_t arena__internal__init(arena_t *const arena, const u64 capacity, const char *file, int line)
+arena_t arena__internal__init(arena_t *const arena, const u64 capacity)
 {
     arena_t o = {
         .capacity = capacity,
@@ -247,10 +172,6 @@ arena_t arena__internal__init(arena_t *const arena, const u64 capacity, const ch
         .meta = {
             .lifetime_owner = arena,
         },
-        .alloc_log = {0},
-        .init_file = file,
-        .init_line = line,
-        .next_in_registry = NULL,
     };
     atomic_flag_clear(&o.meta.lock);
     return o;
@@ -306,14 +227,12 @@ void arena_clear(arena_t *self)
     while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
         self->size = 0;
     atomic_flag_clear(&self->meta.lock);
-    arena__internal__free_alloc_log(self);
+    arena_logger_clear_log(self);
 }
 
 void arena_destroy(arena_t *const self)
 {
-    if (!self->meta.lifetime_owner) {
-        arena__internal__registry_remove(self);
-    }
+    arena_logger_destroy(self);
 
     if (self->meta.lifetime_owner) {
         arena_giveback(self->meta.lifetime_owner, self->memory, self->capacity);
@@ -330,7 +249,6 @@ void arena_destroy(arena_t *const self)
         }
     }
     atomic_flag_clear(&self->meta.lock);
-    arena__internal__free_alloc_log(self);
     free(self->memory);
 }
 
@@ -361,25 +279,23 @@ void arena_dump_json(const char *filepath)
     char fname[1024][256];
     u32  fc = 0;
 
-    // Compute total capacity for normalization
     u64 total_capacity = 0;
-    for (arena_t *a = arena_registry; a; a = a->next_in_registry) {
-        total_capacity += a->capacity;
+    for (arena_logger_t *l = arena_logger_registry; l; l = l->next) {
+        total_capacity += l->arena->capacity;
     }
 
-    // Normalize: scale byte offsets into a 0..TARGET_MAX range
     const u64 TARGET_MAX = 1000000;
     double scale = total_capacity ? (double)TARGET_MAX / (double)total_capacity : 1.0;
 
     // Pass 1 — collect frame names
-    for (arena_t *a = arena_registry; a; a = a->next_in_registry) {
+    for (arena_logger_t *l = arena_logger_registry; l; l = l->next) {
         char buf[256];
         snprintf(buf, sizeof(buf), "%s:%d (%lu MB)",
-                 a->init_file ? a->init_file : "?", a->init_line,
-                 (unsigned long)(a->capacity / MB));
+                 l->init_file ? l->init_file : "?", l->init_line,
+                 (unsigned long)(l->arena->capacity / MB));
         arena__internal__frame_lookup(buf, fname, &fc);
 
-        for (arena_alloc_record_t *r = a->alloc_log.head; r; r = r->next) {
+        for (arena_alloc_record_t *r = l->alloc_log.head; r; r = r->next) {
             const char *sf = strrchr(r->file, '/');
             sf = sf ? sf + 1 : r->file;
             arena__internal__frame_lookup(sf, fname, &fc);
@@ -411,10 +327,11 @@ void arena_dump_json(const char *filepath)
     bool first = true;
     u64  base  = 0;
 
-    for (arena_t *a = arena_registry; a; a = a->next_in_registry) {
+    for (arena_logger_t *l = arena_logger_registry; l; l = l->next) {
+        arena_t *a = l->arena;
         char buf[256];
         snprintf(buf, sizeof(buf), "%s:%d (%lu MB)",
-                 a->init_file ? a->init_file : "?", a->init_line,
+                 l->init_file ? l->init_file : "?", l->init_line,
                  (unsigned long)(a->capacity / MB));
         u32 arena_f = arena__internal__frame_lookup(buf, fname, &fc);
 
@@ -425,7 +342,7 @@ void arena_dump_json(const char *filepath)
         first = false;
 
         u64 cur = base;
-        for (arena_alloc_record_t *r = a->alloc_log.head; r; r = r->next) {
+        for (arena_alloc_record_t *r = l->alloc_log.head; r; r = r->next) {
             const char *sf = strrchr(r->file, '/');
             sf = sf ? sf + 1 : r->file;
             u32 file_f   = arena__internal__frame_lookup(sf, fname, &fc);
