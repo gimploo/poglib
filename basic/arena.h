@@ -54,9 +54,6 @@ struct free_chunks_t {
     u64 size;
 };
 
-arena_t     arena__internal_init(arena_t *const, const u64 capacity, const char *file, int line);
-void *      arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const u64 memory_size);
-void *      arena__internal_reserve_tracked(arena_t *const self, const u64 memory_size, const char *file, int line, const char *func);
 void *      arena_store(arena_t *const self, const void *const mem, const u64 mem_size);
 bool        arena_is_init(const arena_t *const self);
 void        arena_giveback(arena_t *const self, void *const ptr, const u64 size);
@@ -64,13 +61,17 @@ void        arena_clear(arena_t *const self);
 void        arena_destroy(arena_t *const self);
 void        arena_dump_json(const char *filepath);
 
+#ifndef IGNORE_ARENA_IMPLEMENTATION
+
 #define arena_init(arena, capacity) \
     arena__internal_init((arena), (capacity), __FILE__, __LINE__)
 
 #define arena_reserve(self, memory_size) \
     arena__internal_reserve_tracked((self), (memory_size), __FILE__, __LINE__, __func__)
 
-#ifndef IGNORE_ARENA_IMPLEMENTATION
+arena_t     arena__internal_init(arena_t *const, const u64 capacity, const char *file, int line);
+void *      arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const u64 memory_size);
+void *      arena__internal_reserve_tracked(arena_t *const self, const u64 memory_size, const char *file, int line, const char *func);
 
 static arena_t *arena_registry = NULL;
 
