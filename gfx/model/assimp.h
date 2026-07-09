@@ -369,7 +369,10 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
         // Process mesh
         const glmesh_t m = assimp__internal_glmesh_processMesh(mesh);
 
-        // Process materials (once per unique material index)
+        // Process materials (once per unique material index).
+        // Multiple meshes may share the same material; a u64 bitmask
+        // tracks which material indices have already been processed to
+        // avoid redundant texture loading and duplicate list entries.
         if (!(processed_materials & ((u64)1 << mesh->mMaterialIndex))) {
             processed_materials |= (u64)1 << mesh->mMaterialIndex;
             assimp__internal_glmesh_processMaterial(
@@ -394,7 +397,8 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
 }
 
 gltexture2d_t assimp__internal_load_texture_from_path(glmodel_t *self, const struct aiScene *scene, const char *path) {
-    if (path[0] == '*') {
+    bool is_embedded = (path[0] == '*');
+    if (is_embedded) {
         i32 index = atoi(path + 1);
         ASSERT(index >= 0 && (u32)index < scene->mNumTextures);
         struct aiTexture *aitexture = scene->mTextures[index];
