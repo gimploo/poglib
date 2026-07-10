@@ -62,6 +62,8 @@ static dbg_t global_debug;
 #endif
 
 
+#include "arena_logger.h"
+
 
 #if !defined(IGNORE_MYDBG_IMPLEMENTATION) && defined(DEBUG)
 
