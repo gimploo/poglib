@@ -37,9 +37,13 @@ typedef struct {
     list_t animations;     // List of animation_t
 } animator_t;
 
+typedef struct {
+    str_t   *names;
+    u32     count;
+} animation_filter_t;
 
 animator_t          animator_init(arena_t *arena);
-void                animator_load_all_animations(animator_t *self, const struct aiScene *scene, arena_t *arena);
+void                animator_load_all_animations(animator_t *self, const struct aiScene *scene, arena_t *const arena, const animation_filter_t filter);
 animation_t *       animator_get_animation(const animator_t *self, const char *animation_label);
 void                animator_destroy(animator_t *self);
 
@@ -157,11 +161,20 @@ void __load_channels(const struct aiAnimation *animation, animation_t *self, are
     }
 }
 
-void animator_load_all_animations(animator_t *self, const struct aiScene *scene, arena_t *arena)
+
+void animator_load_all_animations(animator_t *self, const struct aiScene *scene, arena_t *const arena, const animation_filter_t filter)
 {
-    for (u32 i = 0; i < scene->mNumAnimations; i++)
+    u32 hit_count = 0;
+    for (u32 i = 0; i < scene->mNumAnimations && (hit_count <= filter.count); i++)
     {
         const struct aiAnimation* ai = scene->mAnimations[i];
+
+        if (filter.count) {
+            if (!str_cmp(str_from_cstr(ai->mName.data, ai->mName.length), filter.names[hit_count])) {
+                continue;
+            }
+            hit_count++;
+        }
 
         if (!ai->mTicksPerSecond) eprint("ticks are zero? for this animation %.*s", ai->mName.length, ai->mName.data);
 
