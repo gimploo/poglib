@@ -7,8 +7,7 @@ transform:{totalmembers:5,bytesize:64}
 	scale:[1.000000,1.000000,1.000000]
 	velocity:[0.000000,0.000000,0.000000]
 	source:0
-material:{totalmembers:2,bytesize:8}
-	texture_asset_id:6
+material:{totalmembers:1,bytesize:2344}
 	shader_asset_id:7
 mesh:{totalmembers:2,bytesize:8}
 	asset_id:2
@@ -76,8 +75,7 @@ transform:{totalmembers:5,bytesize:64}
 	source:0
 model:{totalmembers:2,bytesize:16}
 	asset_id:9
-material:{totalmembers:2,bytesize:8}
-	texture_asset_id:0
+material:{totalmembers:1,bytesize:2344}
 	shader_asset_id:10
 entity:7
 component_signature:1

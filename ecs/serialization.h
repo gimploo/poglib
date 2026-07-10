@@ -104,10 +104,9 @@ static const ecs_cmp_field_map_t ecs_deserializer__internal_cmp_field_maps[ECS_C
         }
     },
     [ECS_CMP_MATERIAL_IDX] = {
-        .field_count = 2,
+        .field_count = 1,
         .fields = {
-            CMP_FLD_DESC("\ttexture_asset_id:", "\ttexture_asset_id:%u", ecs_component_material_t, texture_asset_id, ECS_CMP_FLD_U32),
-            CMP_FLD_DESC("\tshader_asset_id:",  "\tshader_asset_id:%u",  ecs_component_material_t, shader_asset_id,  ECS_CMP_FLD_U32),
+            CMP_FLD_DESC("\tshader_asset_id:",  "\tshader_asset_id:%u",  ecs_component_material_t, shader.asset_id,  ECS_CMP_FLD_U32),
         }
     },
     [ECS_CMP_CAMERA_IDX] = {
@@ -210,7 +209,7 @@ INTERNAL void ecs_serializer__internal_entity_cmp_data(file_t *const file, const
             case ECS_CMP_TRANSFORM:     total_members = 5;   bytesize = sizeof(ecs_component_transform_t);   break;
             case ECS_CMP_MODEL:         total_members = 2;   bytesize = sizeof(ecs_component_model_t);       break;
             case ECS_CMP_INPUT:         total_members = 3;   bytesize = sizeof(ecs_component_input_t);       break;
-            case ECS_CMP_MATERIAL:      total_members = 2;   bytesize = sizeof(ecs_component_material_t);    break;
+            case ECS_CMP_MATERIAL:      total_members = 1;   bytesize = sizeof(ecs_component_material_t);    break;
             case ECS_CMP_CAMERA:        total_members = 3;   bytesize = sizeof(ecs_component_camera_t);      break;
             case ECS_CMP_COLLIDER:      total_members = 5;   bytesize = sizeof(ecs_component_collider_t);    break;
             case ECS_CMP_MESH:          total_members = 2;   bytesize = sizeof(ecs_component_mesh_t);        break;
@@ -379,8 +378,7 @@ INTERNAL void ecs_deserializer__internal_remap_entity_assets(ecs_componentbundle
             } break;
             case ECS_CMP_MATERIAL: {
                 ecs_component_material_t *mat = &bundle->component[cmp_idx].material;
-                if (mat->texture_asset_id)  mat->texture_asset_id = ecs_deserializer__internal_ensure_asset_loaded(assets, mat->texture_asset_id, assets_parsed);
-                if (mat->shader_asset_id)   mat->shader_asset_id  = ecs_deserializer__internal_ensure_asset_loaded(assets, mat->shader_asset_id,  assets_parsed);
+                if (mat->shader.asset_id) mat->shader.asset_id = ecs_deserializer__internal_ensure_asset_loaded(assets, mat->shader.asset_id, assets_parsed);
             } break;
         }
     }

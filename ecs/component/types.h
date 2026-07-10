@@ -6,6 +6,8 @@
 #include <poglib/math.h>
 #include <poglib/physics/jolt-wrapper.h>
 #include <poglib/util/glcamera.h>
+#include <poglib/gfx/gl/shader.h>
+#include <poglib/gfx/gl/texture_types.h>
 
 #define ECS_CMP_INVALID_IDX -1
 
@@ -98,8 +100,11 @@ struct ecs_component_input_t {
 
 typedef struct ecs_component_material_t ecs_component_material_t;
 struct ecs_component_material_t {
-    u32 texture_asset_id;
-    u32 shader_asset_id;
+    gltexturelist_t textures;
+    struct {
+        u32 asset_id;
+        gluniforms_t uniforms;
+    } shader;
 };
 
 /* =========================== CAMERA ================================== */

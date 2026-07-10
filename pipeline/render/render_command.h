@@ -34,10 +34,7 @@ struct rendercommand_t {
             gluniforms_t uniforms;
             const glshader_t *data;
         } shader;
-        struct {
-            u16 count;
-            u16 ids[MAX_TEXTURES_ALLOWED_PER_RENDER];
-        } textures;
+        gltexturelist_t texture;
     } material;
 
     buffer_t                    instance;
@@ -51,12 +48,15 @@ bool rendercommand__internal_compare_textures_ids(const rendercommand_t *const r
 {
     ASSERT(rc1 && rc2);
 
-    if (rc1->material.textures.count != rc2->material.textures.count) 
+    if (rc1->material.texture.count != rc2->material.texture.count)
         return false;
 
-    for (u8 tex_idx = 0; tex_idx < rc1->material.textures.count; tex_idx++)
-        if(rc1->material.textures.ids[tex_idx] != rc2->material.textures.ids[tex_idx])
-            return false;
+    for (u8 tex_idx = 0; tex_idx < rc1->material.texture.count; tex_idx++) {
+        const gltextureitem_t *a = &rc1->material.texture.items[tex_idx];
+        const gltextureitem_t *b = &rc2->material.texture.items[tex_idx];
+        if (a->type != b->type) return false;
+        if (a->source.normal_texture->id != b->source.normal_texture->id) return false;
+    }
 
     return true;
 

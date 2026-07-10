@@ -15,8 +15,7 @@ input:{totalmembers:3,bytesize:80}
 	state.orientation:[0.000000,0.000000,0.000000,1.000000]
 	state.front:[-0.185430,-0.268920,-0.945144]
 	state.right:[0.981293,0.000000,-0.192522]
-material:{totalmembers:2,bytesize:8}
-	texture_asset_id:0
+material:{totalmembers:1,bytesize:2344}
 	shader_asset_id:10
 collider:{totalmembers:5,bytesize:96}
 	shape_type:1
@@ -33,8 +32,7 @@ transform:{totalmembers:5,bytesize:64}
 	scale:[1.000000,1.000000,1.000000]
 	velocity:[0.000000,0.000000,0.000000]
 	source:0
-material:{totalmembers:2,bytesize:8}
-	texture_asset_id:6
+material:{totalmembers:1,bytesize:2344}
 	shader_asset_id:7
 collider:{totalmembers:5,bytesize:96}
 	shape_type:3
@@ -54,8 +52,7 @@ transform:{totalmembers:5,bytesize:64}
 	scale:[1.000000,2.500000,1.000000]
 	velocity:[0.000000,0.000000,0.000000]
 	source:0
-material:{totalmembers:2,bytesize:8}
-	texture_asset_id:6
+material:{totalmembers:1,bytesize:2344}
 	shader_asset_id:7
 collider:{totalmembers:5,bytesize:96}
 	shape_type:3
