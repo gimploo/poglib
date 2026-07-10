@@ -524,7 +524,7 @@ void workbench_render_camera(
             .size = sizeof(rendercommand_instance_primitive_mesh_t)
         },
         .material = {
-            .textures = {0},
+            .texture = {0},
             .shader = {
                 .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.mesh_shader_id),
                 .uniforms = {
@@ -588,10 +588,13 @@ void workbench_render_marker(
             .size = sizeof(rendercommand_instance_primitive_mesh_t)
         },
         .material = {
-            .textures = {
+            .texture = {
                 .count = 1,
-                .ids = {
-                    atlas->texture.id
+                .items = {
+                    [0] = (gltextureitem_t){
+                        .type = GL_TEXTURE_TYPE_NORMAL,
+                        .source = { .normal_texture = &atlas->texture }
+                    }
                 }
             },
             .shader = {
