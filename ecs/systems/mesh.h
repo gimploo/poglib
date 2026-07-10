@@ -50,12 +50,12 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
 
         const bool is_editor_selected = global_workbench->editor.current_selected_entity_id == entry->entity_id;
 
-        uniform_compute_ctx_t uniform_ctx = {
-            .active_camera = ctx.active_camera,
-            .aspect_ratio = global_engine->handle.app->window.aspect_ratio,
-            .transform = transform,
-            .is_selected = is_editor_selected,
-        };
+        const matrix4f_t proj = glms_perspective(
+            radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
+        const matrix4f_t view_mat = glcamera_getview(ctx.active_camera);
+        const matrix4f_t entity_transform = glms_mat4_mul(
+            glms_translate_make(transform->position),
+            glms_mat4_mul(glms_quat_mat4(transform->orientation), glms_scale_make(transform->scale)));
 
         rendercommand_t command = {
             .mesh = gpu_loaded_asset->meshes.data,
@@ -98,7 +98,30 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             if (!binding)
                 eprint("uniform '%.*s' not found in registry for shader '%.*s'", uniform_name.len, uniform_name.data, shader->vs.len, shader->vs.data);
 
-            gluniform_value_t value = uniform_registry_compute(binding->source, &uniform_ctx);
+            gluniform_value_t value = {0};
+            switch (binding->source)
+            {
+                case UNIFORM_SOURCE_CAMERA_VIEW:
+                    value.mat4 = view_mat;
+                break;
+                case UNIFORM_SOURCE_CAMERA_PROJECTION:
+                    value.mat4 = proj;
+                break;
+                case UNIFORM_SOURCE_ENTITY_TRANSFORM:
+                    value.mat4 = entity_transform;
+                break;
+                case UNIFORM_SOURCE_LIGHT_COLOR:
+                    value.vec4 = is_editor_selected ? COLOR_RED : COLOR_WHITE;
+                break;
+                case UNIFORM_SOURCE_LIGHT_AMBIENT:
+                    value.f32 = 1.0f;
+                break;
+                case UNIFORM_SOURCE_LIGHT_POSITION:
+                    value.vec3 = (vec3f_t){1.0f, 1.0f, 1.0f};
+                break;
+                default:
+                break;
+            }
 
             for (u8 o = 0; o < material->shader.uniforms.count; o++)
                 if (str_cmp(material->shader.uniforms.data[o].name, uniform_name))

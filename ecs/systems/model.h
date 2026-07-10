@@ -59,19 +59,20 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
         const glmodel_t *model = cmp_model->internal.model;
         gltexturelist_t model_textures = glmodel_get_texuturelist(model);
 
-        uniform_compute_ctx_t uniform_ctx = {
-            .active_camera = ctx.active_camera,
-            .aspect_ratio = global_engine->handle.app->window.aspect_ratio,
-            .transform = transform,
-            .is_selected = global_workbench->editor.current_selected_entity_id == entity_id,
-        };
+        const matrix4f_t proj = glms_perspective(
+            radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
+        const matrix4f_t view_mat = glcamera_getview(ctx.active_camera);
+        const matrix4f_t entity_transform = glms_mat4_mul(
+            glms_translate_make(transform->position),
+            glms_mat4_mul(glms_quat_mat4(transform->orientation), glms_scale_make(transform->scale)));
+        const bool is_selected = global_workbench->editor.current_selected_entity_id == entity_id;
 
         ASSERT(gpu_loaded_asset->meshes.count == model->meshes.len);
         for (u8 idx = 0; idx < model->meshes.len; idx++)
         {
-            uniform_ctx.model_color = *(vec4f_t *)list_get_value(&model->colors, idx);
-            uniform_ctx.bones.count = model->transforms[idx].len;
-            uniform_ctx.bones.data = (matrix4f_t *)model->transforms[idx].data;
+            const vec4f_t mesh_color = *(vec4f_t *)list_get_value(&model->colors, idx);
+            const u32 bone_count = model->transforms[idx].len;
+            matrix4f_t *bone_data = (matrix4f_t *)model->transforms[idx].data;
 
             rendercommand_t cmd = {
                 .mesh = &gpu_loaded_asset->meshes.data[idx],
@@ -105,7 +106,43 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                 if (!binding)
                     eprint("uniform '%.*s' not found in registry for shader '%.*s'", uniform_name.len, uniform_name.data, shader->vs.len, shader->vs.data);
 
-                gluniform_value_t value = uniform_registry_compute(binding->source, &uniform_ctx);
+                gluniform_value_t value = {0};
+                switch (binding->source)
+                {
+                    case UNIFORM_SOURCE_CAMERA_VIEW:
+                        value.mat4 = view_mat;
+                    break;
+                    case UNIFORM_SOURCE_CAMERA_PROJECTION:
+                        value.mat4 = proj;
+                    break;
+                    case UNIFORM_SOURCE_ENTITY_TRANSFORM:
+                        value.mat4 = entity_transform;
+                    break;
+                    case UNIFORM_SOURCE_MODEL_COLOR:
+                        value.vec4 = mesh_color;
+                    break;
+                    case UNIFORM_SOURCE_BONE_TRANSFORMS:
+                        if (bone_count > 0) {
+                            value.mat4s.count = bone_count;
+                            value.mat4s.data = bone_data;
+                        } else {
+                            static matrix4f_t identity = GLMS_MAT4_IDENTITY_INIT;
+                            value.mat4s.count = 1;
+                            value.mat4s.data = &identity;
+                        }
+                    break;
+                    case UNIFORM_SOURCE_LIGHT_COLOR:
+                        value.vec4 = is_selected ? COLOR_RED : COLOR_WHITE;
+                    break;
+                    case UNIFORM_SOURCE_LIGHT_AMBIENT:
+                        value.f32 = 1.0f;
+                    break;
+                    case UNIFORM_SOURCE_LIGHT_POSITION:
+                        value.vec3 = (vec3f_t){1.0f, 1.0f, 1.0f};
+                    break;
+                    case UNIFORM_SOURCE_COUNT:
+                    break;
+                }
 
                 for (u8 o = 0; o < material->shader.uniforms.count; o++)
                     if (str_cmp(material->shader.uniforms.data[o].name, uniform_name))
