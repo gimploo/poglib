@@ -11,7 +11,6 @@
 #include "poglib/poggen.h"
 #include "poglib/util/asset.h"
 #include "poglib/util/assetmanager.h"
-#include "poglib/util/glcamera.h"
 
 void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
@@ -57,13 +56,6 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
         const glmodel_t *model = cmp_model->internal.model;
         gltexturelist_t model_textures = glmodel_get_texuturelist(model);
 
-        const matrix4f_t proj = glms_perspective(
-            radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
-        const matrix4f_t view_mat = glcamera_getview(ctx.active_camera);
-        const matrix4f_t model_mat = glms_mat4_mul(
-            glms_translate_make(transform->position),
-            glms_mat4_mul(glms_quat_mat4(transform->orientation), glms_scale_make(transform->scale)));
-
         ASSERT(gpu_loaded_asset->meshes.count == model->meshes.len);
         for (u8 idx = 0; idx < model->meshes.len; idx++)
         {
@@ -80,7 +72,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                     .texture = model_textures,
                     .shader = {
                         .data = shader,
-                        .uniforms = {0},
+                        .uniforms = material->shader.uniforms,
                     }
                 }
             };
@@ -95,18 +87,6 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
 
             gluniforms_t *u = &cmd.material.shader.uniforms;
 
-            u->data[u->count].name = str("view");
-            u->data[u->count].value.mat4 = view_mat;
-            u->count++;
-
-            u->data[u->count].name = str("projection");
-            u->data[u->count].value.mat4 = proj;
-            u->count++;
-
-            u->data[u->count].name = str("transform");
-            u->data[u->count].value.mat4 = model_mat;
-            u->count++;
-
             u->data[u->count].name = str("material.color");
             u->data[u->count].value.vec4 = mesh_color;
             u->count++;
@@ -117,9 +97,6 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                 u->data[u->count].value.mat4s.data = bone_data;
                 u->count++;
             }
-
-            for (u8 i = 0; i < material->shader.uniforms.count; i++)
-                u->data[u->count++] = material->shader.uniforms.data[i];
 
             renderqueue_pass_command(&global_engine->systems.renderqueue, cmd);
         }

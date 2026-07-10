@@ -49,10 +49,6 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
 
         const bool is_editor_selected = global_workbench->editor.current_selected_entity_id == entry->entity_id;
 
-        const matrix4f_t proj = glms_perspective(
-            radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
-        const matrix4f_t view_mat = glcamera_getview(ctx.active_camera);
-
         rendercommand_t command = {
             .mesh = gpu_loaded_asset->meshes.data,
             .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
@@ -79,23 +75,10 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 },
                 .shader = {
                     .data = shader,
-                    .uniforms = {0},
+                    .uniforms = material->shader.uniforms,
                 }
             }
         };
-
-        gluniforms_t *u = &command.material.shader.uniforms;
-
-        u->data[u->count].name = str("view");
-        u->data[u->count].value.mat4 = view_mat;
-        u->count++;
-
-        u->data[u->count].name = str("projection");
-        u->data[u->count].value.mat4 = proj;
-        u->count++;
-
-        for (u8 i = 0; i < material->shader.uniforms.count; i++)
-            u->data[u->count++] = material->shader.uniforms.data[i];
 
         renderqueue_pass_command(&global_engine->systems.renderqueue, command);
     }

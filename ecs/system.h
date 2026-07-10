@@ -7,6 +7,7 @@
 #include "poglib/ecs/systems/mesh.h"
 #include "poglib/ecs/systems/model.h"
 #include "poglib/ecs/systems/transform.h"
+#include "poglib/ecs/systems/uniform_resolve.h"
 
 void ecs_add_system(ecs_t *const self, const ecs_system_t system)
 {
@@ -46,6 +47,13 @@ void ecs_add_all_core_systems(ecs_t *const self)
         self, 
         (ecs_system_t) {
             .callback = ecs_system_collider
+        }
+    );
+
+    ecs_add_system(
+        self, 
+        (ecs_system_t) {
+            .callback = ecs_system_uniform_resolve
         }
     );
 
