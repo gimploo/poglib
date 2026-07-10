@@ -83,16 +83,15 @@ typedef struct glmodel_t {
 
     struct {
         animation_t     *active_animation;
-        u16             active_animation_iteration_count;
         i64             root_channel_idx;
     } internal;
 
 } glmodel_t;
 
 glmodel_t               glmodel_init(const char *filepath);
-void                    glmodel_set_animation(glmodel_t *const self, const str_t animation_label);
+animation_t *           glmodel_set_animation(glmodel_t *const self, const str_t animation_label);
 animation_t *           glmodel_get_playing_animation(const glmodel_t *const self);
-u32                     glmodel_get_playing_animation_loop_count(const glmodel_t *const self);
+f32                     glmodel_get_playing_animation_loop_count(const glmodel_t *const self, const f32 dt);
 vec3f_t                 glmodel_get_rootnode_position(const glmodel_t *self, const char *animation_label, f32 time);
 void                    glmodel_destroy(glmodel_t *self);
 
@@ -623,9 +622,11 @@ animation_t * glmodel_get_playing_animation(const glmodel_t *const self)
     return self->internal.active_animation;
 }
 
-u32 glmodel_get_playing_animation_loop_count(const glmodel_t *const self)
+f32 glmodel_get_playing_animation_loop_count(const glmodel_t *const self, const f32 dt)
 {
-    return self->internal.active_animation_iteration_count;
+    if (!self->internal.active_animation) return 0;
+
+    return ((self->current_time + dt * self->internal.active_animation->ticks_per_second)) / self->internal.active_animation->duration;
 }
 
 void glmodel_play_animation(glmodel_t *const self, const f32 dt)
@@ -642,8 +643,7 @@ void glmodel_play_animation(glmodel_t *const self, const f32 dt)
         //logging("playing animation %s", current_anim->name);
     }
 
-    if (self->current_time > current_anim->duration) 
-        self->internal.active_animation_iteration_count += 1;
+    //if (self->current_time >= current_anim->duration)
 
     self->current_time = fmod(self->current_time, current_anim->duration);
 
@@ -658,18 +658,19 @@ void glmodel_play_animation(glmodel_t *const self, const f32 dt)
 
 }
 
-void glmodel_set_animation(glmodel_t *const self, const str_t animation_label)
+animation_t * glmodel_set_animation(glmodel_t *const self, const str_t animation_label)
 {
     if (!self->animator.animations.len) eprint("No animations in model");
 
     if (self->internal.active_animation && strcmp(self->internal.active_animation->name, animation_label.data) == 0) {
-        return;
+        return self->internal.active_animation;
     }
 
     animation_t *const current_anim = animator_get_animation(&self->animator, animation_label.data);
     self->current_time = 0.0f;
-    self->internal.active_animation_iteration_count = 0;
     self->internal.active_animation = current_anim;
+
+    return current_anim;
 }
 
 gltexturelist_t glmodel_get_texuturelist(const glmodel_t *self)
