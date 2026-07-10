@@ -3,7 +3,6 @@
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
 #include "poglib/ecs/component/types.h"
-#include "poglib/ecs/uniform_registry.h"
 #include "poglib/external/cglm/struct/mat4.h"
 #include "poglib/gfx/model/assimp.h"
 #include "poglib/math/la.h"
@@ -13,7 +12,6 @@
 #include "poglib/util/asset.h"
 #include "poglib/util/assetmanager.h"
 #include "poglib/util/glcamera.h"
-#include "poglib/util/workbench/common.h"
 
 void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
@@ -62,7 +60,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
         const matrix4f_t proj = glms_perspective(
             radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
         const matrix4f_t view_mat = glcamera_getview(ctx.active_camera);
-        const matrix4f_t entity_transform = glms_mat4_mul(
+        const matrix4f_t model_mat = glms_mat4_mul(
             glms_translate_make(transform->position),
             glms_mat4_mul(glms_quat_mat4(transform->orientation), glms_scale_make(transform->scale)));
 
@@ -95,63 +93,33 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                 }
             }
 
-            gluniforms_t *uniforms = &cmd.material.shader.uniforms;
+            gluniforms_t *u = &cmd.material.shader.uniforms;
 
-            hashtable_iterator(&shader->internal.uniformlocs, loc_entry)
-            {
-                const hashtable_entry_t *he = loc_entry;
-                const str_t uniform_name = he->key.str;
-                const uniform_binding_t *binding = uniform_registry_lookup(uniform_name);
-                if (!binding)
-                    eprint("uniform '%.*s' not found in registry for shader '%.*s'", uniform_name.len, uniform_name.data, shader->vs.len, shader->vs.data);
+            u->data[u->count].name = str("view");
+            u->data[u->count].value.mat4 = view_mat;
+            u->count++;
 
-                gluniform_value_t value = {0};
-                switch (binding->source)
-                {
-                    case UNIFORM_SOURCE_CAMERA_VIEW:
-                        value.mat4 = view_mat;
-                    break;
-                    case UNIFORM_SOURCE_CAMERA_PROJECTION:
-                        value.mat4 = proj;
-                    break;
-                    case UNIFORM_SOURCE_ENTITY_TRANSFORM:
-                        value.mat4 = entity_transform;
-                    break;
-                    case UNIFORM_SOURCE_MODEL_COLOR:
-                        value.vec4 = mesh_color;
-                    break;
-                    case UNIFORM_SOURCE_BONE_TRANSFORMS:
-                        if (bone_count > 0) {
-                            value.mat4s.count = bone_count;
-                            value.mat4s.data = bone_data;
-                        } else {
-                            static matrix4f_t identity = GLMS_MAT4_IDENTITY_INIT;
-                            value.mat4s.count = 1;
-                            value.mat4s.data = &identity;
-                        }
-                    break;
-                    case UNIFORM_SOURCE_MATERIAL:
-                    {
-                        bool found = false;
-                        for (u8 o = 0; o < material->shader.uniforms.count; o++) {
-                            if (str_cmp(material->shader.uniforms.data[o].name, uniform_name)) {
-                                value = material->shader.uniforms.data[o].value;
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found)
-                            eprint("material uniform '%.*s' not set for shader '%.*s'", uniform_name.len, uniform_name.data, shader->vs.len, shader->vs.data);
-                    }
-                    break;
-                    case UNIFORM_SOURCE_COUNT:
-                    break;
-                }
+            u->data[u->count].name = str("projection");
+            u->data[u->count].value.mat4 = proj;
+            u->count++;
 
-                uniforms->data[uniforms->count].name = uniform_name;
-                uniforms->data[uniforms->count].value = value;
-                uniforms->count++;
+            u->data[u->count].name = str("transform");
+            u->data[u->count].value.mat4 = model_mat;
+            u->count++;
+
+            u->data[u->count].name = str("material.color");
+            u->data[u->count].value.vec4 = mesh_color;
+            u->count++;
+
+            if (bone_count) {
+                u->data[u->count].name = str("uBones");
+                u->data[u->count].value.mat4s.count = bone_count;
+                u->data[u->count].value.mat4s.data = bone_data;
+                u->count++;
             }
+
+            for (u8 i = 0; i < material->shader.uniforms.count; i++)
+                u->data[u->count++] = material->shader.uniforms.data[i];
 
             renderqueue_pass_command(&global_engine->systems.renderqueue, cmd);
         }
