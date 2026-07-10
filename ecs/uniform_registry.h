@@ -83,7 +83,12 @@ static gluniform_value_t uniform_registry_compute(uniform_source_t source, const
             return (gluniform_value_t){ .vec4 = ctx->model_color };
 
         case UNIFORM_SOURCE_BONE_TRANSFORMS:
-            return (gluniform_value_t){ .mat4s = { .count = ctx->bones.count, .data = ctx->bones.data } };
+            if (ctx->bones.count > 0)
+                return (gluniform_value_t){ .mat4s = { .count = ctx->bones.count, .data = ctx->bones.data } };
+            {
+                static matrix4f_t identity = GLMS_MAT4_IDENTITY_INIT;
+                return (gluniform_value_t){ .mat4s = { .count = 1, .data = &identity } };
+            }
 
         case UNIFORM_SOURCE_LIGHT_COLOR:
             return (gluniform_value_t){ .vec4 = ctx->is_selected ? COLOR_RED : COLOR_WHITE };
@@ -98,23 +103,4 @@ static gluniform_value_t uniform_registry_compute(uniform_source_t source, const
         break;
     }
     return (gluniform_value_t){0};
-}
-
-static bool uniform_registry_apply_material_overrides(gluniforms_t *cmd_uniforms, const gluniforms_t *material_overrides)
-{
-    for (u8 m = 0; m < material_overrides->count; m++)
-    {
-        const uniform_binding_t *binding = uniform_registry_lookup(material_overrides->data[m].name);
-        if (!binding) continue;
-
-        for (u8 c = 0; c < cmd_uniforms->count; c++)
-        {
-            if (str_cmp(cmd_uniforms->data[c].name, material_overrides->data[m].name)) {
-                cmd_uniforms->data[c].value = material_overrides->data[m].value;
-                goto next_override;
-            }
-        }
-        next_override:;
-    }
-    return true;
 }

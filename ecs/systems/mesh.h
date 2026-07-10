@@ -98,12 +98,16 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             if (!binding)
                 eprint("uniform '%.*s' not found in registry for shader '%.*s'", uniform_name.len, uniform_name.data, shader->vs.len, shader->vs.data);
 
+            gluniform_value_t value = uniform_registry_compute(binding->source, &uniform_ctx);
+
+            for (u8 o = 0; o < material->shader.uniforms.count; o++)
+                if (str_cmp(material->shader.uniforms.data[o].name, uniform_name))
+                    value = material->shader.uniforms.data[o].value;
+
             uniforms->data[uniforms->count].name = uniform_name;
-            uniforms->data[uniforms->count].value = uniform_registry_compute(binding->source, &uniform_ctx);
+            uniforms->data[uniforms->count].value = value;
             uniforms->count++;
         }
-
-        uniform_registry_apply_material_overrides(uniforms, &material->shader.uniforms);
 
         renderqueue_pass_command(&global_engine->systems.renderqueue, command);
     }
