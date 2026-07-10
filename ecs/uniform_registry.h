@@ -34,28 +34,40 @@ INTERNAL void uniform_registry_resolve_material_uniforms(
         const hashtable_entry_t *he = loc_entry;
         const str_t uniform_name = he->key.str;
 
-        bool already_set = false;
-        for (u8 i = 0; i < material->shader.uniforms.count; i++) {
-            if (str_cmp(material->shader.uniforms.data[i].name, uniform_name)) {
-                already_set = true;
-                break;
-            }
-        }
-        if (already_set) continue;
-
         gluniform_value_t value = {0};
-        if (str_cmp(uniform_name, str("view")))
-            value.mat4 = view_mat;
-        else if (str_cmp(uniform_name, str("projection")))
-            value.mat4 = proj;
-        else if (str_cmp(uniform_name, str("transform")))
-            value.mat4 = model_mat;
-        else
-            continue;
+        bool is_per_frame = false;
 
-        ASSERT(material->shader.uniforms.count < MAX_UNIFORMS_ALLOWED_IN_SHADER);
-        material->shader.uniforms.data[material->shader.uniforms.count].name = uniform_name;
-        material->shader.uniforms.data[material->shader.uniforms.count].value = value;
-        material->shader.uniforms.count++;
+        if (str_cmp(uniform_name, str("view"))) {
+            value.mat4 = view_mat;
+            is_per_frame = true;
+        } else if (str_cmp(uniform_name, str("projection"))) {
+            value.mat4 = proj;
+            is_per_frame = true;
+        } else if (str_cmp(uniform_name, str("transform"))) {
+            value.mat4 = model_mat;
+            is_per_frame = true;
+        } else if (str_cmp(uniform_name, str("light.color"))) {
+            value.vec4 = (vec4f_t){1.0f, 1.0f, 1.0f, 1.0f};
+        } else if (str_cmp(uniform_name, str("light.ambient"))) {
+            value.f32 = 1.0f;
+        } else if (str_cmp(uniform_name, str("light.position"))) {
+            value.vec3 = (vec3f_t){1.0f, 1.0f, 1.0f};
+        } else {
+            continue;
+        }
+
+        u8 idx = 0;
+        for (; idx < material->shader.uniforms.count; idx++)
+            if (str_cmp(material->shader.uniforms.data[idx].name, uniform_name))
+                break;
+
+        if (idx < material->shader.uniforms.count) {
+            if (is_per_frame) material->shader.uniforms.data[idx].value = value;
+        } else {
+            ASSERT(material->shader.uniforms.count < MAX_UNIFORMS_ALLOWED_IN_SHADER);
+            material->shader.uniforms.data[material->shader.uniforms.count].name = uniform_name;
+            material->shader.uniforms.data[material->shader.uniforms.count].value = value;
+            material->shader.uniforms.count++;
+        }
     }
 }
