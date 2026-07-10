@@ -45,6 +45,7 @@ u32 ecs_componentmanager__internal_get_pool_capacity(const ecs_component_type ty
     switch(type)
     {
         case ECS_CMP_CAMERA:            return 10;
+        case ECS_CMP_MATERIAL:          return 128;
         default:                        return ECS_ENTITY_MAX_COUNT / 2;
     }
 }
