@@ -1,9 +1,6 @@
 #pragma once
 #include "dbg.h"
 #include "common.h"
-#include <stdatomic.h>
-#include <threads.h>
-#include <stdint.h>
 
 /*================================================================================
  *                      -- ARENA MEMORY ALLOCATOR --
@@ -37,31 +34,20 @@ struct free_chunks_t {
 };
 
 arena_t     arena_init(arena_t *const, const u64 capacity);
-void *      arena_reserve(arena_t *const self, const u64 memory_size);
-bool        arena_is_init(const arena_t *const self);
+
+#define arena_reserve(self, memory_size) \
+    arena__internal__reserve_tracked((self), (memory_size), __FILE__, __LINE__, __func__)
+
 void *      arena_store(arena_t *const self, const void *const mem, const u64 mem_size);
+bool        arena_is_init(const arena_t *const self);
 void        arena_giveback(arena_t *const self, void *const ptr, const u64 size);
 void        arena_clear(arena_t *const self);
 void        arena_destroy(arena_t *const self);
 
 #ifndef IGNORE_ARENA_IMPLEMENTATION
 
-void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const u64 memory_size);
-
-arena_t arena_init(arena_t *const arena, const u64 capacity)
-{
-    arena_t o = {
-        .capacity = capacity,
-        .size = 0,
-        .memory = arena ? arena__internal_reserve_memory_16byte_aligned(arena, capacity) : calloc(capacity, sizeof(u8)),
-        .freelist = {0},
-        .meta = {
-            .lifetime_owner = arena,
-        }
-    };
-    atomic_flag_clear(&o.meta.lock);
-    return o;
-}
+void *      arena__internal__reserve_memory_16byte_aligned(arena_t * const self, const u64 memory_size);
+void *      arena__internal__reserve_tracked(arena_t *const self, const u64 memory_size, const char *file, int line, const char *func);
 
 void * arena__internal_check_in_freelist(arena_t *const self, const u64 memory_size)
 {
@@ -146,11 +132,39 @@ void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const
     return mem;
 }
 
-void arena_clear(arena_t *self)
+void * arena__internal__reserve_tracked(arena_t *const self, const u64 memory_size, const char *file, int line, const char *func)
 {
-    while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
-        self->size = 0;
-    atomic_flag_clear(&self->meta.lock);
+    if (!self->meta.lifetime_owner)
+        arena_logger_init(self, self->capacity, file, line);
+    void *mem = arena__internal_reserve_memory_16byte_aligned(self, memory_size);
+    if (mem) {
+        arena_logger_log_alloc(self, memory_size, file, line, func);
+    }
+    return mem;
+}
+
+void * arena_store(arena_t * const self, const void * const mem, const u64 mem_size)
+{
+    ASSERT(mem_size > 0);
+    ASSERT(mem);
+    void *raw_mem = arena_reserve(self, mem_size);
+    memcpy(raw_mem, mem, mem_size);
+    return raw_mem;
+}
+
+arena_t arena_init(arena_t *const arena, const u64 capacity)
+{
+    arena_t o = {
+        .capacity = capacity,
+        .size = 0,
+        .memory = arena ? arena__internal_reserve_memory_16byte_aligned(arena, capacity) : calloc(capacity, sizeof(u8)),
+        .freelist = {0},
+        .meta = {
+            .lifetime_owner = arena,
+        },
+    };
+    atomic_flag_clear(&o.meta.lock);
+    return o;
 }
 
 void arena_giveback(arena_t *const self, void *const ptr, const u64 size)
@@ -167,16 +181,26 @@ void arena_giveback(arena_t *const self, void *const ptr, const u64 size)
             chunk = chunk->next;
         }
 
-        free_chunks_t *const new_chunk = self->meta.lifetime_owner 
-            ? arena_store(
-                self->meta.lifetime_owner,
-                &(free_chunks_t) {
-                    .memory = ptr,
-                    .size = size,
-                    .next = NULL
-                },
-                sizeof(free_chunks_t))
-            : calloc(1, sizeof(free_chunks_t));
+        //NOTE: using raw allocator directly instead of arena_store to avoid
+        //tracking internal freelist metadata as user allocations in the arena dump
+        free_chunks_t *new_chunk;
+        if (self->meta.lifetime_owner) {
+            new_chunk = (free_chunks_t *)arena__internal_reserve_memory_16byte_aligned(
+                self->meta.lifetime_owner, sizeof(free_chunks_t));
+            if (new_chunk) {
+                new_chunk->memory = ptr;
+                new_chunk->size = size;
+                new_chunk->next = NULL;
+            }
+        } else {
+            new_chunk = calloc(1, sizeof(free_chunks_t));
+            if (new_chunk) {
+                new_chunk->memory = ptr;
+                new_chunk->size = size;
+                new_chunk->next = NULL;
+            }
+        }
+        ASSERT(new_chunk);
 
         if (chunk) {
             chunk->next = new_chunk;
@@ -188,8 +212,18 @@ void arena_giveback(arena_t *const self, void *const ptr, const u64 size)
     atomic_flag_clear(&self->meta.lock);
 }
 
+void arena_clear(arena_t *self)
+{
+    while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
+        self->size = 0;
+    atomic_flag_clear(&self->meta.lock);
+    arena_logger_clear_log(self);
+}
+
 void arena_destroy(arena_t *const self)
 {
+    arena_logger_destroy(self);
+
     if (self->meta.lifetime_owner) {
         arena_giveback(self->meta.lifetime_owner, self->memory, self->capacity);
         return;
@@ -206,21 +240,6 @@ void arena_destroy(arena_t *const self)
     }
     atomic_flag_clear(&self->meta.lock);
     free(self->memory);
-}
-
-void * arena_reserve(arena_t *self, u64 memory_size)
-{
-    ASSERT(memory_size);
-    return arena__internal_reserve_memory_16byte_aligned(self, memory_size);
-}
-
-void * arena_store(arena_t * const self, const void * const mem, const u64 mem_size)
-{
-    ASSERT(mem_size > 0);
-    ASSERT(mem);
-    void *raw_mem = arena_reserve(self, mem_size);
-    memcpy(raw_mem, mem, mem_size);
-    return raw_mem;
 }
 
 

@@ -191,6 +191,9 @@ void application_run(application_t *const app)
     }
 
     printf("[!] APPLICATION SHUTDOWN!\n");
+#ifdef DEBUG
+    arena_logger_dump_json("arena_map.json");
+#endif
     app->destroy(app);
     SDL_free((char *)app->context.base_dir);
 
