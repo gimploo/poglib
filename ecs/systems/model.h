@@ -124,6 +124,18 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                 uniforms->count++;
             }
 
+            uniforms->data[uniforms->count].name = str("light.color");
+            uniforms->data[uniforms->count].value.vec4 = global_workbench->editor.current_selected_entity_id == entry->entity_id ? COLOR_RED : COLOR_WHITE;
+            uniforms->count++;
+
+            uniforms->data[uniforms->count].name = str("light.ambient");
+            uniforms->data[uniforms->count].value.f32 = 1.0f;
+            uniforms->count++;
+
+            uniforms->data[uniforms->count].name = str("light.position");
+            uniforms->data[uniforms->count].value.vec3 = vec3f(1.0f);
+            uniforms->count++;
+
             for (u8 t = 0; t < model_textures.count; t++) {
                 cmd.material.textures.ids[cmd.material.textures.count++] = model_textures.items[t].source.normal_texture->id;
             }
