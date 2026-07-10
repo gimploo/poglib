@@ -447,7 +447,7 @@ glmodel_t glmodel_init(const char *filepath)
     assimp__internal_glmesh_processScene(&o, scene);
 
     //load all animations
-    animator_load_all_animations(&o.animator, scene, o.arena, (animation_filter_t){0});
+    animator_load_all_animations(&o.animator, scene, o.arena);
 
 
     //NOTE: this to cache the root channel idx to get the root position of the model during an animation

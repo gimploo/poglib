@@ -28,7 +28,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
 
         if (!cmp_model->internal.model) {
             cmp_model->internal.model = (glmodel_t *)assetmanager_get_assetresource(
-                &global_engine->systems.assets, 
+                &global_engine->systems.assets,
                 ASSET_TYPE_MODEL,
                 (cmp_model)->asset_id
             );
@@ -39,7 +39,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
         }
 
         const gpu_asset_t *gpu_loaded_asset = (gpu_asset_t *)assetmanager_get_gpu_loaded_asset_async(
-            &global_engine->systems.assets, 
+            &global_engine->systems.assets,
             cmp_model->asset_id
         );
         if (!gpu_loaded_asset) {
@@ -48,8 +48,8 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
 
         const u32 entity_id = entry->entity_id;
         const ecs_entity_query_t view = ecs_componentmanager__internal_query_components(
-                cmp_manager, 
-                entity_id, 
+                cmp_manager,
+                entity_id,
                 ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM);
         const ecs_component_material_t *material    = view.entity_cmp_data[ECS_CMP_MATERIAL_IDX];
         const ecs_component_transform_t *transform  = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
@@ -60,8 +60,8 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
         ASSERT(transform);
 
         const matrix4f_t perspective_projection = glms_perspective(
-            radians(45), 
-            global_engine->handle.app->window.aspect_ratio, 
+            radians(45),
+            global_engine->handle.app->window.aspect_ratio,
             1.0f, 1000.0f
         );
 
@@ -94,51 +94,46 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                 }
             };
 
-            u8 *uniform_count = &cmd.material.shader.uniforms.count;
+            gluniforms_t *uniforms = &cmd.material.shader.uniforms;
 
-            cmd.material.shader.uniforms.data[(*uniform_count)++] = (typeof(cmd.material.shader.uniforms.data[0])){
-                .name = str_lit("view"),
-                .value.mat4 = glcamera_getview(ctx.active_camera),
-            };
-            cmd.material.shader.uniforms.data[(*uniform_count)++] = (typeof(cmd.material.shader.uniforms.data[0])){
-                .name = str_lit("projection"),
-                .value.mat4 = perspective_projection,
-            };
-            cmd.material.shader.uniforms.data[(*uniform_count)++] = (typeof(cmd.material.shader.uniforms.data[0])){
-                .name = str_lit("transform"),
-                .value.mat4 = model_transform,
-            };
+            uniforms->data[uniforms->count].name = str_lit("view");
+            uniforms->data[uniforms->count].value.mat4 = glcamera_getview(ctx.active_camera);
+            uniforms->count++;
 
-            cmd.material.shader.uniforms.data[(*uniform_count)++] = (typeof(cmd.material.shader.uniforms.data[0])){
-                .name = str_lit("material.color"),
-                .value.vec4 = *(vec4f_t *)list_get_value(&model->colors, idx)
-            };
+            uniforms->data[uniforms->count].name = str_lit("projection");
+            uniforms->data[uniforms->count].value.mat4 = perspective_projection;
+            uniforms->count++;
+
+            uniforms->data[uniforms->count].name = str_lit("transform");
+            uniforms->data[uniforms->count].value.mat4 = model_transform;
+            uniforms->count++;
+
+            uniforms->data[uniforms->count].name = str_lit("material.color");
+            uniforms->data[uniforms->count].value.vec4 = *(vec4f_t *)list_get_value(&model->colors, idx);
+            uniforms->count++;
 
             if (model->transforms[idx].len) {
-                cmd.material.shader.uniforms.data[(*uniform_count)++] = (typeof(cmd.material.shader.uniforms.data[0])){
-                    .name = str_lit("uBones"),
-                    .value.mat4s = {
-                        .count = model->transforms[idx].len,
-                        .data = (matrix4f_t *)model->transforms[idx].data
-                    }
-                };
+                uniforms->data[uniforms->count].name = str_lit("uBones");
+                uniforms->data[uniforms->count].value.mat4s.count = model->transforms[idx].len;
+                uniforms->data[uniforms->count].value.mat4s.data = (matrix4f_t *)model->transforms[idx].data;
+                uniforms->count++;
             }
 
             for (u8 u = 0; u < material->shader.uniforms.count; u++) {
-                cmd.material.shader.uniforms.data[(*uniform_count)++] = material->shader.uniforms.data[u];
+                uniforms->data[uniforms->count] = material->shader.uniforms.data[u];
+                uniforms->count++;
             }
 
-            u8 *tex_count = &cmd.material.textures.count;
             for (u8 t = 0; t < model_textures.count; t++) {
-                cmd.material.textures.ids[(*tex_count)++] = model_textures.items[t].source.normal_texture->id;
+                cmd.material.textures.ids[cmd.material.textures.count++] = model_textures.items[t].source.normal_texture->id;
             }
 
             for (u8 t = 0; t < GL_TEXTURE_TYPE_COUNT; t++) {
                 if (!material->texture.asset_ids[t]) continue;
                 gltexture2d_t *tex = (gltexture2d_t *)assetmanager_get_assetresource(
-                    &global_engine->systems.assets, ASSET_TYPE_TEXTURE_BINARY, material->texture.asset_ids[t]);
+                    &global_engine->systems.assets, ASSET_TYPE_TEXTURE, material->texture.asset_ids[t]);
                 if (tex) {
-                    cmd.material.textures.ids[(*tex_count)++] = tex->id;
+                    cmd.material.textures.ids[cmd.material.textures.count++] = tex->id;
                 }
             }
 
