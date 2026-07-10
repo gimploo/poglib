@@ -191,7 +191,7 @@ void ecs_componentmanager_add(ecs_componentmanager_t * const self, const u32 ent
         cmp_idx_buffer[cmp_idx_count]       = pool->len;
         const u16 cmp_size                  = ecs_component__internal_get_componenttype_size(cmp_type);
 
-        buffer(WORD) buf = {0};
+        buffer(KB * 3) buf = {0};
 
         //NOTE: sets the entity id
         memcpy(buf.raw_data, &entity_id, sizeof(entity_id));
