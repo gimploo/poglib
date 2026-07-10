@@ -110,14 +110,19 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 case UNIFORM_SOURCE_ENTITY_TRANSFORM:
                     value.mat4 = entity_transform;
                 break;
-                case UNIFORM_SOURCE_LIGHT_COLOR:
-                    value.vec4 = is_editor_selected ? COLOR_RED : COLOR_WHITE;
-                break;
-                case UNIFORM_SOURCE_LIGHT_AMBIENT:
-                    value.f32 = 1.0f;
-                break;
-                case UNIFORM_SOURCE_LIGHT_POSITION:
-                    value.vec3 = (vec3f_t){1.0f, 1.0f, 1.0f};
+                case UNIFORM_SOURCE_MATERIAL:
+                {
+                    bool found = false;
+                    for (u8 o = 0; o < material->shader.uniforms.count; o++) {
+                        if (str_cmp(material->shader.uniforms.data[o].name, uniform_name)) {
+                            value = material->shader.uniforms.data[o].value;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                        eprint("material uniform '%.*s' not set for shader '%.*s'", uniform_name.len, uniform_name.data, shader->vs.len, shader->vs.data);
+                }
                 break;
                 default:
                 break;
@@ -126,22 +131,6 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             uniforms->data[uniforms->count].name = uniform_name;
             uniforms->data[uniforms->count].value = value;
             uniforms->count++;
-        }
-
-        for (u8 o = 0; o < material->shader.uniforms.count; o++)
-        {
-            const str_t name = material->shader.uniforms.data[o].name;
-            bool found = false;
-            for (u8 u = 0; u < uniforms->count; u++)
-            {
-                if (str_cmp(uniforms->data[u].name, name)) {
-                    uniforms->data[u].value = material->shader.uniforms.data[o].value;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-                eprint("material uniform '%.*s' not found in shader '%.*s'", name.len, name.data, shader->vs.len, shader->vs.data);
         }
 
         renderqueue_pass_command(&global_engine->systems.renderqueue, command);

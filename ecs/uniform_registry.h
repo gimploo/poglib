@@ -9,9 +9,7 @@ typedef enum {
     UNIFORM_SOURCE_ENTITY_TRANSFORM,
     UNIFORM_SOURCE_MODEL_COLOR,
     UNIFORM_SOURCE_BONE_TRANSFORMS,
-    UNIFORM_SOURCE_LIGHT_COLOR,
-    UNIFORM_SOURCE_LIGHT_AMBIENT,
-    UNIFORM_SOURCE_LIGHT_POSITION,
+    UNIFORM_SOURCE_MATERIAL,
     UNIFORM_SOURCE_COUNT
 } uniform_source_t;
 
@@ -27,9 +25,9 @@ static const uniform_binding_t UNIFORM_REGISTRY[] = {
     { str_lit("transform"),      GL_UNIFORM_TYPE_MATRIX4F,       UNIFORM_SOURCE_ENTITY_TRANSFORM    },
     { str_lit("material.color"), GL_UNIFORM_TYPE_VEC4F,          UNIFORM_SOURCE_MODEL_COLOR         },
     { str_lit("uBones"),         GL_UNIFORM_TYPE_MATRIX4F_ARRAY, UNIFORM_SOURCE_BONE_TRANSFORMS     },
-    { str_lit("light.color"),    GL_UNIFORM_TYPE_VEC4F,          UNIFORM_SOURCE_LIGHT_COLOR         },
-    { str_lit("light.ambient"),  GL_UNIFORM_TYPE_F32,            UNIFORM_SOURCE_LIGHT_AMBIENT       },
-    { str_lit("light.position"), GL_UNIFORM_TYPE_VEC3F,          UNIFORM_SOURCE_LIGHT_POSITION      },
+    { str_lit("light.color"),    GL_UNIFORM_TYPE_VEC4F,          UNIFORM_SOURCE_MATERIAL            },
+    { str_lit("light.ambient"),  GL_UNIFORM_TYPE_F32,            UNIFORM_SOURCE_MATERIAL            },
+    { str_lit("light.position"), GL_UNIFORM_TYPE_VEC3F,          UNIFORM_SOURCE_MATERIAL            },
 };
 #define UNIFORM_REGISTRY_COUNT ARRAY_LEN(UNIFORM_REGISTRY)
 
