@@ -1,11 +1,6 @@
 #pragma once
 #include "dbg.h"
 #include "common.h"
-#include <stdatomic.h>
-#include <threads.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
 
 /*================================================================================
  *                      -- ARENA MEMORY ALLOCATOR --
@@ -38,8 +33,7 @@ struct free_chunks_t {
     u64 size;
 };
 
-#define arena_init(arena, capacity) \
-    arena__internal__init((arena), (capacity))
+arena_t     arena_init(arena_t *const, const u64 capacity);
 
 #define arena_reserve(self, memory_size) \
     arena__internal__reserve_tracked((self), (memory_size), __FILE__, __LINE__, __func__)
@@ -49,15 +43,11 @@ bool        arena_is_init(const arena_t *const self);
 void        arena_giveback(arena_t *const self, void *const ptr, const u64 size);
 void        arena_clear(arena_t *const self);
 void        arena_destroy(arena_t *const self);
-void        arena_dump_json(const char *filepath);
 
 #ifndef IGNORE_ARENA_IMPLEMENTATION
 
-arena_t     arena__internal__init(arena_t *const, const u64 capacity);
 void *      arena__internal__reserve_memory_16byte_aligned(arena_t * const self, const u64 memory_size);
 void *      arena__internal__reserve_tracked(arena_t *const self, const u64 memory_size, const char *file, int line, const char *func);
-
-static u32  arena__internal__frame_lookup(const char *name, char fnames[][256], u32 *count);
 
 void * arena__internal_check_in_freelist(arena_t *const self, const u64 memory_size)
 {
@@ -145,7 +135,7 @@ void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const
 void * arena__internal__reserve_tracked(arena_t *const self, const u64 memory_size, const char *file, int line, const char *func)
 {
     if (!self->meta.lifetime_owner)
-        arena_logger_init(self, file, line);
+        arena_logger_init(self, self->capacity, file, line);
     void *mem = arena__internal_reserve_memory_16byte_aligned(self, memory_size);
     if (mem) {
         arena_logger_log_alloc(self, memory_size, file, line, func);
@@ -162,7 +152,7 @@ void * arena_store(arena_t * const self, const void * const mem, const u64 mem_s
     return raw_mem;
 }
 
-arena_t arena__internal__init(arena_t *const arena, const u64 capacity)
+arena_t arena_init(arena_t *const arena, const u64 capacity)
 {
     arena_t o = {
         .capacity = capacity,
@@ -256,128 +246,6 @@ void arena_destroy(arena_t *const self)
 bool arena_is_init(const arena_t * const self)
 {
     return self->memory != NULL || self->capacity > 0;
-}
-
-INTERNAL u32 arena__internal__frame_lookup(const char *name, char fnames[][256], u32 *count)
-{
-    for (u32 i = 0; i < *count; i++) {
-        if (strcmp(fnames[i], name) == 0) return i;
-    }
-    strncpy(fnames[*count], name, 255);
-    fnames[*count][255] = '\0';
-    return (*count)++;
-}
-
-void arena_dump_json(const char *filepath)
-{
-    FILE *f = fopen(filepath, "w");
-    if (!f) {
-        fprintf(stderr, "[arena] Failed to open '%s' for writing\n", filepath);
-        return;
-    }
-
-    char fname[1024][256];
-    u32  fc = 0;
-
-    u64 total_capacity = 0;
-    for (arena_logger_t *l = arena_logger_registry; l; l = l->next) {
-        total_capacity += l->arena->capacity;
-    }
-
-    const u64 TARGET_MAX = 1000000;
-    double scale = total_capacity ? (double)TARGET_MAX / (double)total_capacity : 1.0;
-
-    // Pass 1 — collect frame names
-    for (arena_logger_t *l = arena_logger_registry; l; l = l->next) {
-        char buf[256];
-        snprintf(buf, sizeof(buf), "%s:%d (%lu MB)",
-                 l->init_file ? l->init_file : "?", l->init_line,
-                 (unsigned long)(l->arena->capacity / MB));
-        arena__internal__frame_lookup(buf, fname, &fc);
-
-        for (arena_alloc_record_t *r = l->alloc_log.head; r; r = r->next) {
-            const char *sf = strrchr(r->file, '/');
-            sf = sf ? sf + 1 : r->file;
-            arena__internal__frame_lookup(sf, fname, &fc);
-            arena__internal__frame_lookup(r->func, fname, &fc);
-            snprintf(buf, sizeof(buf), "L%03d [%lu B]",
-                     r->line, (unsigned long)r->size);
-            arena__internal__frame_lookup(buf, fname, &fc);
-        }
-    }
-    arena__internal__frame_lookup("(unused)", fname, &fc);
-
-    // Header + frames
-    fprintf(f, "{\n");
-    fprintf(f, "  \"$schema\": \"https://www.speedscope.app/file-format-schema.json\",\n");
-    fprintf(f, "  \"shared\": {\n    \"frames\": [\n");
-    for (u32 i = 0; i < fc; i++) {
-        fprintf(f, "      {\"name\": \"%s\"}%s\n", fname[i], i + 1 < fc ? "," : "");
-    }
-    fprintf(f, "    ]\n  },\n");
-    fprintf(f, "  \"profiles\": [{\n");
-    fprintf(f, "    \"type\": \"evented\",\n");
-    fprintf(f, "    \"unit\": \"none\",\n");
-    fprintf(f, "    \"name\": \"Arena Memory Map\",\n");
-    fprintf(f, "    \"startValue\": 0,\n");
-    fprintf(f, "    \"endValue\": %lu,\n", (unsigned long)TARGET_MAX);
-    fprintf(f, "    \"events\": [\n");
-
-    // Pass 2 — emit O/C events with normalized at values
-    bool first = true;
-    u64  base  = 0;
-
-    for (arena_logger_t *l = arena_logger_registry; l; l = l->next) {
-        arena_t *a = l->arena;
-        char buf[256];
-        snprintf(buf, sizeof(buf), "%s:%d (%lu MB)",
-                 l->init_file ? l->init_file : "?", l->init_line,
-                 (unsigned long)(a->capacity / MB));
-        u32 arena_f = arena__internal__frame_lookup(buf, fname, &fc);
-
-        u64 norm_base = (u64)((double)base * scale);
-
-        if (!first) fprintf(f, ",\n");
-        fprintf(f, "      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_base, arena_f);
-        first = false;
-
-        u64 cur = base;
-        for (arena_alloc_record_t *r = l->alloc_log.head; r; r = r->next) {
-            const char *sf = strrchr(r->file, '/');
-            sf = sf ? sf + 1 : r->file;
-            u32 file_f   = arena__internal__frame_lookup(sf, fname, &fc);
-            u32 func_f   = arena__internal__frame_lookup(r->func, fname, &fc);
-            snprintf(buf, sizeof(buf), "L%03d [%lu B]", r->line, (unsigned long)r->size);
-            u32 detail_f = arena__internal__frame_lookup(buf, fname, &fc);
-
-            u64 norm_cur = (u64)((double)cur * scale);
-            cur += r->size;
-            u64 norm_end = (u64)((double)cur * scale);
-
-            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_cur, file_f);
-            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_cur, func_f);
-            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_cur, detail_f);
-            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_end, detail_f);
-            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_end, func_f);
-            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_end, file_f);
-        }
-
-        u64 end = base + a->capacity;
-        u64 norm_end = (u64)((double)end * scale);
-
-        if (cur < end) {
-            u64 norm_cur = (u64)((double)cur * scale);
-            u32 unused_f = arena__internal__frame_lookup("(unused)", fname, &fc);
-            fprintf(f, ",\n      {\"type\": \"O\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_cur, unused_f);
-            fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_end, unused_f);
-        }
-
-        fprintf(f, ",\n      {\"type\": \"C\", \"at\": %lu, \"frame\": %u}", (unsigned long)norm_end, arena_f);
-        base = end;
-    }
-
-    fprintf(f, "\n    ]\n  }]\n}\n");
-    fclose(f);
 }
 
 #endif
