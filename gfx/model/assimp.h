@@ -56,6 +56,11 @@ boneinfo_t boneinfo(matrix4f_t offset) {
 
 #define MAX_MESHES_PER_MODEL 10
 
+typedef struct {
+    gltexture2d_t texture;
+    u8 assimp_type;
+} model_texture_t;
+
 typedef struct glmodel_t {
 
     str_t directory_path;
@@ -92,6 +97,8 @@ vec3f_t                 glmodel_get_rootnode_position(const glmodel_t *self, con
 void                    glmodel_destroy(glmodel_t *self);
 
 #ifndef IGNORE_ASSIMP_IMPLEMENTATION
+
+gltexture2d_t assimp__internal_load_texture_from_path(glmodel_t *self, const struct aiScene *scene, const char *path);
 
 const struct {
     enum aiTextureType type;
@@ -142,6 +149,34 @@ void assimp__internal_glmesh_processMaterial(glmodel_t *self, const struct aiSce
     }
 
     //TODO: setup materials
+
+    for (i32 type = aiTextureType_DIFFUSE; type <= aiTextureType_AMBIENT_OCCLUSION; type++)
+    {
+        u32 count = aiGetMaterialTextureCount(material, (enum aiTextureType)type);
+        for (u32 i = 0; i < count; i++)
+        {
+            struct aiString path;
+            if (aiGetMaterialTexture(material, (enum aiTextureType)type, i, &path,
+                    NULL, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS)
+            {
+                bool found = false;
+                list_iterator(&self->textures, iter) {
+                    if (((model_texture_t *)iter)->assimp_type == type) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    model_texture_t mt = {
+                        .texture = assimp__internal_load_texture_from_path(self, scene, path.data),
+                        .assimp_type = (u8)type
+                    };
+                    list_append(&self->textures, mt);
+                }
+            }
+        }
+    }
 }
 
 glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh) {
@@ -322,6 +357,9 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
     }
 
     ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL);
+
+    u64 processed_materials = 0;
+
     for (u32 mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
         struct aiMesh *mesh = scene->mMeshes[mesh_index];
@@ -331,12 +369,18 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
         // Process mesh
         const glmesh_t m = assimp__internal_glmesh_processMesh(mesh);
 
-        // Process materials
-        assimp__internal_glmesh_processMaterial(
-            self, 
-            scene, 
-            mesh->mMaterialIndex
-        );
+        // Process materials (once per unique material index).
+        // Multiple meshes may share the same material; a u64 bitmask
+        // tracks which material indices have already been processed to
+        // avoid redundant texture loading and duplicate list entries.
+        if (!(processed_materials & ((u64)1 << mesh->mMaterialIndex))) {
+            processed_materials |= (u64)1 << mesh->mMaterialIndex;
+            assimp__internal_glmesh_processMaterial(
+                self, 
+                scene, 
+                mesh->mMaterialIndex
+            );
+        }
 
         if (mesh->mNumBones) {
             assimp__internal_glmesh_process_bones(mesh, &m.vtx, self->bone_name_to_index, &self->bone_infos);
@@ -352,21 +396,19 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
     }
 }
 
-void assimp__internal_glmodel_load_alltextures(glmodel_t *self, const struct aiScene *scene)
-{
-    for(u32 texture_index = 0; texture_index < scene->mNumTextures; texture_index++)
-    {
-        gltexture2d_t texture = {0};
-        struct aiTexture *aitexture = scene->mTextures[texture_index];
-
-        if (aitexture->mFilename.length == 0 && aitexture->mHeight == 0) {
-            texture = gltexture2d_embedded_init((u8 *)aitexture->pcData, aitexture->mWidth);
-        } else {
-            str_t absolute_texture_path = str_join(self->arena, &self->directory_path, aitexture->mFilename.data);
-            texture = gltexture2d_init(absolute_texture_path.data);
+gltexture2d_t assimp__internal_load_texture_from_path(glmodel_t *self, const struct aiScene *scene, const char *path) {
+    bool is_embedded = (path[0] == '*');
+    if (is_embedded) {
+        i32 index = atoi(path + 1);
+        ASSERT(index >= 0 && (u32)index < scene->mNumTextures);
+        struct aiTexture *aitexture = scene->mTextures[index];
+        if (aitexture->mHeight == 0) {
+            return gltexture2d_embedded_init((u8 *)aitexture->pcData, aitexture->mWidth);
         }
-        list_append(&self->textures, texture);
+        ASSERT(0 && "Raw pixel embedded texture not supported via material reference");
     }
+    str_t absolute_path = str_join(self->arena, &self->directory_path, path);
+    return gltexture2d_init(absolute_path.data);
 }
 
 
@@ -377,9 +419,9 @@ glmodel_t glmodel_init(const char *filepath)
     memcpy(o.filepath, filepath, strlen(filepath));
     o.directory_path = str_get_directory_path(filepath);
     o.arena = calloc(1, sizeof(arena_t));
-    *o.arena = arena_init(NULL, 64 * MB);
+    *o.arena = arena_init(NULL, 200 * MB);
     o.meshes = list_init(glmesh_t, o.arena);
-    o.textures = list_init(gltexture2d_t, o.arena);
+    o.textures = list_init(model_texture_t, o.arena);
     o.colors = list_init(vec4f_t, o.arena);
     o.bone_infos = list_init(boneinfo_t, o.arena);
     o.animator = animator_init(o.arena);
@@ -401,13 +443,11 @@ glmodel_t glmodel_init(const char *filepath)
         glms_mat4_transpose(*(matrix4f_t *)&scene->mRootNode->mTransformation)
     );
 
-    assimp__internal_glmodel_load_alltextures(&o, scene);
-
     //debug_assimp_vertex_bones(scene);
     assimp__internal_glmesh_processScene(&o, scene);
 
     //load all animations
-    animator_load_all_animations(&o.animator, scene, o.arena);
+    animator_load_all_animations(&o.animator, scene, o.arena, (animation_filter_t){0});
 
 
     //NOTE: this to cache the root channel idx to get the root position of the model during an animation
@@ -434,6 +474,7 @@ glmodel_t glmodel_init(const char *filepath)
         }
     }
 
+#if 0
     // Strip root bone translation from all animations — engine controls root position
     if (o.internal.root_channel_idx >= 0) {
         list_iterator(&o.animator.animations, iter) {
@@ -446,6 +487,7 @@ glmodel_t glmodel_init(const char *filepath)
             }
         }
     }
+#endif
 
     logging("Completed loading model %s ...", filepath);
 
@@ -455,7 +497,7 @@ glmodel_t glmodel_init(const char *filepath)
 void glmodel_destroy(glmodel_t *const self) 
 {
     list_iterator(&self->meshes, iter)          glmesh_destroy((glmesh_t *)iter); 
-    list_iterator(&self->textures, iter)        gltexture2d_destroy(iter); 
+    list_iterator(&self->textures, iter)        gltexture2d_destroy(&((model_texture_t *)iter)->texture); 
 
     aiReleaseImport(self->scene);
     arena_destroy(self->arena);
@@ -640,9 +682,10 @@ gltexturelist_t glmodel_get_texuturelist(const glmodel_t *self)
         .items = {0}
     };
     list_iterator(&self->textures, iter) {
-        list.items[(u64)list_iterator_index] = (gltextureitem_t ){
-            .type = GL_TEXTURE_TYPE_NORMAL,
-            .source = iter
+        model_texture_t *mt = (model_texture_t *)iter;
+        list.items[(u64)list_iterator_index] = (gltextureitem_t){
+            .type = (gltexturetype)mt->assimp_type,
+            .source = { .normal_texture = &mt->texture }
         };
     }
     return list;
