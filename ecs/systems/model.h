@@ -96,24 +96,24 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
 
             gluniforms_t *uniforms = &cmd.material.shader.uniforms;
 
-            uniforms->data[uniforms->count].name = str_lit("view");
+            uniforms->data[uniforms->count].name = str("view");
             uniforms->data[uniforms->count].value.mat4 = glcamera_getview(ctx.active_camera);
             uniforms->count++;
 
-            uniforms->data[uniforms->count].name = str_lit("projection");
+            uniforms->data[uniforms->count].name = str("projection");
             uniforms->data[uniforms->count].value.mat4 = perspective_projection;
             uniforms->count++;
 
-            uniforms->data[uniforms->count].name = str_lit("transform");
+            uniforms->data[uniforms->count].name = str("transform");
             uniforms->data[uniforms->count].value.mat4 = model_transform;
             uniforms->count++;
 
-            uniforms->data[uniforms->count].name = str_lit("material.color");
+            uniforms->data[uniforms->count].name = str("material.color");
             uniforms->data[uniforms->count].value.vec4 = *(vec4f_t *)list_get_value(&model->colors, idx);
             uniforms->count++;
 
             if (model->transforms[idx].len) {
-                uniforms->data[uniforms->count].name = str_lit("uBones");
+                uniforms->data[uniforms->count].name = str("uBones");
                 uniforms->data[uniforms->count].value.mat4s.count = model->transforms[idx].len;
                 uniforms->data[uniforms->count].value.mat4s.data = (matrix4f_t *)model->transforms[idx].data;
                 uniforms->count++;
