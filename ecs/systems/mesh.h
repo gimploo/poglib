@@ -123,13 +123,25 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 break;
             }
 
-            for (u8 o = 0; o < material->shader.uniforms.count; o++)
-                if (str_cmp(material->shader.uniforms.data[o].name, uniform_name))
-                    value = material->shader.uniforms.data[o].value;
-
             uniforms->data[uniforms->count].name = uniform_name;
             uniforms->data[uniforms->count].value = value;
             uniforms->count++;
+        }
+
+        for (u8 o = 0; o < material->shader.uniforms.count; o++)
+        {
+            const str_t name = material->shader.uniforms.data[o].name;
+            bool found = false;
+            for (u8 u = 0; u < uniforms->count; u++)
+            {
+                if (str_cmp(uniforms->data[u].name, name)) {
+                    uniforms->data[u].value = material->shader.uniforms.data[o].value;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                eprint("material uniform '%.*s' not found in shader '%.*s'", name.len, name.data, shader->vs.len, shader->vs.data);
         }
 
         renderqueue_pass_command(&global_engine->systems.renderqueue, command);
