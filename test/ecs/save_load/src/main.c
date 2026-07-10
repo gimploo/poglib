@@ -66,7 +66,7 @@ static void test_all_component_types(void)
         .component = {
             [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .scale = {1,1,1}, .source = ECS_CMP_TRANSFORM_SOURCE_NONE },
             [ECS_CMP_MESH_IDX].mesh = (ecs_component_mesh_t){ .asset_id = 2, .prototype_sprite_type = 20 },
-            [ECS_CMP_MATERIAL_IDX].material = (ecs_component_material_t){ .texture_asset_id = 6, .shader_asset_id = 7 },
+            [ECS_CMP_MATERIAL_IDX].material = (ecs_component_material_t){ .shader = { .asset_id = 7 } },
         }
     });
     /* entity 3: input */
@@ -116,7 +116,7 @@ static void test_all_component_types(void)
         .component = {
             [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .scale = {1,1,1}, .source = ECS_CMP_TRANSFORM_SOURCE_NONE },
             [ECS_CMP_MODEL_IDX].model = (ecs_component_model_t){ .asset_id = 9 },
-            [ECS_CMP_MATERIAL_IDX].material = (ecs_component_material_t){ .texture_asset_id = 0, .shader_asset_id = 10 },
+             [ECS_CMP_MATERIAL_IDX].material = (ecs_component_material_t){ .shader = { .asset_id = 10 } },
         }
     });
     /* entities 7-9: multiple same type for multi-entity test */
@@ -155,8 +155,7 @@ static void test_all_component_types(void)
       TEST_ASSERT(m->asset_id == 2, "mesh: asset_id");
       TEST_ASSERT(m->prototype_sprite_type == 20, "mesh: sprite_type");
       TEST_ASSERT(mat, "material: present");
-      TEST_ASSERT(mat->texture_asset_id == 6, "material: texture_id");
-      TEST_ASSERT(mat->shader_asset_id == 7, "material: shader_id"); }
+      TEST_ASSERT(mat->shader.asset_id == 7, "material: shader_id"); }
 
     /* entity 3: input */
     { const ecs_entity_query_t q = ecs_entity_query_components(ecs2, 3, ECS_CMP_INPUT);
@@ -232,7 +231,7 @@ static void test_asset_loading_from_save(void)
         .component = {
             [ECS_CMP_TRANSFORM_IDX].transform = (ecs_component_transform_t){ .scale={1,1,1}, .source=ECS_CMP_TRANSFORM_SOURCE_NONE },
             [ECS_CMP_MODEL_IDX].model = (ecs_component_model_t){ .asset_id = model_id },
-            [ECS_CMP_MATERIAL_IDX].material = (ecs_component_material_t){ .texture_asset_id=0, .shader_asset_id=0 },
+            [ECS_CMP_MATERIAL_IDX].material = (ecs_component_material_t){ .shader = { .asset_id = 0 } },
         }
     });
     SAVE_AND_DESTROY(ecs);
