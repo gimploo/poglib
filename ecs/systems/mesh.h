@@ -71,10 +71,13 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 .size = sizeof(rendercommand_instance_primitive_mesh_t)
             },
             .material = {
-                .textures = {
+                .texture = {
                     .count = 1,
-                    .ids = {
-                        [0] = atlas->texture.id,
+                    .items = {
+                        [0] = (gltextureitem_t){
+                            .type = GL_TEXTURE_TYPE_NORMAL,
+                            .source = { .normal_texture = &atlas->texture }
+                        }
                     }
                 },
                 .shader = {

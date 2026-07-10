@@ -34,17 +34,13 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
             );
         }
 
-        if (!cmp_model->internal.model) {
-            continue;
-        }
+        if (!cmp_model->internal.model) continue;
 
         const gpu_asset_t *gpu_loaded_asset = (gpu_asset_t *)assetmanager_get_gpu_loaded_asset_async(
             &global_engine->systems.assets,
             cmp_model->asset_id
         );
-        if (!gpu_loaded_asset) {
-            continue;
-        }
+        if (!gpu_loaded_asset) continue;
 
         const u32 entity_id = entry->entity_id;
         const ecs_entity_query_t view = ecs_componentmanager__internal_query_components(
@@ -86,7 +82,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                 .enable_wireframe = false,
                 .instance = {0},
                 .material = {
-                    .textures = {0},
+                    .texture = {0},
                     .shader = {
                         .data = shader,
                         .uniforms = {0},
@@ -136,16 +132,18 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
             uniforms->data[uniforms->count].value.vec3 = vec3f(1.0f);
             uniforms->count++;
 
-            for (u8 t = 0; t < model_textures.count; t++) {
-                cmd.material.textures.ids[cmd.material.textures.count++] = model_textures.items[t].source.normal_texture->id;
-            }
+            cmd.material.texture = model_textures;
 
+            gltexturelist_t *texlist = &cmd.material.texture;
             for (u8 t = 0; t < GL_TEXTURE_TYPE_COUNT; t++) {
                 if (!material->texture.asset_ids[t]) continue;
                 gltexture2d_t *tex = (gltexture2d_t *)assetmanager_get_assetresource(
                     &global_engine->systems.assets, ASSET_TYPE_TEXTURE, material->texture.asset_ids[t]);
-                if (tex) {
-                    cmd.material.textures.ids[cmd.material.textures.count++] = tex->id;
+                if (tex && texlist->count < MAX_SUPPORTED_TEXTURE_COUNT_PER_DRAW_CALL) {
+                    texlist->items[texlist->count++] = (gltextureitem_t){
+                        .type = (gltexturetype)t,
+                        .source = { .normal_texture = tex }
+                    };
                 }
             }
 
