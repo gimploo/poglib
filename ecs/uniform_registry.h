@@ -92,7 +92,7 @@ static gluniform_value_t uniform_registry_compute(uniform_source_t source, const
             return (gluniform_value_t){ .f32 = 1.0f };
 
         case UNIFORM_SOURCE_LIGHT_POSITION:
-            return (gluniform_value_t){ .vec3 = vec3f(1.0f, 1.0f, 1.0f) };
+            return (gluniform_value_t){ .vec3 = (vec3f_t){1.0f, 1.0f, 1.0f} };
 
         case UNIFORM_SOURCE_COUNT:
         break;
