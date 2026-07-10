@@ -247,9 +247,18 @@ void renderqueue_dispatch(renderqueue_t *const self)
         }
 
         //NOTE: bind textures
-        for(u8 tex_idx = 0; tex_idx < first_command->material.textures.count; tex_idx++) {
-            GL_CHECK(glActiveTexture(GL_TEXTURE0 + tex_idx));
-            GL_CHECK(glBindTexture(GL_TEXTURE_2D, first_command->material.textures.ids[tex_idx]));
+        for(u8 tex_idx = 0; tex_idx < first_command->material.texture.count; tex_idx++) {
+            const gltextureitem_t *item = &first_command->material.texture.items[tex_idx];
+            switch (item->type) {
+                case GL_TEXTURE_TYPE_CUBEMAP:
+                    GL_CHECK(glDepthMask(false));
+                    GL_CHECK(glDepthFunc(GL_LEQUAL));
+                    glcubemap_bind(item->source.cubemap);
+                break;
+                default:
+                    gltexture2d_bind(item->source.normal_texture, tex_idx);
+                break;
+            }
         }
 
         //NOTE: Use instance if configured

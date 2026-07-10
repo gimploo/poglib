@@ -11,8 +11,6 @@
 #include "poglib/poggen.h"
 #include "poglib/util/asset.h"
 #include "poglib/util/assetmanager.h"
-#include "poglib/util/glcamera.h"
-#include "poglib/util/workbench/common.h"
 
 void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
@@ -28,111 +26,79 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
 
         if (!cmp_model->internal.model) {
             cmp_model->internal.model = (glmodel_t *)assetmanager_get_assetresource(
-                &global_engine->systems.assets, 
+                &global_engine->systems.assets,
                 ASSET_TYPE_MODEL,
                 (cmp_model)->asset_id
             );
         }
 
-
-        if (!cmp_model->internal.model) {
-            continue;
-        }
+        if (!cmp_model->internal.model) continue;
 
         const gpu_asset_t *gpu_loaded_asset = (gpu_asset_t *)assetmanager_get_gpu_loaded_asset_async(
-            &global_engine->systems.assets, 
+            &global_engine->systems.assets,
             cmp_model->asset_id
         );
-        if (!gpu_loaded_asset) {
-            continue;
-        }
+        if (!gpu_loaded_asset) continue;
 
         const u32 entity_id = entry->entity_id;
         const ecs_entity_query_t view = ecs_componentmanager__internal_query_components(
-                cmp_manager, 
-                entity_id, 
+                cmp_manager,
+                entity_id,
                 ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM);
         const ecs_component_material_t *material    = view.entity_cmp_data[ECS_CMP_MATERIAL_IDX];
         const ecs_component_transform_t *transform  = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-        const glshader_t *shader                    = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader_asset_id);
+        const glshader_t *shader                    = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader.asset_id);
 
         ASSERT(material);
         ASSERT(shader);
         ASSERT(transform);
 
-        const matrix4f_t perspective_projection = glms_perspective(
-            radians(45), 
-            global_engine->handle.app->window.aspect_ratio, 
-            1.0f, 1000.0f
-        );
-
         const glmodel_t *model = cmp_model->internal.model;
+        gltexturelist_t model_textures = glmodel_get_texuturelist(model);
+
         ASSERT(gpu_loaded_asset->meshes.count == model->meshes.len);
         for (u8 idx = 0; idx < model->meshes.len; idx++)
         {
-            //printf("[RENDER] mesh=%i bones=%f data=%p\n", idx, model->transforms[idx].len, model->transforms[idx].data);
-            renderqueue_pass_command(
-                &global_engine->systems.renderqueue, 
-                (rendercommand_t) {
-                    .mesh = &gpu_loaded_asset->meshes.data[idx],
-                    .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
-                    .enable_wireframe = false,
-                    .instance = {0},
-                    .material = {
-                        .textures = {0},
-                        .shader = {
-                            .data = shader,
-                            .uniforms = {
-                                .count = 8,
-                                .data = {
-                                    [0] = {
-                                        .name = str_lit("view"),
-                                        .value = glcamera_getview(ctx.active_camera),
-                                    },
-                                    [1] = {
-                                        .name = str_lit("projection"), 
-                                        .value = perspective_projection
-                                    },
-                                    [2] = {
-                                        .name = str_lit("transform"),
-                                        .value = glms_mat4_mul(
-                                            glms_translate_make(transform->position),
-                                            glms_mat4_mul(
-                                                glms_quat_mat4(transform->orientation),
-                                                glms_scale_make(transform->scale)
-                                            )
-                                        )
-                                    },
-                                    [3] = {
-                                        .name = str_lit("material.color"),
-                                        .value.vec4 = *(vec4f_t *)list_get_value(&model->colors, idx)
-                                    },
-                                    [4] = {
-                                        .name = str_lit("uBones"), 
-                                        .value.mat4s = {
-                                            .count = model->transforms[idx].len, 
-                                            .data = (matrix4f_t *)model->transforms[idx].data
-                                        }
-                                    },
-                                    [5] = {
-                                        .name = str_lit("light.color"),
-                                        .value.vec4 = global_workbench->editor.current_selected_entity_id == entry->entity_id ? COLOR_RED : COLOR_WHITE
-                                    },
-                                    [6] = {
-                                        .name = str_lit("light.ambient"),
-                                        .value.f32 = 1.0f
-                                    },
-                                    [7] = {
-                                        .name = str_lit("light.position"),
-                                        .value.vec3 = vec3f(1.0f)
-                                    }
-                                }
-                            }
-                        }
+            const vec4f_t mesh_color = *(vec4f_t *)list_get_value(&model->colors, idx);
+            const u32 bone_count = model->transforms[idx].len;
+            matrix4f_t *bone_data = (matrix4f_t *)model->transforms[idx].data;
+
+            rendercommand_t cmd = {
+                .mesh = &gpu_loaded_asset->meshes.data[idx],
+                .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
+                .enable_wireframe = false,
+                .instance = {0},
+                .material = {
+                    .texture = model_textures,
+                    .shader = {
+                        .data = shader,
+                        .uniforms = material->shader.uniforms,
                     }
                 }
-            );
+            };
+
+            if (material->textures.count) {
+                for (u8 t = 0; t < material->textures.count; t++) {
+                    if (cmd.material.texture.count < MAX_SUPPORTED_TEXTURE_COUNT_PER_DRAW_CALL) {
+                        cmd.material.texture.items[cmd.material.texture.count++] = material->textures.items[t];
+                    }
+                }
+            }
+
+            gluniforms_t *u = &cmd.material.shader.uniforms;
+
+            u->data[u->count].name = str("material.color");
+            u->data[u->count].value.vec4 = mesh_color;
+            u->count++;
+
+            if (bone_count) {
+                u->data[u->count].name = str("uBones");
+                u->data[u->count].value.mat4s.count = bone_count;
+                u->data[u->count].value.mat4s.data = bone_data;
+                u->count++;
+            }
+
+            renderqueue_pass_command(&global_engine->systems.renderqueue, cmd);
         }
     }
 }
-

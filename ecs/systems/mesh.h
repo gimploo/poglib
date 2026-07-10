@@ -38,7 +38,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM);
         const ecs_component_material_t *material    = view.entity_cmp_data[ECS_CMP_MATERIAL_IDX];
         const ecs_component_transform_t *transform  = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-        const glshader_t *shader                    = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader_asset_id);
+        const glshader_t *shader                    = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader.asset_id);
 
         ASSERT(material);
         ASSERT(shader);
@@ -47,14 +47,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
         spriteatlas_t *atlas = (spriteatlas_t *)assetmanager_get_assetresource(
                 &global_engine->systems.assets, ASSET_TYPE_TEXTURE_SPRITE_ATLAS, global_workbench->primitives.atlas_id);
 
-        const matrix4f_t perspective_projection = glms_perspective(
-            radians(45), 
-            global_engine->handle.app->window.aspect_ratio, 
-            1.0f, 1000.0f
-        );
-
         const bool is_editor_selected = global_workbench->editor.current_selected_entity_id == entry->entity_id;
-
 
         rendercommand_t command = {
             .mesh = gpu_loaded_asset->meshes.data,
@@ -71,31 +64,22 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 .size = sizeof(rendercommand_instance_primitive_mesh_t)
             },
             .material = {
-                .textures = {
+                .texture = {
                     .count = 1,
-                    .ids = {
-                        [0] = atlas->texture.id,
+                    .items = {
+                        [0] = (gltextureitem_t){
+                            .type = GL_TEXTURE_TYPE_NORMAL,
+                            .source = { .normal_texture = &atlas->texture }
+                        }
                     }
                 },
                 .shader = {
                     .data = shader,
-                    .uniforms = {
-                        .count = 2,
-                        .data = {
-                            [0] = {
-                                .name = str("projection"),
-                                .value = perspective_projection
-                            },
-                            [1] = {
-                                .name = str("view"),
-                                .value = glcamera_getview(ctx.active_camera),
-                            }
-                        }
-                    }
+                    .uniforms = material->shader.uniforms,
                 }
             }
         };
+
         renderqueue_pass_command(&global_engine->systems.renderqueue, command);
     }
 }
-
