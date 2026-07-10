@@ -134,16 +134,11 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
 
             cmd.material.texture = model_textures;
 
-            gltexturelist_t *texlist = &cmd.material.texture;
-            for (u8 t = 0; t < GL_TEXTURE_TYPE_COUNT; t++) {
-                if (!material->texture.asset_ids[t]) continue;
-                gltexture2d_t *tex = (gltexture2d_t *)assetmanager_get_assetresource(
-                    &global_engine->systems.assets, ASSET_TYPE_TEXTURE, material->texture.asset_ids[t]);
-                if (tex && texlist->count < MAX_SUPPORTED_TEXTURE_COUNT_PER_DRAW_CALL) {
-                    texlist->items[texlist->count++] = (gltextureitem_t){
-                        .type = (gltexturetype)t,
-                        .source = { .normal_texture = tex }
-                    };
+            if (material->textures.count) {
+                for (u8 t = 0; t < material->textures.count; t++) {
+                    if (cmd.material.texture.count < MAX_SUPPORTED_TEXTURE_COUNT_PER_DRAW_CALL) {
+                        cmd.material.texture.items[cmd.material.texture.count++] = material->textures.items[t];
+                    }
                 }
             }
 

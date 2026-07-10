@@ -100,9 +100,7 @@ struct ecs_component_input_t {
 
 typedef struct ecs_component_material_t ecs_component_material_t;
 struct ecs_component_material_t {
-    struct {
-        u32 asset_ids[GL_TEXTURE_TYPE_COUNT];
-    } texture;
+    gltexturelist_t textures;
     struct {
         u32 asset_id;
         gluniforms_t uniforms;
