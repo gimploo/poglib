@@ -38,7 +38,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM);
         const ecs_component_material_t *material    = view.entity_cmp_data[ECS_CMP_MATERIAL_IDX];
         const ecs_component_transform_t *transform  = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-        const glshader_t *shader                    = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader_asset_id);
+        const glshader_t *shader                    = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader.asset_id);
 
         ASSERT(material);
         ASSERT(shader);
