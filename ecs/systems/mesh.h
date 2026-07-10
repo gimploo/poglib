@@ -4,6 +4,7 @@
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
 #include "poglib/ecs/component/types.h"
+#include "poglib/ecs/uniform_registry.h"
 #include "poglib/math/la.h"
 #include "poglib/pipeline/render/render_queue.h"
 #include "poglib/poggen.h"
@@ -47,14 +48,14 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
         spriteatlas_t *atlas = (spriteatlas_t *)assetmanager_get_assetresource(
                 &global_engine->systems.assets, ASSET_TYPE_TEXTURE_SPRITE_ATLAS, global_workbench->primitives.atlas_id);
 
-        const matrix4f_t perspective_projection = glms_perspective(
-            radians(45), 
-            global_engine->handle.app->window.aspect_ratio, 
-            1.0f, 1000.0f
-        );
-
         const bool is_editor_selected = global_workbench->editor.current_selected_entity_id == entry->entity_id;
 
+        uniform_compute_ctx_t uniform_ctx = {
+            .active_camera = ctx.active_camera,
+            .aspect_ratio = global_engine->handle.app->window.aspect_ratio,
+            .transform = transform,
+            .is_selected = is_editor_selected,
+        };
 
         rendercommand_t command = {
             .mesh = gpu_loaded_asset->meshes.data,
@@ -82,23 +83,28 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 },
                 .shader = {
                     .data = shader,
-                    .uniforms = {
-                        .count = 2,
-                        .data = {
-                            [0] = {
-                                .name = str("projection"),
-                                .value = perspective_projection
-                            },
-                            [1] = {
-                                .name = str("view"),
-                                .value = glcamera_getview(ctx.active_camera),
-                            }
-                        }
-                    }
+                    .uniforms = {0},
                 }
             }
         };
+
+        gluniforms_t *uniforms = &command.material.shader.uniforms;
+
+        hashtable_iterator(&shader->internal.uniformlocs, loc_entry)
+        {
+            const hashtable_entry_t *he = loc_entry;
+            const str_t uniform_name = he->key.str;
+            const uniform_binding_t *binding = uniform_registry_lookup(uniform_name);
+            if (!binding)
+                eprint("uniform '%.*s' not found in registry for shader '%.*s'", uniform_name.len, uniform_name.data, shader->vs.len, shader->vs.data);
+
+            uniforms->data[uniforms->count].name = uniform_name;
+            uniforms->data[uniforms->count].value = uniform_registry_compute(binding->source, &uniform_ctx);
+            uniforms->count++;
+        }
+
+        uniform_registry_apply_material_overrides(uniforms, &material->shader.uniforms);
+
         renderqueue_pass_command(&global_engine->systems.renderqueue, command);
     }
 }
-

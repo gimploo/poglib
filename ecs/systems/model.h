@@ -3,6 +3,7 @@
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
 #include "poglib/ecs/component/types.h"
+#include "poglib/ecs/uniform_registry.h"
 #include "poglib/external/cglm/struct/mat4.h"
 #include "poglib/gfx/model/assimp.h"
 #include "poglib/math/la.h"
@@ -55,84 +56,36 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
         ASSERT(shader);
         ASSERT(transform);
 
-        const matrix4f_t perspective_projection = glms_perspective(
-            radians(45),
-            global_engine->handle.app->window.aspect_ratio,
-            1.0f, 1000.0f
-        );
-
-        const matrix4f_t model_transform = glms_mat4_mul(
-            glms_translate_make(transform->position),
-            glms_mat4_mul(
-                glms_quat_mat4(transform->orientation),
-                glms_scale_make(transform->scale)
-            )
-        );
-
         const glmodel_t *model = cmp_model->internal.model;
-
         gltexturelist_t model_textures = glmodel_get_texuturelist(model);
+
+        uniform_compute_ctx_t uniform_ctx = {
+            .active_camera = ctx.active_camera,
+            .aspect_ratio = global_engine->handle.app->window.aspect_ratio,
+            .transform = transform,
+            .is_selected = global_workbench->editor.current_selected_entity_id == entity_id,
+        };
 
         ASSERT(gpu_loaded_asset->meshes.count == model->meshes.len);
         for (u8 idx = 0; idx < model->meshes.len; idx++)
         {
+            uniform_ctx.model_color = *(vec4f_t *)list_get_value(&model->colors, idx);
+            uniform_ctx.bones.count = model->transforms[idx].len;
+            uniform_ctx.bones.data = (matrix4f_t *)model->transforms[idx].data;
+
             rendercommand_t cmd = {
                 .mesh = &gpu_loaded_asset->meshes.data[idx],
                 .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
                 .enable_wireframe = false,
                 .instance = {0},
                 .material = {
-                    .texture = {0},
+                    .texture = model_textures,
                     .shader = {
                         .data = shader,
                         .uniforms = {0},
                     }
                 }
             };
-
-            gluniforms_t *uniforms = &cmd.material.shader.uniforms;
-
-            uniforms->data[uniforms->count].name = str("view");
-            uniforms->data[uniforms->count].value.mat4 = glcamera_getview(ctx.active_camera);
-            uniforms->count++;
-
-            uniforms->data[uniforms->count].name = str("projection");
-            uniforms->data[uniforms->count].value.mat4 = perspective_projection;
-            uniforms->count++;
-
-            uniforms->data[uniforms->count].name = str("transform");
-            uniforms->data[uniforms->count].value.mat4 = model_transform;
-            uniforms->count++;
-
-            uniforms->data[uniforms->count].name = str("material.color");
-            uniforms->data[uniforms->count].value.vec4 = *(vec4f_t *)list_get_value(&model->colors, idx);
-            uniforms->count++;
-
-            if (model->transforms[idx].len) {
-                uniforms->data[uniforms->count].name = str("uBones");
-                uniforms->data[uniforms->count].value.mat4s.count = model->transforms[idx].len;
-                uniforms->data[uniforms->count].value.mat4s.data = (matrix4f_t *)model->transforms[idx].data;
-                uniforms->count++;
-            }
-
-            for (u8 u = 0; u < material->shader.uniforms.count; u++) {
-                uniforms->data[uniforms->count] = material->shader.uniforms.data[u];
-                uniforms->count++;
-            }
-
-            uniforms->data[uniforms->count].name = str("light.color");
-            uniforms->data[uniforms->count].value.vec4 = global_workbench->editor.current_selected_entity_id == entry->entity_id ? COLOR_RED : COLOR_WHITE;
-            uniforms->count++;
-
-            uniforms->data[uniforms->count].name = str("light.ambient");
-            uniforms->data[uniforms->count].value.f32 = 1.0f;
-            uniforms->count++;
-
-            uniforms->data[uniforms->count].name = str("light.position");
-            uniforms->data[uniforms->count].value.vec3 = vec3f(1.0f);
-            uniforms->count++;
-
-            cmd.material.texture = model_textures;
 
             if (material->textures.count) {
                 for (u8 t = 0; t < material->textures.count; t++) {
@@ -141,6 +94,23 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                     }
                 }
             }
+
+            gluniforms_t *uniforms = &cmd.material.shader.uniforms;
+
+            hashtable_iterator(&shader->internal.uniformlocs, loc_entry)
+            {
+                const hashtable_entry_t *he = loc_entry;
+                const str_t uniform_name = he->key.str;
+                const uniform_binding_t *binding = uniform_registry_lookup(uniform_name);
+                if (!binding)
+                    eprint("uniform '%.*s' not found in registry for shader '%.*s'", uniform_name.len, uniform_name.data, shader->vs.len, shader->vs.data);
+
+                uniforms->data[uniforms->count].name = uniform_name;
+                uniforms->data[uniforms->count].value = uniform_registry_compute(binding->source, &uniform_ctx);
+                uniforms->count++;
+            }
+
+            uniform_registry_apply_material_overrides(uniforms, &material->shader.uniforms);
 
             renderqueue_pass_command(&global_engine->systems.renderqueue, cmd);
         }
