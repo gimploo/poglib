@@ -500,7 +500,6 @@ void glmodel_destroy(glmodel_t *const self)
 
     aiReleaseImport(self->scene);
     arena_destroy(self->arena);
-    //TODO: change arena from ptr to non ptr type
     free(self->arena);
 
     memset(self->filepath, 0, sizeof(self->filepath));

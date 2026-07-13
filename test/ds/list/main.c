@@ -124,21 +124,21 @@ void test_malloc_combine(void)
 void test_arena_init(void)
 {
     TEST("arena init");
-    arena_t arena = arena_init(NULL, 4096);
-    list_t l = list_init(int, &arena);
+    arena_t *arena = arena_init(NULL, 4096);
+    list_t l = list_init(int, arena);
     if (!list_is_init(&l)) FAIL("not initialized");
-    if (l.arena != &arena) FAIL("arena pointer mismatch");
+    if (l.arena != arena) FAIL("arena pointer mismatch");
     if (l.data == NULL) FAIL("data is NULL");
     list_destroy(&l);
-    arena_destroy(&arena);
+    arena_destroy(arena);
     PASS();
 }
 
 void test_arena_append_read(void)
 {
     TEST("arena append and read");
-    arena_t arena = arena_init(NULL, 4096);
-    list_t l = list_init(int, &arena);
+    arena_t *arena = arena_init(NULL, 4096);
+    list_t l = list_init(int, arena);
     for (int i = 0; i < 10; i++) {
         int v = i;
         list_append(&l, v);
@@ -149,15 +149,15 @@ void test_arena_append_read(void)
         if (*v != i) FAIL("wrong value");
     }
     list_destroy(&l);
-    arena_destroy(&arena);
+    arena_destroy(arena);
     PASS();
 }
 
 void test_arena_grow(void)
 {
     TEST("arena grow past initial capacity");
-    arena_t arena = arena_init(NULL, 16384);
-    list_t l = list_init(int, &arena);
+    arena_t *arena = arena_init(NULL, 16384);
+    list_t l = list_init(int, arena);
     int n = 100;
     for (int i = 0; i < n; i++) {
         int v = i;
@@ -169,15 +169,15 @@ void test_arena_grow(void)
         if (*v != i) FAIL("wrong value after growth");
     }
     list_destroy(&l);
-    arena_destroy(&arena);
+    arena_destroy(arena);
     PASS();
 }
 
 void test_arena_delete_no_shrink(void)
 {
     TEST("arena delete does not shrink capacity");
-    arena_t arena = arena_init(NULL, 4096);
-    list_t l = list_init(int, &arena);
+    arena_t *arena = arena_init(NULL, 4096);
+    list_t l = list_init(int, arena);
     for (int i = 0; i < 8; i++) {
         int v = i;
         list_append(&l, v);
@@ -194,15 +194,15 @@ void test_arena_delete_no_shrink(void)
         if (*v != expected[i]) FAIL("wrong value after deletes");
     }
     list_destroy(&l);
-    arena_destroy(&arena);
+    arena_destroy(arena);
     PASS();
 }
 
 void test_arena_clear(void)
 {
     TEST("arena clear and refill");
-    arena_t arena = arena_init(NULL, 4096);
-    list_t l = list_init(int, &arena);
+    arena_t *arena = arena_init(NULL, 4096);
+    list_t l = list_init(int, arena);
     for (int i = 0; i < 10; i++) {
         int v = i;
         list_append(&l, v);
@@ -220,16 +220,16 @@ void test_arena_clear(void)
         if (*v != i * 2) FAIL("wrong value after clear+refill");
     }
     list_destroy(&l);
-    arena_destroy(&arena);
+    arena_destroy(arena);
     PASS();
 }
 
 void test_arena_multiple_lists(void)
 {
     TEST("arena multiple lists from same arena");
-    arena_t arena = arena_init(NULL, 16384);
-    list_t ints = list_init(int, &arena);
-    list_t floats = list_init(float, &arena);
+    arena_t *arena = arena_init(NULL, 16384);
+    list_t ints = list_init(int, arena);
+    list_t floats = list_init(float, arena);
     for (int i = 0; i < 20; i++) {
         int vi = i;
         float vf = (float)i * 1.5f;
@@ -246,15 +246,15 @@ void test_arena_multiple_lists(void)
     }
     list_destroy(&ints);
     list_destroy(&floats);
-    arena_destroy(&arena);
+    arena_destroy(arena);
     PASS();
 }
 
 void test_arena_pointer_type(void)
 {
     TEST("arena pointer type list");
-    arena_t arena = arena_init(NULL, 4096);
-    list_t l = list_init(char *, &arena);
+    arena_t *arena = arena_init(NULL, 4096);
+    list_t l = list_init(char *, arena);
     char *words[] = {"alpha", "beta", "gamma", "delta"};
     for (int i = 0; i < 4; i++)
         list_append_ptr(&l, words[i]);
@@ -264,7 +264,7 @@ void test_arena_pointer_type(void)
         if (*vp != words[i]) FAIL("wrong pointer value");
     }
     list_destroy(&l);
-    arena_destroy(&arena);
+    arena_destroy(arena);
     PASS();
 }
 
@@ -275,8 +275,8 @@ void test_arena_struct_type(void)
         int x, y, z;
         char label[16];
     } point_t;
-    arena_t arena = arena_init(NULL, 4096);
-    list_t l = list_init(point_t, &arena);
+    arena_t *arena = arena_init(NULL, 4096);
+    list_t l = list_init(point_t, arena);
     for (int i = 0; i < 10; i++) {
         point_t p = {i, i*2, i*3, "pt"};
         list_append(&l, p);
@@ -287,15 +287,15 @@ void test_arena_struct_type(void)
         if (p->x != i || p->y != i*2 || p->z != i*3) FAIL("wrong struct field");
     }
     list_destroy(&l);
-    arena_destroy(&arena);
+    arena_destroy(arena);
     PASS();
 }
 
 void test_arena_append_multiple(void)
 {
     TEST("arena append_multiple");
-    arena_t arena = arena_init(NULL, 4096);
-    list_t l = list_init(int, &arena);
+    arena_t *arena = arena_init(NULL, 4096);
+    list_t l = list_init(int, arena);
     int data[] = {10, 20, 30, 40, 50};
     list_append_multiple(&l, data);
     if (l.len != 5) FAIL("wrong length");
@@ -304,18 +304,18 @@ void test_arena_append_multiple(void)
         if (*v != data[i]) FAIL("wrong value");
     }
     list_destroy(&l);
-    arena_destroy(&arena);
+    arena_destroy(arena);
     PASS();
 }
 
 void test_arena_destroy_empty(void)
 {
     TEST("arena destroy empty list");
-    arena_t arena = arena_init(NULL, 4096);
-    list_t l = list_init(int, &arena);
+    arena_t *arena = arena_init(NULL, 4096);
+    list_t l = list_init(int, arena);
     list_destroy(&l);
     PASS();
-    arena_destroy(&arena);
+    arena_destroy(arena);
 }
 
 void test_malloc_destroy_empty(void)
@@ -329,10 +329,10 @@ void test_malloc_destroy_empty(void)
 void test_arena_data_within_arena(void)
 {
     TEST("arena data lives in arena memory");
-    arena_t arena = arena_init(NULL, 4096);
-    list_t l = list_init(int, &arena);
-    u8 *arena_start = arena.memory;
-    u8 *arena_end = arena.memory + arena.capacity;
+    arena_t *arena = arena_init(NULL, 4096);
+    list_t l = list_init(int, arena);
+    u8 *arena_start = arena->memory;
+    u8 *arena_end = arena->memory + arena->capacity;
     for (int i = 0; i < 10; i++) {
         int v = i;
         list_append(&l, v);
@@ -340,17 +340,17 @@ void test_arena_data_within_arena(void)
     if (l.data < arena_start || l.data >= arena_end)
         FAIL("list data is not within arena memory");
     list_destroy(&l);
-    arena_destroy(&arena);
+    arena_destroy(arena);
     PASS();
 }
 
 void test_arena_growth_uses_arena(void)
 {
     TEST("arena growth allocations are in arena");
-    arena_t arena = arena_init(NULL, 16384);
-    list_t l = list_init(int, &arena);
-    u8 *arena_start = arena.memory;
-    u8 *arena_end = arena.memory + arena.capacity;
+    arena_t *arena = arena_init(NULL, 16384);
+    list_t l = list_init(int, arena);
+    u8 *arena_start = arena->memory;
+    u8 *arena_end = arena->memory + arena->capacity;
     for (int i = 0; i < 500; i++) {
         int v = i;
         list_append(&l, v);
@@ -358,7 +358,7 @@ void test_arena_growth_uses_arena(void)
     if (l.data < arena_start || l.data >= arena_end)
         FAIL("grown data is not within arena memory");
     list_destroy(&l);
-    arena_destroy(&arena);
+    arena_destroy(arena);
     PASS();
 }
 

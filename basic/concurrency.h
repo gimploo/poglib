@@ -39,7 +39,7 @@ struct taskpayload_t {
 
 typedef struct taskstorage_t taskstorage_t;
 struct taskstorage_t {
-    arena_t arena;
+    arena_t *arena;
 };
 
 typedef struct taskconfig_t taskconfig_t;
@@ -52,7 +52,7 @@ struct taskconfig_t {
 
 struct bgtask_manager_t {
     queue_t tasks;
-    arena_t arena;
+    arena_t *arena;
 };
 
 taskresponse_t *    taskresponse(arena_t * const arena, const u64 response_size);
@@ -92,12 +92,12 @@ bgtask_manager_t * bgtask_manager_init(void)
 {
     ASSERT(!global_bgtask_manager);
 
-    arena_t arena = arena_init(NULL, 8 * KB);
+    arena_t *arena = arena_init(NULL, 8 * KB);
     global_bgtask_manager = arena_store(
-        &arena,
+        arena,
         &(bgtask_manager_t) {
             .tasks = queue_init(TOTAL_THREADS_AVAILABLE, bgtask__internal_t, NULL),
-            .arena = {0}
+            .arena = NULL
         }, 
         sizeof(bgtask_manager_t)
     );
@@ -148,10 +148,10 @@ void bgtask_manager_run_all_tasks(bgtask_manager_t *self)
             .size = sizeof(task) 
         });
 
-        thread__internal_payload_t *payload = arena_reserve(&self->arena, sizeof(thread__internal_payload_t));
+        thread__internal_payload_t *payload = arena_reserve(self->arena, sizeof(thread__internal_payload_t));
         *payload = (thread__internal_payload_t){
             .task = task,
-            .bgarena = &self->arena
+            .bgarena = self->arena
         };
 
         if (thrd_create(&payload->task.response_ref->thrd_id, bgtask__internal_thread_wrapper, payload) != thrd_success) {
@@ -165,7 +165,7 @@ void bgtask_manager_destroy(bgtask_manager_t *self)
     ASSERT(global_bgtask_manager);
 
     queue_destroy(&self->tasks);
-    arena_destroy(&self->arena);
+    arena_destroy(self->arena);
 }
 
 void taskresponse_destroy(taskresponse_t *self) 

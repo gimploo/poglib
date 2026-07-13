@@ -45,7 +45,7 @@ typedef struct application_t {
         window_t            *window;
         stopwatch_t         *timer;
         glfreetypefont_t    *fontrenderer;
-        arena_t             arena;
+        arena_t            *arena;
     } handle;
 
     void (*init)(struct application_t *const);
@@ -198,7 +198,7 @@ void application_run(application_t *const app)
     SDL_free((char *)app->context.base_dir);
 
     window_destroy();
-    arena_destroy(&app->handle.arena);
+    arena_destroy(app->handle.arena);
     runtimectx_destroy();
 
 
@@ -215,14 +215,14 @@ str_t application_get_absolute_filepath(application_t *app, const char *filepath
     ASSERT((strlen(app->context.base_dir) + strlen(filepath) + 1) <= ARRAY_LEN(scratch));
     const char *base_dir = app->context.base_dir;
     cstr_combine_path(base_dir, filepath, scratch, ARRAY_LEN(scratch));
-    return str_init(&app->handle.arena, scratch);
+    return str_init(app->handle.arena, scratch);
 }
 
 
 INTERNAL void * application__internal__alloc_content(application_t *const app, const u64 content_size)
 {
     void *const content = arena_reserve(
-        &app->handle.arena,
+        app->handle.arena,
         content_size);
     app->content = (buffer_t) {
         .raw_data = content,

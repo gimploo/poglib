@@ -13,7 +13,7 @@
 typedef struct scene_t {
 
     str_t                label;
-    arena_t              arena;
+    arena_t             *arena;
     void                 *content;
     bool                 __is_paused;
     bool                 __is_over;
@@ -41,7 +41,7 @@ void *              scene_alloc_content(scene_t * const self, const u64 content_
 
 void * scene_alloc_content(scene_t * const self, const u64 content_size)
 {
-    self->content = arena_reserve(&self->arena, content_size);
+    self->content = arena_reserve(self->arena, content_size);
     return self->content;
 }
 
@@ -78,7 +78,7 @@ void scene__internal_destroy(scene_t *scene) {
 
     scene->__destroy(scene);
 
-    arena_destroy(&scene->arena)    ;
+    arena_destroy(scene->arena)    ;
 
     scene->label = (str_t){0};
     scene->__init  = NULL;

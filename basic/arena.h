@@ -4,9 +4,7 @@
 
 /*================================================================================
  *                      -- ARENA MEMORY ALLOCATOR --
-================================================================================*/
-
-//TODO: have arena_init return a ptr
+ ================================================================================*/
 
 //NOTE: supports only 16 byte alignment
 
@@ -33,7 +31,7 @@ struct free_chunks_t {
     u64 size;
 };
 
-arena_t     arena_init(arena_t *const, const u64 capacity);
+arena_t *   arena_init(arena_t *const, const u64 capacity);
 
 #define arena_reserve(self, memory_size) \
     arena__internal__reserve_tracked((self), (memory_size), __FILE__, __LINE__, __func__)
@@ -152,7 +150,7 @@ void * arena_store(arena_t * const self, const void * const mem, const u64 mem_s
     return raw_mem;
 }
 
-arena_t arena_init(arena_t *const arena, const u64 capacity)
+arena_t * arena_init(arena_t *const arena, const u64 capacity)
 {
     arena_t o = {
         .capacity = capacity,
@@ -164,7 +162,7 @@ arena_t arena_init(arena_t *const arena, const u64 capacity)
         },
     };
     atomic_flag_clear(&o.meta.lock);
-    return o;
+    return arena_store(&o, &o, sizeof(arena_t));
 }
 
 void arena_giveback(arena_t *const self, void *const ptr, const u64 size)
@@ -215,7 +213,7 @@ void arena_giveback(arena_t *const self, void *const ptr, const u64 size)
 void arena_clear(arena_t *self)
 {
     while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
-        self->size = 0;
+        self->size = sizeof(arena_t);
     atomic_flag_clear(&self->meta.lock);
     arena_logger_clear_log(self);
 }

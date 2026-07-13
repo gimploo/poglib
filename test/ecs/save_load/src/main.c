@@ -22,7 +22,7 @@ static void ecs_teardown(ecs_t *ecs) { if (ecs) { ecs_destroy(ecs); global_ecs =
 #define SAVE_AND_DESTROY(ecs) do { ecs_save_to_file((ecs), str(TEST_FILE)); ecs_destroy(ecs); global_ecs = NULL; } while(0)
 
 static bgtask_manager_t g_bgtask_mgr = {0};
-static arena_t           g_eng_arena;
+static arena_t          *g_eng_arena;
 
 static void engine_setup(void)
 {
@@ -31,13 +31,13 @@ static void engine_setup(void)
     };
     global_bgtask_manager = &g_bgtask_mgr;
     g_eng_arena = arena_init(NULL, 1 * MB);
-    global_engine = arena_store(&g_eng_arena,
+    global_engine = arena_store(g_eng_arena,
         &(poggen_t){ .systems.assets = assetmanager_init(&g_bgtask_mgr) }, sizeof(poggen_t));
 }
 
 static void engine_teardown(void)
 {
-    arena_destroy(&g_eng_arena);
+    arena_destroy(g_eng_arena);
     global_engine = NULL;
     global_bgtask_manager = NULL;
 }
@@ -281,13 +281,13 @@ static void test_shader_uniform_parsing(void)
     file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
 
     /* set up a temporary arena and parse */
-    arena_t tmp_arena = arena_init(NULL, 1 * KB);
+    arena_t *tmp_arena = arena_init(NULL, 1 * KB);
     ecs_load__asset_list_t assets = {0};
 
     /* read next line (first asset) and parse */
     memset(line.raw_data, 0, sizeof(line.raw_data));
     file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-    ecs_deserializer__internal__read_assetmeta_section(&f, &assets, &tmp_arena, (char *)line.raw_data, sizeof(line.raw_data));
+    ecs_deserializer__internal__read_assetmeta_section(&f, &assets, tmp_arena, (char *)line.raw_data, sizeof(line.raw_data));
 
     /* verify the parsed data */
     TEST_ASSERT(assets.count == 2, "shader_parse: 2 assets parsed");
@@ -305,7 +305,7 @@ static void test_shader_uniform_parsing(void)
     TEST_ASSERT(assets.data[1].meta.meta.tile_counts.y == 4, "shader_parse: tilecount h");
 
     file_destroy(&f);
-    arena_destroy(&tmp_arena);
+    arena_destroy(tmp_arena);
     remove(TEST_FILE);
 }
 
