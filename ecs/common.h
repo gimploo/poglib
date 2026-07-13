@@ -84,7 +84,7 @@ struct ecs_systemmanager_t {
 typedef struct ecs_t ecs_t; 
 struct ecs_t {
 
-    arena_t arena;
+    arena_t *arena;
     struct {
         ecs_entitymanager_t         entitymanager;
         ecs_componentmanager_t      componentmanager;

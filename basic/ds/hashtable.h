@@ -42,8 +42,8 @@ union hashtable_key_t {
 typedef struct hashtable_t {
     slot_t entries;
     struct {
-        arena_t         keypool;
-        arena_t         valuepool;
+        arena_t        *keypool;
+        arena_t        *valuepool;
         ht_value_type   valuetype;
         ht_key_type     keytype;
     } internal;
@@ -119,7 +119,7 @@ hashtable_t hashtable_init(const u32 capacity, const ht_key_type keytype, const 
         .internal = {
             .valuepool = valuetype.type == HT_STORAGE_BY_VALUE 
                 ? arena_init(arena, capacity * valuetype.size) 
-                : (arena_t){0},
+                : NULL,
             .valuetype = valuetype,
             .keytype = keytype,
             .keypool = runtimectx_reserve_mem_from_stringpool(250),
@@ -147,7 +147,7 @@ const void * hashtable__internal_get_value_based_on_storage(hashtable_t * const 
 {
     return (table->internal.valuetype.type == HT_STORAGE_BY_REFERENCE || table->internal.valuetype.type == HT_STORAGE_BY_VALUE_INLINE) 
         ? value_addr
-        : arena_store(&table->internal.valuepool, value_addr, table->internal.valuetype.size);
+        : arena_store(table->internal.valuepool, value_addr, table->internal.valuetype.size);
 }
 
 void * hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr)
@@ -251,7 +251,7 @@ void hashtable__internal_remove_value(hashtable_t *const table, hashtable_entry_
         || table->internal.valuetype.type == HT_STORAGE_BY_REFERENCE) 
         return;
 
-    arena_giveback(&table->internal.valuepool, entry->value, table->internal.valuetype.size);
+    arena_giveback(table->internal.valuepool, entry->value, table->internal.valuetype.size);
 }
 
 
@@ -304,9 +304,9 @@ void hashtable_delete(hashtable_t * const table, const hashtable_key_t key)
 void hashtable_destroy(hashtable_t *table)
 {
     slot_destroy(&table->entries);
-    arena_destroy(&table->internal.keypool);
-    if (arena_is_init(&table->internal.valuepool)) {
-        arena_destroy(&table->internal.valuepool);
+    arena_destroy(table->internal.keypool);
+    if (arena_is_init(table->internal.valuepool)) {
+        arena_destroy(table->internal.valuepool);
     }
 }
 

@@ -48,8 +48,8 @@ ecs_t * ecs_init(void)
 
     //FIXME: WTF it needs 500 MB ??
     //TODO: Figure out a way to visualize know where memory is distributed in the system 
-    arena_t arena   = arena_init(NULL, 500 * MB);
-    global_ecs      = arena_reserve(&arena, sizeof(ecs_t));
+    arena_t *arena   = arena_init(NULL, 500 * MB);
+    global_ecs      = arena_reserve(arena, sizeof(ecs_t));
 
     *global_ecs = (ecs_t){
         .internal = {
@@ -57,8 +57,8 @@ ecs_t * ecs_init(void)
             .active_camera = NULL,
         },
         .managers = {
-            .entitymanager      = ecs_entitymanager(&arena),
-            .componentmanager   = ecs_componentmanager(&arena),
+            .entitymanager      = ecs_entitymanager(arena),
+            .componentmanager   = ecs_componentmanager(arena),
             .systemmanager      = {0},
         },
         .arena = arena
@@ -227,7 +227,7 @@ ecs_entity_query_t ecs_entity_query_components(ecs_t *const self, const u32 enti
 
 void ecs_destroy(ecs_t * const self)
 {
-    arena_destroy(&self->arena);
+    arena_destroy(self->arena);
 }
 
 void ecs_save_to_file(ecs_t *const self, const str_t filepath)
@@ -305,8 +305,8 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
     ecs_component_type       current_cmp         = 0;
     u8                       current_cmp_idx     = 0;
 
-    ecs_load__entity_list_t *const entities      = arena_reserve(&self->arena, sizeof(ecs_load__entity_list_t));
-    ecs_load__asset_list_t  *const assets_parsed = arena_reserve(&self->arena, sizeof(ecs_load__asset_list_t));
+    ecs_load__entity_list_t *const entities      = arena_reserve(self->arena, sizeof(ecs_load__entity_list_t));
+    ecs_load__asset_list_t  *const assets_parsed = arena_reserve(self->arena, sizeof(ecs_load__asset_list_t));
 
     while (true)
     {
@@ -360,7 +360,7 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
                 has_pending_bundle = false;
             }
 
-            ecs_deserializer__internal__read_assetmeta_section(&f, assets_parsed, &self->arena, (char *)line.raw_data, sizeof(line.raw_data));
+            ecs_deserializer__internal__read_assetmeta_section(&f, assets_parsed, self->arena, (char *)line.raw_data, sizeof(line.raw_data));
 
             break;
         }

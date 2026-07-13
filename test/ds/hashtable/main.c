@@ -350,8 +350,8 @@ int main(void) {
     printf("========================================\n\n");
 
     runtimectx_init();
-    arena_t local_arena = arena_init(NULL, 1 * GB);
-    global_arena = &local_arena;
+    arena_t *local_arena = arena_init(NULL, 1 * GB);
+    global_arena = local_arena;
     
     test_string_prefix_collision();
     printf("\n");
