@@ -36,7 +36,7 @@ renderqueue_t renderqueue_init(void)
 
 INTERNAL void renderqueue__internal_bucket_init_and_add_command(renderqueue_t *const self, const rendercommand_t command, const u16 idx)
 {
-    self->buckets[idx] = list_init(rendercommand_t, &self->arena);
+    self->buckets[idx] = list_init(rendercommand_t, self->arena);
     list_append(&self->buckets[idx], command);
 }
 
@@ -44,7 +44,7 @@ INTERNAL rendercommand_t renderqueue__internal__configure_instance_buffer(render
 {
     ASSERT(cmd.instance.raw_data && cmd.instance.size);
     rendercommand_t result = cmd;
-    result.instance.raw_data = arena_store(&self->internal.frame_arena, cmd.instance.raw_data, cmd.instance.size);
+    result.instance.raw_data = arena_store(self->internal.frame_arena, cmd.instance.raw_data, cmd.instance.size);
     return result;
 }
 
@@ -87,8 +87,8 @@ void renderqueue_destroy(renderqueue_t *const self)
         list_destroy(&self->buckets[idx]);
     }
     glinstancebuffer_destroy(&self->internal.instancebuffer);
-    arena_destroy(&self->arena);
-    arena_destroy(&self->internal.frame_arena);
+    arena_destroy(self->arena);
+    arena_destroy(self->internal.frame_arena);
 }
 
 void renderqueue__internal_validate_command(renderqueue_t *const queue, const rendercommand_t command)
@@ -311,7 +311,7 @@ void renderqueue_flush(renderqueue_t *const self)
             list_clear(&self->buckets[idx]);
     }
 
-    arena_clear(&self->internal.frame_arena);
+    arena_clear(self->internal.frame_arena);
 }
 
 #endif

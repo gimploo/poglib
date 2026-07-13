@@ -21,7 +21,7 @@
 
 typedef struct assetmanager_t assetmanager_t;
 struct assetmanager_t {
-    arena_t             arena;
+    arena_t            *arena;
     bgtask_manager_t    *bgtask_manager;
     hashtable_t         assetmaps[ASSET_TYPE_COUNT];
     hashtable_t         gpu_uploaded_assets;
@@ -60,20 +60,20 @@ INTERNAL void assetmanager__internal_write_uniformlocs_to_file(const hashtable_e
 assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
 {
     ASSERT(taskmanager);
-    arena_t arena = arena_init(NULL, 1 * MB);
+    arena_t *arena = arena_init(NULL, 1 * MB);
     assetmanager_t result = {
         .assetmaps = {
-            [ASSET_TYPE_MODEL]                  = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(async(glmodel_t)), .type = HT_STORAGE_BY_REFERENCE }, &arena),
-            [ASSET_TYPE_GLSL_SHADER]            = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(glshader_t), .type = HT_STORAGE_BY_REFERENCE }, &arena),
-            [ASSET_TYPE_TEXTURE]                = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gltexture2d_t),  .type = HT_STORAGE_BY_REFERENCE }, &arena),
-            [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = hashtable_init(3, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(spriteatlas_t),  .type = HT_STORAGE_BY_VALUE }, &arena),
+            [ASSET_TYPE_MODEL]                  = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(async(glmodel_t)), .type = HT_STORAGE_BY_REFERENCE }, arena),
+            [ASSET_TYPE_GLSL_SHADER]            = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(glshader_t), .type = HT_STORAGE_BY_REFERENCE }, arena),
+            [ASSET_TYPE_TEXTURE]                = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gltexture2d_t),  .type = HT_STORAGE_BY_REFERENCE }, arena),
+            [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = hashtable_init(3, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(spriteatlas_t),  .type = HT_STORAGE_BY_VALUE }, arena),
         },
         .bgtask_manager         = taskmanager,
-        .assetmeta_lookup       = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT, HT_KEY_TYPE_U32, (ht_value_type){ .size = sizeof(asset_meta_t), .type = HT_STORAGE_BY_VALUE } , &arena),
-        .gpu_uploaded_assets    = hashtable_init(ASSET_TYPE_COUNT * MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gpu_asset_t), .type = HT_STORAGE_BY_REFERENCE }, &arena),
+        .assetmeta_lookup       = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT, HT_KEY_TYPE_U32, (ht_value_type){ .size = sizeof(asset_meta_t), .type = HT_STORAGE_BY_VALUE } , arena),
+        .gpu_uploaded_assets    = hashtable_init(ASSET_TYPE_COUNT * MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gpu_asset_t), .type = HT_STORAGE_BY_REFERENCE }, arena),
         .internal = {
             .asset_idx_generator    = GL_MESH_PRIMITIVE_TYPE_COUNT,
-            .gpu_upload_queue       = mpsc_queue(&arena, MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT)
+            .gpu_upload_queue       = mpsc_queue(arena, MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT)
         }
     };
     result.arena = arena;
@@ -132,7 +132,7 @@ u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepa
 {
     const u32 asset_id = ++self->internal.asset_idx_generator;
 
-    taskresponse_t *response = taskresponse(&self->arena, sizeof(glmodel_t));
+    taskresponse_t *response = taskresponse(self->arena, sizeof(glmodel_t));
     hashtable_insert(
         &self->assetmaps[ASSET_TYPE_MODEL], 
         (hashtable_key_t){ .u32 = asset_id }, 
@@ -155,7 +155,7 @@ u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepa
                 },
             },
             .storage = {
-                .arena = arena_init(&self->arena, sizeof(gpu_asset__internal_upload_task_t)),
+                .arena = arena_init(self->arena, sizeof(gpu_asset__internal_upload_task_t)),
             },
             .callback = assetmanager__internal_thread_callback_load_glmodel,
         }
@@ -199,15 +199,15 @@ void assetmanager_destroy(assetmanager_t *const self)
 
     }
     assetmanager__internal_assetmaps_destroy(self);
-    arena_destroy(&self->arena);
+    arena_destroy(self->arena);
 }
 
 u32 assetmanager_load_glsl_shader(assetmanager_t *const self, const str_t vtx_filepath, const str_t frag_filepath, const gluniform_registry_t registry) 
 {
     const u32 asset_id = ++self->internal.asset_idx_generator;
 
-    glshader_t *shader = arena_reserve(&self->arena, sizeof(glshader_t));
-    *shader = glshader_init(vtx_filepath, frag_filepath, registry, &self->arena);
+    glshader_t *shader = arena_reserve(self->arena, sizeof(glshader_t));
+    *shader = glshader_init(vtx_filepath, frag_filepath, registry, self->arena);
 
     assetmanager__internal_add_asset_meta_data(self, ASSET_TYPE_GLSL_SHADER, asset_id, vtx_filepath, frag_filepath, shader);
     hashtable_insert(&self->assetmaps[ASSET_TYPE_GLSL_SHADER], (hashtable_key_t){.u32 = asset_id}, shader);
@@ -220,10 +220,10 @@ void assetmanager__internal_upload_model_to_gpu(
     const glmodel_t *const model,
     const u32 asset_id
 ) {
-    gpu_asset_t * const gpu_asset           = arena_reserve(&self->arena, sizeof(gpu_asset_t));
+    gpu_asset_t * const gpu_asset           = arena_reserve(self->arena, sizeof(gpu_asset_t));
     gpu_asset->asset_id                     = asset_id;
     gpu_asset->meshes.count                 = model->meshes.len;
-    gpu_asset->meshes.data                  = arena_reserve(&self->arena, sizeof(gpu_mesh_t) * gpu_asset->meshes.count);
+    gpu_asset->meshes.data                  = arena_reserve(self->arena, sizeof(gpu_mesh_t) * gpu_asset->meshes.count);
 
     list_iterator(&model->meshes, iter) 
     {
@@ -372,7 +372,7 @@ void assetmanager__internal_upload_cube_to_gpu(assetmanager_t *const self)
 
 
     gpu_mesh_t * const gpu_mesh = arena_store(
-        &self->arena, 
+        self->arena, 
         &(gpu_mesh_t) {
             .vao_id = vao.id,
             .index_count = ebo.indices_count,
@@ -382,7 +382,7 @@ void assetmanager__internal_upload_cube_to_gpu(assetmanager_t *const self)
     );
 
     gpu_asset_t * const gpu_asset = arena_store(
-        &self->arena, 
+        self->arena, 
         &(gpu_asset_t) {
             .asset_id = asset_id,
             .meshes = {
@@ -448,7 +448,7 @@ void assetmanager__internal_upload_capsule_to_gpu(assetmanager_t *const self)
     vao_unbind();
 
     gpu_mesh_t * const gpu_mesh = arena_store(
-        &self->arena, 
+        self->arena, 
         &(gpu_mesh_t) {
             .vao_id = vao.id,
             .index_count = ebo.indices_count,
@@ -457,7 +457,7 @@ void assetmanager__internal_upload_capsule_to_gpu(assetmanager_t *const self)
         sizeof(gpu_mesh_t));
 
     const gpu_asset_t * const gpu_asset = arena_store(
-        &self->arena, 
+        self->arena, 
         &(gpu_asset_t) {
             .asset_id = asset_id,
             .meshes = {
@@ -532,7 +532,7 @@ void assetmanager__internal_upload_cylinder_to_gpu(assetmanager_t *const self)
     vao_unbind();
 
     gpu_mesh_t * const gpu_mesh = arena_store(
-        &self->arena, 
+        self->arena, 
         &(gpu_mesh_t) {
             .vao_id = vao.id,
             .index_count = ebo.indices_count,
@@ -542,7 +542,7 @@ void assetmanager__internal_upload_cylinder_to_gpu(assetmanager_t *const self)
     );
 
     gpu_asset_t * const gpu_asset = arena_store(
-        &self->arena, 
+        self->arena, 
         &(gpu_asset_t) {
             .asset_id = asset_id,
             .meshes = {
@@ -596,7 +596,7 @@ void assetmanager__internal_upload_camera_model(assetmanager_t *const self)
 
 
     gpu_mesh_t *const gpu_mesh = arena_store(
-        &self->arena, 
+        self->arena, 
         &(gpu_mesh_t) {
             .vao_id = vao.id,
             .index_count = ebo.indices_count,
@@ -605,7 +605,7 @@ void assetmanager__internal_upload_camera_model(assetmanager_t *const self)
         sizeof(gpu_mesh_t));
 
     const gpu_asset_t *const gpu_asset = arena_store(
-        &self->arena, 
+        self->arena, 
         &(gpu_asset_t) {
             .asset_id = asset_id,
             .meshes = {
@@ -666,7 +666,7 @@ void assetmanager__internal_upload_line_to_gpu(assetmanager_t *const self)
     vao_unbind();
 
     gpu_mesh_t * const gpu_mesh = arena_store(
-        &self->arena, 
+        self->arena, 
         &(gpu_mesh_t) {
             .vao_id = vao.id,
             .index_count = ebo.indices_count,
@@ -675,7 +675,7 @@ void assetmanager__internal_upload_line_to_gpu(assetmanager_t *const self)
         sizeof(gpu_mesh_t));
 
     const gpu_asset_t * const gpu_asset = arena_store(
-        &self->arena, 
+        self->arena, 
         &(gpu_asset_t) {
             .asset_id = asset_id,
             .meshes = {
@@ -705,7 +705,7 @@ gpu_asset_t * assetmanager_get_gpu_loaded_asset_async(const assetmanager_t *cons
 
 u32 assetmanager_load_spriteatlas(assetmanager_t *const self, const str_t filepath, const u32 tile_count_width, const u32 tile_count_height)
 {
-    const spriteatlas_t atlas   = spriteatlas_init(filepath, tile_count_width, tile_count_height, &self->arena);
+    const spriteatlas_t atlas   = spriteatlas_init(filepath, tile_count_width, tile_count_height, self->arena);
     const u32 asset_id          = ++self->internal.asset_idx_generator;
     hashtable_insert(&self->assetmaps[ASSET_TYPE_TEXTURE_SPRITE_ATLAS], (hashtable_key_t){ .u32 = asset_id }, &atlas);
     assetmanager__internal_add_asset_meta_data(self,ASSET_TYPE_TEXTURE_SPRITE_ATLAS, asset_id, filepath, STR_EMPTY, (void *)&atlas);

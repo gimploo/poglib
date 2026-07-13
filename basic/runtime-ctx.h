@@ -6,14 +6,14 @@
 
 typedef struct runtimectx_t runtimectx_t;
 struct runtimectx_t {
-    arena_t stringpool;
+    arena_t *stringpool;
     buffer_t scrap_buffer;
 };
 
 extern runtimectx_t *global_runtimectx;
 
 runtimectx_t *  runtimectx_init(void);
-arena_t         runtimectx_reserve_mem_from_stringpool(const u16 size);
+arena_t        *runtimectx_reserve_mem_from_stringpool(const u16 size);
 void            runtimectx_destroy(void);
 
 
@@ -39,16 +39,16 @@ runtimectx_t * runtimectx_init(void)
     return global_runtimectx;
 }
 
-arena_t runtimectx_reserve_mem_from_stringpool(const u16 size)
+arena_t * runtimectx_reserve_mem_from_stringpool(const u16 size)
 {
     ASSERT(global_runtimectx);
-    return arena_init(&global_runtimectx->stringpool, size);
+    return arena_init(global_runtimectx->stringpool, size);
 }
 
 void runtimectx_destroy(void)
 {
     ASSERT(global_runtimectx);
-    arena_destroy(&global_runtimectx->stringpool);
+    arena_destroy(global_runtimectx->stringpool);
     free(global_runtimectx->scrap_buffer.raw_data);
     free(global_runtimectx);
 }

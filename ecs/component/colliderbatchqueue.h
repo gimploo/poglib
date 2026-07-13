@@ -7,7 +7,7 @@
 typedef struct {
 
     queue_t queue;
-    arena_t arena;
+    arena_t *arena;
 
 } colliderbatchqueue_t;
 
@@ -147,7 +147,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                 JPH_BodyInterface_SetUserData(
                     global_physics_sys_jolt_instance->bodyinterface,
                     collider->internal.body_id,
-                    (u64)arena_store(&self->arena, &userdata, sizeof(userdata))
+                    (u64)arena_store(self->arena, &userdata, sizeof(userdata))
                 );
                 JPH_BodyCreationSettings_Destroy(body_settings);
             break;

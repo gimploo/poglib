@@ -8,7 +8,7 @@
 #define QUEUE_CAPACITY 2048 // Large enough to prevent instant filling
 
 // Global test state
-arena_t global_arena;
+arena_t *global_arena;
 mpsc_queue_t g_test_queue;
 atomic_int g_items_received = 0;
 atomic_bool g_test_running = true;
@@ -22,7 +22,7 @@ u64 g_producer_payloads[NUM_PRODUCERS * ITEMS_PER_PRODUCER];
 void test_queue_initialization() 
 {
     // Must be a power of 2 for the (capacity - 1) bitwise mask to work
-    mpsc_queue_t queue = mpsc_queue_init(&global_arena, 128, sizeof(void*));
+    mpsc_queue_t queue = mpsc_queue_init(global_arena, 128, sizeof(void*));
     
     assert(atomic_load(&queue.head) == 0);
     assert(atomic_load(&queue.tail) == 0);
@@ -34,7 +34,7 @@ void test_queue_initialization()
 
 void test_queue_fifo_ordering() 
 {
-    mpsc_queue_t queue = mpsc_queue_init(&global_arena, 4, sizeof(void*));
+    mpsc_queue_t queue = mpsc_queue_init(global_arena, 4, sizeof(void*));
     
     // We pass addresses, simulating allocations from an external arena
     u32 data_a = 0xAAAA;
@@ -58,7 +58,7 @@ void test_queue_fifo_ordering()
 
 void test_queue_wraparound() 
 {
-    mpsc_queue_t queue = mpsc_queue_init(&global_arena, 4, sizeof(void*));
+    mpsc_queue_t queue = mpsc_queue_init(global_arena, 4, sizeof(void*));
     u32 dummy = 1;
 
     // Push 3, Pop 3 (Tail is now 3, Head is 3)
@@ -88,7 +88,7 @@ void test_queue_wraparound()
 ============================================================================*/
 void test_queue_continuous_wraparound() 
 {
-    mpsc_queue_t queue = mpsc_queue_init(&global_arena, 8, sizeof(void*));
+    mpsc_queue_t queue = mpsc_queue_init(global_arena, 8, sizeof(void*));
     u64 dummy_data = 0xFF;
 
     // Push and pop 10,000 times in a queue of size 8.
@@ -110,7 +110,7 @@ void test_queue_continuous_wraparound()
 void test_queue_full_capacity_burst() 
 {
     u64 capacity = 16;
-    mpsc_queue_t queue = mpsc_queue_init(&global_arena, capacity, sizeof(void*));
+    mpsc_queue_t queue = mpsc_queue_init(global_arena, capacity, sizeof(void*));
     u64 dummy_data[16];
 
     // 1. Fill queue to the absolute limit
@@ -179,7 +179,7 @@ int bounded_consumer_func(void* arg)
 
 void test_queue_bounded_concurrency() 
 {
-    g_bounded_queue = mpsc_queue_init(&global_arena, BOUNDED_CAPACITY, sizeof(void*));
+    g_bounded_queue = mpsc_queue_init(global_arena, BOUNDED_CAPACITY, sizeof(void*));
     
     thrd_t producers[BOUNDED_PRODUCERS];
     thrd_t consumer;
@@ -232,7 +232,7 @@ int main(int argc, char **argv)
     printf("SUCCESS: All lockless memory barriers functioning perfectly.\n");
     printf("=====================================================\n");
 
-    arena_destroy(&global_arena);
+    arena_destroy(global_arena);
     dbg_init(); // Note: Assumed typo in original, should be dbg_destroy()
 
     return 0;

@@ -28,7 +28,7 @@ typedef struct poggen_t {
     poggen_config_t     config;
     hashtable_t         scenes;
     scene_t             *current_scene;
-    arena_t             arena;
+    arena_t            *arena;
 
     struct {
         application_t *app;
@@ -81,9 +81,9 @@ poggen_t * poggen_init(application_t *const app, const poggen_config_t config)
     if (!global_window)     eprint("A window is required to run poggen\n");
     if (global_engine)      eprint("Trying to initialize a second `poggen` in the same instance");
 
-    arena_t arena = arena_init(NULL, 5 * MB);
+    arena_t *arena = arena_init(NULL, 5 * MB);
     global_engine = arena_store(
-        &arena,
+        arena,
         &(poggen_t ){
             .config             = config,
             .scenes             = hashtable_init(MAX_SCENES_ALLOWED, HT_KEY_TYPE_STR, (ht_value_type){ .size = sizeof(scene_t), .type = HT_STORAGE_BY_REFERENCE }, &app->handle.arena),
@@ -98,7 +98,7 @@ poggen_t * poggen_init(application_t *const app, const poggen_config_t config)
                 .physics     = config.enable_physics 
                                ? (poggen__internal_physics_t){
                                    .phy_simulation_started = false,
-                                   .instance = physics_sys_jolt_init(&arena)
+                                    .instance = physics_sys_jolt_init(arena)
                                } : (poggen__internal_physics_t){0},
                 .commandqueue = {0},
             },
@@ -204,7 +204,7 @@ void poggen_destroy(poggen_t *const self)
         physics_sys_jolt_destroy(self->systems.physics.instance);
 
     renderqueue_destroy(&self->systems.renderqueue);
-    arena_destroy(&self->arena);
+    arena_destroy(self->arena);
 
     global_engine = NULL;
 }
