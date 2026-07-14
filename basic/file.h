@@ -131,21 +131,19 @@ void file_writeline(file_t *file, const char *line)
     fwrite(line, strlen(line), 1, file->fp);
 }
 
-
-
-void file_readline(const file_t *file, char *buffer, u64 buffersize)
+void file_readline(const file_t *file, char *const buffer, const u64 buffersize)
 {
-    assert(buffersize != 8);
-    assert(!file->is_closed);
+    ASSERT(buffersize != 8);
+    ASSERT(!file->is_closed);
+
+    memset(buffer, 0, buffersize);
 
     FILE *ptr = file->fp;
-
     for (u32 i = 0; i < buffersize; i++)
     {
-        char c = fgetc(ptr);
-        if (c != '\n')
-            buffer[i] = c;
-        else 
+        const char c = fgetc(ptr);
+        buffer[i] = c;
+        if (c == '\n') 
             break;
     }
 }

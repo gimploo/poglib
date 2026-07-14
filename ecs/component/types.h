@@ -1,7 +1,6 @@
 #pragma once
 #include "poglib/external/joltc/include/joltc.h"
 #include "poglib/input/commandqueue.h"
-#include "poglib/util/workbench/workbench-constants.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <poglib/physics/jolt-wrapper.h>
@@ -68,7 +67,7 @@ struct ecs_component_model_t {
 typedef struct ecs_component_mesh_t ecs_component_mesh_t;
 struct ecs_component_mesh_t {
     u32 asset_id;
-    prototype_texture_type prototype_sprite_type; 
+    u32 prototype_sprite_type; 
 };
 
 /*========================= INPUT ====================================== */
@@ -98,13 +97,23 @@ struct ecs_component_input_t {
 
 /* =========================== MATERIAL ================================== */
 
+#define ECS_COMPONENT_MATERIAL_TEXTURE_MAX_COUNT 10
+
 typedef struct ecs_component_material_t ecs_component_material_t;
 struct ecs_component_material_t {
-    gltexturelist_t textures;
+
+    u32 shader_asset_id;
     struct {
-        u32 asset_id;
+        u32 count;
+        struct {
+            str_t   uniform_name;
+            u32     asset_id;
+        } slots[ECS_COMPONENT_MATERIAL_TEXTURE_MAX_COUNT];
+    } textures;
+
+    struct {
         gluniforms_t uniforms;
-    } shader;
+    } internal;
 };
 
 /* =========================== CAMERA ================================== */

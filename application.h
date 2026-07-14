@@ -151,7 +151,7 @@ void application_run(application_t *const app)
     app->handle.window= win;
     app->handle.timer = &timer;
     app->handle.fontrenderer = NULL;
-    app->handle.arena = arena_init(NULL, 32 * MB);
+    app->handle.arena = arena_init(NULL, 16 * MB);
 
     // Initialize the content in the application
     printf("[!] APPLICATION INIT!\n");

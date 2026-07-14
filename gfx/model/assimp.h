@@ -420,7 +420,7 @@ glmodel_t glmodel_init(const str_t filepath)
 {
     glmodel_t o = {0};
     o.filepath  = filepath;
-    o.arena     = arena_init(NULL, 200 * MB);
+    o.arena     = arena_init(NULL, 50 * MB);
     o.meshes    = list_init(glmesh_t, o.arena);
     o.textures  = list_init(model_texture_t, o.arena);
     o.colors    = list_init(vec4f_t, o.arena);
@@ -503,7 +503,6 @@ void glmodel_destroy(glmodel_t *const self)
 
     aiReleaseImport(self->scene);
     arena_destroy(self->arena);
-    free(self->arena);
 }
 
 void debug_assimp_vertex_bones(const struct aiScene *scene) {

@@ -244,9 +244,9 @@ void arena_destroy(arena_t *const self)
 }
 
 
-bool arena_is_init(const arena_t * const self)
+bool arena_is_init(const arena_t *const self)
 {
-    return self->memory != NULL || self->capacity > 0;
+    return self && (self->memory != NULL || self->capacity > 0);
 }
 
 #endif

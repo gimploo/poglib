@@ -92,7 +92,7 @@ bgtask_manager_t * bgtask_manager_init(void)
 {
     ASSERT(!global_bgtask_manager);
 
-    arena_t *arena = arena_init(NULL, 8 * KB);
+    arena_t *arena = arena_init(NULL, 50 * KB);
     global_bgtask_manager = arena_store(
         arena,
         &(bgtask_manager_t) {

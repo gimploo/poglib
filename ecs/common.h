@@ -7,7 +7,7 @@
 /* -------------------------------- ENTITY -------------------------------------------- */
 
 #define ECS_ENTITY_INVALID_ID   0
-#define ECS_ENTITY_MAX_COUNT    (1 * MB)
+#define ECS_ENTITY_MAX_COUNT    (1 * KB)
 
 typedef struct ecs_entity_t ecs_entity_t;
 typedef struct ecs_entitymanager_t ecs_entitymanager_t;

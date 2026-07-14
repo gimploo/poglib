@@ -109,9 +109,12 @@ void renderqueue__internal_validate_command(renderqueue_t *const queue, const re
         //NOTE: Shader + uniform validation
         ASSERT(command.material.shader.data);
         if (command.material.shader.data && (command.material.shader.uniforms.count != glshader_get_uniform_count(command.material.shader.data)))
-            eprint("render command is missing uniform value, check shader `%.*s` or `%.*s` to find missing uniforms", 
+            eprint("render command is missing uniform value, check shader `%.*s` or `%.*s` to find missing uniforms - (shader expects %u uniforms but only provided %u uniforms", 
                 command.material.shader.data->vs.len, command.material.shader.data->vs.data, 
-                command.material.shader.data->fg.len, command.material.shader.data->fg.data);
+                command.material.shader.data->fg.len, command.material.shader.data->fg.data,
+                glshader_get_uniform_count(command.material.shader.data),
+                command.material.shader.uniforms.count
+            );
     }
 
     {

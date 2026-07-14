@@ -31,6 +31,9 @@ typedef struct gltexture2d_t {
 gltexture2d_t        gltexture2d_init(const char * filepath);
 gltexture2d_t        gltexture2d_embedded_init(u8 *buffer, u32 buffer_size);
 gltexture2d_t        gltexture2d_empty_init(u32 width, u32 height);
+void                 gltexture2d_upload_to_gpu(gltexture2d_t *texture);
+gltexture2d_t        gltexture2d_load_from_file(const char *filepath);
+gltexture2d_t        gltexture2d_load_from_memory(u8 *buffer, u32 buffer_size);
 void                 gltexture2d_destroy(const gltexture2d_t *texture);
 //NOTE:(macro)       gltexture2d_bind(gltexture2d_t *, u32 slot) --> void
 //NOTE:(macro)       gltexture2d_unbind(void) --> void
@@ -89,6 +92,41 @@ gltexture2d_t gltexture2d_empty_init(u32 width, u32 height)
         .bpp       = 0,
     };
 
+}
+
+gltexture2d_t gltexture2d_load_from_file(const char *filepath)
+{
+    if (filepath == NULL) eprint("file argument is null");
+
+    i32 width = 0, height = 0, bpp = 0;
+    stbi_set_flip_vertically_on_load(1);
+    u8 *buf = stbi_load(filepath, &width, &height, &bpp, 4);
+    if (buf == NULL) eprint("Failed to load `%s` texture", filepath);
+
+    return (gltexture2d_t) {
+        .id = 0,
+        .filepath = str_from_cstr(filepath, strlen(filepath)),
+        .buf = buf,
+        .width = width,
+        .height = height,
+        .bpp = 4,
+    };
+}
+
+gltexture2d_t gltexture2d_load_from_memory(u8 *buffer, u32 buffer_size)
+{
+    i32 width, height, bpp;
+    u8 *pixels = (u8 *)stbi_load_from_memory(buffer, buffer_size, &width, &height, &bpp, STBI_default);
+    if (!pixels) eprint("Failed to load pixels from memory");
+
+    return (gltexture2d_t) {
+        .id = 0,
+        .filepath = {0},
+        .buf = pixels,
+        .width = width,
+        .height = height,
+        .bpp = bpp,
+    };
 }
 
 gltexture2d_t gltexture2d_init(const char *filepath)
@@ -212,6 +250,30 @@ gltexture2d_t gltexture2d_embedded_init(u8 *buffer, u32 buffer_size)
     };
 
     return o;
+}
+
+void gltexture2d_upload_to_gpu(gltexture2d_t *texture)
+{
+    if (texture->id || !texture->buf) return;
+
+    GLenum format;
+    if (texture->bpp == 1)       format = GL_RED;
+    else if (texture->bpp == 3)  format = GL_RGB;
+    else if (texture->bpp == 4)  format = GL_RGBA;
+
+    GL_CHECK(glGenTextures(1, &texture->id));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, texture->id));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
+    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+    GL_CHECK(glTexImage2D(
+        GL_TEXTURE_2D, 0, format,
+        texture->width, texture->height, 0,
+        format, GL_UNSIGNED_BYTE, (u8 *)texture->buf));
+    GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+    GL_LOG("Texture `%i` successfully created", texture->id);
 }
 
 #endif //__TEXTURE_H__
