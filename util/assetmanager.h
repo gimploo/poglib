@@ -62,6 +62,7 @@ assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
     ASSERT(taskmanager);
     arena_t *arena = arena_init(NULL, 1 * MB);
     assetmanager_t result = {
+        .arena = arena,
         .assetmaps = {
             [ASSET_TYPE_MODEL]                  = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(async(glmodel_t)), .type = HT_STORAGE_BY_REFERENCE }, arena),
             [ASSET_TYPE_GLSL_SHADER]            = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(glshader_t), .type = HT_STORAGE_BY_REFERENCE }, arena),
@@ -76,7 +77,6 @@ assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
             .gpu_upload_queue       = mpsc_queue(arena, MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT)
         }
     };
-    result.arena = arena;
     return result;
 }
 
@@ -128,6 +128,7 @@ void assetmanager__internal_thread_callback_load_glmodel(const taskpayload_t pay
     mpsc_queue_put(queue, task);
 }
 
+
 u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepath)
 {
     const u32 asset_id = ++self->internal.asset_idx_generator;
@@ -155,7 +156,7 @@ u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepa
                 },
             },
             .storage = {
-                .arena = arena_init(self->arena, sizeof(gpu_asset__internal_upload_task_t)),
+                .arena = arena_init(NULL, 1 * KB),
             },
             .callback = assetmanager__internal_thread_callback_load_glmodel,
         }
@@ -164,9 +165,18 @@ u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepa
     return asset_id;
 }
 
+bool assetmanager_does_asset_exist(const assetmanager_t *const self, const asset_type assettype, const u32 assetId)
+{
+    if (assetId < GL_MESH_PRIMITIVE_TYPE_COUNT)
+        return true;
+
+    return hashtable_has_key(&self->assetmaps[assettype], (hashtable_key_t){ .u32 = assetId });
+}
+
 const void * assetmanager_get_assetresource(const assetmanager_t *const self, const asset_type assettype, const u32 assetId)
 {
     ASSERT(assettype >= 0 && assettype < ASSET_TYPE_COUNT);
+    ASSERT(assetId != INVALID_ASSET_ID);
 
     if (!hashtable_has_key(&self->assetmaps[assettype], (hashtable_key_t){ .u32 = assetId })) {
         eprint("asset id `%i` is not a valid identifier for asset type `%i`", assetId, assettype);
@@ -747,8 +757,6 @@ INTERNAL void assetmanager__internal_add_asset_meta_data(
         &assetmeta
     );
 }
-
-
 
 u32 assetmanager_load_texture(assetmanager_t *self, const str_t filepath)
 {

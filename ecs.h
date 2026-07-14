@@ -46,9 +46,7 @@ ecs_t * ecs_init(void)
 {
     ASSERT(!global_ecs);
 
-    //FIXME: WTF it needs 500 MB ??
-    //TODO: Figure out a way to visualize know where memory is distributed in the system 
-    arena_t *const arena    = arena_init(NULL, 250 * MB);
+    arena_t *const arena    = arena_init(NULL, 1 * MB);
     global_ecs              = arena_reserve(arena, sizeof(ecs_t));
 
     *global_ecs = (ecs_t){
@@ -225,9 +223,76 @@ ecs_entity_query_t ecs_entity_query_components(ecs_t *const self, const u32 enti
     return ecs_componentmanager__internal_query_components(&self->managers.componentmanager, entity_id, component_signature);
 }
 
-void ecs_destroy(ecs_t * const self)
+void ecs_destroy(ecs_t *const self)
 {
     arena_destroy(self->arena);
+}
+
+
+bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
+{
+    ASSERT(self);
+    if (self->internal.entity_generator_counter >= WORKBENCH_RESERVED_ENTITY_ID_COUNT) 
+        eprint("Clear scene's ecs before loading a save file");
+
+    ASSERT(filepath.data);
+    ASSERT(filepath.len > 0);
+    if (!file_check_exist(filepath.data))
+        return false;
+
+    ASSERT(arena_is_init(self->arena));
+    ASSERT(global_engine);
+    logging("ECS save file `%.*s` exist, loading it.", filepath.len, filepath.data);
+
+    const str_t buffer = str_read_file_to_str(self->arena, filepath);
+    arena_t *const scratch = runtimectx_reserve_mem_from_stringpool(0.5 * MB);
+    {
+        const str_views_t lines     = str_split(buffer, '\n', scratch);
+        u64 line_cursor             = ecs_serializer_validate_header(lines);
+        const hashtable_t assetid_remaps = ecs_serializer_load_all_assets(global_ecs, scratch, lines, &line_cursor);
+
+        if (!str_cmp(lines.views[line_cursor], ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_ENTITIES].begin))
+            eprint(STR_FMT" missing", STR_ARG(ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_ENTITIES].begin));
+
+        line_cursor++;
+        while(true)
+        {
+            if (str_cmp(lines.views[line_cursor], ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_ENTITIES].end)) {
+                break;
+            }
+
+            u64 entity_id = 0, entity_signature = 0;
+            sscanf(str_lstrip(lines.views[line_cursor++], '\t').data, "entity %lu %lu", &entity_id, &entity_signature);
+
+            ecs_componentbundle_t bundle = {
+                .signature = entity_signature,
+                .component = {0}
+            };
+
+            ASSERT(entity_id != ECS_ENTITY_INVALID_ID);
+
+            for (u32 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
+            {
+                if ((entity_signature & (1 << cmp_idx)) == 0)
+                    continue;
+
+                line_cursor += ECS_COMPONENT_SERIALIZER_LOOKUP[cmp_idx].deserializer(
+                    lines, 
+                    line_cursor,
+                    &bundle.component[cmp_idx],
+                    self->arena,
+                    &assetid_remaps
+                );
+                line_cursor += 1;
+            }
+           ecs_entity_add_at_index(self, entity_id, bundle);
+        }
+
+        logging("ECS save file loaded successfully, %u entities restored", self->managers.entitymanager.entities.len);
+    }
+    arena_destroy(scratch);
+
+    return true;
 }
 
 void ecs_save_to_file(ecs_t *const self, const str_t filepath)
@@ -237,173 +302,62 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
 
     file_t f = file_init(filepath.data, "w");
 
-    ecs_serializer__internal_write_header(&f);
-
-    slot_iterator(&self->managers.entitymanager.entities, iter)
+    //NOTE: writes the save file header
     {
-        const ecs_entity_t *const entity = iter;
-
-        if (entity->id < WORKBENCH_RESERVED_ENTITY_ID_COUNT) continue;
-        if (!entity->component_signature) continue;
-
-        ecs_serializer__internal_write_entity_data(&f, entity->id, entity->component_signature);
-
-        ecs_entity_query_t query = ecs_entity_query_components(
-            self, entity->id, entity->component_signature
-        );
-
-        for (u8 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
-        {
-            const ecs_component_type cmp_type = 1 << cmp_idx;
-            if ((entity->component_signature & cmp_type) == 0) continue;
-
-            ecs_serializer__internal_entity_cmp_data(&f, cmp_type, query.entity_cmp_data[cmp_idx]);
-        }
+        file_writeline(&f, ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_HEADER].begin.data);
+            file_writeline(&f, "\n");
+            file_writeline(&f, "\tsystem:ecs\n");
+            file_writeline(&f, "\tversion:"ECS_VERSION"\n");
+        file_writeline(&f, ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_HEADER].end.data);
+        file_writeline(&f, "\n");
     }
 
-    assetmanager_write_assetmeta_data_to_file(&global_engine->systems.assets, &f);
-
-    ecs_serializer__internal_write_footer(&f);
-
-    file_destroy(&f);
-
-    logging("ECS state saved to file `%.*s`", filepath.len, filepath.data);
-}
-
-bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
-{
-    if (self->internal.entity_generator_counter >= WORKBENCH_RESERVED_ENTITY_ID_COUNT) 
-        eprint("Clear scene's ecs before loading a save file");
-
-    ASSERT(self);
-    ASSERT(filepath.data);
-    ASSERT(filepath.len > 0);
-    ASSERT(global_engine);
-
-    if (!file_check_exist(filepath.data))
+    //NOTE: writes the assest to file
     {
-        return false;
+        file_writeline(&f, ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_ASSETS].begin.data);
+        file_writeline(&f, "\n");
+            assetmanager_write_assetmeta_data_to_file(&global_engine->systems.assets, &f);
+        file_writeline(&f, ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_ASSETS].end.data);
+        file_writeline(&f, "\n");
     }
 
-    logging("ESC save file `%.*s` exist, loading it.", filepath.len, filepath.data);
-
-    file_t f = file_init(filepath.data, "r");
-
-    buffer(WORD) line = {0};
-
-    file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-    if (strncmp((char *)line.raw_data, ECS_SAVE_FILE_HEADER_PREFIX.data, ECS_SAVE_FILE_HEADER_PREFIX.len) != 0)
+    //NOTE: writes the entities to file
+    file_writeline(&f, ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_ENTITIES].begin.data);
+    file_writeline(&f, "\n");
     {
-        eprint("Invalid save file format");
-        file_destroy(&f);
-        return false;
-    }
-
-    u32                      max_entity_id       = 0;
-    bool                     has_pending_bundle  = false;
-    ecs_componentbundle_t    pending_bundle      = {0};
-    ecs_component_type       current_cmp         = 0;
-    u8                       current_cmp_idx     = 0;
-
-    ecs_load__entity_list_t *const entities      = arena_reserve(self->arena, sizeof(ecs_load__entity_list_t));
-    ecs_load__asset_list_t  *const assets_parsed = arena_reserve(self->arena, sizeof(ecs_load__asset_list_t));
-
-    while (true)
-    {
-        memset(line.raw_data, 0, sizeof(line.raw_data));
-        file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
-
-        if (line.raw_data[0] == '\0') 
-            continue;
-
-        if (strncmp((char *)line.raw_data, ECS_DESERIALIZER_FIN.data, ECS_DESERIALIZER_FIN.len) == 0) 
-            break;
-
-        if (strncmp((char *)line.raw_data, ECS_DESERIALIZER_ENTITY_PREFIX.data, ECS_DESERIALIZER_ENTITY_PREFIX.len) == 0)
+        slot_iterator(&self->managers.entitymanager.entities, iter)
         {
-            if (has_pending_bundle)
-            {
-                if (entities->count < ECS_LOAD_MAX_ENTITIES) {
-                    entities->entity[entities->count++].cmps = pending_bundle;
-                }
-                has_pending_bundle = false;
-            }
+            const ecs_entity_t *const entity = iter;
 
-            u32 entity_id;
-            sscanf((char *)line.raw_data, "entity:%u", &entity_id);
-            if (entity_id > max_entity_id) {
-                max_entity_id = entity_id;
-            }
-            memset(line.raw_data, 0, sizeof(line.raw_data));
-            file_readline(&f, (char *)line.raw_data, sizeof(line.raw_data));
+            if (entity->id < WORKBENCH_RESERVED_ENTITY_ID_COUNT) continue;
+            if (!entity->component_signature) continue;
 
-            u32 signature = 0;
-            sscanf((char *)line.raw_data, "component_signature:%u", &signature);
+            buffer(WORD) buf = {0};
+            snprintf((char *)buf.raw_data, sizeof(buf.raw_data),
+                "\tentity %u %u\n", entity->id, entity->component_signature);
+            file_writeline(&f, (char *)buf.raw_data);
 
-            pending_bundle.signature = signature;
-            memset(pending_bundle.component, 0, sizeof(pending_bundle.component));
-
-            has_pending_bundle  = true;
-            current_cmp         = 0;
-            current_cmp_idx     = 0;
-
-            entities->entity[entities->count].entity_id = entity_id;
-            continue;
-        }
-
-        if (strncmp((char *)line.raw_data, ECS_DESERIALIZER_ASSETID_PREFIX.data, ECS_DESERIALIZER_ASSETID_PREFIX.len) == 0)
-        {
-            if (has_pending_bundle)
-            {
-                if (entities->count < ECS_LOAD_MAX_ENTITIES)
-                    entities->entity[entities->count++].cmps = pending_bundle;
-                has_pending_bundle = false;
-            }
-
-            ecs_deserializer__internal__read_assetmeta_section(&f, assets_parsed, self->arena, (char *)line.raw_data, sizeof(line.raw_data));
-
-            break;
-        }
-
-        bool prefix_matched = false;
-        for (u8 i = 0; i < ECS_CMP_COUNT; i++)
-        {
-            if (strncmp((char *)line.raw_data, ECS_DESERIALIZER__INTERNAL_CMP_PREFIX_MAP[i].prefix.data, ECS_DESERIALIZER__INTERNAL_CMP_PREFIX_MAP[i].prefix.len) == 0)
-            {
-                current_cmp     = ECS_DESERIALIZER__INTERNAL_CMP_PREFIX_MAP[i].type;
-                current_cmp_idx = ECS_DESERIALIZER__INTERNAL_CMP_PREFIX_MAP[i].idx;
-                prefix_matched  = true;
-                break;
-            }
-        }
-        if (prefix_matched) continue;
-
-        if (line.raw_data[0] == '\t' && has_pending_bundle)
-        {
-            ecs_deserializer__internal_parse_cmp_data_line(
-                (char *)line.raw_data,
-                current_cmp,
-                &pending_bundle.component[current_cmp_idx]
+            const ecs_entity_query_t query = ecs_entity_query_components(
+                self, entity->id, entity->component_signature
             );
+
+            for (u8 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
+            {
+                const ecs_component_type cmp_type = 1 << cmp_idx;
+                if ((entity->component_signature & cmp_type) == 0) continue;
+
+                ASSERT(ECS_COMPONENT_SERIALIZER_LOOKUP[cmp_idx].serializer);
+
+                ECS_COMPONENT_SERIALIZER_LOOKUP[cmp_idx].serializer(
+                    &f, query.entity_cmp_data[cmp_idx]
+                );
+            }
         }
     }
-
-    if (has_pending_bundle)
-    {
-        if (entities->count < ECS_LOAD_MAX_ENTITIES)
-            entities->entity[entities->count++].cmps = pending_bundle;
-    }
-
-    for (u32 i = 0; i < entities->count; i++)
-    {
-        ecs_deserializer__internal_remap_entity_assets(&entities->entity[i].cmps, &global_engine->systems.assets, assets_parsed);
-        ecs_entity_add_at_index(self, entities->entity[i].entity_id, entities->entity[i].cmps);
-    }
-
-    self->internal.entity_generator_counter = max_entity_id;
-
+    file_writeline(&f, ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_ENTITIES].end.data);
+    file_writeline(&f, "\n");
     file_destroy(&f);
-    return true;
+    logging("ECS state saved to file `%.*s`", filepath.len, filepath.data);
 }
 
 #endif

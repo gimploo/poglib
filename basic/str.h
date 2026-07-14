@@ -17,6 +17,15 @@ typedef struct str_t {
 
 } str_t ;
 
+typedef struct {
+    u16 count;
+    str_t *views;
+} str_views_t;
+
+typedef struct { 
+    str_t pair[2];
+} str_pair_t;
+
 #define         STR_EMPTY (str_t){0}
 
 #define         str(STRING)              (str_t ) { .data = STRING, .len = sizeof(STRING) - 1, .internal.heap_allocated = false }
@@ -24,22 +33,25 @@ typedef struct str_t {
 str_t           str_init(arena_t *arena, const char * const __buffer);
 str_t           str_from_cstr(const char *data, const u32 len);
 void            str_free(str_t *x);
-void            str_print(str_t *str);
 void            str_get_data(const str_t *data, char *output);
 u32             str_where_is_string_in_buffer(str_t *word, str_t *__buffer);
-str_t           str_read_file_to_str(arena_t *arena, const char *file_path);
+str_t           str_read_file_to_str(arena_t *const arena, const str_t file_path);
 str_t           str_cpy_delimiter(str_t *__buffer, char ch);
 bool            str_cmp(const str_t a, const str_t b);
 void            str_cpy(str_t *dest, str_t *source);
 str_t           str_get_directory_path(const char *string);
 str_t           str_join(arena_t *arena, const str_t *part1, const char *part2);
+str_views_t     str_split(const str_t buffer, const char separator, arena_t *const arena);
+str_t           str_trim(const str_t buffer);
+str_pair_t      str_partition(const str_t buffer, const char partition_at);
+
 
 void            cstr_combine_path(const char *path1, const char *path2, char *output, const u32 output_size);
 void            cstr_copy(char *dest, const char *source);
 void            cstr_get_file_extension(const char *filepath, char output[32]);
 
 #define         STR_FMT         "%.*s"
-#define         STR_ARG(pstr)   (u32)((pstr)->len+1),(pstr)->data
+#define         STR_ARG(STR)   (i32)((STR).len), (STR).data
 
 #ifndef IGNORE_STR_IMPLEMENTATION
 
@@ -69,13 +81,6 @@ void str_free(str_t *x)
     free(x->data);
     x->data = NULL;
 }
-
-void str_print(str_t *str)
-{
-    assert(str);
-    printf(STR_FMT, STR_ARG(str));
-}
-
 
 void str_cpy(str_t *dest, str_t *source)
 {
@@ -111,11 +116,11 @@ str_t str_cpy_delimiter(str_t *__buffer, char ch)
     return word;
 }
 
-str_t str_read_file_to_str(arena_t *arena, const char *file_path)
+str_t str_read_file_to_str(arena_t *const arena, const str_t file_path)
 {
     //NOTE: this code works dont tinker
-    
-    size_t size = file_get_size(file_path); 
+
+    size_t size = file_get_size(file_path.data); 
     assert(size > 0);
 
     //NOTE: the +1 hold the null character
@@ -125,7 +130,7 @@ str_t str_read_file_to_str(arena_t *arena, const char *file_path)
         exit(1);
     }
 
-    FILE *fp = fopen(file_path, "r");
+    FILE *fp = fopen(file_path.data, "r");
     if (fp == NULL) {
         fprintf(stderr, "%s: failed to open file\n", __func__);
         exit(1);
@@ -283,5 +288,140 @@ str_t str_from_cstr(const char *data, const u32 len)
         .internal.heap_allocated = false
     };
 }
+
+
+str_t str_clone(const str_t src, arena_t *const arena)
+{
+    ASSERT(arena_is_init(arena));
+
+    char *const data = arena_store(arena, src.data, src.len);
+    data[src.len] = '\0';
+
+    return (str_t) {
+        .data = data,
+        .len = src.len,
+        .internal = {0}
+    };
+}
+
+
+str_views_t str_split(const str_t buffer, const char separator, arena_t *const arena)
+{
+    ASSERT(buffer.len);
+    ASSERT(buffer.data);
+
+    str_views_t result = {
+        .views = arena_reserve(arena, buffer.len * sizeof(str_t))
+    };
+    u64 start_idx = 0;
+    for(u64 char_idx = 0; char_idx < buffer.len; char_idx++)
+    {
+        if (buffer.data[char_idx] == separator) {
+            result.views[result.count++] = (str_t){
+                .data       = buffer.data + start_idx,
+                .len        = (char_idx - start_idx),
+                .internal   = {0}
+            };
+            start_idx = char_idx + 1;
+            continue;
+        }
+    }
+    result.views[result.count++] = (str_t) {
+        .data = buffer.data + start_idx,
+        .len = (buffer.len - start_idx),
+        .internal = {0}
+    };
+
+    return result;
+}
+
+str_t str_trim(const str_t buffer)
+{
+    if (!buffer.len) return buffer;
+
+    u16 start_idx;
+    for (start_idx = 0; start_idx < buffer.len; start_idx++)
+        if (buffer.data[start_idx] != ' ' && buffer.data[start_idx] != '\t' && buffer.data[start_idx] != '\n')
+            break;
+
+    ASSERT(buffer.len > 0);
+
+    u16 end_idx;
+    for (end_idx = (buffer.len - 1); end_idx > start_idx; end_idx--)
+        if (buffer.data[end_idx] != ' ' && buffer.data[end_idx] != '\t' && buffer.data[end_idx] != '\n')
+            break;
+
+    return (str_t){
+        .data       = buffer.data + start_idx,
+        .len        = (end_idx - start_idx) + 1,
+        .internal   = {0}
+    };
+}
+
+str_t str_lstrip(const str_t buffer, const char remove_character_on_left)
+{
+    if (!buffer.len) return buffer;
+
+    u16 start_idx;
+    for (start_idx = 0; start_idx < buffer.len; start_idx++)
+        if (buffer.data[start_idx] != remove_character_on_left)
+            break;
+
+    return (str_t){
+        .data       = buffer.data + start_idx,
+        .len        = (buffer.len - start_idx),
+        .internal   = {0}
+    };
+
+}
+
+str_pair_t str_partition(const str_t buffer, const char partition_at)
+{
+    for (u32 idx = 0; idx < buffer.len; idx++)
+        if (buffer.data[idx] == partition_at && (idx != buffer.len - 1))
+            return (str_pair_t) {
+                .pair = {
+                    [0] = (str_t){
+                        .data = buffer.data,
+                        .len = idx,
+                    },
+                    [1] = (str_t){
+                        .data = buffer.data + (idx + 1),
+                        .len = buffer.len - (idx + 1)
+                    }
+                }
+            };
+
+    return (str_pair_t) {
+        .pair = {
+            [0] = buffer,
+            [1] = STR_EMPTY
+        }
+    };
+}
+
+str_t str_rstrip(const str_t buffer, const char till_character)
+{
+    if (!buffer.len) return buffer;
+
+    u16 end_idx;
+    for (end_idx = (buffer.len - 1); end_idx > 0; end_idx--)
+        if (buffer.data[end_idx] != till_character)
+            break;
+
+    return (str_t){
+        .data       = buffer.data,
+        .len        = end_idx + 1,
+        .internal   = {0}
+    };
+
+}
+
+void str_print(const str_t str)
+{
+    printf(STR_FMT"\n", STR_ARG(str));
+}
+
+
 
 #endif

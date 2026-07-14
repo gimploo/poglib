@@ -13,7 +13,7 @@ struct runtimectx_t {
 extern runtimectx_t *global_runtimectx;
 
 runtimectx_t *  runtimectx_init(void);
-arena_t        *runtimectx_reserve_mem_from_stringpool(const u16 size);
+arena_t        *runtimectx_reserve_mem_from_stringpool(const u32 size);
 void            runtimectx_destroy(void);
 
 
@@ -28,7 +28,7 @@ runtimectx_t * runtimectx_init(void)
     runtimectx_t * o = calloc(1, sizeof(runtimectx_t));
 
    *o = (runtimectx_t ){
-        .stringpool = arena_init(NULL, 5 * KB),
+        .stringpool = arena_init(NULL, 1 * MB),
         .scrap_buffer = (buffer_t) {
             .raw_data = calloc(4 * MB, 1),
             .size = 4 * MB
@@ -39,7 +39,7 @@ runtimectx_t * runtimectx_init(void)
     return global_runtimectx;
 }
 
-arena_t * runtimectx_reserve_mem_from_stringpool(const u16 size)
+arena_t * runtimectx_reserve_mem_from_stringpool(const u32 size)
 {
     ASSERT(global_runtimectx);
     return arena_init(global_runtimectx->stringpool, size);
