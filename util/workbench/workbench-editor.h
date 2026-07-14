@@ -1,6 +1,5 @@
 #pragma once
-#include "poglib/basic/color.h"
-#include "poglib/basic/util.h"
+#include <poglib/ecs.h>
 #include "poglib/ecs/component/types.h"
 #include "poglib/external/joltc/include/joltc.h"
 #include "poglib/gui.h"
@@ -8,7 +7,6 @@
 #include "poglib/pipeline/render/render_queue.h"
 #include "poglib/util/asset.h"
 #include "poglib/util/assetmanager.h"
-#include <poglib/util/workbench/common.h>
 #include <poglib/ecs.h>
 #include "./ui/workbench-ui.h"
 

@@ -87,7 +87,7 @@ void * arena__internal_check_in_freelist(arena_t *const self, const u64 memory_s
     return memory;
 }
 
-void * arena__internal_reserve_memory_16byte_aligned(arena_t * const self, const u64 memory_size)
+void * arena__internal_reserve_memory_16byte_aligned(arena_t *const self, const u64 memory_size)
 {
     if (!self->freelist.count && (self->capacity - self->size) < memory_size) {
         eprint("Ran out of memory, asking for `%li`bytes but `%li`bytes only available\n\tcapacity = %li | size = %li", memory_size, (self->capacity - self->size), self->capacity, self->size);
@@ -152,17 +152,19 @@ void * arena_store(arena_t * const self, const void * const mem, const u64 mem_s
 
 arena_t * arena_init(arena_t *const arena, const u64 capacity)
 {
-    arena_t o = {
-        .capacity = capacity,
+    const u64 final_capacity = capacity + sizeof(arena_t);
+    arena_t output = {
+        .capacity = final_capacity,
         .size = 0,
-        .memory = arena ? arena__internal_reserve_memory_16byte_aligned(arena, capacity) : calloc(capacity, sizeof(u8)),
+        .memory = arena ? arena__internal_reserve_memory_16byte_aligned(arena, final_capacity) : calloc(final_capacity, sizeof(u8)),
         .freelist = {0},
         .meta = {
             .lifetime_owner = arena,
         },
     };
-    atomic_flag_clear(&o.meta.lock);
-    return arena_store(&o, &o, sizeof(arena_t));
+    atomic_flag_clear(&output.meta.lock);
+
+    return arena_store(&output, &output, sizeof(arena_t));
 }
 
 void arena_giveback(arena_t *const self, void *const ptr, const u64 size)
@@ -184,7 +186,8 @@ void arena_giveback(arena_t *const self, void *const ptr, const u64 size)
         free_chunks_t *new_chunk;
         if (self->meta.lifetime_owner) {
             new_chunk = (free_chunks_t *)arena__internal_reserve_memory_16byte_aligned(
-                self->meta.lifetime_owner, sizeof(free_chunks_t));
+                self->meta.lifetime_owner, sizeof(free_chunks_t)
+            );
             if (new_chunk) {
                 new_chunk->memory = ptr;
                 new_chunk->size = size;

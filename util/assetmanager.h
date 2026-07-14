@@ -4,6 +4,7 @@
 #include "poglib/basic/arena.h"
 #include "poglib/basic/concurrency.h"
 #include "poglib/basic/ds/hashtable.h"
+#include "poglib/basic/file.h"
 #include "poglib/basic/str.h"
 #include "poglib/gfx/gl/objects.h"
 #include "poglib/gfx/gl/renderconfig.h"
@@ -44,7 +45,6 @@ u32                 assetmanager_load_glsl_shader(assetmanager_t *self, const st
 
 const void *        assetmanager_get_assetresource(const assetmanager_t *const self, const asset_type assettype, const u32 assetId);
 gpu_asset_t *       assetmanager_get_gpu_loaded_asset_async(const assetmanager_t *const self, const u32 asset_id);
-void                assetmanager_write_assetmeta_data_to_file(const assetmanager_t *const self, file_t *const file);
 
 void                assetmanager_destroy(assetmanager_t *const self);
 
@@ -113,10 +113,10 @@ void assetmanager__internal_thread_callback_load_glmodel(const taskpayload_t pay
     ASSERT(payload.args.count == 3);
 
     const str_t filepath = payload.args.arg[0].str;
-    *(glmodel_t *)output_mem = glmodel_init(filepath.data);
+    *(glmodel_t *)output_mem = glmodel_init(filepath);
 
     gpu_asset__internal_upload_task_t *task = arena_store(
-        &storage.arena, 
+        storage.arena, 
         &(gpu_asset__internal_upload_task_t){
             .asset_id       = payload.args.arg[2].u64,
             .type           = ASSET_TYPE_MODEL,
@@ -271,6 +271,11 @@ void assetmanager__internal_upload_model_to_gpu(
         };
 
         vao_unbind();
+    }
+
+    list_iterator(&model->textures, iter) {
+        model_texture_t *mt = (model_texture_t *)iter;
+        gltexture2d_upload_to_gpu(&mt->texture);
     }
 
     logging("Model %s loaded to GPU", model->filepath);
@@ -743,82 +748,12 @@ INTERNAL void assetmanager__internal_add_asset_meta_data(
     );
 }
 
-void assetmanager_write_assetmeta_data_to_file(const assetmanager_t *const self, file_t *const file)
+
+
+u32 assetmanager_load_texture(assetmanager_t *self, const str_t filepath)
 {
-    ASSERT(!file->is_closed);
-
-    hashtable_iterator(&self->assetmeta_lookup, iter)
-    {
-        buffer(WORD) buffer = {0};
-        const hashtable_entry_t *entry          = iter;
-        const asset_meta_t *const assetmeta     = entry->value;
-
-        if (assetmeta->filepath1.len && assetmeta->filepath2.len)
-            snprintf(
-                buffer.raw_data, sizeof(buffer.raw_data), 
-                "assetid:%u,assettype:%u,assetpath:[%.*s,%.*s]\n",
-                entry->key.u32,
-                assetmeta->type,
-                assetmeta->filepath1.len,
-                assetmeta->filepath1.data,
-                assetmeta->filepath2.len,
-                assetmeta->filepath2.data
-            );
-        else if (!assetmeta->filepath1.len && assetmeta->filepath2.len)
-            snprintf(
-                buffer.raw_data, sizeof(buffer.raw_data), 
-                "assetid:%u,assettype:%u,assetpath:%.*s\n",
-                entry->key.u32,
-                assetmeta->type,
-                assetmeta->filepath2.len,
-                assetmeta->filepath2.data
-            );
-        else if (assetmeta->filepath1.len && !assetmeta->filepath2.len)
-            snprintf(
-                buffer.raw_data, sizeof(buffer.raw_data), 
-                "assetid:%u,assettype:%u,assetpath:%.*s\n",
-                entry->key.u32,
-                assetmeta->type,
-                assetmeta->filepath1.len,
-                assetmeta->filepath1.data
-            );
-
-        file_writeline(file, buffer.raw_data);
-        memset(buffer.raw_data, 0, sizeof(buffer.raw_data));
-
-        switch(assetmeta->type)
-        {
-            case ASSET_TYPE_TEXTURE_SPRITE_ATLAS:
-                snprintf(
-                    buffer.raw_data, sizeof(buffer.raw_data), 
-                    "\ttilecount:[%u,%u]\n",
-                    assetmeta->meta.tile_counts.x,
-                    assetmeta->meta.tile_counts.y
-                );
-            break;
-            case ASSET_TYPE_GLSL_SHADER:
-                hashtable_serialize_to_file(
-                    assetmeta->meta.uniformlocs, 
-                    file,
-                    assetmanager__internal_write_uniformlocs_to_file
-                );
-            break;
-
-        }
-        file_writeline(file, buffer.raw_data);
-    }
+    eprint("not implemented");
 }
-
-void assetmanager__internal_write_uniformlocs_to_file(const hashtable_entry_t *const entry, buffer_t *const buffer)
-{
-    gluniform__internal_meta_t *uniformmeta = entry->value;
-    snprintf(buffer->raw_data, buffer->size, 
-        "\tuniform:\n"
-        "\t\tname:%.*s,type:%u\n",
-        uniformmeta->name.len, uniformmeta->name.data, uniformmeta->type
-    );
-}
-
 
 
 #endif

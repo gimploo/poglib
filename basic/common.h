@@ -72,7 +72,7 @@ typedef double          f64;
 #define MAX(x, y)           (((x) > (y)) ? (x) : (y))
 #define MIN(x, y)           (((x) < (y)) ? (x) : (y))
 
-int randint(int min, int max)
+i32 randint(const i32 min, const i32 max)
 {
     srand(time(NULL));
     return (rand() % ((max-1) - min + 1)) + min;
@@ -81,19 +81,21 @@ int randint(int min, int max)
 f32 randf32(const f32 min, const f32 max)
 {
     srand(time(NULL));
-    float scale = rand() / (float) RAND_MAX; /* [0, 1.0] */
+    const f32 scale = rand() / (f32) RAND_MAX; /* [0, 1.0] */
     return min + scale * ( max - min );      /* [min, max] */
 }
 
 typedef struct {
-    u32 size;
-    void *raw_data;
+    u32     size;
+    bool    is_on_heap;
+    void    *raw_data;
 } buffer_t;
 
-#define buffer(FIXED_CAPACITY)          \
-    struct {                            \
-        u32 size;                       \
-        u8 raw_data[FIXED_CAPACITY];    \
+#define buffer(FIXED_CAPACITY)              \
+    struct {                                \
+        u32     size;                       \
+        bool    is_on_heap;                 \
+        u8      raw_data[FIXED_CAPACITY];   \
     }
 
 #define ARRAY_FILL(ARR, VALUE)                          \

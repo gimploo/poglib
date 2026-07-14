@@ -11,9 +11,6 @@
                     - OPENGL SHADER HANDLING LIBRARY -
 ===============================================================================*/
 
-//TODO: maybe have all the shader uniform locations localized to one place, 
-//so not to need to call 'get location' every time we send it.
-
 #define MAX_UNIFORMS_ALLOWED_IN_SHADER 16
 
 typedef enum gluniform_type {
@@ -31,15 +28,10 @@ typedef enum gluniform_type {
 typedef struct {
     str_t name;
     gluniform_type type;
-} gluniform_meta_t;
-
-typedef struct {
-    str_t name;
-    gluniform_type type;
     struct {
         u32 loc_idx;
     } internal;
-} gluniform__internal_meta_t;
+} gluniform_meta_t;
 
 typedef union {
     matrix4f_t  mat4;
@@ -132,7 +124,7 @@ const char * const DEFAULT_SIMPLE_SHAPES_VSHADER =
 
 #define         glshader_default_init(...)                                      glshader_from_cstr_init(DEFAULT_VSHADER, DEFAULT_FSHADER)
 
-glshader_t              glshader_init(const str_t vtxpath, const str_t fgpath, const gluniform_registry_t uniforms, arena_t * const arena);
+glshader_t              glshader_init(const str_t vtxpath, const str_t fgpath, const gluniform_registry_t uniforms, arena_t *const arena);
 
 glshader_t              glshader_from_file_init(const char *file_vs, const char *file_fs);
 glshader_t              glshader_from_cstr_init(const char *vs_code, const char *fs_code);
@@ -151,6 +143,10 @@ void            glshader_send_uniform_vec3f(const glshader_t *shader, const char
 void            glshader_send_uniform_vec4f(const glshader_t *shader, const char *uniform, vec4f_t val);
 void            glshader_send_uniform_matrix4f(const glshader_t *shader, const char *uniform, matrix4f_t val);
 void            glshader_send_uniform_matrix4fv(const glshader_t *shader, const char *uniform, const matrix4f_t *val, const u32 matrices_count);
+
+
+bool                    glshader_uniform_is_support(const glshader_t *const self, const str_t name);
+gluniform_meta_t *      glshader_get_uniform_meta_entry_or_null(const glshader_t *const self, const str_t name);
 
 //=========================================================================
 
@@ -289,7 +285,7 @@ hashtable_t glshader__internal_uniforms_cache_locs(const u32 shader_id, const gl
         MAX_UNIFORMS_ALLOWED_IN_SHADER,
         HT_KEY_TYPE_STR,
         (ht_value_type) {
-            .size = sizeof(gluniform__internal_meta_t),
+            .size = sizeof(gluniform_meta_t),
             .type = HT_STORAGE_BY_REFERENCE 
         },
         arena
@@ -305,16 +301,16 @@ hashtable_t glshader__internal_uniforms_cache_locs(const u32 shader_id, const gl
         if (location == -1) 
             eprint("[ERROR] `%s` uniform doesnt exist", name);
 
-        const gluniform__internal_meta_t * const meta = arena_store(
+        const gluniform_meta_t * const meta = arena_store(
             arena, 
-            &(gluniform__internal_meta_t) {
+            &(gluniform_meta_t) {
                 .name = uniforms_array[idx].name,
                 .type = uniforms_array[idx].type,
                 .internal = {
                     .loc_idx = location
                 }
             },
-            sizeof(gluniform__internal_meta_t)
+            sizeof(gluniform_meta_t)
         );
         hashtable_insert(&result, (hashtable_key_t){ .str = uniforms_array[idx].name }, meta);
     }
@@ -333,7 +329,7 @@ void glshader_upload_uniforms(const glshader_t * const shader, const gluniforms_
         const str_t name = uniforms.data[idx].name;
         const gluniform_value_t * const value = &uniforms.data[idx].value;
 
-        const gluniform__internal_meta_t *meta = (gluniform__internal_meta_t *)hashtable_get_value(&shader->internal.uniformlocs, (hashtable_key_t){ .str = name });
+        const gluniform_meta_t *meta = (gluniform_meta_t *)hashtable_get_value(&shader->internal.uniformlocs, (hashtable_key_t){ .str = name });
         const u32 loc_idx = meta->internal.loc_idx;
 
         switch(meta->type)
@@ -480,4 +476,15 @@ u32 glshader_get_uniform_count(const glshader_t * const shader)
 {
     return shader->internal.uniformlocs.entries.len;
 }
+
+bool glshader_uniform_is_support(const glshader_t *const self, const str_t name)
+{
+    return hashtable_has_key(&self->internal.uniformlocs, (hashtable_key_t) { .str = name });
+}
+
+gluniform_meta_t * glshader_get_uniform_meta_entry_or_null(const glshader_t *const self, const str_t name)
+{
+    return hashtable_get_value_or_null(&self->internal.uniformlocs, (hashtable_key_t) { .str = name });
+}
+
 #endif

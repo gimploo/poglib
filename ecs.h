@@ -4,13 +4,13 @@
 #include "./ecs/component.h"
 #include "poglib/application.h"
 #include "poglib/basic/arena.h"
+#include "poglib/basic/str.h"
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/ecs/serialization.h"
 #include "poglib/util/assetmanager.h"
 #include "poglib/poggen.h"
 #include "poglib/ecs/system.h"
-
 
 ecs_t * global_ecs = NULL;
 
@@ -48,8 +48,8 @@ ecs_t * ecs_init(void)
 
     //FIXME: WTF it needs 500 MB ??
     //TODO: Figure out a way to visualize know where memory is distributed in the system 
-    arena_t *arena   = arena_init(NULL, 500 * MB);
-    global_ecs      = arena_reserve(arena, sizeof(ecs_t));
+    arena_t *const arena    = arena_init(NULL, 250 * MB);
+    global_ecs              = arena_reserve(arena, sizeof(ecs_t));
 
     *global_ecs = (ecs_t){
         .internal = {
