@@ -60,6 +60,15 @@ hashtable_t     hashtable_init(
 #define         hashtable_insert(PTABLE, KEY, VALUE)\
                 hashtable__internal_insert((PTABLE), (KEY), (void *)(u64)(VALUE))
 
+hashtable_t     hashtable_init_with_data(
+                    const u32 capacity, 
+                    const ht_key_type keytype, 
+                    const ht_value_type valuetype, 
+                    arena_t *const arena, 
+                    const hashtable_entry_t *const entries, 
+                    const u32 count
+                );
+
 void *          hashtable_insert_by_value(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr);
 
 #define         hashtable_iterator(TABLE, ENTRY)\
@@ -358,6 +367,31 @@ void hashtable_serialize_to_file(
         });
         file_writeline(file, (char *)buffer);
     }
+}
+
+
+hashtable_t hashtable_init_with_data(
+    const u32 capacity, 
+    const ht_key_type keytype, 
+    const ht_value_type valuetype, 
+    arena_t *const arena, 
+    const hashtable_entry_t *const entries, 
+    const u32 count
+) {
+    ASSERT(entries);
+    ASSERT(count);
+
+    hashtable_t table = hashtable_init(capacity, keytype, valuetype, arena);
+    for (u32 idx = 0; idx < count; idx++)
+    {
+        hashtable_insert(
+            &table,
+            entries[idx].key,
+            entries[idx].value
+        );
+    }
+
+    return table;
 }
 
 #endif

@@ -54,8 +54,6 @@ boneinfo_t boneinfo(matrix4f_t offset) {
    │ → Transform back to world space (if needed).
 */
 
-#define MAX_MESHES_PER_MODEL 10
-
 typedef struct {
     gltexture2d_t texture;
     u8 assimp_type;
@@ -63,15 +61,17 @@ typedef struct {
 
 typedef struct glmodel_t {
 
-    str_t directory_path;
-    char *filepath[KB];
+    str_t filepath;
     list_t meshes;
     list_t textures;
     list_t colors;
     list_t bone_infos;
     //TODO: Implement materials;
 
-    list_t transforms[MAX_MESHES_PER_MODEL];
+    struct {
+        u8 count;
+        list_t *data;
+    } transforms;
     animator_t animator;
     hashtable_t *bone_name_to_index;
 
@@ -82,18 +82,19 @@ typedef struct glmodel_t {
     arena_t *arena;
 
     struct {
+        str_t           directory_path;
         animation_t     *active_animation;
         i64             root_channel_idx;
     } internal;
 
 } glmodel_t;
 
-glmodel_t               glmodel_init(const char *filepath);
+glmodel_t               glmodel_init(const str_t filepath);
 animation_t *           glmodel_set_animation(glmodel_t *const self, const str_t animation_label);
 animation_t *           glmodel_get_playing_animation(const glmodel_t *const self);
 f32                     glmodel_get_playing_animation_loop_count(const glmodel_t *const self, const f32 dt);
 vec3f_t                 glmodel_get_rootnode_position(const glmodel_t *self, const char *animation_label, f32 time);
-void                    glmodel_destroy(glmodel_t *self);
+void                    glmodel_destroy(glmodel_t *const self);
 
 #ifndef IGNORE_ASSIMP_IMPLEMENTATION
 
@@ -178,14 +179,14 @@ void assimp__internal_glmesh_processMaterial(glmodel_t *self, const struct aiSce
     }
 }
 
-glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh) {
+glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh, arena_t *const arena) {
     // get the total total indicies in the mesh
     u64 total_indicies = 0;
     for (u32 i = 0; i < mesh->mNumFaces; i++)
         total_indicies += mesh->mFaces[i].mNumIndices;
 
-    slot_t vtx = slot_init(mesh->mNumVertices, sizeof(glvertex3d_t), NULL);
-    slot_t ind = slot_init(total_indicies, sizeof(u32), NULL);
+    slot_t vtx = slot_init(mesh->mNumVertices, sizeof(glvertex3d_t), arena);
+    slot_t ind = slot_init(total_indicies, sizeof(u32), arena);
 
     // Copy indices
     for (u32 i = 0; i < mesh->mNumFaces; i++) {
@@ -329,11 +330,11 @@ void assimp__internal_glmodel_set_bone_transforms(glmodel_t *self, const hashtab
     list_iterator(&self->bone_infos, iter)
     {
         boneinfo_t *const info = iter;
-        list_append(&self->transforms[mesh_index], info->transform);
+        list_append(&self->transforms.data[mesh_index], info->transform);
     }
 
-    ASSERT(self->transforms[mesh_index].len <= MAX_BONES);
-    ASSERT(self->transforms[mesh_index].len <= bone_name_to_index->entries.len);
+    ASSERT(self->transforms.data[mesh_index].len <= MAX_BONES);
+    ASSERT(self->transforms.data[mesh_index].len <= bone_name_to_index->entries.len);
 }
 
 u32 assimp__internal_get_total_bones(const struct aiScene *scene)
@@ -355,7 +356,11 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
         *self->bone_name_to_index = hashtable_init(total_bones, HT_KEY_TYPE_STR, (ht_value_type){ .size = sizeof(i32), .type = HT_STORAGE_BY_VALUE_INLINE }, self->arena);
     }
 
-    ASSERT(scene->mNumMeshes <= MAX_MESHES_PER_MODEL);
+    //NOTE: initalize the transform list for the model
+    {
+        self->transforms.count = scene->mNumMeshes;
+        self->transforms.data = arena_reserve(self->arena, sizeof(list_t) * self->transforms.count);
+    }
 
     u64 processed_materials = 0;
 
@@ -363,10 +368,10 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
     {
         struct aiMesh *mesh = scene->mMeshes[mesh_index];
 
-        self->transforms[mesh_index] = list_init(matrix4f_t, self->arena);
+        self->transforms.data[mesh_index] = list_init(matrix4f_t, self->arena);
 
         // Process mesh
-        const glmesh_t m = assimp__internal_glmesh_processMesh(mesh);
+        const glmesh_t m = assimp__internal_glmesh_processMesh(mesh, self->arena);
 
         // Process materials (once per unique material index).
         // Multiple meshes may share the same material; a u64 bitmask
@@ -402,35 +407,33 @@ gltexture2d_t assimp__internal_load_texture_from_path(glmodel_t *self, const str
         ASSERT(index >= 0 && (u32)index < scene->mNumTextures);
         struct aiTexture *aitexture = scene->mTextures[index];
         if (aitexture->mHeight == 0) {
-            return gltexture2d_embedded_init((u8 *)aitexture->pcData, aitexture->mWidth);
+            return gltexture2d_load_from_memory((u8 *)aitexture->pcData, aitexture->mWidth);
         }
         ASSERT(0 && "Raw pixel embedded texture not supported via material reference");
     }
-    str_t absolute_path = str_join(self->arena, &self->directory_path, path);
-    return gltexture2d_init(absolute_path.data);
+    str_t absolute_path = str_join(self->arena, &self->internal.directory_path, path);
+    return gltexture2d_load_from_file(absolute_path.data);
 }
 
 
-glmodel_t glmodel_init(const char *filepath) 
+glmodel_t glmodel_init(const str_t filepath) 
 {
     glmodel_t o = {0};
-    ASSERT(strlen(filepath) < ARRAY_LEN(o.filepath));
-    memcpy(o.filepath, filepath, strlen(filepath));
-    o.directory_path = str_get_directory_path(filepath);
-    o.arena = calloc(1, sizeof(arena_t));
-    *o.arena = arena_init(NULL, 200 * MB);
-    o.meshes = list_init(glmesh_t, o.arena);
-    o.textures = list_init(model_texture_t, o.arena);
-    o.colors = list_init(vec4f_t, o.arena);
+    o.filepath  = filepath;
+    o.arena     = arena_init(NULL, 200 * MB);
+    o.meshes    = list_init(glmesh_t, o.arena);
+    o.textures  = list_init(model_texture_t, o.arena);
+    o.colors    = list_init(vec4f_t, o.arena);
     o.bone_infos = list_init(boneinfo_t, o.arena);
-    o.animator = animator_init(o.arena);
+    o.animator  = animator_init(o.arena);
     o.current_time = 0.0f;
     o.internal.root_channel_idx = -1;
+    o.internal.directory_path = str_get_directory_path(filepath.data);
 
     logging("Loading model %s ...", filepath);
 
     // Assimp: import model
-    const struct aiScene *scene = aiImportFile(filepath, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_LimitBoneWeights | aiProcess_CalcTangentSpace);
+    const struct aiScene *scene = aiImportFile(filepath.data, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_LimitBoneWeights | aiProcess_CalcTangentSpace);
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         eprint("ERROR::ASSIMP:: %s", aiGetErrorString());
     }
@@ -501,8 +504,6 @@ void glmodel_destroy(glmodel_t *const self)
     aiReleaseImport(self->scene);
     arena_destroy(self->arena);
     free(self->arena);
-
-    memset(self->filepath, 0, sizeof(self->filepath));
 }
 
 void debug_assimp_vertex_bones(const struct aiScene *scene) {
@@ -606,7 +607,7 @@ void assimp__internal_process_node_anim(glmodel_t *self, struct aiNode *node, co
 
         // Assign to transforms array for each mesh
         for (u32 mesh_idx = 0; mesh_idx < self->meshes.len; mesh_idx++) {
-            list_append(&self->transforms[mesh_idx], bone_info->transform);
+            list_append(&self->transforms.data[mesh_idx], bone_info->transform);
         }
     }
 
@@ -633,7 +634,7 @@ void glmodel_play_animation(glmodel_t *const self, const f32 dt)
     if (!self->internal.active_animation) return;
 
     for (u32 idx = 0; idx < self->meshes.len; idx++) 
-        list_clear(&self->transforms[idx]);
+        list_clear(&self->transforms.data[idx]);
 
     animation_t *const current_anim = self->internal.active_animation;
     self->current_time += dt * current_anim->ticks_per_second;
@@ -650,8 +651,8 @@ void glmodel_play_animation(glmodel_t *const self, const f32 dt)
     else                            eprint("No root node available.");
 
     for (u32 mesh_idx = 0; mesh_idx < self->meshes.len; mesh_idx++) {
-        while (self->transforms[mesh_idx].len < MAX_BONES) {
-            list_append(&self->transforms[mesh_idx], MATRIX4F_IDENTITY);
+        while (self->transforms.data[mesh_idx].len < MAX_BONES) {
+            list_append(&self->transforms.data[mesh_idx], MATRIX4F_IDENTITY);
         }
     }
 
