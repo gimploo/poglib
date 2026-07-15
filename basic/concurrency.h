@@ -96,7 +96,7 @@ bgtask_manager_t * bgtask_manager_init(void)
     global_bgtask_manager = arena_store(
         arena,
         &(bgtask_manager_t) {
-            .tasks = queue_init(TOTAL_THREADS_AVAILABLE, bgtask__internal_t, NULL),
+            .tasks = queue_init(TOTAL_THREADS_AVAILABLE, bgtask__internal_t, arena),
             .arena = NULL
         }, 
         sizeof(bgtask_manager_t)
@@ -117,7 +117,7 @@ void bgtask_manager_pass_task(bgtask_manager_t * const self, const taskconfig_t 
         .storage = config.storage,
         .response_ref = config.result_dest,
     };
-    queue_put(&self->tasks, task);
+    queue_put(&self->tasks, &task, sizeof(task));
 }
 
 

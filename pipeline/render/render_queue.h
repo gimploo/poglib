@@ -29,7 +29,7 @@ renderqueue_t renderqueue_init(void)
         .arena      = arena_init(NULL, 5 * MB),
         .internal   = {
             .instancebuffer     = glinstancebuffer_init(2 * MB),
-            .frame_arena        = arena_init(NULL, 5 * KB)
+            .frame_arena        = arena_init(NULL, 1 * MB)
         },
     };
 }

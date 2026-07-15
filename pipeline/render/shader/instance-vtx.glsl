@@ -21,6 +21,8 @@ uniform mat4 view;
 
 out vec4 color;
 out vec2 uv;
+out vec3 normal;
+out vec3 FragPos;
 
 void main()
 {
@@ -42,5 +44,7 @@ void main()
     );
 
     vec3 transformed_pos = (rot * (v_vtx * data.scale.xyz)) + data.translation.xyz;
+    FragPos = transformed_pos;
+    normal = v_normal;
     gl_Position = projection * view * vec4(transformed_pos, 1.0);
 }

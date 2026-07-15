@@ -24,7 +24,7 @@ colliderbatchqueue_t colliderbatchqueue(arena_t *const arena)
     ASSERT(arena);
     colliderbatchqueue_t result = {0};
     result.queue = queue_init(100, ecs_component_collider_t *, arena);
-    result.arena = arena_init(arena, KB);
+    result.arena = arena_init(arena, 1 * MB);
     return result;
 }
 
@@ -32,7 +32,7 @@ colliderbatchqueue_t colliderbatchqueue(arena_t *const arena)
 void colliderbatchqueue_add(colliderbatchqueue_t *const self, const ecs_component_collider_t *const collider)
 {
     ASSERT(self);
-    queue_put(&self->queue, collider);
+    queue_put(&self->queue, collider, sizeof(ecs_component_collider_t *));
 }
 
 i32 colliderbatchqueue__internal_qsort_compare(const void *const x, const void *const y)
