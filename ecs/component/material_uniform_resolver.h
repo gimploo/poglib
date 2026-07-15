@@ -12,14 +12,15 @@
 typedef enum ecs_uniform_supported_types {
 
     ECS_UNIFORM_CAMERA_PROJECTION       = 0,
-    ECS_UNIFORM_CAMERA_VIEW             = 1,
-    ECS_UNIFORM_MODEL_TEXTURE           = 2,
-    ECS_UNIFORM_LIGHT_AMIBENT           = 3,
-    ECS_UNIFORM_LIGHT_COLOR             = 4,
-    ECS_UNIFORM_LIGHT_POSITION          = 5,
-    ECS_UNIFORM_TRANSFORM               = 6,
-    ECS_UNIFORM_MODEL_BONES             = 7,
-    ECS_UNIFORM_MATERIAL_COLOR          = 8,
+    ECS_UNIFORM_CAMERA_VIEW,
+    ECS_UNIFORM_CAMERA_POSITION,
+    ECS_UNIFORM_MODEL_TEXTURE,
+    ECS_UNIFORM_LIGHT_AMIBENT,
+    ECS_UNIFORM_LIGHT_COLOR,
+    ECS_UNIFORM_LIGHT_POSITION,
+    ECS_UNIFORM_TRANSFORM,
+    ECS_UNIFORM_MODEL_BONES,
+    ECS_UNIFORM_MATERIAL_COLOR,
     ECS_UNIFORM_SUPPORTED_COUNT,
 
 } ecs_uniform_supported_types;
@@ -27,6 +28,7 @@ typedef enum ecs_uniform_supported_types {
 const str_t ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SUPPORTED_COUNT] = {
     [ECS_UNIFORM_CAMERA_PROJECTION]         = str_lit("projection"),
     [ECS_UNIFORM_CAMERA_VIEW]               = str_lit("view"),
+    [ECS_UNIFORM_CAMERA_POSITION]           = str_lit("camerapos"),
     [ECS_UNIFORM_MODEL_TEXTURE]             = str_lit("u_texture"),
     [ECS_UNIFORM_LIGHT_AMIBENT]             = str_lit("light.ambient"),
     [ECS_UNIFORM_LIGHT_COLOR]               = str_lit("light.color"),
@@ -80,6 +82,9 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
         gluniform_value_t value = {0};
         switch(uniform_idx)
         {
+            case ECS_UNIFORM_CAMERA_POSITION:
+                value.vec3 = active_camera->position;
+            break;
             case ECS_UNIFORM_CAMERA_PROJECTION:
                 value.mat4 = projection;
             break;
@@ -96,7 +101,7 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
                 value.vec4 = (vec4f_t){1.0f, 1.0f, 1.0f, 1.0f};
             break;
             case ECS_UNIFORM_LIGHT_POSITION:
-                value.vec3 = (vec3f_t){1.0f, 1.0f, 1.0f};
+                value.vec3 = (vec3f_t){0.f, 20.0f, 0.f};
             break;
             case ECS_UNIFORM_TRANSFORM:
                 value.mat4 = model_transform;

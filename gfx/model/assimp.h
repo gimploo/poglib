@@ -418,19 +418,23 @@ gltexture2d_t assimp__internal_load_texture_from_path(glmodel_t *self, const str
 
 glmodel_t glmodel_init(const str_t filepath) 
 {
-    glmodel_t o = {0};
-    o.filepath  = filepath;
-    o.arena     = arena_init(NULL, 50 * MB);
-    o.meshes    = list_init(glmesh_t, o.arena);
-    o.textures  = list_init(model_texture_t, o.arena);
-    o.colors    = list_init(vec4f_t, o.arena);
-    o.bone_infos = list_init(boneinfo_t, o.arena);
-    o.animator  = animator_init(o.arena);
-    o.current_time = 0.0f;
-    o.internal.root_channel_idx = -1;
-    o.internal.directory_path = str_get_directory_path(filepath.data);
+    arena_t *const arena  = arena_init(NULL, 50 * MB);
+    glmodel_t o = {
+        .arena          = arena,
+        .filepath       = filepath,
+        .meshes         = list_init(glmesh_t, arena),
+        .textures       = list_init(model_texture_t, arena),
+        .colors         = list_init(vec4f_t, arena),
+        .bone_infos     = list_init(boneinfo_t, arena),
+        .animator       = animator_init(arena),
+        .current_time   = 0.0f,
+        .internal = {
+            .root_channel_idx   = -1,
+            .directory_path     = str_get_directory_path(filepath),
+        },
+    };
 
-    logging("Loading model %s ...", filepath);
+    logging("Loading model "STR_FMT" ...", STR_ARG(filepath));
 
     // Assimp: import model
     const struct aiScene *scene = aiImportFile(filepath.data, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_LimitBoneWeights | aiProcess_CalcTangentSpace);

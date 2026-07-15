@@ -237,7 +237,7 @@ void assetmanager__internal_upload_model_to_gpu(
 
     list_iterator(&model->meshes, iter) 
     {
-        const glmesh_t * const cpu_mesh = iter;
+        const glmesh_t *const cpu_mesh = iter;
 
         vao_t vao = vao_init();
         vao_bind(&vao);
