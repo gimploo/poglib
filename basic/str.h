@@ -39,7 +39,7 @@ str_t           str_read_file_to_str(arena_t *const arena, const str_t file_path
 str_t           str_cpy_delimiter(str_t *__buffer, char ch);
 bool            str_cmp(const str_t a, const str_t b);
 void            str_cpy(str_t *dest, str_t *source);
-str_t           str_get_directory_path(const char *string);
+str_t           str_get_directory_path(const str_t str);
 str_t           str_join(arena_t *arena, const str_t *part1, const char *part2);
 str_views_t     str_split(const str_t buffer, const char separator, arena_t *const arena);
 str_t           str_trim(const str_t buffer);
@@ -197,20 +197,20 @@ u32 str_is_word_in___buffer(str_t *word, str_t *__buffer)
     return false;
 }
 
-str_t str_get_directory_path(const char *string)
+str_t str_get_directory_path(const str_t string)
 {
-    assert(string);
-    const u32 len = strlen(string);
+    ASSERT(string.len);
+    const u32 len = string.len;
     const char delimiters[2] = { '/', '\\'};
 
     str_t o = {
         .len = 0,
-        .data = (char *)string,
+        .data = (char *)string.data,
     };
 
     for (u32 i = len; i >= 0; i--)
     {
-        if (string[i] == delimiters[0] || string[i] == delimiters[1]) {
+        if (string.data[i] == delimiters[0] || string.data[i] == delimiters[1]) {
             o.len = i+1; //NOTE: to include the delimiter also
             break;
         }

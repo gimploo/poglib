@@ -26,7 +26,7 @@ renderqueue_t renderqueue_init(void)
 {
     return (renderqueue_t) {
         .buckets    = {0},
-        .arena      = arena_init(NULL, 2 * MB),
+        .arena      = arena_init(NULL, 5 * MB),
         .internal   = {
             .instancebuffer     = glinstancebuffer_init(2 * MB),
             .frame_arena        = arena_init(NULL, 5 * KB)
