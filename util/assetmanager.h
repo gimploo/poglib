@@ -30,6 +30,7 @@ struct assetmanager_t {
     struct {
         u32             asset_idx_generator;
         mpsc_queue_t    gpu_upload_queue;
+        queue_t         asset_loaded_events;
     } internal;
 };
 
@@ -43,6 +44,7 @@ u32                 assetmanager_load_spriteatlas(assetmanager_t *const self, co
 u32                 assetmanager_load_texture(assetmanager_t *self, const str_t filepath);
 u32                 assetmanager_load_glsl_shader(assetmanager_t *self, const str_t vtx_filepath, const str_t frag_filepath, const gluniform_registry_t registry);
 
+queue_t *           assetmanager_get_eventqueue(assetmanager_t *const self);
 const void *        assetmanager_get_assetresource(const assetmanager_t *const self, const asset_type assettype, const u32 assetId);
 gpu_asset_t *       assetmanager_get_gpu_loaded_asset_async(const assetmanager_t *const self, const u32 asset_id);
 
@@ -51,6 +53,13 @@ void                assetmanager_destroy(assetmanager_t *const self);
 
 
 #ifndef IGNORE_ASSETMANAGER_IMPLEMENTATION
+
+typedef struct {
+    enum {
+        ASSET_EVENT_ASSET_LOADED = 1
+    } type;
+    u32 asset_id;
+} asset_event_t;
 
 #define MAX_ASSETS_ALLOWED_PER_TYPE 10
 
@@ -74,7 +83,8 @@ assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
         .gpu_uploaded_assets    = hashtable_init(ASSET_TYPE_COUNT * MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gpu_asset_t), .type = HT_STORAGE_BY_REFERENCE }, arena),
         .internal = {
             .asset_idx_generator    = GL_MESH_PRIMITIVE_TYPE_COUNT,
-            .gpu_upload_queue       = mpsc_queue(arena, MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT)
+            .gpu_upload_queue       = mpsc_queue(arena, MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT),
+            .asset_loaded_events    = queue_init(10, asset_event_t, arena)
         }
     };
     return result;
@@ -288,14 +298,14 @@ void assetmanager__internal_upload_model_to_gpu(
         gltexture2d_upload_to_gpu(&mt->texture);
     }
 
-    logging("Model %s loaded to GPU", model->filepath);
+    logging("Model "STR_FMT" loaded to GPU", STR_ARG(model->filepath));
 
     hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
 }
 
-void assetmanager__internal_process_pending_gpu_tasks(assetmanager_t * const self)
+INTERNAL void assetmanager__internal_process_pending_gpu_tasks(assetmanager_t *const self)
 {
-    mpsc_queue_t *queue = &self->internal.gpu_upload_queue;
+    mpsc_queue_t *const queue = &self->internal.gpu_upload_queue;
 
     while(true) {
         const gpu_asset__internal_upload_task_t *task = (gpu_asset__internal_upload_task_t *)mpsc_queue_get(queue);
@@ -313,12 +323,22 @@ void assetmanager__internal_process_pending_gpu_tasks(assetmanager_t * const sel
             case ASSET_TYPE_GLSL_SHADER:
             default: eprint("asset type async gpu loading functions are not implemented");
         }
+
+        queue_put(
+            &self->internal.asset_loaded_events, 
+            &(asset_event_t) { 
+                .asset_id   = task->asset_id,
+                .type       = ASSET_EVENT_ASSET_LOADED
+            }, 
+            sizeof(asset_event_t)
+        );
     }
 }
 
 void assetmanager_update(assetmanager_t *const self)
 {
     ASSERT(self);
+    queue_clear(&self->internal.asset_loaded_events);
     assetmanager__internal_process_pending_gpu_tasks(self);
 }
 
@@ -763,5 +783,10 @@ u32 assetmanager_load_texture(assetmanager_t *self, const str_t filepath)
     eprint("not implemented");
 }
 
+
+queue_t * assetmanager_get_eventqueue(assetmanager_t *const self)
+{
+    return &self->internal.asset_loaded_events;
+}
 
 #endif

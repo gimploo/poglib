@@ -207,6 +207,7 @@ gltexture2d_t gltexture2d_embedded_init(u8 *buffer, u32 buffer_size)
 {
     GLuint id;
     i32 width, height, bpp;
+    stbi_set_flip_vertically_on_load(true);
     u8 *pixels = (u8 *)stbi_load_from_memory(
         buffer, buffer_size, &width, &height, &bpp, STBI_default
     );

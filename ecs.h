@@ -12,8 +12,6 @@
 #include "poglib/poggen.h"
 #include "poglib/ecs/system.h"
 
-ecs_t * global_ecs = NULL;
-
 ecs_t *         ecs_init(void);
 
 u32                 ecs_entity_add(ecs_t * const self, const ecs_componentbundle_t component_config);
@@ -34,6 +32,7 @@ void                ecs_patch_entity(ecs_t *const self, const u32 entity_id, con
 void                ecs_save_to_file(ecs_t *const self, const str_t filepath);
 bool                ecs_load_savefile(ecs_t *const self, const str_t filepath);
 
+
 ecs_componentbundle_t ecs_entity_get_componentbundle(ecs_t *const self, const u32 entity_id);
 
 void            ecs_update(ecs_t *const self);
@@ -46,7 +45,7 @@ ecs_t * ecs_init(void)
 {
     ASSERT(!global_ecs);
 
-    arena_t *const arena    = arena_init(NULL, 1 * MB);
+    arena_t *const arena    = arena_init(NULL, 2 * MB);
     global_ecs              = arena_reserve(arena, sizeof(ecs_t));
 
     *global_ecs = (ecs_t){
@@ -220,7 +219,7 @@ void ecs_update(ecs_t *const self)
 
 ecs_entity_query_t ecs_entity_query_components(ecs_t *const self, const u32 entity_id, const u32 component_signature)
 {
-    return ecs_componentmanager__internal_query_components(&self->managers.componentmanager, entity_id, component_signature);
+    return ecs_componentmanager__internal__query_components(&self->managers.componentmanager, entity_id, component_signature);
 }
 
 void ecs_destroy(ecs_t *const self)
@@ -359,6 +358,8 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
     file_destroy(&f);
     logging("ECS state saved to file `%.*s`", filepath.len, filepath.data);
 }
+
+
 
 #endif
 

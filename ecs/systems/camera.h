@@ -68,7 +68,7 @@ void ecs_system_camera(ecs_componentmanager_t *const cmp_manager, const ecs_syst
                 ecs_system_camera__internal_update_follow_camera(
                     cmp_manager,
                     camera, 
-                    ecs_componentmanager__internal_query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM)
+                    ecs_componentmanager__internal__query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM)
                 );
             break;
             default: eprint("camera mode not implemented");

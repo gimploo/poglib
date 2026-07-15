@@ -24,7 +24,7 @@ typedef struct {
 
 #define             queue_init(CAPACITY, TYPE, PARENA)                          __impl_queue_init((CAPACITY), sizeof(TYPE), #TYPE, (PARENA))
 
-#define             queue_put(PQUEUE, ELEM)                                     __impl_queue_put((PQUEUE), &(ELEM), sizeof(ELEM))
+void                queue_put(queue_t *const self, const void *const elemaddr, const u64 elem_size);
 #define             queue_get(PQUEUE)                                           __impl_queue_get((PQUEUE)) 
 void                queue_get_in_buffer(queue_t *queue, buffer_t buffer);
 #define             queue_is_empty(PQUEUE)                                      ((PQUEUE)->__start == (PQUEUE)->__end)
@@ -99,14 +99,15 @@ void queue_dump(queue_t *queue)
 
 queue_t __impl_queue_init(u64 capacity, u64 elem_size, const char *elem_type, arena_t * const arena)
 {
-    assert(capacity > 0);
-    assert(elem_type);
-    assert(elem_size > 0);
+    ASSERT(capacity > 0);
+    ASSERT(elem_type);
+    ASSERT(elem_size > 0);
+    ASSERT(arena);
 
     const bool flag = elem_type[strlen(elem_type) - 1] == '*';
     return (queue_t) {
         .len = 0 ,
-        .__data = arena ? arena_reserve(arena, elem_size * capacity) : (u8 *)calloc(capacity, elem_size),
+        .__data = arena_reserve(arena, elem_size * capacity),
         .__start = 0,
         .__end = 0,
         .__capacity = capacity,
@@ -127,22 +128,23 @@ void queue_clear(queue_t *queue)
 
 }
 
-void __impl_queue_put(queue_t *queue, const void *elemaddr, u64 __elem_size)
+void queue_put(queue_t *const self, const void *elemaddr, const u64 elemsize)
 {
-    if (queue == NULL)                  eprint("queue_put: queue argument is null");
+    if (self == NULL)                   eprint("queue_put: queue argument is null");
     if (elemaddr == NULL)               eprint("queue_put: elem argument is null");
-    if (__elem_size != queue->__elem_size)  eprint("expected __elem_size %li but got %li", queue->__elem_size, __elem_size);
+    if (elemsize != self->__elem_size)  eprint("expected elem_size %li but got %li", self->__elem_size, elemsize);
 
-    if (queue_is_full(queue)) eprint("overflow (queue size `%li`)", queue->__capacity);
+    if (queue_is_full(self)) eprint("overflow (queue size `%li`)", self->__capacity);
 
-    // pass by value
-    memcpy(queue->__data + (queue->__end * queue->__elem_size), 
-            elemaddr, queue->__elem_size);
-    queue->len++;
+    void *dest = (self->__data + self->__end * self->__elem_size);
+    if (self->__are_values_pointers)    memcpy(dest, &elemaddr, sizeof(void *));
+    else                                memcpy(dest, elemaddr, self->__elem_size);
 
-    u64 oldpos = queue->__end;
-    queue->__end = (queue->__end + 1) % queue->__capacity;
-    if (queue->__end == queue->__start) queue->__end = oldpos;
+    self->len++;
+
+    u64 oldpos = self->__end;
+    self->__end = (self->__end + 1) % self->__capacity;
+    if (self->__end == self->__start) self->__end = oldpos;
 }
 
 void * __queue_get_value_at_index(const queue_t *queue, const u64 index)
@@ -180,11 +182,9 @@ void * __impl_queue_get(queue_t *queue)
 
 void queue_get_in_buffer(queue_t *queue, buffer_t buffer)
 {
-    if (queue == NULL)                   eprint("queue_get: queue argument is null");
-    if (queue_is_empty(queue))           eprint("underflow");
-    //if (queue->__elem_size <= 8)           eprint("Use normal queue_get() instead");
-    if (buffer.size < queue->__elem_size)  eprint("buffer is too smol, expected %lu but given %lu", queue->__elem_size, buffer.size);
-    if (buffer.size == 8)                eprint("passed in buffer is a pointer");
+    if (queue == NULL)                      eprint("queue_get: queue argument is null");
+    if (queue_is_empty(queue))              eprint("underflow");
+    if (buffer.size < queue->__elem_size)   eprint("buffer is too smol, expected %lu but given %u", queue->__elem_size, buffer.size);
 
     void *elem_pos = NULL;
     if (queue->__are_values_pointers)

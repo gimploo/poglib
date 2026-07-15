@@ -28,7 +28,7 @@ typedef struct poggen_t {
     poggen_config_t     config;
     hashtable_t         scenes;
     scene_t             *current_scene;
-    arena_t            *arena;
+    arena_t             *arena;
 
     struct {
         application_t *app;
@@ -56,6 +56,7 @@ window_t *                          poggen_get_window(const poggen_t *self);
 physics_sys_jolt_event_queue_t *    poggen_get_physics_collision_events(const poggen_t * const self);
 
 void                                poggen_update_commandqueue_registry(poggen_t *const self, const commandregistry_t registry);
+void                                poggen_ecs_generate_entities_from_meshes(poggen_t *const self, const str_t filepath);
 
 void                                poggen_tick(poggen_t *const self);
 void                                poggen_update(poggen_t *const self);
