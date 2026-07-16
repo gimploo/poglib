@@ -195,6 +195,7 @@ struct ecs_component_collider_t {
         JPH_CharacterVirtual        *kinematic_body;
         vec3f_t                     position;
         versors                     orientation;
+        u32                         entity_id;
         vec3f_t                     scale;
 #ifdef DEBUG
         JPH_Shape                   *shape;
@@ -208,13 +209,9 @@ struct ecs_component_collider_t {
 struct ecs_collider_jolt_userdata_t {
     JPH_ObjectLayer objectlayertype;
     collider_shape_dimension_t dimension;
-
-#ifdef DEBUG
     struct {
         ecs_component_collider_t *ecs_collider;
     } internal;
-#endif
-
 };
 
 
