@@ -10,9 +10,7 @@ bool glb_export_scene(arena_t *arena, ecs_t *ecs, u32 model_asset_id, str_t outp
 
 #ifndef IGNORE_GLB_EXPORT_IMPLEMENTATION
 
-#include <poglib/external/cglm/struct.h>
-
-static mat4s glb_export__compose_matrix(vec3s pos, versors quat, vec3s scale)
+INTERNAL mat4s glb_export__compose(vec3s pos, versors quat, vec3s scale)
 {
     mat4s out = glms_mat4_identity();
     out = glms_translate(out, pos);
@@ -21,20 +19,20 @@ static mat4s glb_export__compose_matrix(vec3s pos, versors quat, vec3s scale)
     return out;
 }
 
-static void glb_export__set_node_transform(struct aiNode *node, mat4s m)
+INTERNAL void glb_export__set_transform(struct aiNode *node, mat4s m)
 {
     mat4s transposed = glms_mat4_transpose(m);
     memcpy(&node->mTransformation, &transposed.raw, sizeof(mat4s));
 }
 
-static mat4s glb_export__get_node_transform(const struct aiNode *node)
+INTERNAL mat4s glb_export__get_transform(const struct aiNode *node)
 {
     mat4s out;
     memcpy(&out.raw, &node->mTransformation, sizeof(mat4s));
     return glms_mat4_transpose(out);
 }
 
-static void glb_export__traverse_node(
+INTERNAL void glb_export__traverse(
     struct aiNode *node,
     mat4s parent_world,
     vec3s *mesh_positions,
@@ -43,7 +41,7 @@ static void glb_export__traverse_node(
     bool *mesh_found,
     u32 mesh_count)
 {
-    mat4s m = glb_export__get_node_transform(node);
+    mat4s m = glb_export__get_transform(node);
     mat4s world = glms_mat4_mul(parent_world, m);
 
     if (node->mNumMeshes > 0)
@@ -55,12 +53,12 @@ static void glb_export__traverse_node(
             u32 mesh_idx = node->mMeshes[i];
             if (mesh_idx < mesh_count && mesh_found[mesh_idx])
             {
-                mat4s new_world = glb_export__compose_matrix(
+                mat4s new_world = glb_export__compose(
                     mesh_positions[mesh_idx],
                     mesh_orientations[mesh_idx],
                     mesh_scales[mesh_idx]);
                 mat4s new_m = glms_mat4_mul(parent_inv, new_world);
-                glb_export__set_node_transform(node, new_m);
+                glb_export__set_transform(node, new_m);
                 break;
             }
         }
@@ -68,7 +66,7 @@ static void glb_export__traverse_node(
 
     for (u32 i = 0; i < node->mNumChildren; i++)
     {
-        glb_export__traverse_node(node->mChildren[i], world, mesh_positions, mesh_orientations, mesh_scales, mesh_found, mesh_count);
+        glb_export__traverse(node->mChildren[i], world, mesh_positions, mesh_orientations, mesh_scales, mesh_found, mesh_count);
     }
 }
 
@@ -87,19 +85,22 @@ bool glb_export_scene(arena_t *arena, ecs_t *ecs, u32 model_asset_id, str_t outp
     vec3s *mesh_scales = arena_reserve(arena, mesh_count * sizeof(vec3s));
     bool *mesh_found = arena_reserve(arena, mesh_count * sizeof(bool));
 
-    slot_iterator(&ecs->managers.entitymanager.entities, iter)
-    {
-        const ecs_entity_t *const entity = iter;
-        if (!slot_iterator_index) continue;
-        if (!(entity->component_signature & (ECS_CMP_MESH | ECS_CMP_TRANSFORM))) continue;
+    ecs_componentmanager_t *cmp = &ecs->managers.componentmanager;
+    slot_t *mesh_pool = slot_get_value(&cmp->componentpool_slots, ECS_CMP_MESH_IDX);
 
-        const ecs_entity_query_t q = ecs_entity_query_components(ecs, entity->id, ECS_CMP_MESH | ECS_CMP_TRANSFORM);
-        const ecs_component_mesh_t *mesh_cmp = q.entity_cmp_data[ECS_CMP_MESH_IDX];
-        if (!mesh_cmp || !mesh_cmp->is_scene_instanced) continue;
+    slot_iterator(mesh_pool, iter)
+    {
+        const ecs_component_poolentry_t *entry = iter;
+        const ecs_component_mesh_t *mesh_cmp = (ecs_component_mesh_t *)entry->entity_cmpdata;
+        if (!entry->is_active || !mesh_cmp->is_scene_instanced) continue;
         if (mesh_cmp->asset_id != model_asset_id) continue;
         if (mesh_cmp->mesh_idx >= mesh_count) continue;
 
+        ecs_entity_query_t q = ecs_componentmanager__internal__query_components(
+            cmp, entry->entity_id, ECS_CMP_TRANSFORM);
         const ecs_component_transform_t *t = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+        if (!t) continue;
+
         mesh_found[mesh_cmp->mesh_idx] = true;
         mesh_positions[mesh_cmp->mesh_idx] = (vec3s){ .x = t->position.x, .y = t->position.y, .z = t->position.z };
         mesh_orientations[mesh_cmp->mesh_idx] = (versors){ .x = t->orientation.x, .y = t->orientation.y, .z = t->orientation.z, .w = t->orientation.w };
@@ -114,11 +115,11 @@ bool glb_export_scene(arena_t *arena, ecs_t *ecs, u32 model_asset_id, str_t outp
 
     if (!any_found) return false;
 
-    mat4s root_world = glb_export__get_node_transform(scene->mRootNode);
+    mat4s root_world = glb_export__get_transform(scene->mRootNode);
 
     for (u32 i = 0; i < scene->mRootNode->mNumChildren; i++)
     {
-        glb_export__traverse_node(
+        glb_export__traverse(
             scene->mRootNode->mChildren[i],
             root_world,
             mesh_positions,
