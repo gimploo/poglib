@@ -50,6 +50,12 @@ Use **Jolt Physics raycasts** against oriented bounding box (OBB) colliders plac
 
 The workbench needs its own Jolt object layer so OBB bodies don't interact with gameplay physics.
 
+**Why this is needed**: Jolt's `JPH_BroadPhaseLayerInterfaceTable` is allocated *once* during `physics_sys_jolt_start_simulation()` with a fixed capacity equal to the current `objectlayer_count`. It cannot be resized or appended to after the physics system is running. `workbench_init()` runs *after* the game has already started physics (the broadphase table is already locked), so the workbench has no way to slot in a new layer at that point.
+
+The alternative — declaring `WORKBENCH_OBJECT_LAYER` up front inside `poggen_register_physics_rules()` in `src/main.c` — would work mechanically, but it couples vedanta's game code to an internal concern of poglib's workbench. The whole point of this design is that `main.c` and `game.h` remain unaware that the workbench exists.
+
+Pre-sizing the table to `MAX_COLLISION_INTERACTABILITY_ENTRIES` (32) at creation time reserves headroom, so the workbench can register its layer dynamically at `workbench_init()` without any game-code change. The cost is a fixed ~32-entry table instead of ~7 entries — negligible, and it buys back the decoupling.
+
 **Problem**: `poggen_register_physics_rules()` in `src/main.c` currently creates broadphase tables with exact capacity (`objectlayer_count`). Adding layers after `physics_sys_jolt_start_simulation()` is impossible because the `JPH_BroadPhaseLayerInterfaceTable` is fixed-size.
 
 **Solution**: In `physics_sys_jolt_set_interaction_rules()` (jolt-wrapper.h), resize the table creation to use `MAX_COLLISION_INTERACTABILITY_ENTRIES` (32) instead of the runtime count. This reserves capacity for dynamic layer registration. Add a new function:
@@ -187,8 +193,6 @@ Since OBB bodies are permanent, entity add/delete during editing must also manag
 | `workbench_editor_delete_entity()` (Delete) | Destroy OBB body for deleted entity |
 | Undo (restore deleted) | Re-create OBB body (body already destroyed) |
 
-**Edge case — ghost bodies**: If an OBB body's entity_id no longer exists in ECS (e.g., entity deleted but body not cleaned up), the picking raycast might return a stale entity_id. Mitigation: after `GetUserData()`, validate the entity_id exists in the ECS entity hashtable before using it.
-
 ---
 
 ## 4. Performance Implications
@@ -236,7 +240,6 @@ Since OBB bodies are permanent, entity add/delete during editing must also manag
 | Risk | Severity | Mitigation |
 |------|----------|------------|
 | OBB shapes don't match entity visuals | Low | Scale = half-extent is generous; can add scaling factor later if needed |
-| Stale body ID after entity delete | Medium | Validate entity_id exists in ECS before using picked result |
 | Broadphase table resize breaks existing collision | Low | Only increases capacity; existing mappings unchanged |
 | `ObjectLayerFilter_SetProcs` global conflict | Low | Single proc with mode-switching covers all use cases; no other code uses this API |
 | OBB body not updated after transform edit | Low | Selection is per-click and OBB is for approximate picking; if entity moves significantly, re-selecting will use new body position (but body doesn't auto-update — acceptable for v1) |
