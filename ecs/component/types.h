@@ -70,6 +70,7 @@ typedef struct ecs_component_mesh_t ecs_component_mesh_t;
 struct ecs_component_mesh_t {
     u32 asset_id;
     u32 mesh_idx;
+    bool is_scene_instanced;
 };
 
 /*========================= INPUT ====================================== */

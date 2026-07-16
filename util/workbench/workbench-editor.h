@@ -8,6 +8,7 @@
 #include "poglib/util/asset.h"
 #include "poglib/util/assetmanager.h"
 #include <poglib/ecs.h>
+#include <poglib/util/glb_export.h>
 #include "./ui/workbench-ui.h"
 
 
@@ -809,6 +810,44 @@ void workbench_editor_save_to_file(const workbench_t *const self, ecs_t *const e
     (void)self;
     workbench_editor_savechanges();
     ecs_save_to_file(ecs, str("./save/save.ecs"));
+}
+
+void workbench_editor_export_glb(ecs_t *const ecs)
+{
+    workbench_editor_savechanges();
+
+    u32 exported_assets[64] = {0};
+    u32 exported_count = 0;
+
+    slot_iterator(&ecs->managers.entitymanager.entities, iter) {
+        const ecs_entity_t *const entity = iter;
+        if (!slot_iterator_index) continue;
+        if (!(entity->component_signature & (ECS_CMP_MESH | ECS_CMP_TRANSFORM))) continue;
+
+        const ecs_entity_query_t q = ecs_entity_query_components(ecs, entity->id, ECS_CMP_MESH | ECS_CMP_TRANSFORM);
+        const ecs_component_mesh_t *mesh = q.entity_cmp_data[ECS_CMP_MESH_IDX];
+        if (!mesh || !mesh->is_scene_instanced) continue;
+
+        bool already_exported = false;
+        for (u32 i = 0; i < exported_count; i++) {
+            if (exported_assets[i] == mesh->asset_id) { already_exported = true; break; }
+        }
+        if (already_exported) continue;
+
+        if (exported_count >= 64) break;
+        exported_assets[exported_count++] = mesh->asset_id;
+
+        const glmodel_t *model = (glmodel_t *)assetmanager_get_assetresource(
+            &global_engine->systems.assets, ASSET_TYPE_MODEL, mesh->asset_id);
+        if (!model) continue;
+
+        char export_buf[512] = {0};
+        u32 stem_len = model->filepath.len;
+        if (stem_len > 4 && model->filepath.data[stem_len - 4] == '.') stem_len -= 4;
+        snprintf(export_buf, sizeof(export_buf), "%.*s_exported.glb", stem_len, model->filepath.data);
+        str_t export_path = str_from_cstr(export_buf, (u32)strlen(export_buf));
+        glb_export_scene(ecs, mesh->asset_id, export_path);
+    }
 }
 
 #endif
