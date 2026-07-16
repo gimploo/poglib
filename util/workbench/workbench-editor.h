@@ -15,6 +15,7 @@ void            workbench_editor_update(void);
 void                workbench_editor_delete_entity(void);
 void                workbench_editor_copypaste_entity(void);
 void                workbench_editor_select_closest_entity(void);
+void                workbench_editor_select_player(void);
 void                workbench_editor_action_history_push(workbench_t *const self, const workbench_editor_ecs_action_t action);
 void                workbench_editor_action_history_pop(workbench_t *const self, ecs_t *const ecs);
 void                workbench_editor_savechanges(void);
@@ -575,6 +576,7 @@ INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collide
     ecs_component_collider_t *collider  = query.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
 
     if (!collider) return;
+    if (collider->internal.kinematic_body) return;
 
     //NOTE: updating the shape of the collider
     {
@@ -693,6 +695,12 @@ void workbench_editor_select_closest_entity(void)
             workbench_editor__internal__select_entity_id(global_workbench, global_ecs, global_workbench->editor.mouse_closest_to_entity_id);
         }
     }
+}
+
+void workbench_editor_select_player(void)
+{
+    workbench_editor__internal__select_entity_id(
+        global_workbench, global_ecs, WORKBENCH_RESERVED_ENTITY_ID_COUNT);
 }
 
 

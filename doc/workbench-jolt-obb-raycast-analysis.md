@@ -97,13 +97,19 @@ No filter. The closest collider hit is the entity under the cursor. The existing
 
 The old `workbench_editor__internal_closest_point_on_ray` helper is removed — it's no longer used.
 
-### 3.3 Limitation — Colliderless Entities Not Pickable
+### 3.3 Limitation — Colliderless & Kinematic Entities Not Raycast-Pickable
 
-Entities without an `ECS_CMP_COLLIDER` component (e.g., decorative props, lights, markers) have no body in Jolt's broadphase and therefore cannot be picked via raycast. This is an accepted trade-off for v1.
+Entities without an `ECS_CMP_COLLIDER` component (e.g., decorative props, lights, markers) have no body in Jolt's broadphase and therefore cannot be picked via raycast.
 
-**Why this is acceptable**: the workbench editor is primarily used to place and adjust gameplay-relevant entities (walls, ground, obstacles, vaultables) — all of which have colliders. Decorative-only entities are typically placed once and rarely need re-selection.
+Entities with a **Kinematic** collider (`JPH_MotionType_Kinematic`, e.g., the player) use `JPH_CharacterVirtual` which is also **not in the broadphase** — `CastRay` cannot hit them.
 
-**Future mitigation** (see §5): if colliderless entity picking becomes needed, an OBB collider can be added to those entities on a case-by-case basis, or a math-based fallback can be reintroduced for the colliderless subset only.
+**Accepted for v1**: the workbench editor is primarily used to place and adjust gameplay-relevant entities (walls, ground, obstacles, vaultables) — all of which have Static/Dynamic colliders.
+
+### 3.4 Player Selection via Hotkey
+
+Since the player (Kinematic/`CharacterVirtual`) can't be raycast-picked, pressing **P** auto-selects the player entity. The player's entity ID is `WORKBENCH_RESERVED_ENTITY_ID_COUNT` — a shared convention between poglib and vedanta (`collision-scene.h` sets `.player_id = WORKBENCH_RESERVED_ENTITY_ID_COUNT`).
+
+This reuses the existing `workbench_editor__internal__select_entity_id()` path — the player gets the same gizmo, transform sliders, and orbit-camera treatment as any other entity. A kinematic guard was added to `workbench_editor__internal_update_position_and_rotation_of_collider()` to skip the Jolt `SetPositionAndRotation` call for `CharacterVirtual` bodies (which have no `body_id`), matching the existing guard in the scale-apply function.
 
 ---
 
@@ -141,7 +147,9 @@ Entities without an `ECS_CMP_COLLIDER` component (e.g., decorative props, lights
 | `ecs/component/types.h` | Add `entity_id` to `ecs_component_collider_t.internal`; make `ecs_collider` pointer in `ecs_collider_jolt_userdata_t` always available (remove DEBUG guard). |
 | `ecs/component/colliderbatchqueue.h` | `upload_to_jolt` always sets `.internal.ecs_collider` (no DEBUG guard). `colliderbatchqueue_add` unchanged. |
 | `ecs/component.h` | Set `collider->internal.entity_id = entity_id` at component creation, before adding to batch queue. |
-| `util/workbench/workbench-editor.h` | Replace `check_mouse_closest_entity()` point-distance loop with single unfiltered `physics_sys_jolt_raycast` + `userdata->internal.ecs_collider->internal.entity_id` read. Remove `workbench_editor__internal_closest_point_on_ray`. |
+| `util/workbench/workbench-editor.h` | Replace `check_mouse_closest_entity()` point-distance loop with single unfiltered `physics_sys_jolt_raycast` + `userdata->internal.ecs_collider->internal.entity_id` read. Remove `workbench_editor__internal_closest_point_on_ray`. Add `workbench_editor_select_player()` (P hotkey). Add kinematic guard to `update_position_and_rotation_of_collider`. |
+| `util/workbench/common.h` | Add `WORKBENCH_ACTION_TYPE_KEYBOARD_SELECT_PLAYER` to action enum. |
+| `util/workbench.h` | Register P key binding; dispatch to `workbench_editor_select_player()` in `workbench_update`. |
 | *(vedanta)* | **No changes** |
 
 ---

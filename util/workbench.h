@@ -357,6 +357,13 @@ workbench_t * workbench_init(arena_t *const arena)
                         .main       = SDL_SCANCODE_S,
                         .trigger    = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
                     }
+                },
+                [WORKBENCH_ACTION_TYPE_KEYBOARD_SELECT_PLAYER] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
+                    .sdl_keyboard_key = {
+                        .main = SDL_SCANCODE_P,
+                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
+                    }
                 }
             },
         }
@@ -632,6 +639,7 @@ void workbench_update(const f32 dt)
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY))          workbench_editor_delete_entity();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_UNDO))                            workbench_editor_action_history_pop(global_workbench, global_ecs);
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_SAVE))                            workbench_editor_save_to_file(global_workbench, global_ecs);
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_SELECT_PLAYER))          workbench_editor_select_player();
 
     workbench_editor_update();
 }
