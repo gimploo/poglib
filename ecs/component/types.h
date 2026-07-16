@@ -150,6 +150,7 @@ typedef enum {
     COLLIDER_SHAPE_TYPE_SPHERE      = 2,
     COLLIDER_SHAPE_TYPE_CUBE        = 3,
     COLLIDER_SHAPE_TYPE_CYLINDER    = 4,
+    COLLIDER_SHAPE_TYPE_MESH        = 5,
     COLLIDER_SHAPE_TYPE_COUNT,
 } collider_shape_type;
 
@@ -171,6 +172,16 @@ typedef union {
         f32 radius;
         f32 half_height;
     } cylinder;
+    struct {
+        struct {
+            u32 count;
+            vec3f_t *data;
+        } vtx;
+        struct {
+            u32 count;
+            u32 *data;
+        } idx;
+    } mesh;
 } collider_shape_dimension_t;
 
 struct ecs_component_collider_t {
@@ -183,6 +194,7 @@ struct ecs_component_collider_t {
         JPH_CharacterVirtual        *kinematic_body;
         vec3f_t                     position;
         versors                     orientation;
+        vec3f_t                     scale;
 #ifdef DEBUG
         JPH_Shape                   *shape;
 #endif

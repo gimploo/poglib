@@ -142,6 +142,7 @@ void ecs_component__internal_bundle_validate_and_initalize_internals(ecs_compone
                 const ecs_component_transform_t t = config->component[ECS_CMP_TRANSFORM_IDX].transform;
                 config->component[ECS_CMP_COLLIDER_IDX].collider.internal.orientation   = t.orientation;
                 config->component[ECS_CMP_COLLIDER_IDX].collider.internal.position      = t.position;
+                config->component[ECS_CMP_COLLIDER_IDX].collider.internal.scale         = t.scale;
 
             } break;
 

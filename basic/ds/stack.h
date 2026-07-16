@@ -24,9 +24,8 @@ typedef struct stack_t {
 
 #define             stack_init(CAPACITY, TYPE, PARENA)\
                         stack__internal_init((CAPACITY), #TYPE, sizeof(TYPE), (PARENA), _Alignof(TYPE))
+void                stack_push(stack_t *const stack, const void *const elem_ref, const u64 elem_size);
 void *              stack_peek(const stack_t * const self);
-#define             stack_push(PSTACK, ELEM)\
-                        stack__internal_push((PSTACK), (void *)&(ELEM), sizeof(ELEM))
 void                stack_pop(stack_t *);
 #define             stack_is_empty(pstack)\
                         ((pstack)->__top == -1 ? true : false)
@@ -65,7 +64,7 @@ stack_t stack__internal_init(const u64 capacity, const char *elem_type, const u3
 }
 
 
-void stack__internal_push(stack_t *stack, void *elem_ref, u64 elem_size)
+void stack_push(stack_t *const stack, const void *const elem_ref, const u64 elem_size)
 {
     // NOTE: since sizeof void * is 8 bytes and maximum size of a primitive data type 
     // available in c is also 8 bytes, having the array hold it by value is enough,
@@ -78,7 +77,8 @@ void stack__internal_push(stack_t *stack, void *elem_ref, u64 elem_size)
     if (elem_size != stack->__elem_size)            eprint("trying to push a value of size %lu to slot of size %lu", elem_size, stack->__elem_size);
 
     u8 *arr = (u8 *)stack->__data + (++stack->__top * elem_size); 
-    memcpy(arr, elem_ref, elem_size);
+    if (stack->__are_values_pointers)   memcpy(arr, &elem_ref, elem_size);
+    else                                memcpy(arr, elem_ref, elem_size);
 
     stack->len = stack->__top + 1;
 

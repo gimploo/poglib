@@ -92,6 +92,43 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
             case COLLIDER_SHAPE_TYPE_CYLINDER:
                 shape = (JPH_Shape *)JPH_CylinderShape_Create(collider->dim.cylinder.half_height, collider->dim.cylinder.radius);
             break;
+            case COLLIDER_SHAPE_TYPE_MESH:
+            {
+                ASSERT(collider->motion_type == JPH_MotionType_Static);
+                const u32 vtx_count = collider->dim.mesh.vtx.count;
+                const u32 tri_count = collider->dim.mesh.idx.data 
+                    ? collider->dim.mesh.idx.count / 3 
+                    : vtx_count / 3;
+
+                vec3f_t *scaled_vtx = arena_reserve(self->arena, vtx_count * sizeof(vec3f_t));
+                for (u32 i = 0; i < vtx_count; i++) {
+                    scaled_vtx[i].x = collider->dim.mesh.vtx.data[i].x * collider->internal.scale.x;
+                    scaled_vtx[i].y = collider->dim.mesh.vtx.data[i].y * collider->internal.scale.y;
+                    scaled_vtx[i].z = collider->dim.mesh.vtx.data[i].z * collider->internal.scale.z;
+                }
+
+                JPH_IndexedTriangle *const tris = arena_reserve(self->arena, tri_count * sizeof(JPH_IndexedTriangle));
+                for (u32 i = 0; i < tri_count; i++) {
+                    tris[i] = (JPH_IndexedTriangle){
+                        .i1 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 0] : i * 3 + 0,
+                        .i2 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 1] : i * 3 + 1,
+                        .i3 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 2] : i * 3 + 2,
+                    };
+                }
+
+                JPH_MeshShapeSettings *settings = JPH_MeshShapeSettings_Create2(
+                    (const JPH_Vec3 *)scaled_vtx,
+                    vtx_count,
+                    tris,
+                    tri_count
+                );
+                JPH_MeshShapeSettings_Sanitize(settings);
+                shape = (JPH_Shape *)JPH_MeshShapeSettings_CreateShape(settings);
+                JPH_ShapeSettings_Destroy((JPH_ShapeSettings *)settings);
+
+                arena_giveback(self->arena, scaled_vtx, vtx_count * sizeof(vec3f_t));
+                arena_giveback(self->arena, tris, tri_count * sizeof(JPH_IndexedTriangle));
+            } break;
 
             default: eprint("Collider shape type not accounted for here");
         }
