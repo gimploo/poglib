@@ -1,5 +1,6 @@
 #pragma once
 #include <poglib/ecs.h>
+#include "poglib/basic/runtime-ctx.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/external/joltc/include/joltc.h"
 #include "poglib/gui.h"
@@ -82,6 +83,40 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
     global_workbench->editor.mouse_closest_to_entity_id = picked;
 }
 
+INTERNAL void workbench_editor__internal__scale_mesh_collider(ecs_component_collider_t *const collider, const ecs_component_transform_t transform)
+{
+    const u32 vtx_count = collider->dim.mesh.vtx.count;
+    const u32 tri_count = collider->dim.mesh.idx.data 
+        ? collider->dim.mesh.idx.count / 3 
+        : vtx_count / 3;
+
+    vec3f_t *const scaled_vtx = stackarena_push(&global_runtimectx->stackarena, vtx_count * sizeof(vec3f_t));
+    for (u32 i = 0; i < vtx_count; i++) {
+        scaled_vtx[i].x = collider->dim.mesh.vtx.data[i].x * transform.scale.x;
+        scaled_vtx[i].y = collider->dim.mesh.vtx.data[i].y * transform.scale.y;
+        scaled_vtx[i].z = collider->dim.mesh.vtx.data[i].z * transform.scale.z;
+    }
+
+    JPH_IndexedTriangle *tris = stackarena_push(&global_runtimectx->stackarena, tri_count * sizeof(JPH_IndexedTriangle));
+    for (u32 i = 0; i < tri_count; i++) {
+        tris[i] = (JPH_IndexedTriangle){
+            .i1 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 0] : i * 3 + 0,
+            .i2 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 1] : i * 3 + 1,
+            .i3 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 2] : i * 3 + 2,
+        };
+    }
+
+    JPH_MeshShapeSettings *settings = JPH_MeshShapeSettings_Create2((const JPH_Vec3 *)scaled_vtx, vtx_count, tris, tri_count);
+    JPH_MeshShapeSettings_Sanitize(settings);
+    JPH_Shape *newShape = (JPH_Shape *)JPH_MeshShapeSettings_CreateShape(settings);
+    JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, newShape, false, JPH_Activation_DontActivate);
+    JPH_Shape_Destroy(newShape);
+    JPH_ShapeSettings_Destroy((JPH_ShapeSettings *)settings);
+
+    stackarena_pop(&global_runtimectx->stackarena, tri_count * sizeof(JPH_IndexedTriangle));
+    stackarena_pop(&global_runtimectx->stackarena, vtx_count * sizeof(vec3f_t));
+}
+
 INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(void)
 {
     const u32 entity_id                             = global_workbench->editor.current_selected_entity_id;
@@ -116,6 +151,9 @@ INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(v
             JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
             JPH_Shape_Destroy((JPH_Shape *)newShape);
        } break;
+        case COLLIDER_SHAPE_TYPE_MESH: 
+            workbench_editor__internal__scale_mesh_collider(collider, *transform);
+        break;
 
       default: eprint("collider shape type not accounted for");
     }
@@ -762,7 +800,7 @@ void workbench_editor_action_history_push(workbench_t *const self, const workben
         stack_clear(&self->editor.workbench_editor_action_history);
     }
 
-    stack_push(&self->editor.workbench_editor_action_history, action);
+    stack_push(&self->editor.workbench_editor_action_history, &action, sizeof(action));
 }
 
 INTERNAL void workbench_editor__internal__slider_on_release(void)
@@ -810,5 +848,6 @@ void workbench_editor_save_to_file(const workbench_t *const self, ecs_t *const e
     workbench_editor_savechanges();
     ecs_save_to_file(ecs, str("./save/save.ecs"));
 }
+
 
 #endif
