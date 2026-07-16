@@ -162,12 +162,12 @@ typedef struct {
 		cgltf_write_line(context, "}"); }
 
 #ifndef CGLTF_CONSTS
-#define GlbHeaderSize 12
-#define GlbChunkHeaderSize 8
-#define GlbVersion 2
-#define GlbMagic 0x46546C67
-#define GlbMagicJsonChunk 0x4E4F534A
-#define GlbMagicBinChunk 0x004E4942
+static const cgltf_size GlbHeaderSize = 12;
+static const cgltf_size GlbChunkHeaderSize = 8;
+static const uint32_t GlbVersion = 2;
+static const uint32_t GlbMagic = 0x46546C67;
+static const uint32_t GlbMagicJsonChunk = 0x4E4F534A;
+static const uint32_t GlbMagicBinChunk = 0x004E4942;
 #define CGLTF_CONSTS
 #endif
 
@@ -1115,10 +1115,6 @@ static void cgltf_write_glb(FILE* file, const void* json_buf, const cgltf_size j
 	char chunk_header[GlbChunkHeaderSize];
 	char json_pad[3] = { 0x20, 0x20, 0x20 };
 	char bin_pad[3] = { 0, 0, 0 };
-	uint32_t glb_magic = GlbMagic;
-	uint32_t glb_version = GlbVersion;
-	uint32_t glb_json_magic = GlbMagicJsonChunk;
-	uint32_t glb_bin_magic = GlbMagicBinChunk;
 
 	cgltf_size json_padsize = (json_size % 4 != 0) ? 4 - json_size % 4 : 0;
 	cgltf_size bin_padsize = (bin_size % 4 != 0) ? 4 - bin_size % 4 : 0;
@@ -1128,15 +1124,15 @@ static void cgltf_write_glb(FILE* file, const void* json_buf, const cgltf_size j
 	}
 
 	// Write a GLB header
-	memcpy(header, &glb_magic, 4);
-	memcpy(header + 4, &glb_version, 4);
+	memcpy(header, &GlbMagic, 4);
+	memcpy(header + 4, &GlbVersion, 4);
 	memcpy(header + 8, &total_size, 4);
 	fwrite(header, 1, GlbHeaderSize, file);
 
 	// Write a JSON chunk (header & data)
 	uint32_t json_chunk_size = (uint32_t)(json_size + json_padsize);
 	memcpy(chunk_header, &json_chunk_size, 4);
-	memcpy(chunk_header + 4, &glb_json_magic, 4);
+	memcpy(chunk_header + 4, &GlbMagicJsonChunk, 4);
 	fwrite(chunk_header, 1, GlbChunkHeaderSize, file);
 
 	fwrite(json_buf, 1, json_size, file);
@@ -1146,7 +1142,7 @@ static void cgltf_write_glb(FILE* file, const void* json_buf, const cgltf_size j
 		// Write a binary chunk (header & data)
 		uint32_t bin_chunk_size = (uint32_t)(bin_size + bin_padsize);
 		memcpy(chunk_header, &bin_chunk_size, 4);
-		memcpy(chunk_header + 4, &glb_bin_magic, 4);
+		memcpy(chunk_header + 4, &GlbMagicBinChunk, 4);
 		fwrite(chunk_header, 1, GlbChunkHeaderSize, file);
 
 		fwrite(bin_buf, 1, bin_size, file);
