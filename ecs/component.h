@@ -219,7 +219,11 @@ void ecs_componentmanager_add(ecs_componentmanager_t *const self, const u32 enti
         switch(cmp_type)
         {
             case ECS_CMP_COLLIDER:
-                colliderbatchqueue_add(&self->internal.colliderbatch, (ecs_component_collider_t *)entry->entity_cmpdata);
+            {
+                ecs_component_collider_t *collider = (ecs_component_collider_t *)entry->entity_cmpdata;
+                collider->internal.entity_id = entity_id;
+                colliderbatchqueue_add(&self->internal.colliderbatch, collider);
+            }
             break;
         }
     }

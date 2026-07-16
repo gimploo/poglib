@@ -30,15 +30,6 @@ INTERNAL void workbench_editor__internal__slider_on_release(void);
 INTERNAL void workbench_editor__internal__check_to_lock_camera(const workbench_t *const self, ecs_t *const ecs);
 INTERNAL void workbench_editor__internal__select_entity_id(workbench_t *const self, ecs_t *const ecs, const u32 entity_id);
 
-INTERNAL f32 workbench_editor__internal_closest_point_on_ray(const vec3f_t ray_origin, const vec3f_t ray_dir, const vec3f_t targetpoint)
-{
-    const vec3f_t to_point = glms_vec3_sub(targetpoint, ray_origin);
-    f32 t = glms_vec3_dot(to_point, ray_dir);
-    if (t < 0.f) t = 0.f;
-    vec3f_t closest = glms_vec3_add(ray_origin, glms_vec3_scale(ray_dir, t));
-    return glms_vec3_distance(closest, targetpoint);
-}
-
 INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
 {
     vec2f_t ndc = window_mouse_get_norm_position(global_window);
@@ -61,23 +52,16 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
     }
 
     u32 picked = 0;
-    f32 closest_dist = 5.f;
-
-    slot_iterator(&global_ecs->managers.entitymanager.entities, iter)
     {
-        if (!slot_iterator_index) continue;
-
-        const ecs_entity_t *const e = iter;
-        if (e->id == global_workbench->world_camera.entity_id) continue;
-
-        const ecs_entity_query_t q          = ecs_entity_query_components(global_ecs, e->id, ECS_CMP_TRANSFORM);
-        const ecs_component_transform_t *t  = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-        if (!t) continue;
-
-        const f32 d = workbench_editor__internal_closest_point_on_ray(cam->position, dir, t->position);
-        if (d < closest_dist) {
-            closest_dist = d;
-            picked = e->id;
+        const vec3f_t ray_dir = glms_vec3_scale(dir, 1000.0f);
+        JPH_RayCastResult hit = physics_sys_jolt_raycast(cam->position, ray_dir);
+        if (hit.bodyID) {
+            const ecs_collider_jolt_userdata_t *const userdata =
+                (ecs_collider_jolt_userdata_t *)JPH_BodyInterface_GetUserData(
+                    global_physics_sys_jolt_instance->bodyinterface,
+                    hit.bodyID
+                );
+            picked = userdata->internal.ecs_collider->internal.entity_id;
         }
     }
 
