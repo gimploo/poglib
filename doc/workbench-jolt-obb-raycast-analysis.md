@@ -116,7 +116,12 @@ When `filter != NULL`: passes it to CastRay — only hits the filtered layer(s).
 
 ### 3.4 Layer Filter Helpers
 
-Since `JPH_ObjectLayerFilter_SetProcs` sets a global callback, a single proc handles both include and exclude modes via userData:
+**Why filters are needed**: The workbench OBB bodies share the same broadphase as gameplay colliders. Two raycast call sites need layer-scoped queries:
+
+- **Workbench picking** (`§3.5`) must hit ONLY workbench OBBs — without an include-filter, `CastRay` returns the closest body of any layer, which could be a gameplay collider in front of the OBB the user is actually clicking.
+- **Parkour detection** (`§3.6`) must NOT hit workbench OBBs — a parkour ray could hit a permanent OBB instead of the real collider behind it, and since the OBB's user data is a raw `entity_id` (not an `ecs_collider_jolt_userdata_t*`), the parkour code would misinterpret it and crash or produce wrong results.
+
+Jolt's `CastRay` accepts an `ObjectLayerFilter` to restrict which layers are tested — this is the standard mechanism for layer-scoped queries. Since `JPH_ObjectLayerFilter_SetProcs` sets a global callback, a single proc handles both include and exclude modes via userData:
 
 ```c
 typedef struct {
