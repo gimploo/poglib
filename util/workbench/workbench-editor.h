@@ -816,6 +816,8 @@ void workbench_editor_export_glb(ecs_t *const ecs)
 {
     workbench_editor_savechanges();
 
+    arena_t *scratch = arena_init(NULL, 1 * MB);
+
     u32 exported_assets[64] = {0};
     u32 exported_count = 0;
 
@@ -841,13 +843,15 @@ void workbench_editor_export_glb(ecs_t *const ecs)
             &global_engine->systems.assets, ASSET_TYPE_MODEL, mesh->asset_id);
         if (!model) continue;
 
-        char export_buf[512] = {0};
-        u32 stem_len = model->filepath.len;
-        if (stem_len > 4 && model->filepath.data[stem_len - 4] == '.') stem_len -= 4;
-        snprintf(export_buf, sizeof(export_buf), "%.*s_exported.glb", stem_len, model->filepath.data);
-        str_t export_path = str_from_cstr(export_buf, (u32)strlen(export_buf));
-        glb_export_scene(ecs, mesh->asset_id, export_path);
+        str_t stem = str_partition(model->filepath, '.').pair[0];
+        char export_buf[512];
+        snprintf(export_buf, sizeof(export_buf), "%.*s_exported.glb", stem.len, stem.data);
+        str_t export_path = { .data = export_buf, .len = (u32)strlen(export_buf) };
+        glb_export_scene(scratch, ecs, mesh->asset_id, export_path);
+        arena_clear(scratch);
     }
+
+    arena_destroy(scratch);
 }
 
 #endif

@@ -6,68 +6,60 @@
 
 #include <poglib/external/assimp/include/assimp/cexport.h>
 
-bool glb_export_scene(ecs_t *ecs, u32 model_asset_id, str_t output_path);
+bool glb_export_scene(arena_t *arena, ecs_t *ecs, u32 model_asset_id, str_t output_path);
 
 #ifndef IGNORE_GLB_EXPORT_IMPLEMENTATION
 
-#include <poglib/external/cglm/mat4.h>
-#include <poglib/external/cglm/vec3.h>
-#include <poglib/external/cglm/vec4.h>
-#include <poglib/external/cglm/quat.h>
-#include <poglib/external/cglm/affine.h>
+#include <poglib/external/cglm/struct.h>
 
-static void glb_export__compose_matrix(float *out, float *pos, float *quat, float *scale)
+static mat4s glb_export__compose_matrix(vec3s pos, versors quat, vec3s scale)
 {
-    glm_mat4_identity(out);
-    glm_translate(out, pos);
-    glm_quat_rotate(out, quat, out);
-    glm_scale(out, scale);
+    mat4s out = glms_mat4_identity();
+    out = glms_translate(out, pos);
+    out = glms_quat_rotate(out, quat);
+    out = glms_scale(out, scale);
+    return out;
 }
 
-static void glb_export__set_node_transform(struct aiNode *node, float *m)
+static void glb_export__set_node_transform(struct aiNode *node, mat4s m)
 {
-    float transposed[16];
-    glm_mat4_transpose_to(m, transposed);
-    memcpy(&node->mTransformation, transposed, sizeof(struct aiMatrix4x4));
+    mat4s transposed = glms_mat4_transpose(m);
+    memcpy(&node->mTransformation, &transposed.raw, sizeof(mat4s));
 }
 
-static void glb_export__get_node_transform(float *out, const struct aiNode *node)
+static mat4s glb_export__get_node_transform(const struct aiNode *node)
 {
-    memcpy(out, &node->mTransformation, sizeof(struct aiMatrix4x4));
-    glm_mat4_transpose(out);
+    mat4s out;
+    memcpy(&out.raw, &node->mTransformation, sizeof(mat4s));
+    return glms_mat4_transpose(out);
 }
 
 static void glb_export__traverse_node(
     struct aiNode *node,
-    float *parent_world,
-    float (*mesh_positions)[3],
-    float (*mesh_orientations)[4],
-    float (*mesh_scales)[3],
+    mat4s parent_world,
+    vec3s *mesh_positions,
+    versors *mesh_orientations,
+    vec3s *mesh_scales,
     bool *mesh_found,
     u32 mesh_count)
 {
-    float m[16];
-    float world[16];
-    glb_export__get_node_transform(m, node);
-    glm_mat4_mul(parent_world, m, world);
+    mat4s m = glb_export__get_node_transform(node);
+    mat4s world = glms_mat4_mul(parent_world, m);
 
     if (node->mNumMeshes > 0)
     {
-        float parent_inv[16];
-        glm_mat4_inv(parent_world, parent_inv);
+        mat4s parent_inv = glms_mat4_inv(parent_world);
 
         for (u32 i = 0; i < node->mNumMeshes; i++)
         {
             u32 mesh_idx = node->mMeshes[i];
             if (mesh_idx < mesh_count && mesh_found[mesh_idx])
             {
-                float new_world[16];
-                glb_export__compose_matrix(new_world,
+                mat4s new_world = glb_export__compose_matrix(
                     mesh_positions[mesh_idx],
                     mesh_orientations[mesh_idx],
                     mesh_scales[mesh_idx]);
-                float new_m[16];
-                glm_mat4_mul(parent_inv, new_world, new_m);
+                mat4s new_m = glms_mat4_mul(parent_inv, new_world);
                 glb_export__set_node_transform(node, new_m);
                 break;
             }
@@ -80,28 +72,20 @@ static void glb_export__traverse_node(
     }
 }
 
-bool glb_export_scene(ecs_t *ecs, u32 model_asset_id, str_t output_path)
+bool glb_export_scene(arena_t *arena, ecs_t *ecs, u32 model_asset_id, str_t output_path)
 {
     const glmodel_t *model = (glmodel_t *)assetmanager_get_assetresource(
         &global_engine->systems.assets, ASSET_TYPE_MODEL, model_asset_id);
     if (!model || !model->scene || !model->scene->mRootNode) return false;
 
-    const struct aiScene *src_scene = model->scene;
-    u32 mesh_count = src_scene->mNumMeshes;
+    struct aiScene *scene = model->scene;
+    u32 mesh_count = scene->mNumMeshes;
     if (mesh_count == 0) return false;
 
-    float (*mesh_positions)[3] = calloc(mesh_count, sizeof(float[3]));
-    float (*mesh_orientations)[4] = calloc(mesh_count, sizeof(float[4]));
-    float (*mesh_scales)[3] = calloc(mesh_count, sizeof(float[3]));
-    bool *mesh_found = calloc(mesh_count, sizeof(bool));
-    if (!mesh_positions || !mesh_orientations || !mesh_scales || !mesh_found)
-    {
-        free(mesh_positions);
-        free(mesh_orientations);
-        free(mesh_scales);
-        free(mesh_found);
-        return false;
-    }
+    vec3s *mesh_positions = arena_reserve(arena, mesh_count * sizeof(vec3s));
+    versors *mesh_orientations = arena_reserve(arena, mesh_count * sizeof(versors));
+    vec3s *mesh_scales = arena_reserve(arena, mesh_count * sizeof(vec3s));
+    bool *mesh_found = arena_reserve(arena, mesh_count * sizeof(bool));
 
     slot_iterator(&ecs->managers.entitymanager.entities, iter)
     {
@@ -117,18 +101,9 @@ bool glb_export_scene(ecs_t *ecs, u32 model_asset_id, str_t output_path)
 
         const ecs_component_transform_t *t = q.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
         mesh_found[mesh_cmp->mesh_idx] = true;
-        {
-            float pos[3]; pos[0] = t->position.x; pos[1] = t->position.y; pos[2] = t->position.z;
-            glm_vec3_copy(pos, mesh_positions[mesh_cmp->mesh_idx]);
-        }
-        {
-            float ori[4]; ori[0] = t->orientation.x; ori[1] = t->orientation.y; ori[2] = t->orientation.z; ori[3] = t->orientation.w;
-            glm_vec4_copy(ori, mesh_orientations[mesh_cmp->mesh_idx]);
-        }
-        {
-            float scl[3]; scl[0] = t->scale.x; scl[1] = t->scale.y; scl[2] = t->scale.z;
-            glm_vec3_copy(scl, mesh_scales[mesh_cmp->mesh_idx]);
-        }
+        mesh_positions[mesh_cmp->mesh_idx] = (vec3s){ .x = t->position.x, .y = t->position.y, .z = t->position.z };
+        mesh_orientations[mesh_cmp->mesh_idx] = (versors){ .x = t->orientation.x, .y = t->orientation.y, .z = t->orientation.z, .w = t->orientation.w };
+        mesh_scales[mesh_cmp->mesh_idx] = (vec3s){ .x = t->scale.x, .y = t->scale.y, .z = t->scale.z };
     }
 
     bool any_found = false;
@@ -137,33 +112,14 @@ bool glb_export_scene(ecs_t *ecs, u32 model_asset_id, str_t output_path)
         if (mesh_found[i]) { any_found = true; break; }
     }
 
-    if (!any_found)
-    {
-        free(mesh_positions);
-        free(mesh_orientations);
-        free(mesh_scales);
-        free(mesh_found);
-        return false;
-    }
+    if (!any_found) return false;
 
-    struct aiScene *copy_scene = NULL;
-    aiCopyScene(src_scene, &copy_scene);
-    if (!copy_scene)
-    {
-        free(mesh_positions);
-        free(mesh_orientations);
-        free(mesh_scales);
-        free(mesh_found);
-        return false;
-    }
+    mat4s root_world = glb_export__get_node_transform(scene->mRootNode);
 
-    float root_world[16];
-    glb_export__get_node_transform(root_world, copy_scene->mRootNode);
-
-    for (u32 i = 0; i < copy_scene->mRootNode->mNumChildren; i++)
+    for (u32 i = 0; i < scene->mRootNode->mNumChildren; i++)
     {
         glb_export__traverse_node(
-            copy_scene->mRootNode->mChildren[i],
+            scene->mRootNode->mChildren[i],
             root_world,
             mesh_positions,
             mesh_orientations,
@@ -172,13 +128,7 @@ bool glb_export_scene(ecs_t *ecs, u32 model_asset_id, str_t output_path)
             mesh_count);
     }
 
-    aiReturn result = aiExportScene(copy_scene, "glb2", output_path.data, 0);
-
-    aiFreeScene(copy_scene);
-    free(mesh_positions);
-    free(mesh_orientations);
-    free(mesh_scales);
-    free(mesh_found);
+    aiReturn result = aiExportScene(scene, "glb2", output_path.data, 0);
 
     return result == AI_SUCCESS;
 }
