@@ -13,6 +13,7 @@
 #define COLOR_GRAY                          (vec4f_t ){0.4f, 0.4f, 0.4f ,1.0f}
 #define COLOR_DARK_GRAY                     (vec4f_t ){0.2f, 0.2f, 0.2f, 1.0f}
 #define COLOR_NEUTRAL                       COLOR_WHITE
+#define COLOR_BIEGE                         (vec4f_t){0.929f, 0.91f, 0.816f, 1.0f}
 
 // --- Debug Palette (High Visibility) ---
 #define COLOR_ORANGE        (vec4f_t){1.00f, 0.57f, 0.00f, 1.0f }
