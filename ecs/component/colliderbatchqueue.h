@@ -13,7 +13,7 @@ typedef struct {
 
 
 colliderbatchqueue_t        colliderbatchqueue(arena_t *const arena);
-void                        colliderbatchqueue_add(colliderbatchqueue_t *const self, const ecs_component_collider_t *const collider);
+void                        colliderbatchqueue_add(colliderbatchqueue_t *const self, ecs_component_collider_t *const collider, u32 entity_id);
 void                        colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self);
 
 
@@ -29,9 +29,10 @@ colliderbatchqueue_t colliderbatchqueue(arena_t *const arena)
 }
 
 
-void colliderbatchqueue_add(colliderbatchqueue_t *const self, const ecs_component_collider_t *const collider)
+void colliderbatchqueue_add(colliderbatchqueue_t *const self, ecs_component_collider_t *const collider, u32 entity_id)
 {
     ASSERT(self);
+    collider->internal.entity_id = entity_id;
     queue_put(&self->queue, collider);
 }
 
@@ -138,6 +139,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                 const ecs_collider_jolt_userdata_t userdata = {
                     .objectlayertype = collider->object_layer_type,
                     .dimension = collider->dim,
+                    .entity_id = collider->internal.entity_id,
 #ifdef DEBUG
                     .internal = {
                         .ecs_collider = collider
