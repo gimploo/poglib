@@ -37,9 +37,9 @@ static const vec3f_t ORIGIN = { .x = 0.f, .y = 0.f, .z = 0.f};
 const struct {
     vec3s x, y, z;
 } AXIS = {
-    .x.raw = {1.0f, 0.0f, 0.0f},
-    .y.raw = {0.0f, 1.0f, 0.0f},
-    .z.raw = {0.0f, 0.0f, 1.0f},
+    .x = {1.f, 0.f, 0.f},
+    .y = {0.f, 1.f, 0.f},
+    .z = {0.f, 0.f, 1.f},
 };
 
 #define vec2i(x) (vec2i_t ){x,x}
