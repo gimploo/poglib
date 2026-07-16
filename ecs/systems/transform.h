@@ -31,7 +31,7 @@ void ecs_system_transform(ecs_componentmanager_t *const cmp_manager, const ecs_s
             case ECS_CMP_TRANSFORM_SOURCE_INPUT:
                 ecs_system_transfrom__internal_source_manual(
                     transform, 
-                    ecs_componentmanager__internal_query_components(
+                    ecs_componentmanager__internal__query_components(
                         cmp_manager, entry->entity_id, ECS_CMP_INPUT
                     ).entity_cmp_data[ECS_CMP_INPUT_IDX]
                 );

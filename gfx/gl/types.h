@@ -461,7 +461,7 @@ void __impl_glbatch_put(glbatch_t *batch, const void *elem, const u64 elemsize)
         case GLBT_gltri_t:
         case GLBT_glquad_t:
         case GLBT_glcircle_t:
-            __impl_queue_put(&batch->globjs, elem, elemsize);
+            queue_put(&batch->globjs, elem, elemsize);
         break;
 
         case GLBT_glpolygon_t: {
@@ -491,10 +491,7 @@ void __impl_glbatch_put(glbatch_t *batch, const void *elem, const u64 elemsize)
             const u64 size = 
                 sizeof(glvertex2d_t ) * batch->__meta.nvertex;
 
-            __impl_queue_put(
-                    &batch->globjs, 
-                    &poly->vertices, 
-                    size);
+            queue_put(&batch->globjs, &poly->vertices, size);
         } break;
 
         default: eprint("batch type not accounted for");

@@ -91,9 +91,10 @@ INTERNAL void ecs_mesh_serializer(file_t *const file, const void *const cmp_data
     const ecs_component_mesh_t *m = cmp_data;
     u8 buf[WORD] = {0};
 
-    SERIALIZE_KV(file, buf, "\t",   "%i mesh 2", ECS_CMP_MESH_IDX);
+    SERIALIZE_KV(file, buf, "\t",   "%i mesh 3", ECS_CMP_MESH_IDX);
     SERIALIZE_KV(file, buf, "\t\t", "asset_id %u", m->asset_id);
-    SERIALIZE_KV(file, buf, "\t\t", "prototype_sprite_type %d", m->prototype_sprite_type);
+    SERIALIZE_KV(file, buf, "\t\t", "mesh_idx %u", m->mesh_idx);
+    SERIALIZE_KV(file, buf, "\t\t", "is_scene_instanced %d", m->is_scene_instanced);
 }
 
 INTERNAL u64 ecs_mesh_deserializer(const str_views_t lines, const u64 line_idx, void *const cmp_data, arena_t *const arena, const hashtable_t *const assetid_remaps)
@@ -109,7 +110,8 @@ INTERNAL u64 ecs_mesh_deserializer(const str_views_t lines, const u64 line_idx, 
         const str_pair_t pair       = str_partition(trimmed_line, ' ');
 
         if (str_cmp(pair.pair[0], str("asset_id")))                     sscanf(pair.pair[1].data, "%u", &m->asset_id);
-        else if (str_cmp(pair.pair[0], str("prototype_sprite_type")))   sscanf(pair.pair[1].data, "%d", (int *)&m->prototype_sprite_type);
+        else if (str_cmp(pair.pair[0], str("mesh_idx")))                sscanf(pair.pair[1].data, "%d", (int *)&m->mesh_idx);
+        else if (str_cmp(pair.pair[0], str("is_scene_instanced")))      sscanf(pair.pair[1].data, "%d", (int *)&m->is_scene_instanced);
     }
 
     m->asset_id = m->asset_id > GL_MESH_PRIMITIVE_TYPE_COUNT
@@ -174,15 +176,13 @@ INTERNAL void ecs_material_serializer(file_t *const file, const void *const cmp_
     SERIALIZE_KV(file, buf, "\t", "%i material 2", ECS_CMP_MATERIAL_IDX);
     SERIALIZE_KV(file, buf, "\t\t", "shader_asset_id %u", mat->shader_asset_id);
 
-    SERIALIZE_KV(file, buf, "\t\t", "textures %i", mat->textures.count);
-    for (u32 i = 0; i < mat->textures.count; i++)
+    u64 offset = snprintf(buf, sizeof(buf), "\t\ttextures [%i]:[", mat->textures.count);
+    for (u64 idx = 0; idx < mat->textures.count; idx++)
     {
-        snprintf((char *)buf, sizeof(buf), "\t\t\t`%.*s`:%u\n",
-            mat->textures.slots[i].uniform_name.len,
-            mat->textures.slots[i].uniform_name.data,
-            mat->textures.slots[i].asset_id);
-        file_writebytes(file, buf, strlen((char *)buf));
+        offset += snprintf(buf + offset, sizeof(buf) - offset, "%u,", mat->textures.asset_ids[idx]);
     }
+    snprintf(buf + offset, sizeof(buf) - offset, "]\n");
+    file_writebytes(file, buf, strlen((char *)buf));
 }
 
 INTERNAL u64 ecs_material_deserializer(const str_views_t lines, const u64 line_idx, void *const cmp_data, arena_t *const arena, const hashtable_t *const assetid_remap)
@@ -209,21 +209,8 @@ INTERNAL u64 ecs_material_deserializer(const str_views_t lines, const u64 line_i
                 return member_count;
 
             u32 texture_count;
-            sscanf(pair.pair[1].data, "%u", &texture_count);
-
-            for (u32 texidx = 0; texidx < texture_count; texidx++)
-            {
-                const str_t trimmed_line = str_lstrip(lines.views[line_idx + (idx + 1) + (texidx + 1)], '\t');
-
-                char buf[128] = {0};
-                sscanf(trimmed_line.data, "`%127s`:%u", buf, &mat->textures.slots[idx].asset_id );
-
-                mat->textures.slots[idx].asset_id       = (u64)hashtable_get_value(assetid_remap, (hashtable_key_t){ .u32 = mat->textures.slots[idx].asset_id  });
-                mat->textures.slots[idx].uniform_name   = str_init(arena, buf);
-                mat->textures.count++;
-
-            }
-
+            //sscanf(pair.pair[1].data, "[%u]:[", &texture_count);
+            eprint("not implemented");
         }
     }
     return member_count + mat->textures.count;

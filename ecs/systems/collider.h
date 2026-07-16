@@ -16,7 +16,7 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
         if (!entry->is_active) continue;
 
         ecs_component_collider_t *const collider    = (ecs_component_collider_t *)entry->entity_cmpdata;
-        ecs_entity_query_t query                    = ecs_componentmanager__internal_query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM);
+        ecs_entity_query_t query                    = ecs_componentmanager__internal__query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM);
         ecs_component_transform_t *transform        = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
 
         //HACK: is this good ? - who tf knows - keep this till i get smarter :p

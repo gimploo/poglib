@@ -51,7 +51,7 @@ void behaviorautomata_push_state(behaviorautomata_t *const self, behaviorautomat
         current_state->exit(self, &current_state->ctx);
     }
 
-    stack_push(&self->stack, state);
+    stack_push(&self->stack, &state, sizeof(state));
     state.start(self, &state.ctx);
 }
 

@@ -97,4 +97,6 @@ struct ecs_t {
     } internal;
 };
 
+ecs_t * global_ecs = NULL;
+
 

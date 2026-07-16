@@ -19,6 +19,7 @@ typedef enum {
     ECS_CMP_CAMERA_IDX          = 4,
     ECS_CMP_COLLIDER_IDX        = 5,
     ECS_CMP_MESH_IDX            = 6,
+    ECS_CMP_SPRITE_IDX          = 7,
     ECS_CMP_COUNT
 
 } ecs_component_storage_index;
@@ -31,7 +32,8 @@ typedef enum {
     ECS_CMP_MATERIAL            = 1 << ECS_CMP_MATERIAL_IDX,
     ECS_CMP_CAMERA              = 1 << ECS_CMP_CAMERA_IDX,
     ECS_CMP_COLLIDER            = 1 << ECS_CMP_COLLIDER_IDX,
-    ECS_CMP_MESH                = 1 << ECS_CMP_MESH_IDX
+    ECS_CMP_MESH                = 1 << ECS_CMP_MESH_IDX,
+    ECS_CMP_SPRITE              = 1 << ECS_CMP_SPRITE_IDX
 
 } ecs_component_type;
 
@@ -67,7 +69,8 @@ struct ecs_component_model_t {
 typedef struct ecs_component_mesh_t ecs_component_mesh_t;
 struct ecs_component_mesh_t {
     u32 asset_id;
-    u32 prototype_sprite_type; 
+    u32 mesh_idx;
+    bool is_scene_instanced;
 };
 
 /*========================= INPUT ====================================== */
@@ -105,15 +108,19 @@ struct ecs_component_material_t {
     u32 shader_asset_id;
     struct {
         u32 count;
-        struct {
-            str_t   uniform_name;
-            u32     asset_id;
-        } slots[ECS_COMPONENT_MATERIAL_TEXTURE_MAX_COUNT];
+        u32 asset_ids[ECS_COMPONENT_MATERIAL_TEXTURE_MAX_COUNT];
     } textures;
-
     struct {
-        gluniforms_t uniforms;
+        gluniforms_t uniform_values;
     } internal;
+};
+
+/* =========================== SPRITE ================================== */
+
+typedef struct ecs_component_sprite_t ecs_component_sprite_t;
+struct ecs_component_sprite_t {
+    u32 spritesheet_asset_id;
+    u32 sprite_idx; 
 };
 
 /* =========================== CAMERA ================================== */
@@ -144,6 +151,7 @@ typedef enum {
     COLLIDER_SHAPE_TYPE_SPHERE      = 2,
     COLLIDER_SHAPE_TYPE_CUBE        = 3,
     COLLIDER_SHAPE_TYPE_CYLINDER    = 4,
+    COLLIDER_SHAPE_TYPE_MESH        = 5,
     COLLIDER_SHAPE_TYPE_COUNT,
 } collider_shape_type;
 
@@ -165,6 +173,16 @@ typedef union {
         f32 radius;
         f32 half_height;
     } cylinder;
+    struct {
+        struct {
+            u32 count;
+            vec3f_t *data;
+        } vtx;
+        struct {
+            u32 count;
+            u32 *data;
+        } idx;
+    } mesh;
 } collider_shape_dimension_t;
 
 struct ecs_component_collider_t {
@@ -178,6 +196,7 @@ struct ecs_component_collider_t {
         vec3f_t                     position;
         versors                     orientation;
         u32                         entity_id;
+        vec3f_t                     scale;
 #ifdef DEBUG
         JPH_Shape                   *shape;
 #endif
@@ -223,6 +242,7 @@ struct ecs_componentbundle_t {
             ecs_component_material_t    material;
             ecs_component_camera_t      camera;
             ecs_component_collider_t    collider;
+            ecs_component_sprite_t      sprite;
         };
     } component[ECS_CMP_COUNT];
 
