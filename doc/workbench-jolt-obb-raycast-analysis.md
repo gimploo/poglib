@@ -35,7 +35,7 @@ Replace the O(n) point-distance loop with a single **Jolt Physics raycast** agai
 |----------|-----------|
 | **Raycast against existing colliders only** | No new bodies, no OBB creation, no workbench-specific layer. Reuses the colliders already in the broadphase. |
 | **Colliderless entities are not pickable** | Entities without a collider component have nothing in Jolt to raycast against. This is an accepted limitation — most editable entities (walls, ground, obstacles) have colliders. |
-| **`entity_id` added to `ecs_collider_jolt_userdata_t`** | Raycast hit → `GetUserData(bodyID)` → `entity_id` directly. Additive, backward-compatible field. |
+| **`entity_id` stored on collider; `ecs_collider` pointer always available in userdata** | Raycast hit → `GetUserData(bodyID)` → `internal.ecs_collider` → `internal.entity_id`. No redundant data in userdata. |
 | **`physics_sys_jolt_raycast` signature unchanged** | No filter parameter. Picking is unfiltered — closest hit wins. |
 | **Zero filters, zero new layers, zero new bodies** | The simplest possible approach. No `ObjectLayerFilter` helpers, no broadphase table resize, no parkour changes. |
 
@@ -49,30 +49,28 @@ Replace the O(n) point-distance loop with a single **Jolt Physics raycast** agai
 
 ## 3. Technical Breakdown
 
-### 3.1 Collider User Data — Add `entity_id`
+### 3.1 Collider User Data — `entity_id` via collider pointer
 
-To resolve a raycast hit back to an entity, the picking code needs the `entity_id` from the struck body's Jolt user data. Currently `ecs_collider_jolt_userdata_t` (`types.h:189`) stores `objectlayertype` + `dimension` (+ a DEBUG-only collider pointer) but **not** the entity_id.
+To resolve a raycast hit back to an entity, the picking code needs the `entity_id` from the struck body's Jolt user data. Currently `ecs_collider_jolt_userdata_t` (`types.h:190`) stores `objectlayertype` + `dimension` and a DEBUG-only `internal.ecs_collider` pointer.
 
-**Change** — add `entity_id` (additive, backward-compatible):
+**Changes**:
+
+1. Add `entity_id` to `ecs_component_collider_t.internal` — set during component creation in `ecs_componentmanager_add` (`component.h:209`), not in the batch queue.
+2. Make `internal.ecs_collider` pointer in `ecs_collider_jolt_userdata_t` always available (remove `#ifdef DEBUG` guard) — it points back to the `ecs_component_collider_t`, which now carries `entity_id`.
 
 ```c
 struct ecs_collider_jolt_userdata_t {
     JPH_ObjectLayer             objectlayertype;
     collider_shape_dimension_t  dimension;
-    u32                         entity_id;          // NEW
-#ifdef DEBUG
     struct {
         ecs_component_collider_t *ecs_collider;
     } internal;
-#endif
 };
 ```
 
-**Wiring**: `colliderbatchqueue_add` gains an `entity_id` parameter. `ecs_componentmanager_add` (`component.h:209`) passes the entity_id from the pool entry header (`ecs_component_poolentry_t.entity_id`). `colliderbatchqueue_upload_to_jolt` (`colliderbatchqueue.h:138`) sets `.entity_id` when building the user data, alongside the existing `.objectlayertype` and `.dimension`.
+No `entity_id` field in the userdata — it's accessed via `userdata->internal.ecs_collider->internal.entity_id`, avoiding redundant storage.
 
-The `entity_id` is also stored on `ecs_component_collider_t.internal.entity_id` so the batch queue can read it at upload time without carrying it through a parallel data structure.
-
-This field is generally useful (any raycast hit can now report which entity it struck), not strictly a workbench concern.
+**Wiring**: `ecs_componentmanager_add` sets `collider->internal.entity_id = entity_id` at component creation time. `colliderbatchqueue_upload_to_jolt` always sets `.internal.ecs_collider = collider` when building the user data. `colliderbatchqueue_add` is unchanged (no `entity_id` parameter).
 
 ### 3.2 Picking Rewrite
 
@@ -89,7 +87,7 @@ if (hit.bodyID) {
     const ecs_collider_jolt_userdata_t *const userdata =
         (ecs_collider_jolt_userdata_t *)JPH_BodyInterface_GetUserData(
             global_physics_sys_jolt_instance->bodyinterface, hit.bodyID);
-    picked = userdata->entity_id;
+    picked = userdata->internal.ecs_collider->internal.entity_id;
 } else {
     picked = 0;
 }
@@ -126,8 +124,9 @@ Entities without an `ECS_CMP_COLLIDER` component (e.g., decorative props, lights
 |--------|--------|
 | `physics_sys_jolt_raycast` signature | **Unchanged** |
 | `collision-scene.h` parkour raycast call site | **Unchanged** |
-| `ecs_collider_jolt_userdata_t` | Gains `entity_id` field — additive, existing readers unaffected |
-| `colliderbatchqueue_add` | Gains `entity_id` parameter — internal API, updated at the single call site |
+| `ecs_collider_jolt_userdata_t` | `internal.ecs_collider` pointer made always available (not DEBUG-only); no `entity_id` field added |
+| `colliderbatchqueue_add` | **Unchanged** — no new parameters |
+| `ecs_component_collider_t.internal` | Gains `entity_id` field, set at component creation |
 | ECS collider pipeline | **Untouched** |
 | Workbench struct / editor state | **Untouched** |
 | Game entity types (`vedanta_entity_type`) | **Untouched** |
@@ -139,10 +138,10 @@ Entities without an `ECS_CMP_COLLIDER` component (e.g., decorative props, lights
 
 | File | Changes |
 |------|---------|
-| `ecs/component/types.h` | Add `entity_id` to `ecs_component_collider_t.internal` and `ecs_collider_jolt_userdata_t`. |
-| `ecs/component/colliderbatchqueue.h` | `colliderbatchqueue_add` gains `entity_id` param; `upload_to_jolt` sets `.entity_id` in user data. |
-| `ecs/component.h` | Pass `entity_id` to `colliderbatchqueue_add` at the call site. |
-| `util/workbench/workbench-editor.h` | Replace `check_mouse_closest_entity()` point-distance loop with single unfiltered `physics_sys_jolt_raycast` + `userdata->entity_id` read. Remove `workbench_editor__internal_closest_point_on_ray`. |
+| `ecs/component/types.h` | Add `entity_id` to `ecs_component_collider_t.internal`; make `ecs_collider` pointer in `ecs_collider_jolt_userdata_t` always available (remove DEBUG guard). |
+| `ecs/component/colliderbatchqueue.h` | `upload_to_jolt` always sets `.internal.ecs_collider` (no DEBUG guard). `colliderbatchqueue_add` unchanged. |
+| `ecs/component.h` | Set `collider->internal.entity_id = entity_id` at component creation, before adding to batch queue. |
+| `util/workbench/workbench-editor.h` | Replace `check_mouse_closest_entity()` point-distance loop with single unfiltered `physics_sys_jolt_raycast` + `userdata->internal.ecs_collider->internal.entity_id` read. Remove `workbench_editor__internal_closest_point_on_ray`. |
 | *(vedanta)* | **No changes** |
 
 ---

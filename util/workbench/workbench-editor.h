@@ -59,7 +59,7 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
                     global_physics_sys_jolt_instance->bodyinterface,
                     hit.bodyID
                 );
-            picked = userdata->entity_id;
+            picked = userdata->internal.ecs_collider->internal.entity_id;
         }
     }
 

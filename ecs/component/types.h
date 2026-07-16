@@ -190,14 +190,9 @@ struct ecs_component_collider_t {
 struct ecs_collider_jolt_userdata_t {
     JPH_ObjectLayer objectlayertype;
     collider_shape_dimension_t dimension;
-    u32 entity_id;
-
-#ifdef DEBUG
     struct {
         ecs_component_collider_t *ecs_collider;
     } internal;
-#endif
-
 };
 
 
