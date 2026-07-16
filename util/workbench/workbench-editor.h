@@ -663,6 +663,12 @@ void workbench_editor_update(void)
     workbench_editor__internal__draw_gizmo_on_entity_selection();
 }
 
+void workbench_editor_select_player(void)
+{
+    workbench_editor__internal__select_entity_id(
+        global_workbench, global_ecs, WORKBENCH_RESERVED_ENTITY_ID_COUNT);
+}
+
 void workbench_editor_copypaste_entity(void)
 {
     if (!global_workbench->editor.current_selected_entity_id) return;
