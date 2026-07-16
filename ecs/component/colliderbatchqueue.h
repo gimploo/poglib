@@ -13,7 +13,7 @@ typedef struct {
 
 
 colliderbatchqueue_t        colliderbatchqueue(arena_t *const arena);
-void                        colliderbatchqueue_add(colliderbatchqueue_t *const self, const ecs_component_collider_t *const collider);
+void                        colliderbatchqueue_add(colliderbatchqueue_t *const self, ecs_component_collider_t *const collider);
 void                        colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self);
 
 
@@ -29,7 +29,7 @@ colliderbatchqueue_t colliderbatchqueue(arena_t *const arena)
 }
 
 
-void colliderbatchqueue_add(colliderbatchqueue_t *const self, const ecs_component_collider_t *const collider)
+void colliderbatchqueue_add(colliderbatchqueue_t *const self, ecs_component_collider_t *const collider)
 {
     ASSERT(self);
     queue_put(&self->queue, collider, sizeof(ecs_component_collider_t *));
@@ -175,11 +175,9 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                 const ecs_collider_jolt_userdata_t userdata = {
                     .objectlayertype = collider->object_layer_type,
                     .dimension = collider->dim,
-#ifdef DEBUG
                     .internal = {
                         .ecs_collider = collider
                     }
-#endif
                 };
                 JPH_BodyInterface_SetUserData(
                     global_physics_sys_jolt_instance->bodyinterface,
