@@ -923,12 +923,12 @@ static int jsmn_parse(jsmn_parser *parser, const char *js, size_t len, jsmntok_t
 
 
 #ifndef CGLTF_CONSTS
-static const cgltf_size GlbHeaderSize = 12;
-static const cgltf_size GlbChunkHeaderSize = 8;
-static const uint32_t GlbVersion = 2;
-static const uint32_t GlbMagic = 0x46546C67;
-static const uint32_t GlbMagicJsonChunk = 0x4E4F534A;
-static const uint32_t GlbMagicBinChunk = 0x004E4942;
+#define GlbHeaderSize 12
+#define GlbChunkHeaderSize 8
+#define GlbVersion 2
+#define GlbMagic 0x46546C67
+#define GlbMagicJsonChunk 0x4E4F534A
+#define GlbMagicBinChunk 0x004E4942
 #define CGLTF_CONSTS
 #endif
 
