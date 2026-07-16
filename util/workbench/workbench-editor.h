@@ -817,18 +817,16 @@ void workbench_editor_export_glb(ecs_t *const ecs)
     workbench_editor_savechanges();
 
     arena_t *scratch = arena_init(NULL, 1 * MB);
+    ecs_componentmanager_t *cmp_manager = &ecs->managers.componentmanager;
+    slot_t *mesh_pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_MESH_IDX);
 
     u32 exported_assets[64] = {0};
     u32 exported_count = 0;
 
-    slot_iterator(&ecs->managers.entitymanager.entities, iter) {
-        const ecs_entity_t *const entity = iter;
-        if (!slot_iterator_index) continue;
-        if (!(entity->component_signature & (ECS_CMP_MESH | ECS_CMP_TRANSFORM))) continue;
-
-        const ecs_entity_query_t q = ecs_entity_query_components(ecs, entity->id, ECS_CMP_MESH | ECS_CMP_TRANSFORM);
-        const ecs_component_mesh_t *mesh = q.entity_cmp_data[ECS_CMP_MESH_IDX];
-        if (!mesh || !mesh->is_scene_instanced) continue;
+    slot_iterator(mesh_pool, iter) {
+        const ecs_component_poolentry_t *entry = iter;
+        const ecs_component_mesh_t *mesh = (ecs_component_mesh_t *)entry->entity_cmpdata;
+        if (!entry->is_active || !mesh->is_scene_instanced) continue;
 
         bool already_exported = false;
         for (u32 i = 0; i < exported_count; i++) {
