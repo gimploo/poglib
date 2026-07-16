@@ -4,81 +4,69 @@
 #include <poglib/gfx/model/assimp.h>
 #include <poglib/util/assetmanager.h>
 
-#include <poglib/external/assimp/include/assimp/cexport.h>
-
 bool glb_export_scene(arena_t *arena, ecs_t *ecs, u32 model_asset_id, str_t output_path);
 
 #ifndef IGNORE_GLB_EXPORT_IMPLEMENTATION
 
-INTERNAL mat4s glb_export__compose(vec3s pos, versors quat, vec3s scale)
+#define CGLTF_IMPLEMENTATION
+#define CGLTF_WRITE_IMPLEMENTATION
+#include <poglib/external/cgltf/cgltf.h>
+#undef CGLTF_IMPLEMENTATION
+#include <poglib/external/cgltf/cgltf_write.h>
+
+INTERNAL void glb_export__set_trs(cgltf_node *node, vec3s pos, versors quat, vec3s scale)
 {
-    mat4s out = glms_mat4_identity();
-    out = glms_translate(out, pos);
-    out = glms_quat_rotate(out, quat);
-    out = glms_scale(out, scale);
-    return out;
+    node->has_translation = true;
+    node->translation[0] = pos.x;
+    node->translation[1] = pos.y;
+    node->translation[2] = pos.z;
+
+    node->has_rotation = true;
+    node->rotation[0] = quat.x;
+    node->rotation[1] = quat.y;
+    node->rotation[2] = quat.z;
+    node->rotation[3] = quat.w;
+
+    node->has_scale = true;
+    node->scale[0] = scale.x;
+    node->scale[1] = scale.y;
+    node->scale[2] = scale.z;
+
+    node->has_matrix = false;
 }
 
-INTERNAL void glb_export__set_transform(struct aiNode *node, mat4s m)
+INTERNAL void glb_export__decompose(const cgltf_float *m, vec3s *pos, versors *quat, vec3s *scale)
 {
-    mat4s transposed = glms_mat4_transpose(m);
-    memcpy(&node->mTransformation, &transposed.raw, sizeof(mat4s));
-}
+    pos->x = m[12]; pos->y = m[13]; pos->z = m[14];
 
-INTERNAL mat4s glb_export__get_transform(const struct aiNode *node)
-{
-    mat4s out;
-    memcpy(&out.raw, &node->mTransformation, sizeof(mat4s));
-    return glms_mat4_transpose(out);
-}
+    scale->x = sqrtf(m[0]*m[0] + m[1]*m[1] + m[2]*m[2]);
+    scale->y = sqrtf(m[4]*m[4] + m[5]*m[5] + m[6]*m[6]);
+    scale->z = sqrtf(m[8]*m[8] + m[9]*m[9] + m[10]*m[10]);
 
-INTERNAL void glb_export__traverse(
-    struct aiNode *node,
-    mat4s parent_world,
-    vec3s *mesh_positions,
-    versors *mesh_orientations,
-    vec3s *mesh_scales,
-    bool *mesh_found,
-    u32 mesh_count)
-{
-    mat4s m = glb_export__get_transform(node);
-    mat4s world = glms_mat4_mul(parent_world, m);
+    if (scale->x < 1e-8f) scale->x = 1e-8f;
+    if (scale->y < 1e-8f) scale->y = 1e-8f;
+    if (scale->z < 1e-8f) scale->z = 1e-8f;
 
-    if (node->mNumMeshes > 0)
-    {
-        mat4s parent_inv = glms_mat4_inv(parent_world);
+    mat4s rot = glms_mat4_identity();
+    rot.raw[0][0] = m[0] / scale->x; rot.raw[0][1] = m[1] / scale->x; rot.raw[0][2] = m[2] / scale->x;
+    rot.raw[1][0] = m[4] / scale->y; rot.raw[1][1] = m[5] / scale->y; rot.raw[1][2] = m[6] / scale->y;
+    rot.raw[2][0] = m[8] / scale->z; rot.raw[2][1] = m[9] / scale->z; rot.raw[2][2] = m[10] / scale->z;
 
-        for (u32 i = 0; i < node->mNumMeshes; i++)
-        {
-            u32 mesh_idx = node->mMeshes[i];
-            if (mesh_idx < mesh_count && mesh_found[mesh_idx])
-            {
-                mat4s new_world = glb_export__compose(
-                    mesh_positions[mesh_idx],
-                    mesh_orientations[mesh_idx],
-                    mesh_scales[mesh_idx]);
-                mat4s new_m = glms_mat4_mul(parent_inv, new_world);
-                glb_export__set_transform(node, new_m);
-                break;
-            }
-        }
-    }
-
-    for (u32 i = 0; i < node->mNumChildren; i++)
-    {
-        glb_export__traverse(node->mChildren[i], world, mesh_positions, mesh_orientations, mesh_scales, mesh_found, mesh_count);
-    }
+    *quat = glms_mat4_quat(rot);
 }
 
 bool glb_export_scene(arena_t *arena, ecs_t *ecs, u32 model_asset_id, str_t output_path)
 {
     const glmodel_t *model = (glmodel_t *)assetmanager_get_assetresource(
         &global_engine->systems.assets, ASSET_TYPE_MODEL, model_asset_id);
-    if (!model || !model->scene || !model->scene->mRootNode) return false;
+    if (!model || !model->filepath.data) return false;
 
-    struct aiScene *scene = model->scene;
-    u32 mesh_count = scene->mNumMeshes;
-    if (mesh_count == 0) return false;
+    cgltf_options options = { .type = cgltf_file_type_glb };
+    cgltf_data *data = NULL;
+    if (cgltf_parse_file(&options, model->filepath.data, &data) != cgltf_result_success) return false;
+
+    cgltf_size mesh_count = data->meshes_count;
+    if (mesh_count == 0) { cgltf_free(data); return false; }
 
     vec3s *mesh_positions = arena_reserve(arena, mesh_count * sizeof(vec3s));
     versors *mesh_orientations = arena_reserve(arena, mesh_count * sizeof(versors));
@@ -107,31 +95,62 @@ bool glb_export_scene(arena_t *arena, ecs_t *ecs, u32 model_asset_id, str_t outp
         mesh_scales[mesh_cmp->mesh_idx] = (vec3s){ .x = t->scale.x, .y = t->scale.y, .z = t->scale.z };
     }
 
-    bool any_found = false;
-    for (u32 i = 0; i < mesh_count; i++)
     {
-        if (mesh_found[i]) { any_found = true; break; }
+        bool any_found = false;
+        for (cgltf_size i = 0; i < mesh_count; i++)
+        {
+            if (mesh_found[i]) { any_found = true; break; }
+        }
+        if (!any_found) { cgltf_free(data); return false; }
     }
 
-    if (!any_found) return false;
-
-    mat4s root_world = glb_export__get_transform(scene->mRootNode);
-
-    for (u32 i = 0; i < scene->mRootNode->mNumChildren; i++)
+    for (cgltf_size i = 0; i < data->nodes_count; i++)
     {
-        glb_export__traverse(
-            scene->mRootNode->mChildren[i],
-            root_world,
-            mesh_positions,
-            mesh_orientations,
-            mesh_scales,
-            mesh_found,
-            mesh_count);
+        cgltf_node *node = &data->nodes[i];
+        if (!node->mesh) continue;
+
+        cgltf_size mesh_idx = (cgltf_size)(node->mesh - data->meshes);
+        if (mesh_idx >= mesh_count || !mesh_found[mesh_idx]) continue;
+
+        mat4s entity_world;
+        entity_world = glms_mat4_identity();
+        entity_world = glms_translate(entity_world, mesh_positions[mesh_idx]);
+        entity_world = glms_quat_rotate(entity_world, mesh_orientations[mesh_idx]);
+        entity_world = glms_scale(entity_world, mesh_scales[mesh_idx]);
+
+        if (node->parent)
+        {
+            cgltf_float parent_world_f[16];
+            mat4s parent_world;
+            mat4s parent_inv;
+            mat4s local_m;
+            vec3s pos;
+            versors quat;
+            vec3s scale;
+
+            cgltf_node_transform_world(node->parent, parent_world_f);
+            memcpy(&parent_world.raw, parent_world_f, sizeof(mat4s));
+            parent_inv = glms_mat4_inv(parent_world);
+            local_m = glms_mat4_mul(parent_inv, entity_world);
+            glb_export__decompose((const cgltf_float *)&local_m.raw, &pos, &quat, &scale);
+            glb_export__set_trs(node, pos, quat, scale);
+        }
+        else
+        {
+            vec3s pos;
+            versors quat;
+            vec3s scale;
+
+            glb_export__decompose((const cgltf_float *)&entity_world.raw, &pos, &quat, &scale);
+            glb_export__set_trs(node, pos, quat, scale);
+        }
     }
 
-    aiReturn result = aiExportScene(scene, "glb2", output_path.data, 0);
+    options.type = cgltf_file_type_glb;
+    cgltf_result result = cgltf_write_file(&options, output_path.data, data);
 
-    return result == AI_SUCCESS;
+    cgltf_free(data);
+    return result == cgltf_result_success;
 }
 
 #endif
