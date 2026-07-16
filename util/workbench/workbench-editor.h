@@ -9,6 +9,7 @@
 #include "poglib/util/asset.h"
 #include "poglib/util/assetmanager.h"
 #include <poglib/ecs.h>
+#include <poglib/util/glb_export.h>
 #include "./ui/workbench-ui.h"
 
 
@@ -849,5 +850,44 @@ void workbench_editor_save_to_file(const workbench_t *const self, ecs_t *const e
     ecs_save_to_file(ecs, str("./save/save.ecs"));
 }
 
+void workbench_editor_export_glb(ecs_t *const ecs)
+{
+    workbench_editor_savechanges();
+
+    arena_t *scratch = arena_init(NULL, 1 * MB);
+    ecs_componentmanager_t *cmp_manager = &ecs->managers.componentmanager;
+    slot_t *mesh_pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_MESH_IDX);
+
+    u32 exported_assets[64] = {0};
+    u32 exported_count = 0;
+
+    slot_iterator(mesh_pool, iter) {
+        const ecs_component_poolentry_t *entry = iter;
+        const ecs_component_mesh_t *mesh = (ecs_component_mesh_t *)entry->entity_cmpdata;
+        if (!entry->is_active || !mesh->is_scene_instanced) continue;
+
+        bool already_exported = false;
+        for (u32 i = 0; i < exported_count; i++) {
+            if (exported_assets[i] == mesh->asset_id) { already_exported = true; break; }
+        }
+        if (already_exported) continue;
+
+        if (exported_count >= 64) break;
+        exported_assets[exported_count++] = mesh->asset_id;
+
+        const glmodel_t *model = (glmodel_t *)assetmanager_get_assetresource(
+            &global_engine->systems.assets, ASSET_TYPE_MODEL, mesh->asset_id);
+        if (!model) continue;
+
+        str_t stem = str_partition(model->filepath, '.').pair[0];
+        char export_buf[512];
+        snprintf(export_buf, sizeof(export_buf), "%.*s_exported.glb", stem.len, stem.data);
+        str_t export_path = { .data = export_buf, .len = (u32)strlen(export_buf) };
+        glb_export_scene(scratch, ecs, mesh->asset_id, export_path);
+        arena_clear(scratch);
+    }
+
+    arena_destroy(scratch);
+}
 
 #endif

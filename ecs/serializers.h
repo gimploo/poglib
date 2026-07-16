@@ -91,9 +91,10 @@ INTERNAL void ecs_mesh_serializer(file_t *const file, const void *const cmp_data
     const ecs_component_mesh_t *m = cmp_data;
     u8 buf[WORD] = {0};
 
-    SERIALIZE_KV(file, buf, "\t",   "%i mesh 2", ECS_CMP_MESH_IDX);
+    SERIALIZE_KV(file, buf, "\t",   "%i mesh 3", ECS_CMP_MESH_IDX);
     SERIALIZE_KV(file, buf, "\t\t", "asset_id %u", m->asset_id);
     SERIALIZE_KV(file, buf, "\t\t", "mesh_idx %u", m->mesh_idx);
+    SERIALIZE_KV(file, buf, "\t\t", "is_scene_instanced %d", m->is_scene_instanced);
 }
 
 INTERNAL u64 ecs_mesh_deserializer(const str_views_t lines, const u64 line_idx, void *const cmp_data, arena_t *const arena, const hashtable_t *const assetid_remaps)
@@ -110,6 +111,7 @@ INTERNAL u64 ecs_mesh_deserializer(const str_views_t lines, const u64 line_idx, 
 
         if (str_cmp(pair.pair[0], str("asset_id")))                     sscanf(pair.pair[1].data, "%u", &m->asset_id);
         else if (str_cmp(pair.pair[0], str("mesh_idx")))                sscanf(pair.pair[1].data, "%d", (int *)&m->mesh_idx);
+        else if (str_cmp(pair.pair[0], str("is_scene_instanced")))      sscanf(pair.pair[1].data, "%d", (int *)&m->is_scene_instanced);
     }
 
     m->asset_id = m->asset_id > GL_MESH_PRIMITIVE_TYPE_COUNT
