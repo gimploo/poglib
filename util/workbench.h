@@ -4,6 +4,7 @@
 
 #include "./workbench/common.h"
 #include "./workbench/workbench-grid.h"
+#include "SDL2/SDL_scancode.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/util/workbench/workbench-editor.h"
 
@@ -280,8 +281,8 @@ workbench_t * workbench_init(arena_t *const arena)
                 [WORKBENCH_ACTION_TYPE_MOUSE_KEYBOARD_UNSELECT_ENTITY] = {
                     .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
                     .sdl_keyboard_key = {
-                        .main = SDL_SCANCODE_CAPSLOCK,
-                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
+                        .main       = SDL_SCANCODE_ESCAPE,
+                        .trigger    = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
                     }
                 },
                 [WORKBENCH_ACTION_TYPE_MOUSE_LEFT_CLICK_JUST_CLICKED] = {
@@ -647,7 +648,7 @@ void workbench_update(const f32 dt)
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY))       workbench_editor_copypaste_entity();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY))          workbench_editor_delete_entity();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_UNDO))                            workbench_editor_action_history_pop(global_workbench, global_ecs);
-    //if (bitmask & (1 << WORKBENCH_ACTION_TYPE_SAVE))                            workbench_editor_save_to_file(global_workbench, global_ecs);
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_SAVE))                            workbench_editor_save_to_file(global_workbench, global_ecs);
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_EXPORT_GLB))                      workbench_editor_export_glb(global_ecs);
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_SELECT_PLAYER))          workbench_editor_select_player();
 

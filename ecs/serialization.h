@@ -1,9 +1,11 @@
 #pragma once
+#include "./common.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/ecs/serializers.h"
 #include "poglib/gfx/gl/shader.h"
 #include "poglib/poggen.h"
 #include "poglib/util/asset.h"
+#include "poglib/util/workbench/common.h"
 
 #define ECS_VERSION  "v2"
 
@@ -39,7 +41,7 @@ const struct {
     [ECS_SERIALIZER_SECTION_UNIFORMS] = {
         .begin  = str_lit("\t\tsection_begin:uniforms"),
         .end    = str_lit("\t\tsection_end:uniforms")
-    }
+    },
 };
 
 INTERNAL gluniform_registry_t ecs_serializer__internal__get_uniform(ecs_t *const self, const str_views_t lines, u64 *const line_idx, arena_t *arena)
@@ -147,11 +149,15 @@ const struct {
     [ECS_CMP_MESH_IDX] = {
         .serializer     = ecs_mesh_serializer,
         .deserializer   = ecs_mesh_deserializer,
+    },
+    [ECS_CMP_SPRITE_IDX] = {
+        .serializer     = ecs_sprite_serializer,
+        .deserializer   = ecs_sprite_deserializer,
     }
 };
 
 
-hashtable_t ecs_serializer_load_all_assets(ecs_t *const self, arena_t *arena, const str_views_t lines, u64 *const line_idx)
+hashtable_t ecs_serializer_load_all_assets(ecs_t *const self, arena_t *arena, arena_t *const stringpool, const str_views_t lines, u64 *const line_idx)
 {
     if (!str_cmp(str_lstrip(lines.views[*line_idx], '\t'), ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_ASSETS].begin)) {
         eprint("asset section begin not found");
@@ -180,10 +186,23 @@ hashtable_t ecs_serializer_load_all_assets(ecs_t *const self, arena_t *arena, co
         sscanf(tokens.views[0].data, "assetid:%d", &oldasset_id);
         sscanf(tokens.views[1].data, "assettype:%u", &assettype);
 
-        const str_t asstpath01 = str_clone(str_rstrip(str_partition(tokens.views[2], '[').pair[1], ']'), arena);
+        ASSERT(oldasset_id != INVALID_ASSET_ID);
+
+        //NOTE: checking whether these assets were provided by the workbench, workbench is always initalized early (before the engine initalizes)
+        if (global_workbench) {
+            const u32 WORKBENCH_ASSETS[] = { global_workbench->primitives.atlas_id, global_workbench->primitives.line_shader_id, global_workbench->primitives.mesh_shader_id };
+            for (u32 wbasset_idx = 0; wbasset_idx < ARRAY_LEN(WORKBENCH_ASSETS); wbasset_idx++) {
+                if (oldasset_id == WORKBENCH_ASSETS[wbasset_idx]) {
+                    continue;
+                }
+            }
+        }
+
+        const str_t asstpath01 = str_clone(str_rstrip(str_partition(tokens.views[2], '[').pair[1], ']'), stringpool);
         const str_t asstpath02 = tokens.count == 4 
-            ? str_clone(str_rstrip(tokens.views[3], ']'), arena)
+            ? str_clone(str_rstrip(tokens.views[3], ']'), stringpool)
             : STR_EMPTY;
+
 
         u32 tile_count_width                        = 0; 
         u32 tile_count_height                       = 0;
@@ -202,7 +221,7 @@ hashtable_t ecs_serializer_load_all_assets(ecs_t *const self, arena_t *arena, co
 
         //NOTE: currently the workbench uses the assetmanager and if there are entities that uses some of the mesh primitives will need to 
         //skip it over since those are not loaded from file
-        if (assetmanager_does_asset_exist(&global_engine->systems.assets, assettype, oldasset_id)) {
+        if ((oldasset_id < GL_MESH_PRIMITIVE_TYPE_COUNT) || hashtable_has_key(&assetid_remaps, (hashtable_key_t){ .u32 = oldasset_id })) {
             continue;
         }
 

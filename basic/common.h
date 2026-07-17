@@ -9,6 +9,7 @@
 #include <threads.h>
 #include <stdalign.h>
 #include <stdatomic.h>
+#include <inttypes.h>
 
 #define MAX_TYPE_CHARACTER_LENGTH 32
 

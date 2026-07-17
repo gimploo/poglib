@@ -45,12 +45,12 @@ stack_t stack__internal_init(const u64 capacity, const char *elem_type, const u3
     assert(elem_size > 0);
 
     bool flag = false;
-    u32 len = strlen(elem_type);
-    if (elem_type[len - 1] == '*') flag = true;
+    //FIXME: this is stupid - dont need to do all this
+    if (elem_type[strlen(elem_type) - 1] == '*') flag = true;
 
     stack_t o = {
         .len                   = 0,
-        .__data                = (u8 *)arena_reserve(arena, capacity * elem_size),
+        .__data                = arena ? (u8 *)arena_reserve(arena, capacity * elem_size) : calloc(1, capacity * elem_size),
         .__top                 = -1,
         .__capacity            = capacity,
         .__elem_size           = elem_size,
@@ -113,10 +113,13 @@ void stack_destroy(stack_t *stack)
 {
     assert(stack);
 
-    arena_giveback(
-        stack->internal.arena, 
-        stack->__data, 
-        stack->__elem_size * stack->__capacity);
+    if (stack->internal.arena)
+        arena_giveback(
+            stack->internal.arena, 
+            stack->__data, 
+            stack->__elem_size * stack->__capacity);
+    else 
+        free(stack->__data);
 
     stack->__data = NULL;
     stack->__top = -1;
