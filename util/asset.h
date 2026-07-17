@@ -14,8 +14,8 @@ typedef enum asset_type {
 typedef struct {
     asset_type type;
     union {
-        hashtable_t      *uniformlocs;
-        vec2i_t          tile_counts;
+        hashtable_t         *uniformlocs;
+        vec2i_t             tile_counts;
     } meta;
     str_t filepath1;
     str_t filepath2;

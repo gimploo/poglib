@@ -1,6 +1,4 @@
 #pragma once
-#include "poglib/external/joltc/include/joltc.h"
-#include "poglib/input/commandqueue.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <poglib/physics/jolt-wrapper.h>

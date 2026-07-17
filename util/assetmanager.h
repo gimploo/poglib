@@ -56,9 +56,13 @@ void                assetmanager_destroy(assetmanager_t *const self);
 
 typedef struct {
     enum {
-        ASSET_EVENT_ASSET_LOADED = 1
+        ASSET_EVENT_MODEL_LOADED_TO_GPU = 1,
+        ASSET_EVENT_SHADER_COMPILED = 2
     } type;
-    u32 asset_id;
+    struct {
+        u32             id;
+        asset_meta_t    meta;
+    } asset;
 } asset_event_t;
 
 #define MAX_ASSETS_ALLOWED_PER_TYPE 10
@@ -138,7 +142,6 @@ void assetmanager__internal_thread_callback_load_glmodel(const taskpayload_t pay
     mpsc_queue_put(queue, task);
 }
 
-
 u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepath)
 {
     const u32 asset_id = ++self->internal.asset_idx_generator;
@@ -173,14 +176,6 @@ u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepa
     );
 
     return asset_id;
-}
-
-bool assetmanager_does_asset_exist(const assetmanager_t *const self, const asset_type assettype, const u32 assetId)
-{
-    if (assetId < GL_MESH_PRIMITIVE_TYPE_COUNT)
-        return true;
-
-    return hashtable_has_key(&self->assetmaps[assettype], (hashtable_key_t){ .u32 = assetId });
 }
 
 const void * assetmanager_get_assetresource(const assetmanager_t *const self, const asset_type assettype, const u32 assetId)
@@ -224,6 +219,15 @@ void assetmanager_destroy(assetmanager_t *const self)
 
 u32 assetmanager_load_glsl_shader(assetmanager_t *const self, const str_t vtx_filepath, const str_t frag_filepath, const gluniform_registry_t registry) 
 {
+    hashtable_iterator(&self->assetmaps[ASSET_TYPE_GLSL_SHADER], iter)
+    {
+        const hashtable_entry_t *const table_entry = iter;
+        glshader_t *const shader = table_entry->value;
+
+        if (str_cmp(shader->fg, frag_filepath) && str_cmp(shader->vs, vtx_filepath) && registry.count == shader->internal.uniformlocs.entries.len) 
+            return table_entry->key.u32;
+    }
+
     const u32 asset_id = ++self->internal.asset_idx_generator;
 
     glshader_t *shader = arena_reserve(self->arena, sizeof(glshader_t));
@@ -232,6 +236,7 @@ u32 assetmanager_load_glsl_shader(assetmanager_t *const self, const str_t vtx_fi
     assetmanager__internal_add_asset_meta_data(self, ASSET_TYPE_GLSL_SHADER, asset_id, vtx_filepath, frag_filepath, shader);
     hashtable_insert(&self->assetmaps[ASSET_TYPE_GLSL_SHADER], (hashtable_key_t){.u32 = asset_id}, shader);
     logging("Shader compiled %s, %s", shader->fg.data, shader->vs.data);
+
     return asset_id;
 }
 
@@ -317,6 +322,17 @@ INTERNAL void assetmanager__internal_process_pending_gpu_tasks(assetmanager_t *c
         {
             case ASSET_TYPE_MODEL:
                 assetmanager__internal_upload_model_to_gpu(self, (glmodel_t *)task->processed_data, task->asset_id);
+                queue_put(
+                    &self->internal.asset_loaded_events, 
+                    &(asset_event_t) { 
+                        .type = ASSET_EVENT_MODEL_LOADED_TO_GPU,
+                        .asset = {
+                            .id     = task->asset_id,
+                            .meta   = *(asset_meta_t *)hashtable_get_value(&self->assetmeta_lookup, (hashtable_key_t){ .u32 = task->asset_id }),
+                        }
+                    }, 
+                    sizeof(asset_event_t)
+                );
             break;
 
             case ASSET_TYPE_TEXTURE:
@@ -324,14 +340,6 @@ INTERNAL void assetmanager__internal_process_pending_gpu_tasks(assetmanager_t *c
             default: eprint("asset type async gpu loading functions are not implemented");
         }
 
-        queue_put(
-            &self->internal.asset_loaded_events, 
-            &(asset_event_t) { 
-                .asset_id   = task->asset_id,
-                .type       = ASSET_EVENT_ASSET_LOADED
-            }, 
-            sizeof(asset_event_t)
-        );
     }
 }
 
@@ -740,6 +748,15 @@ gpu_asset_t * assetmanager_get_gpu_loaded_asset_async(const assetmanager_t *cons
 
 u32 assetmanager_load_spriteatlas(assetmanager_t *const self, const str_t filepath, const u32 tile_count_width, const u32 tile_count_height)
 {
+    hashtable_iterator(&self->assetmaps[ASSET_TYPE_TEXTURE_SPRITE_ATLAS], iter)
+    {
+        const hashtable_entry_t *const table_entry = iter;
+        spriteatlas_t *const atlas = table_entry->value;
+
+        if (str_cmp(atlas->texture.filepath, filepath)) 
+            return table_entry->key.u32;
+    }
+
     const spriteatlas_t atlas   = spriteatlas_init(filepath, tile_count_width, tile_count_height, self->arena);
     const u32 asset_id          = ++self->internal.asset_idx_generator;
     hashtable_insert(&self->assetmaps[ASSET_TYPE_TEXTURE_SPRITE_ATLAS], (hashtable_key_t){ .u32 = asset_id }, &atlas);
@@ -761,7 +778,6 @@ INTERNAL void assetmanager__internal_add_asset_meta_data(
         .type = asset_type,
         .filepath1 = filepath1, 
         .filepath2 = filepath2, 
-        .meta = {0}
     };
 
     switch(asset_type)

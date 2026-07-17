@@ -452,7 +452,7 @@ glshader_t glshader_init(
 
     glshader_t shader = {
         .fg = fgpath,
-        .vs = fgpath,
+        .vs = vtxpath,
     };
 
     glshader__internal_load_from_file(

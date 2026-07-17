@@ -30,7 +30,7 @@ INTERNAL u64 ecs_transform_deserializer(const str_views_t lines, const u64 line_
     ecs_component_transform_t *const t = cmp_data;
 
     u64 cmp_idx, member_count;
-    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%lu transform %lu", &cmp_idx, &member_count);
+    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%"SCNu64" transform ""%"SCNu64, &cmp_idx, &member_count);
 
     for (u8 idx = 0; idx < member_count; idx++) 
     {
@@ -65,7 +65,7 @@ INTERNAL u64 ecs_model_deserializer(const str_views_t lines, const u64 line_idx,
     ecs_component_model_t *const m = cmp_data;
 
     u64 cmp_idx, member_count;
-    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%lu model %lu", &cmp_idx, &member_count);
+    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%"SCNu64" model ""%"SCNu64, &cmp_idx, &member_count);
 
     for (u8 idx = 0; idx < member_count; idx++) 
     {
@@ -75,9 +75,7 @@ INTERNAL u64 ecs_model_deserializer(const str_views_t lines, const u64 line_idx,
         if (str_cmp(pair.pair[0], str("asset_id"))) sscanf(pair.pair[1].data, "%u", &m->asset_id);
     }
 
-    m->asset_id = m->asset_id > GL_MESH_PRIMITIVE_TYPE_COUNT
-        ? (u64)hashtable_get_value(assetid_remaps, (hashtable_key_t){ .u32 = m->asset_id })
-        : m->asset_id;
+    m->asset_id = (u64)hashtable_get_value(assetid_remaps, (hashtable_key_t){ .u32 = m->asset_id });
 
     return member_count;
 }
@@ -89,12 +87,13 @@ INTERNAL u64 ecs_model_deserializer(const str_views_t lines, const u64 line_idx,
 INTERNAL void ecs_mesh_serializer(file_t *const file, const void *const cmp_data)
 {
     const ecs_component_mesh_t *m = cmp_data;
+    if (m->is_scene_instanced) return;
+
     u8 buf[WORD] = {0};
 
-    SERIALIZE_KV(file, buf, "\t",   "%i mesh 3", ECS_CMP_MESH_IDX);
+    SERIALIZE_KV(file, buf, "\t",   "%i mesh 2", ECS_CMP_MESH_IDX);
     SERIALIZE_KV(file, buf, "\t\t", "asset_id %u", m->asset_id);
     SERIALIZE_KV(file, buf, "\t\t", "mesh_idx %u", m->mesh_idx);
-    SERIALIZE_KV(file, buf, "\t\t", "is_scene_instanced %d", m->is_scene_instanced);
 }
 
 INTERNAL u64 ecs_mesh_deserializer(const str_views_t lines, const u64 line_idx, void *const cmp_data, arena_t *const arena, const hashtable_t *const assetid_remaps)
@@ -102,7 +101,7 @@ INTERNAL u64 ecs_mesh_deserializer(const str_views_t lines, const u64 line_idx, 
     ecs_component_mesh_t *const m = cmp_data;
 
     u64 cmp_idx, member_count;
-    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%lu mesh %lu", &cmp_idx, &member_count);
+    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%"SCNu64" mesh ""%"SCNu64, &cmp_idx, &member_count);
 
     for (u8 idx = 0; idx < member_count; idx++) 
     {
@@ -111,7 +110,6 @@ INTERNAL u64 ecs_mesh_deserializer(const str_views_t lines, const u64 line_idx, 
 
         if (str_cmp(pair.pair[0], str("asset_id")))                     sscanf(pair.pair[1].data, "%u", &m->asset_id);
         else if (str_cmp(pair.pair[0], str("mesh_idx")))                sscanf(pair.pair[1].data, "%d", (int *)&m->mesh_idx);
-        else if (str_cmp(pair.pair[0], str("is_scene_instanced")))      sscanf(pair.pair[1].data, "%d", (int *)&m->is_scene_instanced);
     }
 
     m->asset_id = m->asset_id > GL_MESH_PRIMITIVE_TYPE_COUNT
@@ -120,7 +118,41 @@ INTERNAL u64 ecs_mesh_deserializer(const str_views_t lines, const u64 line_idx, 
 
     return member_count;
 }
+/* ======================================================================
+ *  Sprite
+ * ==================================================================== */
 
+INTERNAL void ecs_sprite_serializer(file_t *const file, const void *const cmp_data)
+{
+    const ecs_component_sprite_t *m = cmp_data;
+    u8 buf[WORD] = {0};
+
+    SERIALIZE_KV(file, buf, "\t",   "%i sprite 2", ECS_CMP_SPRITE_IDX);
+    SERIALIZE_KV(file, buf, "\t\t", "spritesheet_asset_id %u", m->spritesheet_asset_id);
+    SERIALIZE_KV(file, buf, "\t\t", "sprite_idx %u", m->sprite_idx);
+}
+
+INTERNAL u64 ecs_sprite_deserializer(const str_views_t lines, const u64 line_idx, void *const cmp_data, arena_t *const arena, const hashtable_t *const assetid_remaps)
+{
+    ecs_component_sprite_t *const m = cmp_data;
+
+    u64 cmp_idx, member_count;
+    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%"SCNu64" sprite ""%"SCNu64, &cmp_idx, &member_count);
+
+    for (u8 idx = 0; idx < member_count; idx++) 
+    {
+        const str_t trimmed_line    = str_lstrip(lines.views[line_idx + (idx + 1)], '\t');
+        const str_pair_t pair       = str_partition(trimmed_line, ' ');
+
+        if (str_cmp(pair.pair[0], str("spritesheet_asset_id")))           sscanf(pair.pair[1].data, "%u", &m->spritesheet_asset_id);
+        else if (str_cmp(pair.pair[0], str("sprite_idx")))                sscanf(pair.pair[1].data, "%d", (int *)&m->sprite_idx);
+    }
+
+    const u64 remapped_assetid = (u64)hashtable_get_value_or_null(assetid_remaps, (hashtable_key_t){ .u32 = m->spritesheet_asset_id });
+    m->spritesheet_asset_id = remapped_assetid ? remapped_assetid : m->spritesheet_asset_id;
+
+    return member_count;
+}
 /* ======================================================================
  *  INPUT
  * ==================================================================== */
@@ -147,7 +179,7 @@ INTERNAL u64 ecs_input_deserializer(const str_views_t lines, const u64 line_idx,
     ecs_component_input_state_t *const s  = &in->internal.state;
 
     u64 cmp_idx, member_count;
-    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%lu input %lu", &cmp_idx, &member_count);
+    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%"SCNu64" input ""%"SCNu64, &cmp_idx, &member_count);
 
     for (u8 idx = 0; idx < member_count; idx++) 
     {
@@ -174,12 +206,12 @@ INTERNAL void ecs_material_serializer(file_t *const file, const void *const cmp_
     const ecs_component_material_t *mat = cmp_data;
     u8 buf[WORD] = {0};
     SERIALIZE_KV(file, buf, "\t", "%i material 2", ECS_CMP_MATERIAL_IDX);
-    SERIALIZE_KV(file, buf, "\t\t", "shader_asset_id %u", mat->shader_asset_id);
+    SERIALIZE_KV(file, buf, "\t\t", "shader_asset_id:%u", mat->shader_asset_id);
 
-    u64 offset = snprintf(buf, sizeof(buf), "\t\ttextures [%i]:[", mat->textures.count);
+    u64 offset = snprintf(buf, sizeof(buf), "\t\ttextures:(%i)[ ", mat->textures.count);
     for (u64 idx = 0; idx < mat->textures.count; idx++)
     {
-        offset += snprintf(buf + offset, sizeof(buf) - offset, "%u,", mat->textures.asset_ids[idx]);
+        offset += snprintf(buf + offset, sizeof(buf) - offset, "%u ", mat->textures.asset_ids[idx]);
     }
     snprintf(buf + offset, sizeof(buf) - offset, "]\n");
     file_writebytes(file, buf, strlen((char *)buf));
@@ -190,12 +222,12 @@ INTERNAL u64 ecs_material_deserializer(const str_views_t lines, const u64 line_i
     ecs_component_material_t *const mat = cmp_data;
 
     u64 cmp_idx, member_count;
-    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%lu material %lu", &cmp_idx, &member_count);
+    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%"SCNu64" material ""%"SCNu64, &cmp_idx, &member_count);
 
     for (u8 idx = 0; idx < member_count; idx++) 
     {
         const str_t trimmed_line    = str_lstrip(lines.views[line_idx + (idx + 1)], '\t');
-        const str_pair_t pair       = str_partition(trimmed_line, ' ');
+        const str_pair_t pair       = str_partition(trimmed_line, ':');
 
         if (str_cmp(pair.pair[0], str("shader_asset_id"))) {
 
@@ -205,12 +237,20 @@ INTERNAL u64 ecs_material_deserializer(const str_views_t lines, const u64 line_i
 
         } else if (str_cmp(pair.pair[0], str("textures"))) {
 
+            const str_pair_t texture_array = str_partition(pair.pair[1], '[');
+            sscanf(texture_array.pair[0].data, "(%i)", &mat->textures.count);
             if (mat->textures.count >= ECS_COMPONENT_MATERIAL_TEXTURE_MAX_COUNT)
                 return member_count;
 
-            u32 texture_count;
-            //sscanf(pair.pair[1].data, "[%u]:[", &texture_count);
-            eprint("not implemented");
+            const char *buffer = texture_array.pair[1].data;
+            char *endptr = NULL;
+            for (u32 tex_idx = 0; tex_idx < mat->textures.count; tex_idx++)
+            {
+                if (buffer == endptr) break; 
+
+                mat->textures.asset_ids[tex_idx] = strtol(buffer, &endptr, 10);
+                buffer = endptr;
+            }
         }
     }
     return member_count + mat->textures.count;
@@ -242,7 +282,7 @@ INTERNAL u64 ecs_camera_deserializer(const str_views_t lines, const u64 line_idx
     ecs_component_camera_t *const c = cmp_data;
 
     u64 cmp_idx, member_count;
-    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%lu camera %lu", &cmp_idx, &member_count);
+    sscanf(str_lstrip(lines.views[line_idx], '\t').data,  "%"SCNu64" camera ""%"SCNu64, &cmp_idx, &member_count);
 
     for (u8 idx = 0; idx < member_count; idx++) 
     {
@@ -285,7 +325,7 @@ INTERNAL u64 ecs_collider_deserializer(const str_views_t lines, const u64 line_i
     ecs_component_collider_t *const col = cmp_data;
 
     u64 cmp_idx, member_count;
-    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%lu collider %lu", &cmp_idx, &member_count);
+    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%"SCNu64" collider ""%"SCNu64, &cmp_idx, &member_count);
 
     for (u8 idx = 0; idx < member_count; idx++) 
     {

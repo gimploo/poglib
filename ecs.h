@@ -243,16 +243,17 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
     ASSERT(global_engine);
     logging("ECS save file `%.*s` exist, loading it.", filepath.len, filepath.data);
 
-    const str_t buffer = str_read_file_to_str(self->arena, filepath);
-    arena_t *const scratch = runtimectx_reserve_mem_from_stringpool(0.5 * MB);
+    arena_t *const scratch = arena_init(NULL, 0.5 * MB);
+    const str_t buffer = str_read_file_to_str(scratch, filepath);
     {
         const str_views_t lines     = str_split(buffer, '\n', scratch);
         u64 line_cursor             = ecs_serializer_validate_header(lines);
-        const hashtable_t assetid_remaps = ecs_serializer_load_all_assets(global_ecs, scratch, lines, &line_cursor);
+        const hashtable_t assetid_remaps = ecs_serializer_load_all_assets(global_ecs, scratch, global_runtimectx->stringpool, lines, &line_cursor);
 
         if (!str_cmp(lines.views[line_cursor], ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_ENTITIES].begin))
             eprint(STR_FMT" missing", STR_ARG(ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_ENTITIES].begin));
 
+        u32 max_entity_id = 0;
         line_cursor++;
         while(true)
         {
@@ -261,7 +262,7 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
             }
 
             u64 entity_id = 0, entity_signature = 0;
-            sscanf(str_lstrip(lines.views[line_cursor++], '\t').data, "entity %lu %lu", &entity_id, &entity_signature);
+            sscanf(str_lstrip(lines.views[line_cursor++], '\t').data, "entity ""%"SCNu64" ""%"SCNu64, &entity_id, &entity_signature);
 
             ecs_componentbundle_t bundle = {
                 .signature = entity_signature,
@@ -276,19 +277,21 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
                     continue;
 
                 line_cursor += ECS_COMPONENT_SERIALIZER_LOOKUP[cmp_idx].deserializer(
-                    lines, 
-                    line_cursor,
-                    &bundle.component[cmp_idx],
-                    self->arena,
-                    &assetid_remaps
-                );
+                        lines, 
+                        line_cursor,
+                        &bundle.component[cmp_idx],
+                        self->arena,
+                        &assetid_remaps
+                        );
                 line_cursor += 1;
             }
-           ecs_entity_add_at_index(self, entity_id, bundle);
+            ecs_entity_add_at_index(self, entity_id, bundle);
+            max_entity_id = MAX(max_entity_id, entity_id);
         }
 
         logging("ECS save file loaded successfully, %u entities restored", self->managers.entitymanager.entities.len);
-    }
+        self->internal.entity_generator_counter = max_entity_id;
+    } 
     arena_destroy(scratch);
 
     return true;
@@ -331,14 +334,23 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
             if (entity->id < WORKBENCH_RESERVED_ENTITY_ID_COUNT) continue;
             if (!entity->component_signature) continue;
 
+            const ecs_entity_query_t query = ecs_entity_query_components(
+                self, entity->id, entity->component_signature
+            );
+
+            //NOTE: i thinks its better to have the scene (which is loaded from a glb file) to remain out
+            //of the save file. Since currently i dont see any need to collide the two - i guess later 
+            //when the editor is expanded on, further modification can be made on meshes in the scene - we 
+            //could follow how we did for existing assets and updte the asset id for the scene loaded meshes 
+            //remapped to new loaded asset id internally
+            const ecs_component_mesh_t *const mesh_cmp = query.entity_cmp_data[ECS_CMP_MESH_IDX];
+            if (mesh_cmp && mesh_cmp->is_scene_instanced) 
+                continue;
+
             buffer(WORD) buf = {0};
             snprintf((char *)buf.raw_data, sizeof(buf.raw_data),
                 "\tentity %u %u\n", entity->id, entity->component_signature);
             file_writeline(&f, (char *)buf.raw_data);
-
-            const ecs_entity_query_t query = ecs_entity_query_components(
-                self, entity->id, entity->component_signature
-            );
 
             for (u8 cmp_idx = 0; cmp_idx < ECS_CMP_COUNT; cmp_idx++)
             {
