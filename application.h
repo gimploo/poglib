@@ -15,6 +15,11 @@
 
 #include "application/stopwatch.h"
 #include "application/sound.h"
+// PLANNED(feat/miniaudio-music-system): After approval, also include the new hybrid audio stack:
+//   #include "application/audio_device.h"  // miniaudio device/engine lifecycle
+//   #include "application/audio_music.h"   // layered looping theme + Parkour_intensity
+//   #include "application/audio_sfx.h"     // one-shot impact stingers
+// Keep sound.h for the existing SDL WAV test harness until that test is migrated.
 #include "font/glfreetypefont.h"
 
 
@@ -144,6 +149,10 @@ void application_run(application_t *const app)
     win->background_color = app->window.background_color;
 
     logging("Accessing audio device `%s`...", SDL_GetAudioDeviceName(0,0));
+    // PLANNED(feat/miniaudio-music-system): After approval, init miniaudio here instead of (or in addition to)
+    // the SDL device name log above:
+    //   if (!audio_device_init()) eprint("audio device init failed");
+    // Device owns the ma_engine used by music layers + sfx. SDL remains for window/input only.
 
     stopwatch_t timer = stopwatch();
     const f32 FIXED_DT = APPLICATION_UPDATE_FIXED_TIME_STEP; //Runs at 60Hz
@@ -194,6 +203,9 @@ void application_run(application_t *const app)
 #ifdef DEBUG
     arena_logger_dump_json("arena_map.json");
 #endif
+    // PLANNED(feat/miniaudio-music-system): After approval, shut down audio before app->destroy so
+    // music/sfx streams stop cleanly and ma_engine is freed:
+    //   audio_device_shutdown();
     app->destroy(app);
     SDL_free((char *)app->context.base_dir);
 

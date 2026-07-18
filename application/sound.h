@@ -1,4 +1,8 @@
 #pragma once
+// PLANNED(feat/miniaudio-music-system): This SDL-per-sound WAV player is NOT the game audio path.
+// After approval we leave it for lib/poglib/test/sound only. Game music/SFX will use:
+//   application/audio_device.h + audio_music.h + audio_sfx.h (miniaudio).
+// Do not extend audio_t for layered looping music (no mix/stream/sync).
 #include "window/sdl_window.h"
 #include <SDL2/SDL_audio.h>
 
