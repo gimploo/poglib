@@ -11,6 +11,13 @@ audio_device_t *audio_device_get(void);
 
 #ifndef IGNORE_AUDIO_DEVICE_IMPLEMENTATION
 
+#ifdef _WIN64
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
+
 #define MA_NO_DSOUND
 #define MINIAUDIO_IMPLEMENTATION
 #include "poglib/external/miniaudio.h"
