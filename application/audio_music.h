@@ -177,7 +177,7 @@ void music_theme_stop(f32 fade_sec)
     for (u32 i = 0; i < g_music.layer_count; i++) {
         if (!g_music.layers[i].loaded) continue;
         ma_sound_set_fade_in_milliseconds(&g_music.layers[i].sound,
-            0.0f, (ma_uint64)(fade_sec * 1000.0f));
+            -1.0f, 0.0f, (ma_uint64)(fade_sec * 1000.0f));
         ma_sound_stop(&g_music.layers[i].sound);
     }
     g_music.playing = false;

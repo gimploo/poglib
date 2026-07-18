@@ -15,7 +15,7 @@
 INTERNAL void ecs_transform_serializer(file_t *const file, const void *const cmp_data)
 {
     const ecs_component_transform_t *t = cmp_data;
-    char buf[WORD] = {0};
+    char buf[512] = {0};
 
     SERIALIZE_KV(file, buf, "\t", "%i transform 5", ECS_CMP_TRANSFORM_IDX);
     SERIALIZE_KV(file, buf, "\t\t", "position %f %f %f", t->position.x, t->position.y, t->position.z);
@@ -54,7 +54,7 @@ INTERNAL u64 ecs_transform_deserializer(const str_views_t lines, const u64 line_
 INTERNAL void ecs_model_serializer(file_t *const file, const void *const cmp_data)
 {
     const ecs_component_model_t *m = cmp_data;
-    u8 buf[WORD] = {0};
+    u8 buf[512] = {0};
 
     SERIALIZE_KV(file, buf, "\t", "%i model 1", ECS_CMP_MODEL_IDX);
     SERIALIZE_KV(file, buf, "\t\t", "asset_id %u", m->asset_id);
@@ -89,7 +89,7 @@ INTERNAL void ecs_mesh_serializer(file_t *const file, const void *const cmp_data
     const ecs_component_mesh_t *m = cmp_data;
     if (m->is_scene_instanced) return;
 
-    u8 buf[WORD] = {0};
+    u8 buf[512] = {0};
 
     SERIALIZE_KV(file, buf, "\t",   "%i mesh 2", ECS_CMP_MESH_IDX);
     SERIALIZE_KV(file, buf, "\t\t", "asset_id %u", m->asset_id);
@@ -125,7 +125,7 @@ INTERNAL u64 ecs_mesh_deserializer(const str_views_t lines, const u64 line_idx, 
 INTERNAL void ecs_sprite_serializer(file_t *const file, const void *const cmp_data)
 {
     const ecs_component_sprite_t *m = cmp_data;
-    u8 buf[WORD] = {0};
+    u8 buf[512] = {0};
 
     SERIALIZE_KV(file, buf, "\t",   "%i sprite 2", ECS_CMP_SPRITE_IDX);
     SERIALIZE_KV(file, buf, "\t\t", "spritesheet_asset_id %u", m->spritesheet_asset_id);
@@ -161,7 +161,7 @@ INTERNAL void ecs_input_serializer(file_t *const file, const void *const cmp_dat
 {
     const ecs_component_input_t *in = cmp_data;
     const ecs_component_input_state_t *s = &in->internal.state;
-    char buf[WORD] = {0};
+    char buf[512] = {0};
 
     SERIALIZE_KV(file, buf, "\t", "%i input 7", ECS_CMP_INPUT_IDX);
     SERIALIZE_KV(file, buf, "\t\t", "direction_source %d", in->direction_source);
@@ -204,7 +204,7 @@ INTERNAL u64 ecs_input_deserializer(const str_views_t lines, const u64 line_idx,
 INTERNAL void ecs_material_serializer(file_t *const file, const void *const cmp_data)
 {
     const ecs_component_material_t *mat = cmp_data;
-    u8 buf[WORD] = {0};
+    u8 buf[512] = {0};
     SERIALIZE_KV(file, buf, "\t", "%i material 2", ECS_CMP_MATERIAL_IDX);
     SERIALIZE_KV(file, buf, "\t\t", "shader_asset_id:%u", mat->shader_asset_id);
 
@@ -263,7 +263,7 @@ INTERNAL u64 ecs_material_deserializer(const str_views_t lines, const u64 line_i
 INTERNAL void ecs_camera_serializer(file_t *const file, const void *const cmp_data)
 {
     const ecs_component_camera_t *c = cmp_data;
-    char buf[WORD] = {0};
+    char buf[512] = {0};
 
     SERIALIZE_KV(file, buf, "\t",   "%i camera 9", ECS_CMP_CAMERA_IDX);
     SERIALIZE_KV(file, buf, "\t\t", "position %f %f %f", c->camera.position.x, c->camera.position.y, c->camera.position.z);
@@ -309,7 +309,7 @@ INTERNAL u64 ecs_camera_deserializer(const str_views_t lines, const u64 line_idx
 INTERNAL void ecs_collider_serializer(file_t *const file, const void *const cmp_data)
 {
     const ecs_component_collider_t *col = cmp_data;
-    char buf[WORD] = {0};
+    char buf[512] = {0};
 
     SERIALIZE_KV(file, buf, "\t", "%i collider 6", ECS_CMP_COLLIDER_IDX);
     SERIALIZE_KV(file, buf, "\t\t", "shape_type %d", col->shape_type);

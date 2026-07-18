@@ -69,8 +69,6 @@ static dbg_t global_debug;
 
 // Wrapper of common memory allocating function in stdlib 
 
-#define WORD 512
-
 #define malloc(N)       _debug_malloc((N), __FILE__, __LINE__, __func__)
 #define calloc(S,N)     _debug_malloc(((N) * (S)), __FILE__, __LINE__, __func__)
 #define realloc(P, N)   _debug_realloc((P), (#P), (N), __FILE__, __LINE__, __func__)
@@ -83,8 +81,8 @@ typedef struct dbg_node_info_t {
 
     void        *value;
     uint32_t    bytes;
-    char        filename[WORD];
-    char        funcname[WORD];
+    char        filename[512];
+    char        funcname[512];
     uint32_t    linenum;
 
 
