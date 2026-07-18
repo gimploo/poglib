@@ -1,5 +1,6 @@
 #pragma once
 #include "basic/common.h"
+#include "basic/str.h"
 #include "poglib/external/miniaudio.h"
 
 /*  audio_sfx.h — One-shot SFX (impact stingers over music)
@@ -14,13 +15,13 @@
 #define SFX_SET_MAX     8
 
 typedef struct {
-    char        name[64];
+    str_t       name;
     ma_sound    sound;
     bool        loaded;
 } sfx_sound_t;
 
 typedef struct {
-    char        label[32];
+    str_t       label;
     u32         indices[SFX_SET_MAX];
     u32         count;
     u32         next;
@@ -35,8 +36,8 @@ typedef struct {
 } sfx_system_t;
 
 bool    sfx_system_init(void);
-u32     sfx_register(const char *name, const char *filepath, ma_engine *engine);
-u32     sfx_set_create(const char *label);
+u32     sfx_register(str_t name, str_t filepath, ma_engine *engine);
+u32     sfx_set_create(str_t label);
 void    sfx_set_add(u32 set_id, u32 sound_id);
 void    sfx_play(u32 sound_id);
 void    sfx_play_from_set(u32 set_id);
@@ -54,7 +55,7 @@ bool sfx_system_init(void)
     return true;
 }
 
-u32 sfx_register(const char *name, const char *filepath, ma_engine *engine)
+u32 sfx_register(str_t name, str_t filepath, ma_engine *engine)
 {
     if (g_sfx.sound_count >= SFX_MAX_SOUNDS) {
         eprint("[audio] sfx: max sounds reached\n");
@@ -63,12 +64,12 @@ u32 sfx_register(const char *name, const char *filepath, ma_engine *engine)
 
     u32 id = g_sfx.sound_count++;
     sfx_sound_t *s = &g_sfx.sounds[id];
-    strncpy(s->name, name, sizeof(s->name) - 1);
+    s->name = name;
 
-    ma_result result = ma_sound_init_from_file(engine, filepath,
+    ma_result result = ma_sound_init_from_file(engine, filepath.data,
         0, NULL, NULL, &s->sound);
     if (result != MA_SUCCESS) {
-        eprint("[audio] sfx: failed to load `%s`: %d\n", filepath, result);
+        eprint("[audio] sfx: failed to load `%.*s`: %d\n", STR_ARG(filepath), result);
         s->loaded = false;
         return (u32)-1;
     }
@@ -77,7 +78,7 @@ u32 sfx_register(const char *name, const char *filepath, ma_engine *engine)
     return id;
 }
 
-u32 sfx_set_create(const char *label)
+u32 sfx_set_create(str_t label)
 {
     if (g_sfx.set_count >= SFX_MAX_SETS) {
         eprint("[audio] sfx: max sets reached\n");
@@ -85,7 +86,7 @@ u32 sfx_set_create(const char *label)
     }
     u32 id = g_sfx.set_count++;
     sfx_set_t *set = &g_sfx.sets[id];
-    strncpy(set->label, label, sizeof(set->label) - 1);
+    set->label = label;
     set->count = 0;
     set->next = 0;
     return id;

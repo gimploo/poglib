@@ -16,20 +16,20 @@
  *  Do NOT parse .wwu / .wproj / SoundBanks at runtime.
  */
 
-static const char *MUSIC_BASE_PATH = "res/audio";
+static const str_t MUSIC_BASE_PATH = str("res/audio");
 
-static const char *MUSIC_LAYER_FILES[] = {
-    "music/PV_main-theme_bed_80bpm.wav",
-    "music/PV_main-theme_layer1_80bpm.wav",
-    "music/PV_main-theme_layer2_80bpm.wav",
-    "music/PV_main-theme_layer3_80bpm.wav",
+static const str_t MUSIC_LAYER_FILES[] = {
+    str("music/PV_main-theme_bed_80bpm.wav"),
+    str("music/PV_main-theme_layer1_80bpm.wav"),
+    str("music/PV_main-theme_layer2_80bpm.wav"),
+    str("music/PV_main-theme_layer3_80bpm.wav"),
 };
 static const u32 MUSIC_LAYER_COUNT = 4;
 
 /*  Volume curves extracted from Music_Khushi.wwu RTPC bindings.
  *  Each curve: pairs of {intensity_0_100, volume_dB}.
  *  Silent = -200 dB (effectively mute in linear).
- *  Curves are piecewise linear interpolated in music__db_from_curve().
+ *  Curves are piecewise linear interpolated in music__internal__db_from_curve().
  */
 static const music_curve_point_t MUSIC_LAYER_CURVES[][8] = {
     /* bed: always audible */
@@ -46,11 +46,11 @@ static const u32 MUSIC_LAYER_CURVE_COUNTS[] = {
     2, 4, 4, 4,
 };
 
-static const char *MUSIC_SFX_FILES[] = {
-    "sfx/Impact_KL_01.wav",
-    "sfx/Impact_KL_02.wav",
-    "sfx/Impact_KL_03.wav",
-    "sfx/Impact_KL_04.wav",
+static const str_t MUSIC_SFX_FILES[] = {
+    str("sfx/Impact_KL_01.wav"),
+    str("sfx/Impact_KL_02.wav"),
+    str("sfx/Impact_KL_03.wav"),
+    str("sfx/Impact_KL_04.wav"),
 };
 static const u32 MUSIC_SFX_COUNT = 4;
 
@@ -76,11 +76,12 @@ bool music_config_load(void)
     if (!ok) return false;
 
     /* Load impact SFX */
-    g_sfx_impact_set = sfx_set_create("impacts");
+    g_sfx_impact_set = sfx_set_create(str("impacts"));
     for (u32 i = 0; i < MUSIC_SFX_COUNT; i++) {
         char fullpath[512];
-        snprintf(fullpath, sizeof(fullpath), "%s/%s", MUSIC_BASE_PATH, MUSIC_SFX_FILES[i]);
-        u32 id = sfx_register(MUSIC_SFX_FILES[i], fullpath, engine);
+        snprintf(fullpath, sizeof(fullpath), "%.*s/%.*s",
+            STR_ARG(MUSIC_BASE_PATH), STR_ARG(MUSIC_SFX_FILES[i]));
+        u32 id = sfx_register(MUSIC_SFX_FILES[i], str(fullpath), engine);
         if (id != (u32)-1) {
             sfx_set_add(g_sfx_impact_set, id);
         }

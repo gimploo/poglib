@@ -1,5 +1,7 @@
 #pragma once
 #include "basic/common.h"
+#include "basic/str.h"
+#include <math.h>
 #include "poglib/external/miniaudio.h"
 
 /*  audio_music.h — Hybrid Wwise-authoring / miniaudio-runtime layered music
@@ -26,7 +28,7 @@ typedef struct {
 } music_curve_point_t;
 
 typedef struct {
-    char                filepath[256];
+    str_t               filepath;
     ma_sound            sound;
     music_curve_point_t curve[8];
     u32                 curve_count;
@@ -44,9 +46,8 @@ typedef struct {
     bool            initialized;
 } music_theme_t;
 
-bool    music_theme_load(const char *base_path, const char *layer_files[], u32 count,
+bool    music_theme_load(str_t base_path, const str_t layer_files[], u32 count,
                          const music_curve_point_t curves[][8], const u32 curve_counts[]);
-bool    music_theme_load_from_config(void);
 void    music_theme_play(void);
 void    music_theme_stop(f32 fade_sec);
 void    music_theme_set_intensity(f32 value_0_100);
@@ -58,7 +59,7 @@ f32     music_theme_get_intensity(void);
 
 global music_theme_t g_music = {0};
 
-static f32 music__db_from_curve(const music_curve_point_t *curve, u32 count, f32 intensity)
+INTERNAL f32 music__internal__db_from_curve(const music_curve_point_t *curve, u32 count, f32 intensity)
 {
     if (count == 0) return 0.0f;
     if (intensity <= curve[0].x) return curve[0].y;
@@ -73,29 +74,29 @@ static f32 music__db_from_curve(const music_curve_point_t *curve, u32 count, f32
     return curve[count - 1].y;
 }
 
-static f32 music__db_to_linear(f32 db)
+INTERNAL f32 music__internal__db_to_linear(f32 db)
 {
     if (db <= -200.0f) return 0.0f;
     return powf(10.0f, db / 20.0f);
 }
 
-static void music__apply_intensity(music_theme_t *m)
+INTERNAL void music__internal__apply_intensity(music_theme_t *m)
 {
     for (u32 i = 0; i < m->layer_count; i++) {
         music_layer_t *layer = &m->layers[i];
         if (!layer->loaded) continue;
 
-        f32 target_db = music__db_from_curve(layer->curve, layer->curve_count, m->intensity);
+        f32 target_db = music__internal__db_from_curve(layer->curve, layer->curve_count, m->intensity);
         layer->current_db = target_db;
 
-        f32 gain = music__db_to_linear(target_db);
+        f32 gain = music__internal__db_to_linear(target_db);
         ma_sound_set_volume(&layer->sound, gain);
     }
 }
 
 bool music_theme_load(
-    const char *base_path,
-    const char *layer_files[],
+    str_t base_path,
+    const str_t layer_files[],
     u32 count,
     const music_curve_point_t curves[][8],
     const u32 curve_counts[])
@@ -120,8 +121,9 @@ bool music_theme_load(
         music_layer_t *layer = &g_music.layers[i];
 
         char fullpath[512];
-        snprintf(fullpath, sizeof(fullpath), "%s/%s", base_path, layer_files[i]);
-        strncpy(layer->filepath, fullpath, sizeof(layer->filepath) - 1);
+        snprintf(fullpath, sizeof(fullpath), "%.*s/%.*s",
+            STR_ARG(base_path), STR_ARG(layer_files[i]));
+        layer->filepath = str(fullpath);
 
         layer->curve_count = curve_counts[i];
         memcpy(layer->curve, curves[i], sizeof(music_curve_point_t) * curve_counts[i]);
@@ -140,7 +142,7 @@ bool music_theme_load(
     }
 
     g_music.initialized = true;
-    music__apply_intensity(&g_music);
+    music__internal__apply_intensity(&g_music);
 
     logging("[audio] music theme loaded (%u layers)", count);
     return true;
@@ -172,9 +174,6 @@ void music_theme_stop(f32 fade_sec)
         return;
     }
 
-    f32 current = g_music.layers[0].loaded ?
-        ma_sound_get_volume(&g_music.layers[0].sound) : 0.0f;
-    f32 step = current / (fade_sec * 60.0f);
     for (u32 i = 0; i < g_music.layer_count; i++) {
         if (!g_music.layers[i].loaded) continue;
         ma_sound_set_fade_in_milliseconds(&g_music.layers[i].sound,
@@ -200,7 +199,7 @@ void music_theme_update(f32 dt)
         g_music.intensity = g_music.intensity_target;
     }
 
-    music__apply_intensity(&g_music);
+    music__internal__apply_intensity(&g_music);
 }
 
 void music_theme_unload(void)
