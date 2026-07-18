@@ -339,6 +339,8 @@ static inline window_t __subwindow_init(const char *title, u64 width, u64 height
 
 #endif 
 
+    WinFlags |= SDL_WINDOW_RESIZABLE;
+
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
 
     output.__sdl_window = SDL_CreateWindow(output.title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, WinFlags);
@@ -413,6 +415,8 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 #ifdef __gl_h_
     WinFlags = SDL_WINDOW_OPENGL;
 #endif
+
+    WinFlags |= SDL_WINDOW_RESIZABLE;
 
     if (SDL_Init(flags) == -1) eprint("SDL Error: %s\n", SDL_GetError());
 
