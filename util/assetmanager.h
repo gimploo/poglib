@@ -75,7 +75,7 @@ INTERNAL void assetmanager__internal_write_uniformlocs_to_file(const hashtable_e
 assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
 {
     ASSERT(taskmanager);
-    arena_t *arena = arena_init(NULL, 1 * MB);
+    arena_t *arena = arena_init(NULL, 64 * MB);
     assetmanager_t result = {
         .arena = arena,
         .assetmaps = {
