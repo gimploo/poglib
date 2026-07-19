@@ -47,26 +47,26 @@ static const u32 MUSIC_LAYER_CURVE_COUNTS[] = {
 
 #ifndef IGNORE_MUSIC_CONFIG_IMPLEMENTATION
 
-bool music_config_load(void)
+bool music_config_load(assetmanager_t *assets)
 {
     ma_engine *engine = audio_device_get_engine();
     if (!engine) return false;
 
-    music_audio_info_t audio_info[MUSIC_LAYER_COUNT] = {0};
+    music_audio_info_t audio_info[8] = {0};
 
     for (u32 i = 0; i < MUSIC_LAYER_COUNT; i++) {
         char fullpath[512];
         snprintf(fullpath, sizeof(fullpath), "%.*s/%.*s",
             STR_ARG(MUSIC_BASE_PATH), STR_ARG(MUSIC_LAYER_FILES[i]));
 
-        u32 asset_id = assetmanager_load_audio(&global_engine->systems.assets, str(fullpath));
+        u32 asset_id = assetmanager_load_audio(assets, str(fullpath));
         if (asset_id == INVALID_ASSET_ID) {
             eprint("[audio] music_config: failed to load `%s`\n", fullpath);
             return false;
         }
 
         const audio_asset_t *asset = assetmanager_get_assetresource(
-            &global_engine->systems.assets, ASSET_TYPE_AUDIO, asset_id);
+            assets, ASSET_TYPE_AUDIO, asset_id);
         if (!asset) {
             eprint("[audio] music_config: asset not ready `%s`\n", fullpath);
             return false;

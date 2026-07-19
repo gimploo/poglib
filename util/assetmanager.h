@@ -816,10 +816,7 @@ u32 assetmanager_load_audio(assetmanager_t *self, const str_t filepath)
             return table_entry->key.u32;
     }
 
-    ma_decoder_config decoder_cfg = ma_decoder_config_init();
-    decoder_cfg.format        = ma_format_f32;
-    decoder_cfg.channels      = 2;
-    decoder_cfg.sampleRate    = 48000;
+    ma_decoder_config decoder_cfg = ma_decoder_config_init(ma_format_f32, 2, 48000);
 
     ma_decoder decoder;
     char pathbuf[512];
@@ -838,7 +835,7 @@ u32 assetmanager_load_audio(assetmanager_t *self, const str_t filepath)
         return INVALID_ASSET_ID;
     }
 
-    f32 *pcm = arena_reserve(self->arena, (size_t)(total_frames * decoder.channels * sizeof(f32)));
+    f32 *pcm = arena_reserve(self->arena, (size_t)(total_frames * decoder_cfg.channels * sizeof(f32)));
     ma_uint64 frames_read = 0;
     result = ma_decoder_read_pcm_frames(&decoder, pcm, total_frames, &frames_read);
     ma_decoder_uninit(&decoder);

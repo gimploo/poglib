@@ -124,7 +124,6 @@ bool music_theme_load(
             audio_info[i].frame_count,
             (void *)audio_info[i].pcm_data,
             NULL);
-        buf_cfg.doesCopy = MA_FALSE;
 
         ma_result result = ma_audio_buffer_init(&buf_cfg, &layer->buffer);
         if (result != MA_SUCCESS) {
