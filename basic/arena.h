@@ -38,11 +38,7 @@ arena_t *   arena_init(arena_t *const, const u64 capacity);
 
 void *      arena_store(arena_t *const self, const void *const mem, const u64 mem_size);
 bool        arena_is_init(const arena_t *const self);
-void        arena__internal_giveback(arena_t *const self, void *const ptr, const u64 size);
-
-#define arena_giveback(self, ptr, size) \
-    arena__internal__giveback_tracked((self), (ptr), (size), __FILE__, __LINE__, __func__)
-
+void        arena_giveback(arena_t *const self, void *const ptr, const u64 size);
 void        arena_clear(arena_t *const self);
 void        arena_destroy(arena_t *const self);
 
@@ -82,7 +78,7 @@ void * arena__internal_check_in_freelist(arena_t *const self, const u64 memory_s
 
         self->freelist.count--;
         if (self->meta.lifetime_owner) {
-            arena__internal_giveback(self->meta.lifetime_owner, chunk, sizeof(free_chunks_t));
+            arena_giveback(self->meta.lifetime_owner, chunk, sizeof(free_chunks_t));
         } else {
             free(chunk);
         }
@@ -154,12 +150,6 @@ void * arena_store(arena_t * const self, const void * const mem, const u64 mem_s
     return raw_mem;
 }
 
-void arena__internal__giveback_tracked(arena_t *const self, void *const ptr, const u64 size, const char *file, int line, const char *func)
-{
-    arena__internal_giveback(self, ptr, size);
-    arena_logger_log_giveback(self, size, file, line, func);
-}
-
 arena_t * arena_init(arena_t *const arena, const u64 capacity)
 {
     const u64 final_capacity = capacity + sizeof(arena_t);
@@ -177,7 +167,7 @@ arena_t * arena_init(arena_t *const arena, const u64 capacity)
     return arena_store(&output, &output, sizeof(arena_t));
 }
 
-void arena__internal_giveback(arena_t *const self, void *const ptr, const u64 size)
+void arena_giveback(arena_t *const self, void *const ptr, const u64 size)
 {
     ASSERT(self);
     ASSERT(ptr);
@@ -236,7 +226,7 @@ void arena_destroy(arena_t *const self)
     arena_logger_destroy(self);
 
     if (self->meta.lifetime_owner) {
-        arena__internal_giveback(self->meta.lifetime_owner, self->memory, self->capacity);
+        arena_giveback(self->meta.lifetime_owner, self->memory, self->capacity);
         return;
     }
 
@@ -257,175 +247,6 @@ void arena_destroy(arena_t *const self)
 bool arena_is_init(const arena_t *const self)
 {
     return self && (self->memory != NULL || self->capacity > 0);
-}
-
-static const char *al__fmt_bytes(u64 bytes, char *buf, u32 buf_sz)
-{
-    if (bytes >= MB) {
-        snprintf(buf, buf_sz, "%.2f MB", (double)bytes / (double)MB);
-    } else if (bytes >= KB) {
-        snprintf(buf, buf_sz, "%.2f KB", (double)bytes / (double)KB);
-    } else {
-        snprintf(buf, buf_sz, "%lu B", (unsigned long)bytes);
-    }
-    return buf;
-}
-
-static u64 al__fl_bytes(arena_t *a)
-{
-    u64 sum = 0;
-    for (free_chunks_t *fc = a->freelist.head; fc; fc = fc->next) sum += fc->size;
-    return sum;
-}
-
-static void al__write_giveback_log(FILE *f, arena_t *a)
-{
-    arena_logger_t *l = arena_logger__internal_find(a);
-    if (!l || !l->giveback_log_count) return;
-
-    fprintf(f, "  Giveback log (%u entries):\n", l->giveback_log_count);
-    for (arena_giveback_record_t *r = l->giveback_log_head; r; r = r->next) {
-        char size_str[64];
-        al__fmt_bytes(r->size, size_str, sizeof(size_str));
-        fprintf(f, "    %s:%d (%s)  returned %s\n",
-                r->file, r->line, r->func, size_str);
-    }
-    fprintf(f, "\n");
-}
-
-void arena_logger_dump_summary(const char *filepath)
-{
-    FILE *f = fopen(filepath, "w");
-    if (!f) {
-        fprintf(stderr, "[arena_logger] Failed to open '%s' for writing\n", filepath);
-        return;
-    }
-
-    u64 total_capacity = 0, total_used = 0, total_unused = 0, total_fl_bytes = 0;
-    u32 total_allocs = 0, total_givebacks = 0, total_fl_chunks = 0;
-    u32 arena_count = 0;
-    for (arena_logger_t *lg = arena_logger_registry; lg; lg = lg->next) arena_count++;
-
-    fprintf(f, "================================================================================\n");
-    fprintf(f, "                         ARENA MEMORY REPORT  (%u arenas)\n", arena_count);
-    fprintf(f, "================================================================================\n\n");
-    fprintf(f, "%-50s %12s %12s %12s %7s %7s %14s\n",
-            "Arena (init location)", "Capacity", "Used", "Unused", "Allocs", "Gbacks", "Freelist(ch/B)");
-    fprintf(f, "------------------------------------------------------------------------------------------------------------------------\n");
-
-    for (arena_logger_t *lg = arena_logger_registry; lg; lg = lg->next) {
-        arena_t *a = lg->arena;
-        u64 used = a ? a->size : 0;
-        u64 unused = lg->capacity > used ? lg->capacity - used : 0;
-        u64 flb = a ? al__fl_bytes(a) : 0;
-        u32 flc = a ? a->freelist.count : 0;
-
-        char cap_str[32], used_str[32], unused_str[32], fl_str[64];
-        al__fmt_bytes(lg->capacity, cap_str, sizeof(cap_str));
-        al__fmt_bytes(used, used_str, sizeof(used_str));
-        al__fmt_bytes(unused, unused_str, sizeof(unused_str));
-        snprintf(fl_str, sizeof(fl_str), "%u / %lu B", flc, (unsigned long)flb);
-
-        const char *sub = a && a->meta.lifetime_owner ? "(sub)" : "";
-        char label[64];
-        snprintf(label, sizeof(label), "%s:%d %s", lg->init_file ? lg->init_file : "?", lg->init_line, sub);
-
-        fprintf(f, "%-50s %12s %12s %12s %7u %7u %14s\n",
-                label, cap_str, used_str, unused_str,
-                lg->alloc_log_count, lg->giveback_log_count, fl_str);
-
-        total_capacity  += lg->capacity;
-        total_used      += used;
-        total_unused    += unused;
-        total_allocs    += lg->alloc_log_count;
-        total_givebacks += lg->giveback_log_count;
-        total_fl_chunks += flc;
-        total_fl_bytes  += flb;
-    }
-
-    char tcap_str[32], tused_str[32], tunused_str[32], tfl_str[64];
-    al__fmt_bytes(total_capacity, tcap_str, sizeof(tcap_str));
-    al__fmt_bytes(total_used, tused_str, sizeof(tused_str));
-    al__fmt_bytes(total_unused, tunused_str, sizeof(tunused_str));
-    snprintf(tfl_str, sizeof(tfl_str), "%u / %lu B", total_fl_chunks, (unsigned long)total_fl_bytes);
-
-    fprintf(f, "------------------------------------------------------------------------------------------------------------------------\n");
-    fprintf(f, "%-50s %12s %12s %12s %7u %7u %14s\n",
-            "TOTAL", tcap_str, tused_str, tunused_str, total_allocs, total_givebacks, tfl_str);
-    fprintf(f, "\n================================================================================\n\n");
-    fprintf(f, "Usage breakdown by arena:\n");
-    fprintf(f, "------------------------------------------------------------------------------------------------------------------------\n");
-
-    for (arena_logger_t *lg = arena_logger_registry; lg; lg = lg->next) {
-        arena_t *a = lg->arena;
-        u64 used = a ? a->size : 0;
-        const char *sub = a && a->meta.lifetime_owner ? "(sub)" : "";
-        double pct_used = lg->capacity ? (double)used / (double)lg->capacity * 100.0 : 0.0;
-
-        char used_str[32], cap_str[32];
-        al__fmt_bytes(used, used_str, sizeof(used_str));
-        al__fmt_bytes(lg->capacity, cap_str, sizeof(cap_str));
-
-        fprintf(f, "  %s:%d %s\n", lg->init_file ? lg->init_file : "?", lg->init_line, sub);
-        fprintf(f, "    capacity = %s  |  used = %s (%.1f%%)  |  allocs = %u  |  givebacks = %u\n",
-                cap_str, used_str, pct_used, lg->alloc_log_count, lg->giveback_log_count);
-        if (a && a->freelist.count) {
-            fprintf(f, "    freelist: %u chunks, %lu bytes total\n", a->freelist.count, (unsigned long)al__fl_bytes(a));
-        }
-    }
-
-    fprintf(f, "\n================================================================================\n");
-    fprintf(f, "                        GIVEBACK DETAILS\n");
-    fprintf(f, "================================================================================\n\n");
-
-    for (arena_logger_t *lg = arena_logger_registry; lg; lg = lg->next) {
-        if (!lg->giveback_log_count) continue;
-        arena_t *a = lg->arena;
-        const char *sub = a && a->meta.lifetime_owner ? "(sub)" : "";
-        char cap_str[32];
-        al__fmt_bytes(lg->capacity, cap_str, sizeof(cap_str));
-        fprintf(f, "--- %s:%d %s (%s, %u givebacks) ---\n",
-                lg->init_file ? lg->init_file : "?", lg->init_line, sub, cap_str, lg->giveback_log_count);
-        al__write_giveback_log(f, a);
-    }
-
-    fclose(f);
-}
-
-void arena_logger_dump_json_simple(const char *filepath)
-{
-    FILE *f = fopen(filepath, "w");
-    if (!f) {
-        fprintf(stderr, "[arena_logger] Failed to open '%s' for writing\n", filepath);
-        return;
-    }
-
-    fprintf(f, "[\n");
-    bool first = true;
-    for (arena_logger_t *lg = arena_logger_registry; lg; lg = lg->next) {
-        arena_t *a = lg->arena;
-        u64 flb = a ? al__fl_bytes(a) : 0;
-        u64 used = a ? a->size : 0;
-        u64 unused = lg->capacity > used ? lg->capacity - used : 0;
-
-        if (!first) fprintf(f, ",\n");
-        first = false;
-
-        fprintf(f, "  {\n");
-        fprintf(f, "    \"file\": \"%s\",\n", lg->init_file ? lg->init_file : "?");
-        fprintf(f, "    \"line\": %d,\n", lg->init_line);
-        fprintf(f, "    \"capacity\": %lu,\n", (unsigned long)lg->capacity);
-        fprintf(f, "    \"used\": %lu,\n", (unsigned long)used);
-        fprintf(f, "    \"unused\": %lu,\n", (unsigned long)unused);
-        fprintf(f, "    \"alloc_count\": %u,\n", lg->alloc_log_count);
-        fprintf(f, "    \"giveback_count\": %u,\n", lg->giveback_log_count);
-        fprintf(f, "    \"freelist_chunks\": %u,\n", a ? a->freelist.count : 0);
-        fprintf(f, "    \"freelist_bytes\": %lu,\n", (unsigned long)flb);
-        fprintf(f, "    \"freelist_used_pct\": %.2f\n", lg->capacity ? ((double)flb / (double)lg->capacity) * 100.0 : 0.0);
-        fprintf(f, "  }");
-    }
-    fprintf(f, "\n]\n");
-    fclose(f);
 }
 
 #endif

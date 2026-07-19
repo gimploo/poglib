@@ -46,27 +46,14 @@ struct arena_alloc_record {
     arena_alloc_record_t *next;
 };
 
-typedef struct arena_giveback_record arena_giveback_record_t;
-struct arena_giveback_record {
-    const char          *file;
-    int                  line;
-    const char          *func;
-    uint64_t             size;
-    char                *backtrace_frames[ARENA_BACKTRACE_DEPTH];
-    u32                  backtrace_count;
-    arena_giveback_record_t *next;
-};
-
 typedef struct arena_logger_t arena_logger_t;
 struct arena_logger_t {
     arena_t            *arena;
     uint64_t            capacity;
     const char          *init_file;
     int                 init_line;
-    arena_alloc_record_t    *alloc_log_head;
-    uint32_t                 alloc_log_count;
-    arena_giveback_record_t *giveback_log_head;
-    uint32_t                 giveback_log_count;
+    arena_alloc_record_t *alloc_log_head;
+    uint32_t             alloc_log_count;
     arena_logger_t      *next;
 };
 
@@ -75,11 +62,8 @@ extern arena_logger_t *arena_logger_registry;
 void    arena_logger_init(arena_t *const arena, uint64_t capacity, const char *file, int line);
 void    arena_logger_destroy(arena_t *const arena);
 void    arena_logger_log_alloc(arena_t *const arena, uint64_t size, const char *file, int line, const char *func);
-void    arena_logger_log_giveback(arena_t *const arena, uint64_t size, const char *file, int line, const char *func);
 void    arena_logger_clear_log(arena_t *const arena);
 void    arena_logger_dump_json(const char *filepath);
-void    arena_logger_dump_summary(const char *filepath);
-void    arena_logger_dump_json_simple(const char *filepath);
 
 #ifndef IGNORE_ARENA_LOGGER_IMPLEMENTATION
 
@@ -184,69 +168,6 @@ void arena_logger_log_alloc(arena_t *const arena, uint64_t size, const char *fil
     l->alloc_log_count++;
 }
 
-void arena_logger_log_giveback(arena_t *const arena, uint64_t size, const char *file, int line, const char *func)
-{
-    arena_logger_t *l = arena_logger__internal_find(arena);
-    if (!l) return;
-
-    arena_giveback_record_t *rec = (arena_giveback_record_t *)calloc(1, sizeof(*rec));
-    rec->file = file;
-    rec->line = line;
-    rec->func = func;
-    rec->size = size;
-
-#if defined(_WIN64)
-    {
-        void         *stack[ARENA_BACKTRACE_DEPTH + ARENA_BACKTRACE_SKIP + 1];
-        unsigned short frames = CaptureStackBackTrace(0, ARENA_BACKTRACE_DEPTH + ARENA_BACKTRACE_SKIP + 1, stack, NULL);
-        SYMBOL_INFO   *symbol = (SYMBOL_INFO *)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
-        symbol->MaxNameLen   = 255;
-        symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-        HANDLE process = GetCurrentProcess();
-        SymInitialize(process, NULL, TRUE);
-
-        u32 count = 0;
-        for (int i = ARENA_BACKTRACE_SKIP + 1; i < (int)frames && count < ARENA_BACKTRACE_DEPTH; i++) {
-            if (SymFromAddr(process, (DWORD64)stack[i], 0, symbol)) {
-                rec->backtrace_frames[count] = (char *)calloc(256, sizeof(char));
-                snprintf(rec->backtrace_frames[count], 255, "%s", symbol->Name);
-            } else {
-                rec->backtrace_frames[count] = (char *)calloc(32, sizeof(char));
-                snprintf(rec->backtrace_frames[count], 31, "0x%p", stack[i]);
-            }
-            count++;
-        }
-        rec->backtrace_count = count;
-        free(symbol);
-    }
-#elif defined(__linux__)
-    {
-        void *array[ARENA_BACKTRACE_DEPTH + ARENA_BACKTRACE_SKIP + 1];
-        int frame_count = backtrace(array, ARENA_BACKTRACE_DEPTH + ARENA_BACKTRACE_SKIP + 1);
-        u32 count = 0;
-
-        for (int i = ARENA_BACKTRACE_SKIP + 1; i < frame_count && count < ARENA_BACKTRACE_DEPTH; i++) {
-            Dl_info info;
-            if (dladdr(array[i], &info) && info.dli_sname) {
-                rec->backtrace_frames[count] = (char *)calloc(256, sizeof(char));
-                snprintf(rec->backtrace_frames[count], 255, "%s", info.dli_sname);
-            } else {
-                rec->backtrace_frames[count] = (char *)calloc(32, sizeof(char));
-                snprintf(rec->backtrace_frames[count], 31, "%p", array[i]);
-            }
-            count++;
-        }
-        rec->backtrace_count = count;
-    }
-#else
-    rec->backtrace_count = 0;
-#endif
-
-    rec->next = l->giveback_log_head;
-    l->giveback_log_head = rec;
-    l->giveback_log_count++;
-}
-
 void arena_logger_clear_log(arena_t *const arena)
 {
     arena_logger_t *l = arena_logger__internal_find(arena);
@@ -263,18 +184,6 @@ void arena_logger_clear_log(arena_t *const arena)
     }
     l->alloc_log_head = NULL;
     l->alloc_log_count = 0;
-
-    arena_giveback_record_t *gcur = l->giveback_log_head;
-    while (gcur) {
-        arena_giveback_record_t *next = gcur->next;
-        for (u32 i = 0; i < gcur->backtrace_count; i++) {
-            free(gcur->backtrace_frames[i]);
-        }
-        free(gcur);
-        gcur = next;
-    }
-    l->giveback_log_head = NULL;
-    l->giveback_log_count = 0;
 }
 
 static u32 arena_logger__internal_frame_lookup(const char *name, char fnames[][256], u32 *count)

@@ -198,8 +198,6 @@ void application_run(application_t *const app)
     printf("[!] APPLICATION SHUTDOWN!\n");
 #ifdef DEBUG
     arena_logger_dump_json("arena_map.json");
-    arena_logger_dump_summary("arena_summary.txt");
-    arena_logger_dump_json_simple("arena_map_simple.json");
 #endif
     audio_device_shutdown();
     app->destroy(app);
