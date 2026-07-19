@@ -16,13 +16,13 @@
  *  Do NOT parse .wwu / .wproj / SoundBanks at runtime.
  */
 
-static const str_t MUSIC_BASE_PATH = { "res/audio", 9, { false } };
+static const str_t MUSIC_BASE_PATH = str_lit("res/audio");
 
 static const str_t MUSIC_LAYER_FILES[] = {
-    { "music/PV_main-theme_bed_80bpm.wav",   34, { false } },
-    { "music/PV_main-theme_layer1_80bpm.wav", 36, { false } },
-    { "music/PV_main-theme_layer2_80bpm.wav", 36, { false } },
-    { "music/PV_main-theme_layer3_80bpm.wav", 36, { false } },
+    str_lit("music/PV_main-theme_bed_80bpm.wav"),
+    str_lit("music/PV_main-theme_layer1_80bpm.wav"),
+    str_lit("music/PV_main-theme_layer2_80bpm.wav"),
+    str_lit("music/PV_main-theme_layer3_80bpm.wav"),
 };
 static const u32 MUSIC_LAYER_COUNT = 4;
 
@@ -47,11 +47,12 @@ static const u32 MUSIC_LAYER_CURVE_COUNTS[] = {
 };
 
 static const str_t MUSIC_SFX_FILES[] = {
-    { "sfx/Impact_KL_01.wav", 21, { false } },
-    { "sfx/Impact_KL_02.wav", 21, { false } },
-    { "sfx/Impact_KL_03.wav", 21, { false } },
-    { "sfx/Impact_KL_04.wav", 21, { false } },
+    str_lit("sfx/Impact_KL_01.wav"),
+    str_lit("sfx/Impact_KL_02.wav"),
+    str_lit("sfx/Impact_KL_03.wav"),
+    str_lit("sfx/Impact_KL_04.wav"),
 };
+
 static const u32 MUSIC_SFX_COUNT = 4;
 
 #ifndef IGNORE_MUSIC_CONFIG_IMPLEMENTATION

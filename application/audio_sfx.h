@@ -1,7 +1,6 @@
 #pragma once
-#include "basic/common.h"
-#include "basic/str.h"
-#include "poglib/external/miniaudio.h"
+#include <poglib/basic.h>
+#include <poglib/external/miniaudio.h>
 
 /*  audio_sfx.h — One-shot SFX (impact stingers over music)
  *
