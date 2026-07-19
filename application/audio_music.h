@@ -9,13 +9,20 @@ typedef struct music_layer_t music_layer_t;
 typedef struct music_theme_t music_theme_t;
 typedef vec2f_t music_curve_point_t;
 
+typedef struct {
+    const void *pcm_data;
+    u64          frame_count;
+    u32          channels;
+    u32          sample_rate;
+} music_audio_info_t;
+
 struct music_layer_t{
-    str_t               filepath;
-    ma_sound            sound;
+    ma_audio_buffer  buffer;
+    ma_sound         sound;
     music_curve_point_t curve[8];
-    u32                 curve_count;
-    f32                 current_db;
-    bool                loaded;
+    u32              curve_count;
+    f32              current_db;
+    bool             loaded;
 };
 
 struct music_theme_t {
@@ -30,7 +37,7 @@ struct music_theme_t {
 
 global music_theme_t        global_music = {0};
 
-bool                        music_theme_load(str_t base_path, const str_t layer_files[], u32 count,
+bool                        music_theme_load(const music_audio_info_t audio_info[], u32 count,
                                              const music_curve_point_t curves[][8], const u32 curve_counts[]);
 void                        music_theme_play(void);
 void                        music_theme_stop(f32 fade_sec);
@@ -77,8 +84,7 @@ INTERNAL void music__internal__apply_intensity(music_theme_t *m)
 }
 
 bool music_theme_load(
-    const str_t base_path,
-    const str_t layer_files[],
+    const music_audio_info_t audio_info[],
     u32 count,
     const music_curve_point_t curves[][8],
     const u32 curve_counts[])
@@ -102,18 +108,36 @@ bool music_theme_load(
     for (u32 i = 0; i < count; i++) {
         music_layer_t *layer = &global_music.layers[i];
 
-        char fullpath[512];
-        snprintf(fullpath, sizeof(fullpath), "%.*s/%.*s", STR_ARG(base_path), STR_ARG(layer_files[i]));
-        layer->filepath = str(fullpath);
-
         layer->curve_count = curve_counts[i];
         memcpy(layer->curve, curves[i], sizeof(music_curve_point_t) * curve_counts[i]);
         layer->current_db = 0.0f;
 
-        ma_result result = ma_sound_init_from_file(engine, fullpath,
-            MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_DECODE, NULL, NULL, &layer->sound);
+        if (!audio_info[i].pcm_data || audio_info[i].frame_count == 0) {
+            eprint("[audio] music: layer %u has no audio data\n", i);
+            layer->loaded = false;
+            continue;
+        }
+
+        ma_audio_buffer_config buf_cfg = ma_audio_buffer_config_init(
+            ma_format_f32,
+            audio_info[i].channels,
+            audio_info[i].frame_count,
+            (void *)audio_info[i].pcm_data,
+            NULL);
+        buf_cfg.doesCopy = MA_FALSE;
+
+        ma_result result = ma_audio_buffer_init(&buf_cfg, &layer->buffer);
         if (result != MA_SUCCESS) {
-            eprint("[audio] music: failed to load `%s`: %d\n", fullpath, result);
+            eprint("[audio] music: buffer init failed layer %u: %d\n", i, result);
+            layer->loaded = false;
+            continue;
+        }
+
+        result = ma_sound_init_from_data_source(engine,
+            &layer->buffer, 0, NULL, &layer->sound);
+        if (result != MA_SUCCESS) {
+            eprint("[audio] music: sound init failed layer %u: %d\n", i, result);
+            ma_audio_buffer_uninit(&layer->buffer);
             layer->loaded = false;
             continue;
         }
@@ -188,6 +212,7 @@ void music_theme_unload(void)
     for (u32 i = 0; i < global_music.layer_count; i++) {
         if (global_music.layers[i].loaded) {
             ma_sound_uninit(&global_music.layers[i].sound);
+            ma_audio_buffer_uninit(&global_music.layers[i].buffer);
             global_music.layers[i].loaded = false;
         }
     }

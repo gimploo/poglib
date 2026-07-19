@@ -7,6 +7,7 @@ typedef enum asset_type {
     ASSET_TYPE_GLSL_SHADER          = 1,
     ASSET_TYPE_TEXTURE              = 2,
     ASSET_TYPE_TEXTURE_SPRITE_ATLAS = 3,
+    ASSET_TYPE_AUDIO                = 4,
     ASSET_TYPE_COUNT
 } asset_type;
 
@@ -42,6 +43,14 @@ struct gpu_asset__internal_upload_task_t {
     void        *processed_data;
 };
 
+typedef struct {
+    void    *pcm_data;
+    u64      frame_count;
+    u32      format;
+    u32      channels;
+    u32      sample_rate;
+} audio_asset_t;
+
 #define INVALID_ASSET_ID 0
 
 const bool ASSET_ASYNC_LOADING_SUPPORT[ASSET_TYPE_COUNT] = {
@@ -49,5 +58,6 @@ const bool ASSET_ASYNC_LOADING_SUPPORT[ASSET_TYPE_COUNT] = {
     [ASSET_TYPE_GLSL_SHADER]            = false, //Requires opengl to compile shaders
     [ASSET_TYPE_TEXTURE]                = false,
     [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = false,
+    [ASSET_TYPE_AUDIO]                  = false,
 };
 

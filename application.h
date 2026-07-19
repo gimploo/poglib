@@ -17,7 +17,6 @@
 #include "application/sound.h"
 #include "application/audio_device.h"
 #include "application/audio_music.h"
-#include "application/audio_sfx.h"
 #include "application/music_config.h"
 #include "font/glfreetypefont.h"
 

@@ -6,6 +6,7 @@
 #include "poglib/basic/ds/hashtable.h"
 #include "poglib/basic/file.h"
 #include "poglib/basic/str.h"
+#include "poglib/external/miniaudio.h"
 #include "poglib/gfx/gl/objects.h"
 #include "poglib/gfx/gl/renderconfig.h"
 #include "poglib/gfx/gl/shader.h"
@@ -43,6 +44,7 @@ u32                 assetmanager_load_model_async(assetmanager_t *self, const st
 u32                 assetmanager_load_spriteatlas(assetmanager_t *const self, const str_t filepath, const u32 tile_count_width, const u32 tile_count_height);
 u32                 assetmanager_load_texture(assetmanager_t *self, const str_t filepath);
 u32                 assetmanager_load_glsl_shader(assetmanager_t *self, const str_t vtx_filepath, const str_t frag_filepath, const gluniform_registry_t registry);
+u32                 assetmanager_load_audio(assetmanager_t *self, const str_t filepath);
 
 queue_t *           assetmanager_get_eventqueue(assetmanager_t *const self);
 const void *        assetmanager_get_assetresource(const assetmanager_t *const self, const asset_type assettype, const u32 assetId);
@@ -81,6 +83,7 @@ assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
             [ASSET_TYPE_GLSL_SHADER]            = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(glshader_t), .type = HT_STORAGE_BY_REFERENCE }, arena),
             [ASSET_TYPE_TEXTURE]                = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gltexture2d_t),  .type = HT_STORAGE_BY_REFERENCE }, arena),
             [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = hashtable_init(3, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(spriteatlas_t),  .type = HT_STORAGE_BY_VALUE }, arena),
+            [ASSET_TYPE_AUDIO]                  = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(audio_asset_t),  .type = HT_STORAGE_BY_VALUE }, arena),
         },
         .bgtask_manager         = taskmanager,
         .assetmeta_lookup       = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT, HT_KEY_TYPE_U32, (ht_value_type){ .size = sizeof(asset_meta_t), .type = HT_STORAGE_BY_VALUE } , arena),
@@ -115,6 +118,8 @@ void assetmanager__internal_assetmaps_destroy(assetmanager_t *const self)
                 case ASSET_TYPE_TEXTURE_SPRITE_ATLAS:
                     spriteatlas_destroy(entry->value);
                 break;
+                case ASSET_TYPE_AUDIO:
+                    break;
                 default: eprint("asset type not implemented");
             }
         }
@@ -797,6 +802,66 @@ INTERNAL void assetmanager__internal_add_asset_meta_data(
 u32 assetmanager_load_texture(assetmanager_t *self, const str_t filepath)
 {
     eprint("not implemented");
+}
+
+u32 assetmanager_load_audio(assetmanager_t *self, const str_t filepath)
+{
+    hashtable_iterator(&self->assetmaps[ASSET_TYPE_AUDIO], iter)
+    {
+        const hashtable_entry_t *const table_entry = iter;
+        const audio_asset_t *const asset = table_entry->value;
+        const asset_meta_t *const meta = (asset_meta_t *)hashtable_get_value(
+            &self->assetmeta_lookup, (hashtable_key_t){ .u32 = table_entry->key.u32 });
+        if (str_cmp(meta->filepath1, filepath))
+            return table_entry->key.u32;
+    }
+
+    ma_decoder_config decoder_cfg = ma_decoder_config_init();
+    decoder_cfg.format        = ma_format_f32;
+    decoder_cfg.channels      = 2;
+    decoder_cfg.sampleRate    = 48000;
+
+    ma_decoder decoder;
+    char pathbuf[512];
+    snprintf(pathbuf, sizeof(pathbuf), "%.*s", STR_ARG(filepath));
+    ma_result result = ma_decoder_init_file(pathbuf, &decoder_cfg, &decoder);
+    if (result != MA_SUCCESS) {
+        eprint("[audio] assetmanager: failed to decode `%.*s`: %d\n", STR_ARG(filepath), result);
+        return INVALID_ASSET_ID;
+    }
+
+    ma_uint64 total_frames = 0;
+    result = ma_decoder_get_length_in_pcm_frames(&decoder, &total_frames);
+    if (result != MA_SUCCESS || total_frames == 0) {
+        eprint("[audio] assetmanager: empty or unreadable `%.*s`\n", STR_ARG(filepath));
+        ma_decoder_uninit(&decoder);
+        return INVALID_ASSET_ID;
+    }
+
+    f32 *pcm = arena_reserve(self->arena, (size_t)(total_frames * decoder.channels * sizeof(f32)));
+    ma_uint64 frames_read = 0;
+    result = ma_decoder_read_pcm_frames(&decoder, pcm, total_frames, &frames_read);
+    ma_decoder_uninit(&decoder);
+
+    if (result != MA_SUCCESS) {
+        eprint("[audio] assetmanager: pcm read failed `%.*s`: %d\n", STR_ARG(filepath), result);
+        return INVALID_ASSET_ID;
+    }
+
+    const u32 asset_id = ++self->internal.asset_idx_generator;
+    audio_asset_t asset = {
+        .pcm_data       = pcm,
+        .frame_count    = frames_read,
+        .format         = (u32)decoder_cfg.format,
+        .channels       = decoder_cfg.channels,
+        .sample_rate    = decoder_cfg.sampleRate,
+    };
+
+    hashtable_insert(&self->assetmaps[ASSET_TYPE_AUDIO], (hashtable_key_t){ .u32 = asset_id }, &asset);
+    assetmanager__internal_add_asset_meta_data(self, ASSET_TYPE_AUDIO, asset_id, filepath, STR_EMPTY, NULL);
+
+    logging("[audio] assetmanager: loaded `%.*s` (%llu frames)", STR_ARG(filepath), frames_read);
+    return asset_id;
 }
 
 
