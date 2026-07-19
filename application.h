@@ -199,7 +199,7 @@ void application_run(application_t *const app)
 #ifdef DEBUG
     arena_logger_dump_json("arena_map.json");
 #endif
-    audio_device_shutdown();
+    audio_device_destroy();
     app->destroy(app);
     SDL_free((char *)app->context.base_dir);
 

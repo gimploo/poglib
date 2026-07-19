@@ -1,4 +1,9 @@
 #pragma once
+#ifdef _WIN64
+    #define WIN32_LEAN_AND_MEAN
+    #include <windows.h>
+#endif
+
 #include "basic/dbg.h"
 #include "basic/test.h"
 #include "basic/common.h"

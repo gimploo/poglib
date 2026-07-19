@@ -1,42 +1,24 @@
 #pragma once
-#include "basic/common.h"
-#include "basic/str.h"
-#include <math.h>
+#include <poglib/basic.h>
+#include <poglib/math.h>
 #include "poglib/external/miniaudio.h"
-
-/*  audio_music.h — Hybrid Wwise-authoring / miniaudio-runtime layered music
- *
- *  Mirrors the Music_Khushi Wwise project structure (NO Wwise SDK):
- *    - 4 synced looping layers (bed + layer1/2/3) at 80 BPM
- *    - RTPC Parkour_intensity (0..100) drives layer volumes via curves
- *    - play / stop / fade
- *
- *  Source Wwise project (authoring only):
- *    E:\dev\resources\Project Vedanta_theme\Project Vedanta_theme\
- *
- *  Curve data extracted from Music_Khushi.wwu RTPC bindings:
- *    - bed:    always audible (0 dB across range)
- *    - layer1/2/3: silent (~-200 dB) until intensity ~45, full by ~60
- *  See music_config.h for actual curve tables.
- */
 
 #define MUSIC_MAX_LAYERS 8
 
-typedef struct {
-    f32 x;
-    f32 y;
-} music_curve_point_t;
+typedef struct music_layer_t music_layer_t;
+typedef struct music_theme_t music_theme_t;
+typedef vec2f_t music_curve_point_t;
 
-typedef struct {
+struct music_layer_t{
     str_t               filepath;
     ma_sound            sound;
     music_curve_point_t curve[8];
     u32                 curve_count;
     f32                 current_db;
     bool                loaded;
-} music_layer_t;
+};
 
-typedef struct {
+struct music_theme_t {
     music_layer_t   layers[MUSIC_MAX_LAYERS];
     u32             layer_count;
     f32             intensity;
@@ -44,20 +26,20 @@ typedef struct {
     f32             smoothing_speed;
     bool            playing;
     bool            initialized;
-} music_theme_t;
+};
 
-bool    music_theme_load(str_t base_path, const str_t layer_files[], u32 count,
-                         const music_curve_point_t curves[][8], const u32 curve_counts[]);
-void    music_theme_play(void);
-void    music_theme_stop(f32 fade_sec);
-void    music_theme_set_intensity(f32 value_0_100);
-void    music_theme_update(f32 dt);
-void    music_theme_unload(void);
-f32     music_theme_get_intensity(void);
+global music_theme_t        global_music = {0};
+
+bool                        music_theme_load(str_t base_path, const str_t layer_files[], u32 count,
+                                             const music_curve_point_t curves[][8], const u32 curve_counts[]);
+void                        music_theme_play(void);
+void                        music_theme_stop(f32 fade_sec);
+void                        music_theme_set_intensity(f32 value_0_100);
+void                        music_theme_update(f32 dt);
+void                        music_theme_unload(void);
+f32                         music_theme_get_intensity(void);
 
 #ifndef IGNORE_AUDIO_MUSIC_IMPLEMENTATION
-
-global music_theme_t g_music = {0};
 
 INTERNAL f32 music__internal__db_from_curve(const music_curve_point_t *curve, u32 count, f32 intensity)
 {
@@ -95,7 +77,7 @@ INTERNAL void music__internal__apply_intensity(music_theme_t *m)
 }
 
 bool music_theme_load(
-    str_t base_path,
+    const str_t base_path,
     const str_t layer_files[],
     u32 count,
     const music_curve_point_t curves[][8],
@@ -111,18 +93,17 @@ bool music_theme_load(
         return false;
     }
 
-    g_music.layer_count = count;
-    g_music.intensity = 0.0f;
-    g_music.intensity_target = 0.0f;
-    g_music.smoothing_speed = 5.0f;
-    g_music.playing = false;
+    global_music.layer_count = count;
+    global_music.intensity = 0.0f;
+    global_music.intensity_target = 0.0f;
+    global_music.smoothing_speed = 5.0f;
+    global_music.playing = false;
 
     for (u32 i = 0; i < count; i++) {
-        music_layer_t *layer = &g_music.layers[i];
+        music_layer_t *layer = &global_music.layers[i];
 
         char fullpath[512];
-        snprintf(fullpath, sizeof(fullpath), "%.*s/%.*s",
-            STR_ARG(base_path), STR_ARG(layer_files[i]));
+        snprintf(fullpath, sizeof(fullpath), "%.*s/%.*s", STR_ARG(base_path), STR_ARG(layer_files[i]));
         layer->filepath = str(fullpath);
 
         layer->curve_count = curve_counts[i];
@@ -141,8 +122,8 @@ bool music_theme_load(
         layer->loaded = true;
     }
 
-    g_music.initialized = true;
-    music__internal__apply_intensity(&g_music);
+    global_music.initialized = true;
+    music__internal__apply_intensity(&global_music);
 
     logging("[audio] music theme loaded (%u layers)", count);
     return true;
@@ -150,74 +131,74 @@ bool music_theme_load(
 
 void music_theme_play(void)
 {
-    if (!g_music.initialized) return;
-    if (g_music.playing) return;
+    if (!global_music.initialized) return;
+    if (global_music.playing) return;
 
-    for (u32 i = 0; i < g_music.layer_count; i++) {
-        if (!g_music.layers[i].loaded) continue;
-        ma_sound_start(&g_music.layers[i].sound);
+    for (u32 i = 0; i < global_music.layer_count; i++) {
+        if (!global_music.layers[i].loaded) continue;
+        ma_sound_start(&global_music.layers[i].sound);
     }
-    g_music.playing = true;
+    global_music.playing = true;
 }
 
 void music_theme_stop(f32 fade_sec)
 {
-    if (!g_music.initialized) return;
-    if (!g_music.playing) return;
+    if (!global_music.initialized) return;
+    if (!global_music.playing) return;
 
     if (fade_sec <= 0.0f) {
-        for (u32 i = 0; i < g_music.layer_count; i++) {
-            if (!g_music.layers[i].loaded) continue;
-            ma_sound_stop(&g_music.layers[i].sound);
+        for (u32 i = 0; i < global_music.layer_count; i++) {
+            if (!global_music.layers[i].loaded) continue;
+            ma_sound_stop(&global_music.layers[i].sound);
         }
-        g_music.playing = false;
+        global_music.playing = false;
         return;
     }
 
-    for (u32 i = 0; i < g_music.layer_count; i++) {
-        if (!g_music.layers[i].loaded) continue;
-        ma_sound_set_fade_in_milliseconds(&g_music.layers[i].sound,
+    for (u32 i = 0; i < global_music.layer_count; i++) {
+        if (!global_music.layers[i].loaded) continue;
+        ma_sound_set_fade_in_milliseconds(&global_music.layers[i].sound,
             -1.0f, 0.0f, (ma_uint64)(fade_sec * 1000.0f));
-        ma_sound_stop(&g_music.layers[i].sound);
+        ma_sound_stop(&global_music.layers[i].sound);
     }
-    g_music.playing = false;
+    global_music.playing = false;
 }
 
 void music_theme_set_intensity(f32 value_0_100)
 {
-    g_music.intensity_target = value_0_100;
+    global_music.intensity_target = value_0_100;
 }
 
 void music_theme_update(f32 dt)
 {
-    if (!g_music.initialized || !g_music.playing) return;
+    if (!global_music.initialized || !global_music.playing) return;
 
-    f32 diff = g_music.intensity_target - g_music.intensity;
+    f32 diff = global_music.intensity_target - global_music.intensity;
     if (fabsf(diff) > 0.1f) {
-        g_music.intensity += diff * g_music.smoothing_speed * dt;
+        global_music.intensity += diff * global_music.smoothing_speed * dt;
     } else {
-        g_music.intensity = g_music.intensity_target;
+        global_music.intensity = global_music.intensity_target;
     }
 
-    music__internal__apply_intensity(&g_music);
+    music__internal__apply_intensity(&global_music);
 }
 
 void music_theme_unload(void)
 {
-    for (u32 i = 0; i < g_music.layer_count; i++) {
-        if (g_music.layers[i].loaded) {
-            ma_sound_uninit(&g_music.layers[i].sound);
-            g_music.layers[i].loaded = false;
+    for (u32 i = 0; i < global_music.layer_count; i++) {
+        if (global_music.layers[i].loaded) {
+            ma_sound_uninit(&global_music.layers[i].sound);
+            global_music.layers[i].loaded = false;
         }
     }
-    g_music.layer_count = 0;
-    g_music.playing = false;
-    g_music.initialized = false;
+    global_music.layer_count = 0;
+    global_music.playing = false;
+    global_music.initialized = false;
 }
 
 f32 music_theme_get_intensity(void)
 {
-    return g_music.intensity;
+    return global_music.intensity;
 }
 
 #endif
