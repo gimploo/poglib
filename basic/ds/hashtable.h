@@ -359,7 +359,7 @@ void hashtable_serialize_to_file(
 
     hashtable_iterator(table, iter)
     {
-        u8 buffer[WORD] = {0};
+        u8 buffer[512] = {0};
         const hashtable_entry_t *const entry = iter;
         callback(entry, &(buffer_t ){
             .raw_data = buffer,
