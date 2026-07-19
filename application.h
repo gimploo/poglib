@@ -15,6 +15,10 @@
 
 #include "application/stopwatch.h"
 #include "application/sound.h"
+#include "application/audio_device.h"
+#include "application/audio_music.h"
+#include "application/audio_sfx.h"
+#include "application/music_config.h"
 #include "font/glfreetypefont.h"
 
 
@@ -144,6 +148,7 @@ void application_run(application_t *const app)
     win->background_color = app->window.background_color;
 
     logging("Accessing audio device `%s`...", SDL_GetAudioDeviceName(0,0));
+    if (!audio_device_init()) eprint("audio device init failed");
 
     stopwatch_t timer = stopwatch();
     const f32 FIXED_DT = APPLICATION_UPDATE_FIXED_TIME_STEP; //Runs at 60Hz
@@ -196,6 +201,7 @@ void application_run(application_t *const app)
     arena_logger_dump_summary("arena_summary.txt");
     arena_logger_dump_json_simple("arena_map_simple.json");
 #endif
+    audio_device_shutdown();
     app->destroy(app);
     SDL_free((char *)app->context.base_dir);
 

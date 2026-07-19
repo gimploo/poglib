@@ -347,7 +347,7 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
             if (mesh_cmp && mesh_cmp->is_scene_instanced) 
                 continue;
 
-            buffer(WORD) buf = {0};
+            buffer(512) buf = {0};
             snprintf((char *)buf.raw_data, sizeof(buf.raw_data),
                 "\tentity %u %u\n", entity->id, entity->component_signature);
             file_writeline(&f, (char *)buf.raw_data);

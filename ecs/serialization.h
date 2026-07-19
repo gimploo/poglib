@@ -88,7 +88,7 @@ INTERNAL void ecs_serializer__internal__get_tilecounts(const str_views_t lines, 
 
 u32 ecs_serializer_validate_header(const str_views_t lines)
 {
-    u8 buffer[WORD] = {0};
+    u8 buffer[512] = {0};
 
     if (!str_cmp(lines.views[0], ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_HEADER].begin)) {
         eprint("expected "STR_FMT" not found", STR_ARG(ECS_SERIALIZER_SECTIONS[ECS_SERIALIZER_SECTION_HEADER].begin));
@@ -284,7 +284,7 @@ void assetmanager_write_assetmeta_data_to_file(const assetmanager_t *const self,
 
     hashtable_iterator(&self->assetmeta_lookup, iter)
     {
-        buffer(WORD) buffer = {0};
+        buffer(512) buffer = {0};
         const hashtable_entry_t *entry          = iter;
         const asset_meta_t *const assetmeta     = entry->value;
 

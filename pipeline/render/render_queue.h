@@ -119,7 +119,7 @@ void renderqueue__internal_validate_command(renderqueue_t *const queue, const re
 
     {
         //NOTE: instance data is passed as stack pointer references - will use the arena to allocate to better simplify the API.
-        //Also this would reduce the memory layout for entire renderqueue since we eariler was sticking to WORD size buffer for each command
+        //Also this would reduce the memory layout for entire renderqueue since we eariler was sticking to 512 size buffer for each command
         if (command.instance.raw_data && !command.instance.size) eprint("Found instance data but size not specified");
         if (!command.instance.raw_data && command.instance.size) eprint("instance size initalized but instance data is null");
 

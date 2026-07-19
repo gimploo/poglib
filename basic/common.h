@@ -46,8 +46,7 @@ typedef long            i64;
 typedef float           f32;
 typedef double          f64;
 
-#define WORD    512
-#define KB      (WORD * 2)
+#define KB      (512 * 2)
 #define MB      (KB * 1024)
 #define GB      (MB * 1024)
 #define PI      3.141592653589793238463f
