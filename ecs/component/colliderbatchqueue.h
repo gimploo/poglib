@@ -200,7 +200,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
 
         if (optimize_broadphase) {
             JPH_PhysicsSystem_OptimizeBroadPhase(global_physics_sys_jolt_instance->physics_system);
-            logging("optimizied broadphase\n");
+            logging("optimizied broadphase");
         }
 
 #ifndef DEBUG

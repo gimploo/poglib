@@ -1,24 +1,20 @@
 #pragma once
 #include <poglib/basic.h>
 #include <poglib/math.h>
-#include "poglib/external/miniaudio.h"
+#include "poglib/application/audio_device.h"
 
 #define MUSIC_MAX_LAYERS 8
 
-typedef struct music_layer_t music_layer_t;
-typedef struct music_theme_t music_theme_t;
-typedef vec2f_t music_curve_point_t;
-
-struct music_layer_t{
+typedef struct music_layer_t{
     str_t               filepath;
     ma_sound            sound;
-    music_curve_point_t curve[8];
+    vec2f_t             curve[8];
     u32                 curve_count;
     f32                 current_db;
     bool                loaded;
-};
+}music_layer_t;
 
-struct music_theme_t {
+typedef struct music_theme_t {
     music_layer_t   layers[MUSIC_MAX_LAYERS];
     u32             layer_count;
     f32             intensity;
@@ -26,12 +22,9 @@ struct music_theme_t {
     f32             smoothing_speed;
     bool            playing;
     bool            initialized;
-};
+} music_theme_t;
 
-global music_theme_t        global_music = {0};
-
-bool                        music_theme_load(str_t base_path, const str_t layer_files[], u32 count,
-                                             const music_curve_point_t curves[][8], const u32 curve_counts[]);
+bool                        music_theme_load(str_t base_path, const str_t layer_files[], u32 count, const vec2f_t curves[][8], const u32 curve_counts[]);
 void                        music_theme_play(void);
 void                        music_theme_stop(f32 fade_sec);
 void                        music_theme_set_intensity(f32 value_0_100);
@@ -41,7 +34,7 @@ f32                         music_theme_get_intensity(void);
 
 #ifndef IGNORE_AUDIO_MUSIC_IMPLEMENTATION
 
-INTERNAL f32 music__internal__db_from_curve(const music_curve_point_t *curve, u32 count, f32 intensity)
+INTERNAL f32 music__internal__db_from_curve(const vec2f_t *curve, u32 count, f32 intensity)
 {
     if (count == 0) return 0.0f;
     if (intensity <= curve[0].x) return curve[0].y;
@@ -71,7 +64,7 @@ INTERNAL void music__internal__apply_intensity(music_theme_t *m)
         f32 target_db = music__internal__db_from_curve(layer->curve, layer->curve_count, m->intensity);
         layer->current_db = target_db;
 
-        f32 gain = music__internal__db_to_linear(target_db);
+        const f32 gain = music__internal__db_to_linear(target_db);
         ma_sound_set_volume(&layer->sound, gain);
     }
 }
@@ -80,14 +73,14 @@ bool music_theme_load(
     const str_t base_path,
     const str_t layer_files[],
     u32 count,
-    const music_curve_point_t curves[][8],
+    const vec2f_t curves[][8],
     const u32 curve_counts[])
 {
     music_theme_unload();
 
     if (count > MUSIC_MAX_LAYERS) count = MUSIC_MAX_LAYERS;
 
-    ma_engine *engine = audio_device_get_engine();
+    ma_engine *engine = &global_audio_engine;
     if (!engine) {
         eprint("[audio] music: no engine\n");
         return false;
@@ -107,11 +100,10 @@ bool music_theme_load(
         layer->filepath = str(fullpath);
 
         layer->curve_count = curve_counts[i];
-        memcpy(layer->curve, curves[i], sizeof(music_curve_point_t) * curve_counts[i]);
+        memcpy(layer->curve, curves[i], sizeof(vec2f_t) * curve_counts[i]);
         layer->current_db = 0.0f;
 
-        ma_result result = ma_sound_init_from_file(engine, fullpath,
-            MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_DECODE, NULL, NULL, &layer->sound);
+        ma_result result = ma_sound_init_from_file(engine, fullpath, MA_SOUND_FLAG_STREAM | MA_SOUND_FLAG_DECODE, NULL, NULL, &layer->sound);
         if (result != MA_SUCCESS) {
             eprint("[audio] music: failed to load `%s`: %d\n", fullpath, result);
             layer->loaded = false;

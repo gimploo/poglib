@@ -18443,7 +18443,7 @@ MA_API ma_result ma_fence_wait(ma_fence* pFence)
     }
 
     /* Should never get here. */
-    /*return MA_INVALID_OPERATION;*/
+    return MA_INVALID_OPERATION;
 }
 
 
