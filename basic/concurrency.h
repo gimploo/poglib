@@ -47,7 +47,7 @@ struct taskconfig_t {
     taskpayload_t       payload;
     taskresponse_t      *result_dest;
     taskstorage_t       storage;
-    void (*callback)(const taskpayload_t args, taskstorage_t storage, void *output_reserved_mem);
+    void (*callback)(const taskpayload_t args, taskstorage_t storage, taskresponse_t *const response);
 };
 
 struct bgtask_manager_t {
@@ -128,7 +128,7 @@ i32 bgtask__internal_thread_wrapper(void *thread_payload_data)
     payload->task.config.callback(
         payload->task.config.payload,
         payload->task.storage,
-        payload->task.response_ref->resource
+        payload->task.response_ref
     );
 
     atomic_store_explicit(&payload->task.response_ref->is_done, true, memory_order_release);
