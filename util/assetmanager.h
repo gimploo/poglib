@@ -2,6 +2,7 @@
 #include <poglib/basic.h>
 #include "./asset.h"
 #include <poglib/sound.h>
+#include "poglib/basic/concurrency.h"
 #include "poglib/gfx/gl/objects.h"
 #include "poglib/gfx/gl/renderconfig.h"
 #include "poglib/gfx/gl/shader.h"
@@ -25,8 +26,8 @@ struct assetmanager_t {
     hashtable_t         assetmeta_lookup;
     struct {
         u32             asset_idx_generator;
-        mpsc_queue_t    gpu_upload_queue;
-        queue_t         asset_loaded_events;
+        mpsc_queue_t    asset_staging_queue;
+        queue_t         notification_queue;
     } internal;
 };
 
@@ -40,11 +41,11 @@ u32                 assetmanager_load_spriteatlas(assetmanager_t *const self, co
 u32                 assetmanager_load_texture(assetmanager_t *self, const str_t filepath);
 u32                 assetmanager_load_glsl_shader(assetmanager_t *self, const str_t vtx_filepath, const str_t frag_filepath, const gluniform_registry_t registry);
 wwise_audio_t       assetmanager_load_audios_from_wwise(assetmanager_t *const self);
-u32                 assetmanager_load_audio_music(assetmanager_t *const self, const audio_musiclayer_t musiclayers[AUDIO_MUSIC_LAYERS_MAX_COUNT], const u8 layer_count);
-u32                 assetmanager_load_audio_sfx(assetmanager_t *const self, const str_t filepath);
+u32                 assetmanager_load_audio_music_async(assetmanager_t *const self, const audio_musiclayer_t musiclayers[AUDIO_MUSIC_LAYERS_MAX_COUNT], const u8 layer_count);
+u32                 assetmanager_load_audio_sfx_async(assetmanager_t *const self, const str_t filepath);
 wwise_audio_t       assetmanager_load_audios_from_wwise(assetmanager_t *const self);
 
-queue_t *           assetmanager_get_eventqueue(assetmanager_t *const self);
+queue_t *           assetmanager_get_notificationqueue(assetmanager_t *const self);
 const void *        assetmanager_get_assetresource(const assetmanager_t *const self, const asset_type assettype, const u32 assetId);
 gpu_asset_t *       assetmanager_get_gpu_loaded_asset_async(const assetmanager_t *const self, const u32 asset_id);
 
@@ -57,18 +58,21 @@ void                assetmanager_destroy(assetmanager_t *const self);
 typedef struct {
     enum {
         ASSET_EVENT_MODEL_LOADED_TO_GPU = 1,
-        ASSET_EVENT_SHADER_COMPILED = 2
+        ASSET_EVENT_SHADER_COMPILED     = 2,
+        ASSET_EVENT_AUDIO_THEME_LOADED  = 3,
+        ASSET_EVENT_AUDIO_SFX_LOADED    = 4
     } type;
     struct {
         u32             id;
         asset_meta_t    meta;
     } asset;
-} asset_event_t;
+} asset_loaded_event_t;
 
 #define MAX_ASSETS_ALLOWED_PER_TYPE 10
 
 INTERNAL void assetmanager__internal_add_asset_meta_data(assetmanager_t *const self, const asset_type type, const u32 asset_id, const str_t filepath1, const str_t filepath2, void *const asset_data);
 INTERNAL void assetmanager__internal_write_uniformlocs_to_file(const hashtable_entry_t *const entry, buffer_t *const buffer);
+INTERNAL void assetmanager__internal__notify(const taskparams_t params);
 
 assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
 {
@@ -77,20 +81,20 @@ assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
     assetmanager_t result = {
         .arena = arena,
         .assetmaps = {
-            [ASSET_TYPE_MODEL]                  = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(async(glmodel_t)), .type = HT_STORAGE_BY_REFERENCE }, arena),
-            [ASSET_TYPE_GLSL_SHADER]            = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(glshader_t), .type = HT_STORAGE_BY_REFERENCE }, arena),
-            [ASSET_TYPE_TEXTURE]                = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gltexture2d_t),  .type = HT_STORAGE_BY_REFERENCE }, arena),
-            [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = hashtable_init(3, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(spriteatlas_t),  .type = HT_STORAGE_BY_VALUE }, arena),
-            [ASSET_TYPE_MUSIC_SFX]              = hashtable_init(10, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(audio_sfx_t),  .type = HT_STORAGE_BY_VALUE }, arena),
-            [ASSET_TYPE_MUSIC_THEME]            = hashtable_init(5, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(audio_music_t),  .type = HT_STORAGE_BY_VALUE }, arena),
+            [ASSET_TYPE_MODEL]                  = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(async(glmodel_t)),  .type = HT_STORAGE_BY_REFERENCE }, arena),
+            [ASSET_TYPE_GLSL_SHADER]            = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(glshader_t),        .type = HT_STORAGE_BY_REFERENCE }, arena),
+            [ASSET_TYPE_TEXTURE]                = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gltexture2d_t),     .type = HT_STORAGE_BY_REFERENCE }, arena),
+            [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = hashtable_init(3, HT_KEY_TYPE_U32,    (ht_value_type) { .size = sizeof(spriteatlas_t),        .type = HT_STORAGE_BY_VALUE     }, arena),
+            [ASSET_TYPE_MUSIC_SFX]              = hashtable_init(10, HT_KEY_TYPE_U32,   (ht_value_type) { .size = sizeof(async(audio_sfx_t)),   .type = HT_STORAGE_BY_REFERENCE }, arena),
+            [ASSET_TYPE_MUSIC_THEME]            = hashtable_init(5, HT_KEY_TYPE_U32,    (ht_value_type) { .size = sizeof(async(audio_music_t)), .type = HT_STORAGE_BY_REFERENCE }, arena),
         },
         .bgtask_manager         = taskmanager,
         .assetmeta_lookup       = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT, HT_KEY_TYPE_U32, (ht_value_type){ .size = sizeof(asset_meta_t), .type = HT_STORAGE_BY_VALUE } , arena),
         .gpu_uploaded_assets    = hashtable_init(ASSET_TYPE_COUNT * MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gpu_asset_t), .type = HT_STORAGE_BY_REFERENCE }, arena),
         .internal = {
-            .asset_idx_generator    = GL_MESH_PRIMITIVE_TYPE_COUNT,
-            .gpu_upload_queue       = mpsc_queue(arena, MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT),
-            .asset_loaded_events    = queue_init(10, asset_event_t, arena)
+            .asset_idx_generator        = GL_MESH_PRIMITIVE_TYPE_COUNT,
+            .asset_staging_queue        = mpsc_queue(arena, MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT),
+            .notification_queue         = queue_init(10, asset_loaded_event_t, arena)
         }
     };
     return result;
@@ -106,12 +110,10 @@ void assetmanager__internal_assetmaps_destroy(assetmanager_t *const self)
             switch(type)
             {
                 case ASSET_TYPE_MUSIC_SFX:
-                    //audio_sfx_destroy(((taskresponse_t *)entry->value)->resource); 
-                    audio_sfx_destroy(entry->value); 
+                    audio_sfx_destroy(((taskresponse_t *)entry->value)->resource); 
                 break;
                 case ASSET_TYPE_MUSIC_THEME:
-                    //audio_music_destroy(((taskresponse_t *)entry->value)->resource); 
-                    audio_music_destroy(entry->value); 
+                    audio_music_destroy(((taskresponse_t *)entry->value)->resource); 
                 break;
                 case ASSET_TYPE_MODEL: 
                     glmodel_destroy(((taskresponse_t *)entry->value)->resource); 
@@ -131,25 +133,28 @@ void assetmanager__internal_assetmaps_destroy(assetmanager_t *const self)
     }
 }
 
-void assetmanager__internal_thread_callback_load_glmodel(const taskpayload_t payload, taskstorage_t storage, taskresponse_t *const response) 
+void assetmanager__internal_thread_callback_load_glmodel(const taskparams_t params, taskstorage_t storage, taskresponse_t *const response) 
 {
     ASSERT(response->resource);
-    ASSERT(payload.args.count == 3);
+    ASSERT(params.count == 3);
+    ASSERT(storage.buffer.raw_data);
+    ASSERT(storage.buffer.size >= sizeof(asset_staging_event_t));
 
-    const str_t filepath = payload.args.arg[0].str;
+    const str_t filepath = params.arg[0].str;
     *(glmodel_t *)response->resource = glmodel_init(filepath);
 
-    gpu_asset__internal_upload_task_t *task = arena_store(
-        storage.arena, 
-        &(gpu_asset__internal_upload_task_t){
-            .asset_id       = payload.args.arg[2].u64,
+    memcpy(
+        storage.buffer.raw_data, 
+        &(asset_staging_event_t){
+            .asset_id       = params.arg[2].u64,
             .type           = ASSET_TYPE_MODEL,
             .processed_data = response->resource,
-        },
-        sizeof(gpu_asset__internal_upload_task_t));
+        }, 
+        sizeof(asset_staging_event_t)
+    );
 
-    mpsc_queue_t * const queue = (mpsc_queue_t *)payload.args.arg[1].any;
-    mpsc_queue_put(queue, task);
+    mpsc_queue_t * const queue = (mpsc_queue_t *)params.arg[1].any;
+    mpsc_queue_put(queue, storage.buffer.raw_data);
 }
 
 u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepath)
@@ -166,20 +171,18 @@ u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepa
 
     bgtask_manager_pass_task(
         self->bgtask_manager,
-        (taskconfig_t){
-            .result_dest = response,
-            .payload = {
-                .args = {
+        (taskrequest_t){
+            .response = response,
+            .params = {
                     .count = 3,
                     .arg = {
                         [0].str = filepath,
-                        [1].any = &self->internal.gpu_upload_queue,
+                        [1].any = &self->internal.asset_staging_queue,
                         [2].u64 = asset_id
                     }
-                },
             },
             .storage = {
-                .arena = arena_init(NULL, 250),
+                .buffer = buffer_init(NULL, sizeof(asset_staging_event_t))
             },
             .callback = assetmanager__internal_thread_callback_load_glmodel,
         }
@@ -250,7 +253,7 @@ u32 assetmanager_load_glsl_shader(assetmanager_t *const self, const str_t vtx_fi
     return asset_id;
 }
 
-void assetmanager__internal_upload_model_to_gpu(
+void assetmanager__internal__upload_model_to_gpu(
     assetmanager_t *const self,
     const glmodel_t *const model,
     const u32 asset_id
@@ -318,37 +321,57 @@ void assetmanager__internal_upload_model_to_gpu(
     hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
 }
 
-INTERNAL void assetmanager__internal_process_pending_gpu_tasks(assetmanager_t *const self)
+INTERNAL void assetmanager__internal__process_loaded_assets(assetmanager_t *const self)
 {
-    mpsc_queue_t *const queue = &self->internal.gpu_upload_queue;
+    mpsc_queue_t *const queue = &self->internal.asset_staging_queue;
 
     while(true) {
-        const gpu_asset__internal_upload_task_t *task = (gpu_asset__internal_upload_task_t *)mpsc_queue_get(queue);
+        const asset_staging_event_t *task = (asset_staging_event_t *)mpsc_queue_get(queue);
         if (!task) {
             return;
         }
 
+        if (!ASSET_ASYNC_LOADING_SUPPORT[task->type]) continue;
+
         switch(task->type)
         {
             case ASSET_TYPE_MODEL:
-                assetmanager__internal_upload_model_to_gpu(self, (glmodel_t *)task->processed_data, task->asset_id);
+                assetmanager__internal__upload_model_to_gpu(self, (glmodel_t *)task->processed_data, task->asset_id);
                 queue_put(
-                    &self->internal.asset_loaded_events, 
-                    &(asset_event_t) { 
+                    &self->internal.notification_queue, 
+                    &(asset_loaded_event_t) { 
                         .type = ASSET_EVENT_MODEL_LOADED_TO_GPU,
                         .asset = {
                             .id     = task->asset_id,
                             .meta   = *(asset_meta_t *)hashtable_get_value(&self->assetmeta_lookup, (hashtable_key_t){ .u32 = task->asset_id }),
                         }
                     }, 
-                    sizeof(asset_event_t)
+                    sizeof(asset_loaded_event_t)
                 );
             break;
-
-            case ASSET_TYPE_TEXTURE:
-            case ASSET_TYPE_GLSL_SHADER:
-            default: eprint("asset type async gpu loading functions are not implemented");
+            case ASSET_TYPE_MUSIC_SFX:
+                queue_put(
+                    &self->internal.notification_queue, 
+                    &(asset_loaded_event_t) { 
+                        .type = ASSET_EVENT_AUDIO_SFX_LOADED,
+                        .asset = { .id = task->asset_id }
+                    }, 
+                    sizeof(asset_loaded_event_t)
+                );
+            break;
+            case ASSET_TYPE_MUSIC_THEME:
+                queue_put(
+                    &self->internal.notification_queue, 
+                    &(asset_loaded_event_t) { 
+                        .type = ASSET_EVENT_AUDIO_THEME_LOADED,
+                        .asset = { .id = task->asset_id }
+                    }, 
+                    sizeof(asset_loaded_event_t)
+                );
+            break;
         }
+
+        mem_free(task, sizeof(*task));
 
     }
 }
@@ -356,11 +379,11 @@ INTERNAL void assetmanager__internal_process_pending_gpu_tasks(assetmanager_t *c
 void assetmanager_update(assetmanager_t *const self)
 {
     ASSERT(self);
-    queue_clear(&self->internal.asset_loaded_events);
-    assetmanager__internal_process_pending_gpu_tasks(self);
+    queue_clear(&self->internal.notification_queue);
+    assetmanager__internal__process_loaded_assets(self);
 }
 
-void assetmanager__internal_upload_cube_to_gpu(assetmanager_t *const self)
+void assetmanager__internal__upload_cube_to_gpu(assetmanager_t *const self)
 {
     const u32 asset_id = GL_MESH_PRIMITIVE_TYPE_CUBE;
 
@@ -449,7 +472,7 @@ void assetmanager__internal_upload_cube_to_gpu(assetmanager_t *const self)
 }
 
 
-void assetmanager__internal_upload_capsule_to_gpu(assetmanager_t *const self)
+void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *const self)
 {
     const u32 asset_id = GL_MESH_PRIMITIVE_TYPE_CAPSULE;
 
@@ -524,7 +547,7 @@ void assetmanager__internal_upload_capsule_to_gpu(assetmanager_t *const self)
 }
 
 
-void assetmanager__internal_upload_cylinder_to_gpu(assetmanager_t *const self)
+void assetmanager__internal__upload_cylinder_to_gpu(assetmanager_t *const self)
 {
     const u32 asset_id = GL_MESH_PRIMITIVE_TYPE_CYLINDER;
 
@@ -609,7 +632,7 @@ void assetmanager__internal_upload_cylinder_to_gpu(assetmanager_t *const self)
 }
 
 
-void assetmanager__internal_upload_camera_model(assetmanager_t *const self)
+void assetmanager__internal__upload_camera_model(assetmanager_t *const self)
 {
     const u32 asset_id = GL_MESH_PRIMITIVE_TYPE_CAMERA;
 
@@ -671,7 +694,7 @@ void assetmanager__internal_upload_camera_model(assetmanager_t *const self)
     hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
 }
 
-void assetmanager__internal_upload_line_to_gpu(assetmanager_t *const self)
+void assetmanager__internal__upload_line_to_gpu(assetmanager_t *const self)
 {
     const u32 asset_id = GL_MESH_PRIMITIVE_TYPE_LINE;
 
@@ -744,11 +767,11 @@ void assetmanager__internal_upload_line_to_gpu(assetmanager_t *const self)
 
 void assetmanager_load_all_primitives(assetmanager_t *const self)
 {
-    assetmanager__internal_upload_line_to_gpu(self);
-    assetmanager__internal_upload_cube_to_gpu(self);
-    assetmanager__internal_upload_capsule_to_gpu(self);
-    assetmanager__internal_upload_cylinder_to_gpu(self);
-    assetmanager__internal_upload_camera_model(self);
+    assetmanager__internal__upload_line_to_gpu(self);
+    assetmanager__internal__upload_cube_to_gpu(self);
+    assetmanager__internal__upload_capsule_to_gpu(self);
+    assetmanager__internal__upload_cylinder_to_gpu(self);
+    assetmanager__internal__upload_camera_model(self);
 }
 
 gpu_asset_t * assetmanager_get_gpu_loaded_asset_async(const assetmanager_t *const self, const u32 asset_id)
@@ -810,38 +833,141 @@ u32 assetmanager_load_texture(assetmanager_t *self, const str_t filepath)
 }
 
 
-queue_t * assetmanager_get_eventqueue(assetmanager_t *const self)
+queue_t * assetmanager_get_notificationqueue(assetmanager_t *const self)
 {
-    return &self->internal.asset_loaded_events;
+    return &self->internal.notification_queue;
 }
 
 
-u32 assetmanager_load_audio_music(assetmanager_t *const self, const audio_musiclayer_t musiclayers[AUDIO_MUSIC_LAYERS_MAX_COUNT], const u8 layer_count)
+INTERNAL void assetmanager__internal__thread_callback_load_audio(const taskparams_t params, taskstorage_t storage, taskresponse_t *const response) 
+{
+    const asset_type type   = params.arg[0].u64;
+    const u32 asset_id      = params.arg[1].u64;
+
+    if (type == ASSET_TYPE_MUSIC_SFX)
+    {
+        ASSERT(params.count == 4);
+        const str_t filepath    = params.arg[2].str;
+        arena_t *arena          = params.arg[3].arena;
+        *(audio_sfx_t *)response->resource = audio_sfx_init(&global_audio_engine, arena, filepath);
+    }
+
+    if (type == ASSET_TYPE_MUSIC_THEME)
+    {
+        ASSERT(params.count == 5);
+        const audio_musiclayer_t *musiclayers   = params.arg[2].any;
+        const u8 layercount                     = params.arg[3].u64;
+        arena_t *arena                          = params.arg[4].arena;
+        *(audio_music_t *)response->resource    = audio_music_init(&global_audio_engine, arena, musiclayers, layercount);
+    }
+}
+
+u32 assetmanager_load_audio_music_async(assetmanager_t *const self, const audio_musiclayer_t musiclayers[AUDIO_MUSIC_LAYERS_MAX_COUNT], const u8 layer_count)
 {
     const u32 asset_id = ++self->internal.asset_idx_generator;
     const asset_type type = ASSET_TYPE_MUSIC_THEME;
 
-    audio_music_t audio= audio_music_init(&global_audio_engine, self->arena, musiclayers, layer_count);
+    taskresponse_t *response = taskresponse(self->arena, sizeof(audio_music_t));
 
-    hashtable_insert_by_value(
+    hashtable_insert(
         &self->assetmaps[type], 
         (hashtable_key_t){ .u32 = asset_id }, 
-        &audio
+        response
+    );
+
+    bgtask_manager_pass_task(
+        self->bgtask_manager,
+        (taskrequest_t){
+            .response = response,
+            .on_complete = {
+                .params = {
+                    .count = 3,
+                    .arg = {
+                        [0].any = &self->internal.asset_staging_queue,
+                        [1].u64 = asset_id,
+                        [2].u64 = type
+                    }
+                },
+                .callback = assetmanager__internal__notify,
+            },
+            .params = {
+                    .count = 5,
+                    .arg = {
+                        [0].u64 = type,
+                        [1].u64 = asset_id,
+                        [2].any = musiclayers,
+                        [3].u64 = layer_count,
+                        [4].arena = arena_init(self->arena, layer_count * 1.5 * KB)
+                    }
+            },
+            .storage = {0},
+            .callback = assetmanager__internal__thread_callback_load_audio,
+        }
     );
 
     return asset_id;
 }
 
-u32 assetmanager_load_audio_sfx(assetmanager_t *const self, const str_t filepath)
+INTERNAL void assetmanager__internal__notify(const taskparams_t params)
+{
+    ASSERT(params.count == 3);
+    const mpsc_queue_t *stagingqueue    = params.arg[0].any;
+    const asset_type assetid            = params.arg[1].u64;
+    const asset_type assettype          = params.arg[2].u64;
+
+    mpsc_queue_put(
+        stagingqueue,
+        mem_init(
+            &(asset_staging_event_t){ 
+                .asset_id = assetid, 
+                .type = assettype, 
+                .processed_data = NULL
+            }, 
+            sizeof(asset_staging_event_t)
+        )
+    );
+}
+
+u32 assetmanager_load_audio_sfx_async(assetmanager_t *const self, const str_t filepath)
 {
     const u32 asset_id = ++self->internal.asset_idx_generator;
-    const asset_type type = ASSET_TYPE_MUSIC_SFX;
+    const asset_type assettype = ASSET_TYPE_MUSIC_SFX;
 
-    audio_sfx_t sfx = audio_sfx_init(&global_audio_engine, self->arena, filepath);
-    hashtable_insert_by_value(
-        &self->assetmaps[type], 
+    taskresponse_t *response = taskresponse(self->arena, sizeof(audio_sfx_t));
+
+    hashtable_insert(
+        &self->assetmaps[assettype], 
         (hashtable_key_t){ .u32 = asset_id }, 
-        &sfx
+        response
+    );
+
+    bgtask_manager_pass_task(
+        self->bgtask_manager,
+        (taskrequest_t){
+            .response = response,
+            .on_complete = {
+                .params = {
+                    .count = 3,
+                    .arg = {
+                        [0].any = &self->internal.asset_staging_queue,
+                        [1].u64 = asset_id,
+                        [2].u64 = assettype
+                    }
+                },
+                .callback = assetmanager__internal__notify,
+            },
+            .params = {
+                .count = 4,
+                .arg = {
+                    [0].u64 = assettype,
+                    [1].u64 = asset_id,
+                    [2].str = filepath,
+                    [3].arena = arena_init(self->arena, 1.5 * KB),
+                }
+            },
+            .storage = {0},
+            .callback = assetmanager__internal__thread_callback_load_audio,
+        }
     );
 
     return asset_id;
@@ -851,10 +977,10 @@ wwise_audio_t assetmanager_load_audios_from_wwise(assetmanager_t *const self)
 {
     wwise_audio_t result = {0};
     for (u32 idx = 0; idx < ARRAY_LEN(WWISE_LOADED_MUSICS); idx++)
-        result.music_asset_ids[idx] = assetmanager_load_audio_music(self, WWISE_LOADED_MUSICS[idx], ARRAY_LEN(WWISE_LOADED_MUSICS[idx]));
+        result.music_asset_ids[idx] = assetmanager_load_audio_music_async(self, WWISE_LOADED_MUSICS[idx], ARRAY_LEN(WWISE_LOADED_MUSICS[idx]));
 
     for (u32 idx = 0; idx < ARRAY_LEN(WWISE_LOADED_SFX); idx++)
-        result.sfx_asset_ids[idx] = assetmanager_load_audio_sfx(self, WWISE_LOADED_SFX[idx]);
+        result.sfx_asset_ids[idx] = assetmanager_load_audio_sfx_async(self, WWISE_LOADED_SFX[idx]);
 
     logging("loaded wwise config");
 

@@ -138,7 +138,7 @@ const struct {
 
 void debug_assimp_vertex_bones(const struct aiScene *scene);
 
-void assimp__internal_glmesh_processMaterial(glmodel_t *self, const struct aiScene *scene, const u32 material_index) 
+INTERNAL void assimp__internal_glmesh_processMaterial(glmodel_t *self, const struct aiScene *scene, const u32 material_index) 
 {
     const struct aiMaterial *material = scene->mMaterials[material_index];
     ASSERT(material);
@@ -179,7 +179,7 @@ void assimp__internal_glmesh_processMaterial(glmodel_t *self, const struct aiSce
     }
 }
 
-glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh, arena_t *const arena) {
+INTERNAL glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh, arena_t *const arena) {
     // get the total total indicies in the mesh
     u64 total_indicies = 0;
     for (u32 i = 0; i < mesh->mNumFaces; i++)
@@ -249,7 +249,7 @@ glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh, arena_t 
     };
 }
 
-i32 assimp__internal_get_bone_id(hashtable_t *bone_name_to_index, const struct aiBone *bone)
+INTERNAL i32 assimp__internal_get_bone_id(hashtable_t *bone_name_to_index, const struct aiBone *bone)
 {
     u64 bone_id = 0;
     str_t bone_name = str_from_cstr(bone->mName.data, bone->mName.length);
@@ -263,7 +263,7 @@ i32 assimp__internal_get_bone_id(hashtable_t *bone_name_to_index, const struct a
     return bone_id;
 }
 
-void assimp__internal_glmesh_process_bones(struct aiMesh *mesh, const slot_t *const vertices, hashtable_t *bone_name_to_index, list_t *bone_infos)
+INTERNAL void assimp__internal_glmesh_process_bones(struct aiMesh *mesh, const slot_t *const vertices, hashtable_t *bone_name_to_index, list_t *bone_infos)
 {
     for (u32 i = 0; i < mesh->mNumBones; i++)
     {
@@ -298,7 +298,7 @@ void assimp__internal_glmesh_process_bones(struct aiMesh *mesh, const slot_t *co
     }
 }
 
-void assimp__internal_glmodel_read_node_heirarchy(const hashtable_t *const bone_name_to_index, list_t *const bone_info, const struct aiNode *node, const matrix4f_t parentTransform)
+INTERNAL void assimp__internal_glmodel_read_node_heirarchy(const hashtable_t *const bone_name_to_index, list_t *const bone_info, const struct aiNode *node, const matrix4f_t parentTransform)
 {
     const matrix4f_t node_transform     = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
     const matrix4f_t global_transform   = matrix4f_multiply(parentTransform, node_transform);
@@ -453,7 +453,7 @@ glmodel_t glmodel_init(const str_t filepath)
     assimp__internal_glmesh_processScene(&o, scene);
 
     //load all animations
-    animator_load_all_animations(&o.animator, scene, o.arena, (animation_filter_t){0});
+    if (scene->mNumAnimations) animator_load_all_animations(&o.animator, scene, o.arena, (animation_filter_t){0});
 
 
     //NOTE: this to cache the root channel idx to get the root position of the model during an animation
@@ -479,21 +479,6 @@ glmodel_t glmodel_init(const str_t filepath)
             }
         }
     }
-
-#if 0
-    // Strip root bone translation from all animations — engine controls root position
-    if (o.internal.root_channel_idx >= 0) {
-        list_iterator(&o.animator.animations, iter) {
-            animation_t *anim = iter;
-            node_anim_t *ch = list_get_value(&anim->channels, o.internal.root_channel_idx);
-            if (ch && ch->position_keys.len > 0) {
-                list_clear(&ch->position_keys);
-                position_key_t zero = { .tick = 0.0f, .value = {0} };
-                list_append(&ch->position_keys, zero);
-            }
-        }
-    }
-#endif
 
     logging("Completed loading model %s ...", filepath);
 

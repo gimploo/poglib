@@ -63,3 +63,19 @@ u32 get_index_from_bitflag(const u32 bitflag) {
 #endif
 }
 
+
+buffer_t buffer_init(void *data, const u32 size)
+{
+    return (buffer_t) {
+        .raw_data = mem_init(data, size),
+        .size = size,
+        .is_on_heap = true
+    };
+}
+
+void buffer_destroy(buffer_t *const self)
+{
+    ASSERT(self->is_on_heap);
+    mem_free(self->raw_data, self->size);
+}
+
