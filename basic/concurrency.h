@@ -7,6 +7,8 @@
 
 //TODO: way to safely exit from active running threads.
 
+#define TOTAL_THREADS_AVAILABLE 32
+
 typedef struct bgtask_manager_t bgtask_manager_t;
 bgtask_manager_t *global_bgtask_manager = NULL;
 
@@ -25,34 +27,37 @@ struct taskresponse_t {
     void *resource;
 };
 
-typedef struct taskpayload_t taskpayload_t;
+typedef struct taskparams_t taskparams_t;
+struct taskparams_t {
+    u8 count;
+    union {
+        str_t   str;
+        u64     u64;
+        arena_t *arena;
+        void    *any;
+    } arg[8];
+};
+
+typedef union taskstorage_t taskstorage_t;
+union taskstorage_t {
+    buffer_t buffer;
+    arena_t *transient_arena;
+};
+
+typedef struct taskpayload_t taskrequest_t;
 struct taskpayload_t {
-    struct {
-        u32 count;
-        union {
-            str_t   str;
-            u64     u64;
-            void    *any;
-        } arg[4];
-    } args;
-};
-
-typedef struct taskstorage_t taskstorage_t;
-struct taskstorage_t {
-    arena_t *arena;
-};
-
-typedef struct taskconfig_t taskconfig_t;
-struct taskconfig_t {
-    taskpayload_t       payload;
-    taskresponse_t      *result_dest;
+    taskparams_t        params;
     taskstorage_t       storage;
-    void (*callback)(const taskpayload_t args, taskstorage_t storage, taskresponse_t *const response);
+    taskresponse_t      *response;
+    void (*callback)(const taskparams_t args, taskstorage_t storage, taskresponse_t *const response);
+    struct {
+        taskparams_t params;
+        void (*callback)(const taskparams_t params);
+    } on_complete;
 };
 
 struct bgtask_manager_t {
     queue_t tasks;
-    arena_t *arena;
 };
 
 taskresponse_t *    taskresponse(arena_t * const arena, const u64 response_size);
@@ -60,101 +65,81 @@ taskresponse_t *    task_response_empty(arena_t * const arena);
 void                taskresponse_destroy(taskresponse_t *self);
 
 
-bgtask_manager_t *  bgtask_manager_init(void);
-void                bgtask_manager_pass_task(bgtask_manager_t * const self, const taskconfig_t config);
+bgtask_manager_t *  bgtask_manager_init(arena_t *const arena);
+void                bgtask_manager_pass_task(bgtask_manager_t * const self, const taskrequest_t payload);
 void                bgtask_manager_run_all_tasks(bgtask_manager_t *self);
 void                bgtask_manager_destroy(bgtask_manager_t *self);
 
 
 #ifndef IGNORE_CONCURRENCY_IMPLEMENTATION
 
-#define TOTAL_THREADS_AVAILABLE 4
 
-typedef struct {
-    taskconfig_t config;
-    taskstorage_t  storage;
-    taskresponse_t *response_ref;
-} bgtask__internal_t;
-
-typedef struct {
-    bgtask__internal_t task;
-    arena_t *bgarena;
-} thread__internal_payload_t;
-
-taskresponse_t * taskresponse(arena_t * const arena, const u64 response_size)
+taskresponse_t * taskresponse(arena_t *const arena, const u64 response_size)
 {
     taskresponse_t *taskresponse = arena_reserve(arena, sizeof(taskresponse_t));
     taskresponse->resource = response_size > 0 ? arena_reserve(arena, response_size) : NULL;
     return taskresponse;
 }
 
-bgtask_manager_t * bgtask_manager_init(void)
+bgtask_manager_t * bgtask_manager_init(arena_t *const arena)
 {
     ASSERT(!global_bgtask_manager);
 
-    arena_t *arena = arena_init(NULL, 50 * KB);
     global_bgtask_manager = arena_store(
         arena,
         &(bgtask_manager_t) {
-            .tasks = queue_init(TOTAL_THREADS_AVAILABLE, bgtask__internal_t, arena),
-            .arena = NULL
+            .tasks = queue_init(TOTAL_THREADS_AVAILABLE, taskrequest_t, arena),
         }, 
         sizeof(bgtask_manager_t)
     );
-    global_bgtask_manager->arena = arena;
     return global_bgtask_manager;
 }
 
-void bgtask_manager_pass_task(bgtask_manager_t * const self, const taskconfig_t config)
+void bgtask_manager_pass_task(bgtask_manager_t * const self, const taskrequest_t request)
 {
-    ASSERT(config.payload.args.count > 0);
-    ASSERT(config.callback);
+    ASSERT(request.params.count > 0);
+    ASSERT(request.callback);
 
-    config.result_dest->thrd_id = (thrd_t){0};
-
-    const bgtask__internal_t task = (bgtask__internal_t){
-        .config = config,
-        .storage = config.storage,
-        .response_ref = config.result_dest,
-    };
-    queue_put(&self->tasks, &task, sizeof(task));
+    request.response->thrd_id = (thrd_t){0};
+    queue_put(&self->tasks, &request, sizeof(request));
 }
 
 
 i32 bgtask__internal_thread_wrapper(void *thread_payload_data)
 {
-    thread__internal_payload_t *payload = thread_payload_data;
+    taskrequest_t *const payload = thread_payload_data;
+    ASSERT(payload->response);
+    ASSERT(payload->response->resource);
 
-    payload->task.config.callback(
-        payload->task.config.payload,
-        payload->task.storage,
-        payload->task.response_ref
+    payload->callback(
+        payload->params,
+        payload->storage,
+        payload->response
     );
 
-    atomic_store_explicit(&payload->task.response_ref->is_done, true, memory_order_release);
-    arena_giveback(payload->bgarena, payload, sizeof(thread__internal_payload_t));
+    atomic_store_explicit(&payload->response->is_done, true, memory_order_release);
+
+    if (payload->on_complete.callback) {
+        ASSERT(payload->on_complete.params.count);
+        payload->on_complete.callback(payload->on_complete.params);
+    }
+
+    mem_free(payload, sizeof(*payload));
 
     return 0;
 }
 
-void bgtask_manager_run_all_tasks(bgtask_manager_t *self)
+void bgtask_manager_run_all_tasks(bgtask_manager_t *const self)
 {
     //TODO: maybe have this restrain to few threads only
     while(!queue_is_empty(&self->tasks)) {
 
-        bgtask__internal_t task = {0};
+        taskrequest_t *task = mem_init(NULL, sizeof(taskrequest_t));
         queue_get_in_buffer(&self->tasks, (buffer_t) { 
-            .raw_data = (void *)&task, 
-            .size = sizeof(task) 
+            .raw_data = (void *)task, 
+            .size = sizeof(*task) 
         });
-
-        thread__internal_payload_t *payload = arena_reserve(self->arena, sizeof(thread__internal_payload_t));
-        *payload = (thread__internal_payload_t){
-            .task = task,
-            .bgarena = self->arena
-        };
-
-        if (thrd_create(&payload->task.response_ref->thrd_id, bgtask__internal_thread_wrapper, payload) != thrd_success) {
+        if (thrd_create(&task->response->thrd_id, bgtask__internal_thread_wrapper, task) != thrd_success) {
             eprint("Failed to generate thread");
         }
     }
@@ -165,7 +150,6 @@ void bgtask_manager_destroy(bgtask_manager_t *self)
     ASSERT(global_bgtask_manager);
 
     queue_destroy(&self->tasks);
-    arena_destroy(self->arena);
 }
 
 void taskresponse_destroy(taskresponse_t *self) 

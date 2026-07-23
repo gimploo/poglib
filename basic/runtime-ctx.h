@@ -1,7 +1,7 @@
 #pragma once
 #include "./common.h"
 #include "./arena.h"
-#include "./arena_stack.h"
+#include "./stack_arena.h"
 
 //NOTE: add members that would be used during runtime of an application
 

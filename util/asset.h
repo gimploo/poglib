@@ -37,8 +37,8 @@ typedef struct {
     } meshes;
 } gpu_asset_t;
 
-typedef struct gpu_asset__internal_upload_task_t gpu_asset__internal_upload_task_t;
-struct gpu_asset__internal_upload_task_t {
+typedef struct asset_staging_event_t asset_staging_event_t;
+struct asset_staging_event_t {
     u32         asset_id;
     asset_type  type;
     void        *processed_data;
@@ -48,14 +48,8 @@ struct gpu_asset__internal_upload_task_t {
 
 const bool ASSET_ASYNC_LOADING_SUPPORT[ASSET_TYPE_COUNT] = {
     [ASSET_TYPE_MODEL]                  = true,
-#if 0
-    TODO: making it asynchronous in bgtaskbgtask_manager_t - its currently asynchronous but handled
-    within miniaudio 's internal thread pool
     [ASSET_TYPE_MUSIC_SFX]              = true,
     [ASSET_TYPE_MUSIC_THEME]            = true,
-#endif
-    [ASSET_TYPE_MUSIC_SFX]              = false,
-    [ASSET_TYPE_MUSIC_THEME]            = false,
     [ASSET_TYPE_GLSL_SHADER]            = false, //Requires opengl to compile shaders
     [ASSET_TYPE_TEXTURE]                = false,
     [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = false,
