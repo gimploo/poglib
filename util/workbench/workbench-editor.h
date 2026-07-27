@@ -75,14 +75,14 @@ INTERNAL void workbench_editor__internal__scale_mesh_collider(ecs_component_coll
         ? collider->dim.mesh.idx.count / 3 
         : vtx_count / 3;
 
-    vec3f_t *const scaled_vtx = stackarena_push(global_runtimectx->stackarena, vtx_count * sizeof(vec3f_t));
+    vec3f_t *const scaled_vtx = (vec3f_t *)stackarena_push(global_runtimectx->stackarena, vtx_count * sizeof(vec3f_t));
     for (u32 i = 0; i < vtx_count; i++) {
         scaled_vtx[i].x = collider->dim.mesh.vtx.data[i].x * transform.scale.x;
         scaled_vtx[i].y = collider->dim.mesh.vtx.data[i].y * transform.scale.y;
         scaled_vtx[i].z = collider->dim.mesh.vtx.data[i].z * transform.scale.z;
     }
 
-    JPH_IndexedTriangle *tris = stackarena_push(global_runtimectx->stackarena, tri_count * sizeof(JPH_IndexedTriangle));
+    JPH_IndexedTriangle *tris = (JPH_IndexedTriangle *)stackarena_push(global_runtimectx->stackarena, tri_count * sizeof(JPH_IndexedTriangle));
     for (u32 i = 0; i < tri_count; i++) {
         tris[i] = (JPH_IndexedTriangle){
             .i1 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 0] : i * 3 + 0,

@@ -1,13 +1,13 @@
 #pragma once
 #include "./common.h"
 
-audio_sfx_t     audio_sfx_init(const ma_engine *const engine, arena_t *const arena, const str_t filepath);
+audio_sfx_t     audio_sfx_init(ma_engine *const engine, arena_t *const arena, const str_t filepath);
 void            audio_sfx_play(audio_sfx_t *const self);
 void            audio_sfx_destroy(audio_sfx_t *const self);
 
 #ifndef IGNORE_AUDIO_SFX_IMPLEMENTATION
 
-audio_sfx_t audio_sfx_init(const ma_engine *const engine, arena_t *const arena, const str_t filepath)
+audio_sfx_t audio_sfx_init(ma_engine *const engine, arena_t *const arena, const str_t filepath)
 {
     ma_sound *sound = arena_reserve(arena, sizeof(ma_sound));
     ma_result result = ma_sound_init_from_file(engine, filepath.data, MA_SOUND_FLAG_DECODE, NULL, NULL, sound);
