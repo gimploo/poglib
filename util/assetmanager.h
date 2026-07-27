@@ -326,7 +326,7 @@ INTERNAL void assetmanager__internal__process_loaded_assets(assetmanager_t *cons
     mpsc_queue_t *const queue = &self->internal.asset_staging_queue;
 
     while(true) {
-        const asset_staging_event_t *task = (asset_staging_event_t *)mpsc_queue_get(queue);
+        asset_staging_event_t *const task = (asset_staging_event_t *)mpsc_queue_get(queue);
         if (!task) {
             return;
         }
@@ -895,7 +895,7 @@ u32 assetmanager_load_audio_music_async(assetmanager_t *const self, const audio_
                     .arg = {
                         [0].u64 = type,
                         [1].u64 = asset_id,
-                        [2].any = musiclayers,
+                        [2].any = (void *)musiclayers,
                         [3].u64 = layer_count,
                         [4].arena = arena_init(self->arena, layer_count * 1.5 * KB)
                     }
@@ -911,7 +911,7 @@ u32 assetmanager_load_audio_music_async(assetmanager_t *const self, const audio_
 INTERNAL void assetmanager__internal__notify(const taskparams_t params)
 {
     ASSERT(params.count == 3);
-    const mpsc_queue_t *stagingqueue    = params.arg[0].any;
+    mpsc_queue_t *const stagingqueue    = params.arg[0].any;
     const asset_type assetid            = params.arg[1].u64;
     const asset_type assettype          = params.arg[2].u64;
 

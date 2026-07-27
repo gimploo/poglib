@@ -3,7 +3,7 @@
 
 
 
-audio_music_t       audio_music_init(const ma_engine *const engine, arena_t *const arena, const audio_musiclayer_t musiclayers[AUDIO_MUSIC_LAYERS_MAX_COUNT], const u8 layer_count);
+audio_music_t       audio_music_init(ma_engine *const engine, arena_t *const arena, const audio_musiclayer_t musiclayers[AUDIO_MUSIC_LAYERS_MAX_COUNT], const u8 layer_count);
 void                audio_music_play_layer(audio_music_t *const self, const u32 layer_idx);
 void                audio_music_play_all_layers(audio_music_t *const self);
 void                audio_music_update(audio_music_t *const self, const f32 dt);
@@ -16,7 +16,7 @@ void                audio_music_destroy(audio_music_t *const self);
 
 INTERNAL f32 audio_music__internal__db_from_curve(const vec2f_t curve[AUDIO_CURVE_MAX_COUNT], const u8 count, const f32 intensity);
 
-audio_music_t audio_music_init(const ma_engine *const engine, arena_t *const arena, const audio_musiclayer_t musiclayers[AUDIO_MUSIC_LAYERS_MAX_COUNT], const u8 layer_count)
+audio_music_t audio_music_init(ma_engine *const engine, arena_t *const arena, const audio_musiclayer_t musiclayers[AUDIO_MUSIC_LAYERS_MAX_COUNT], const u8 layer_count)
 {
     audio_music_t music = {0};
     music.layers = slot_init(layer_count, sizeof(audio_musiclayer_t), arena);

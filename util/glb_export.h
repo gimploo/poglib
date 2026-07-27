@@ -72,11 +72,11 @@ INTERNAL void glb_export__traverse(
 
 bool glb_export_scene(arena_t *arena, ecs_t *ecs, u32 model_asset_id, str_t output_path)
 {
-    const glmodel_t *model = (glmodel_t *)assetmanager_get_assetresource(
+    const glmodel_t *const model = (glmodel_t *)assetmanager_get_assetresource(
         &global_engine->systems.assets, ASSET_TYPE_MODEL, model_asset_id);
     if (!model || !model->scene || !model->scene->mRootNode) return false;
 
-    struct aiScene *scene = model->scene;
+    const struct aiScene *scene = model->scene;
     u32 mesh_count = scene->mNumMeshes;
     if (mesh_count == 0) return false;
 
