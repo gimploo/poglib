@@ -1,6 +1,4 @@
 #pragma once
-#include "poglib/gfx/glrenderer2d.h"
-#include "poglib/pipeline/render/common.h"
 #include "poglib/util/asset.h"
 #include <poglib/gfx/glrenderer3d.h>
 
@@ -17,18 +15,35 @@ struct rendercommand_instance_primitive_mesh_t {
     vec4f_t scale;
 };
 
-typedef struct rendercommand_instance_line_t rendercommand_instance_line_t;
-struct rendercommand_instance_line_t {
+typedef struct rendercommand_primitive_line_t rendercommand_primitive_line_t;
+struct rendercommand_primitive_line_t {
+    vec3f_t start;
+    vec3f_t end;
     vec4f_t color;
-    vec4f_t translation;
-    vec4f_t orientation;
-    vec4f_t scale;
+};
+
+typedef struct rendercommand_primitive_triangle_t rendercommand_primitive_triangle_t;
+struct rendercommand_primitive_triangle_t {
+    vec3f_t points[3];
+    vec4f_t color;
 };
 
 typedef struct rendercommand_t rendercommand_t;
 struct rendercommand_t {
 
-    gpu_mesh_t *const mesh;
+    struct {
+        enum {
+            RENDERCOMMAND_VTX_TYPE_MESH         = 0,
+            RENDERCOMMAND_VTX_TYPE_LINE         = 1,
+            RENDERCOMMAND_VTX_TYPE_TRIANGLES    = 2,
+        } type;
+        union {
+            rendercommand_primitive_triangle_t  triangles;
+            rendercommand_primitive_line_t      line;
+            gpu_mesh_t *const                   mesh;
+        } data;
+    } vtx;
+
     struct {
         struct {
             gluniforms_t uniforms;
@@ -38,7 +53,6 @@ struct rendercommand_t {
     } material;
 
     buffer_t                    instance;
-    rendercommand_draw_mode     draw_mode;
     bool                        enable_wireframe;
 };
 

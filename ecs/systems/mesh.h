@@ -79,8 +79,9 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
         }
 
         const rendercommand_t command = {
-            .mesh = &gpu_loaded_asset->meshes.data[mesh->mesh_idx],
-            .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
+            .vtx = {
+                .data.mesh = &gpu_loaded_asset->meshes.data[mesh->mesh_idx],
+            },
             .enable_wireframe = false,
             .instance = {
                 .raw_data = &(rendercommand_instance_primitive_mesh_t) {

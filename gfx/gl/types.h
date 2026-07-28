@@ -117,11 +117,10 @@ typedef struct glmesh_t {
 //the only place this used so far is in `assetmanager` which i think the the type should denote. 
 typedef enum glmesh_primitive_type {
     GL_MESH_PRIMITIVE_TYPE_NONE     = 0,
-    GL_MESH_PRIMITIVE_TYPE_LINE     = 1,
-    GL_MESH_PRIMITIVE_TYPE_CUBE     = 2,
-    GL_MESH_PRIMITIVE_TYPE_CAPSULE  = 3,
-    GL_MESH_PRIMITIVE_TYPE_CAMERA   = 4,
-    GL_MESH_PRIMITIVE_TYPE_CYLINDER = 5,
+    GL_MESH_PRIMITIVE_TYPE_CUBE     = 1,
+    GL_MESH_PRIMITIVE_TYPE_CAPSULE  = 2,
+    GL_MESH_PRIMITIVE_TYPE_CAMERA   = 3,
+    GL_MESH_PRIMITIVE_TYPE_CYLINDER = 4,
     GL_MESH_PRIMITIVE_TYPE_COUNT
 } glmesh_primitive_type;
 
@@ -500,8 +499,14 @@ void __impl_glbatch_put(glbatch_t *batch, const void *elem, const u64 elemsize)
 }
 
 
+const f32 DEFAULT_TRIANGLE_VERTICES[] = {
+    // Position               // Normal facing +Z       // UV
+    -1.0f, -1.0f,  0.0f,       0.0f,  0.0f,  1.0f,       0.0f, 0.0f, // Bottom left
+     1.0f, -1.0f,  0.0f,       0.0f,  0.0f,  1.0f,       1.0f, 0.0f, // Bottom right
+     0.0f,  1.0f,  0.0f,       0.0f,  0.0f,  1.0f,       0.5f, 1.0f  // Top center
+};
 
-const u32 DEFAULT_TRI_INDICES[] = {
+const u32 DEFAULT_TRIANGLE_INDICES[] = {
     0, 1, 2
 };
 
