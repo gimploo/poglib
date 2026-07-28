@@ -197,6 +197,7 @@ typedef struct {
 
 void arena_logger_dump_collapsed(const char *filepath)
 {
+#ifdef ARENA_ENABLE_MEMORY_LOGGER
     FILE *f = fopen(filepath, "w");
     if (!f) {
         fprintf(stderr, "[arena_logger] Failed to open '%s' for writing\n", filepath);
@@ -313,6 +314,9 @@ void arena_logger_dump_collapsed(const char *filepath)
     free(entries);
 
     fclose(f);
+#else
+    fprintf(stderr, "[!] WARN: Memory logger not enabled - define `ARENA_ENABLE_MEMORY_LOGGER` in main.c before library import\n");
+#endif
 }
 
 #endif // IGNORE_ARENA_LOGGER_IMPLEMENTATION

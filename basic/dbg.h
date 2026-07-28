@@ -204,7 +204,7 @@ bool __is_file_in_ignore_files(const char *filepath)
 #ifdef _WIN64
 LONG WINAPI TopLevelExceptionHandler(PEXCEPTION_POINTERS pExceptionInfo)
 {
-    const char *message = "APPLICATION SEGFAULTED - i think?\n";
+    const char *message = "APPLICATION CRASHED!\n";
     fprintf(stderr, "\n\033[0;37m" "\033[0;31m\n\t %s\033[0m\n", message);\
     return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -494,9 +494,9 @@ void dbg__internal_destroy(bool did_program_crashed)
                 "\n\t\033[01;32mNO MEMORY LEAKS \033[0m\n\n");
     } else if (did_program_crashed) {
         fprintf(global_debug.fp, 
-                "MEMORY LEAK FOUND: (%0li) COUNT - PROGRAM CRASHED!\n", global_debug.list.count);
+                "MEMORY LEAK FOUND: (%0li) COUNT!\n", global_debug.list.count);
         fprintf(stdout, 
-                "\n\t\033[01;31m MEMORY LEAK FOUND\033[0m: (%02li) - PROGRAM CRASHED, requires investigation!\n\n", global_debug.list.count);
+                "\n\t\033[01;31m MEMORY LEAK FOUND\033[0m: (%02li)!\n\n", global_debug.list.count);
 
         debug_mem_dump();
     } else {

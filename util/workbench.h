@@ -6,6 +6,7 @@
 #include "./workbench/workbench-grid.h"
 #include "SDL2/SDL_scancode.h"
 #include "poglib/ecs/component/types.h"
+#include "poglib/physics/jolt-debugrenderer.h"
 #include "poglib/util/workbench/workbench-editor.h"
 
 workbench_t *   workbench_init(arena_t * const arena);
@@ -385,7 +386,6 @@ workbench_t * workbench_init(arena_t *const arena)
     global_workbench = arena_store(arena, &workbench, sizeof(workbench));
 
     workbench_ecs_populate_entities();
-    workbench_debug_renderer_init(&global_workbench->debug_renderer, arena);
 
     return global_workbench;
 }
@@ -469,7 +469,6 @@ void workbench_destroy(void)
     ASSERT(global_workbench);
     workbench_t *self = global_workbench;
 
-    workbench_debug_renderer_destroy(&self->debug_renderer);
     glshader_destroy(&self->shader);
     gui_destroy(&self->gui.handle);
 
@@ -529,8 +528,7 @@ void workbench_render_camera(
 
     rendercommand_t rendercommand = {
         .enable_wireframe = true,
-        .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
-        .mesh = asset->meshes.data,
+        .vtx.data.mesh = asset->meshes.data,
         .instance = {
             .raw_data = &(rendercommand_instance_primitive_mesh_t) {
                 .translation = { position.x, position.y, position.z, 0.f },
@@ -592,8 +590,7 @@ void workbench_render_marker(
 
     rendercommand_t rendercommand = {
         .enable_wireframe = self->render_config.wireframe_mode,
-        .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
-        .mesh = asset->meshes.data,
+        .vtx.data.mesh = asset->meshes.data,
         .instance = {
             .raw_data = &(rendercommand_instance_primitive_mesh_t) {
                 .translation = { translation.x, translation.y, translation.z, 0.f },
@@ -693,73 +690,5 @@ void workbench__internal__show_colliders(workbench_t *const self)
 
     if (!global_workbench->enable_collider) return;
 
-    JPH_DrawSettings draw_settings;
-    JPH_DrawSettings_InitDefault(&draw_settings);
-    draw_settings.drawShape = true;
-    draw_settings.drawShapeWireframe = true;
-    draw_settings.drawShapeColor = JPH_BodyManager_ShapeColor_InstanceColor;
-
-    JPH_PhysicsSystem_DrawBodies(
-        global_physics_sys_jolt_instance->physics_system,
-        &draw_settings,
-        self->debug_renderer.jolt_handle,
-        NULL
-    );
-
-    slot_t *sc_pool = slot_get_value(&global_ecs->managers.componentmanager.componentpool_slots, ECS_CMP_COLLIDER_IDX);
-    slot_iterator(sc_pool, sc_iter)
-    {
-        ecs_component_poolentry_t *sc_entry = sc_iter;
-        if (!sc_entry->is_active) continue;
-
-        ecs_component_collider_t *sc = (ecs_component_collider_t *)sc_entry->entity_cmpdata;
-        if (sc->motion_type != JPH_MotionType_Kinematic) continue;
-        if (!sc->internal.kinematic_body) continue;
-
-        const JPH_Shape *shape = JPH_CharacterBase_GetShape((JPH_CharacterBase *)sc->internal.kinematic_body);
-        if (!shape) continue;
-
-        JPH_Vec3 shape_offset;
-        JPH_CharacterVirtual_GetShapeOffset(sc->internal.kinematic_body, &shape_offset);
-
-        JPH_Vec3 draw_pos;
-        draw_pos.x = sc->internal.position.x + shape_offset.x;
-        draw_pos.y = sc->internal.position.y + shape_offset.y;
-        draw_pos.z = sc->internal.position.z + shape_offset.z;
-
-        JPH_Mat4 transform;
-        JPH_Mat4_RotationTranslation(
-            &transform,
-            (JPH_Quat *)&sc->internal.orientation,
-            &draw_pos
-        );
-
-        const JPH_Vec3 scale = {1.0f, 1.0f, 1.0f};
-        JPH_Shape_Draw(
-            shape,
-            self->debug_renderer.jolt_handle,
-            &transform,
-            &scale,
-            0xFFFFFFFF,
-            false,
-            true
-        );
-    }
-
-    const matrix4f_t view = workbench__internal__get_camera_view(self);
-    const matrix4f_t proj = glms_perspective(
-        radians(45),
-        global_engine->handle.app->window.aspect_ratio,
-        1.0f,
-        10000.0f
-    );
-
-    workbench_debug_renderer_flush(
-        &self->debug_renderer,
-        &self->shader,
-        view,
-        proj,
-        self->world_camera.handle->position
-    );
 }
 

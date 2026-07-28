@@ -2,8 +2,8 @@
 #include <poglib/basic.h>
 #include <poglib/gui.h>
 #include <poglib/util/glcamera.h>
-#include "./workbench-debug-renderer.h"
 #include "poglib/ecs/component/types.h"
+#include "poglib/input/commandregistry.h"
 
 typedef enum WORKBENCH_RESERVED_ENTITY_ID {
 
@@ -61,8 +61,6 @@ typedef struct {
         u32 line_shader_id;
     } primitives;
 
-    workbench_debug_renderer_t debug_renderer;
-
     glshader_t shader;
     vec3f_t player_camera_position;
 
@@ -72,7 +70,6 @@ typedef struct {
         u32 entity_id;
         glcamera_t *handle;
     } world_camera;
-
 
     struct {
 

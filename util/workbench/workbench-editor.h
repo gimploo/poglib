@@ -496,38 +496,30 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
     const matrix4f_t proj
 ) {
     const f32 axis_length = 1000.f;
-    rendercommand_instance_line_t gizmo[3] = {
+    rendercommand_primitive_line_t gizmo[3] = {
         //NOTE: X axis
         {
-            .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
-            .orientation = {0.0f, 0.0f, 0.0f, 1.0f},
-            .color       = {1.0f, 0.0f, 0.0f, 1.0f},
-            .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
+            .start  = { entitypos.x, entitypos.y, entitypos.z },
+            .end    = { entitypos.x * axis_length, entitypos.y, entitypos.z },
+            .color  = {1.0f, 0.0f, 0.0f, 1.0f},
         },
         //NOTE: Y axis
         {
-            .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
-            .orientation = {0.0f, 0.0f, -0.7071f, 0.7071f},
-            .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
-            .color       = {0.0f, 1.0f, 0.0f, 1.0f},
+            .start  = { entitypos.x, entitypos.y, entitypos.z },
+            .end    = { entitypos.x, entitypos.y * axis_length, entitypos.z },
+            .color  = {0.0f, 1.0f, 0.0f, 1.0f},
         },
         //NOTE: Z axis
         {
-            .translation = { entitypos.x, entitypos.y, entitypos.z, 0.f },
-            .orientation = {0.0f, 0.7071f, 0.0f, 0.7071f},
-            .scale       = {axis_length, 1.0f, 1.0f, 0.0f},
-            .color       = {0.0f, 0.0f, 1.0f, 1.0f},
+            .start  = { entitypos.x, entitypos.y, entitypos.z },
+            .end    = { entitypos.x, entitypos.y, entitypos.z * axis_length },
+            .color  = {0.0f, 0.0f, 1.0f, 1.0f},
         },
     };
 
     for (u8 idx = 0; idx < 3; idx++)
     {
         rendercommand_t rendercommand = {
-            .draw_mode = RENDER_COMMAND_DRAW_MODE_LINES,
-            .instance = {
-                .raw_data = &gizmo[idx],
-                .size = sizeof(rendercommand_instance_line_t),
-            },
             .material = {
                 .shader = {
                     .data = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id),
@@ -546,7 +538,10 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
                     }
                 }
             },
-            .mesh = assetmanager_get_gpu_loaded_asset_async(&global_engine->systems.assets, GL_MESH_PRIMITIVE_TYPE_LINE)->meshes.data,
+            .vtx = {
+                .type = RENDERCOMMAND_VTX_TYPE_LINE,
+                .data.line = gizmo[idx]
+            }
         };
         renderqueue_pass_command(&global_engine->systems.renderqueue, rendercommand);
     }

@@ -694,84 +694,14 @@ void assetmanager__internal__upload_camera_model(assetmanager_t *const self)
     hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
 }
 
-void assetmanager__internal__upload_line_to_gpu(assetmanager_t *const self)
-{
-    const u32 asset_id = GL_MESH_PRIMITIVE_TYPE_LINE;
-
-    vao_t vao = vao_init();
-    vao_bind(&vao);
-
-    const f32 DEFAULT_LINE_VERTICES[] = {
-        0.0f, 0.0f, 0.0f,   // start
-        1.0f, 0.0f, 0.0f,   // end
-    };
-
-    const u32 DEFAULT_LINE_INDICES[] = {
-        0, 1,
-    };
-
-    vbo_t vbo = vbo_init((vbo_config_t) {
-        .usage = GL_STATIC_DRAW,
-        .chunks = {
-            [VBO_STREAM_TYPE_GEOMETRY] = { 
-                .buffer = {
-                    .raw_data = (u8 *)DEFAULT_LINE_VERTICES,
-                    .size = sizeof(DEFAULT_LINE_VERTICES),
-                }, 
-                .index_count = ARRAY_LEN(DEFAULT_LINE_INDICES)
-            },
-            [VBO_STREAM_TYPE_INSTANCE] = {0},
-        }
-    });
-
-    const ebo_t ebo = ebo_init(&vbo, DEFAULT_LINE_INDICES, ARRAY_LEN(DEFAULT_LINE_INDICES));
-
-    //Pos
-    vao_set_attributes(
-        &vao,
-        &vbo, 
-        3, 
-        GL_FLOAT, 
-        false, 
-        sizeof(f32) * 3, 
-        0, 
-        false,
-        VBO_STREAM_TYPE_GEOMETRY
-    );
-
-    vao_unbind();
-
-    gpu_mesh_t * const gpu_mesh = arena_store(
-        self->arena, 
-        &(gpu_mesh_t) {
-            .vao_id = vao.id,
-            .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_index + 1
-        },
-        sizeof(gpu_mesh_t));
-
-    const gpu_asset_t * const gpu_asset = arena_store(
-        self->arena, 
-        &(gpu_asset_t) {
-            .asset_id = asset_id,
-            .meshes = {
-                .count = 1,
-                .data = gpu_mesh
-            }
-        },
-        sizeof(gpu_asset_t));
-
-    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
-}
-
-
 void assetmanager_load_all_primitives(assetmanager_t *const self)
 {
-    assetmanager__internal__upload_line_to_gpu(self);
     assetmanager__internal__upload_cube_to_gpu(self);
     assetmanager__internal__upload_capsule_to_gpu(self);
     assetmanager__internal__upload_cylinder_to_gpu(self);
     assetmanager__internal__upload_camera_model(self);
+
+    logging("loaded all primitive shapes");
 }
 
 gpu_asset_t * assetmanager_get_gpu_loaded_asset_async(const assetmanager_t *const self, const u32 asset_id)

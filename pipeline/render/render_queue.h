@@ -3,6 +3,7 @@
 #include "poglib/basic/common.h"
 #include "poglib/basic/dbg.h"
 #include "poglib/basic/ds/list.h"
+#include "poglib/basic/stack_arena.h"
 #include "poglib/gfx/gl/instance-buffer.h"
 #include "poglib/gfx/gl/shader.h"
 #include "poglib/pipeline/render/common.h"
@@ -17,26 +18,27 @@ void                renderqueue_destroy(renderqueue_t * const self);
 
 #ifndef IGNORE_RENDER_QUEUE_IMPLEMENTATION
 
-void renderqueue__internal_validate_command(renderqueue_t *const, const rendercommand_t);
-bool renderqueue__internal_check_for_batchable_commands(renderqueue_t * const queue, const rendercommand_t command);
-void renderqueue__internal_add_to_bucket(list_t * const render_commands, const rendercommand_t command);
-void rendercommand__internal_shader_upload_uniforms(const rendercommand_t * const command);
+INTERNAL void renderqueue__internal_validate_command(renderqueue_t *const, const rendercommand_t);
+INTERNAL bool renderqueue__internal__check_for_batchable_commands(renderqueue_t * const queue, const rendercommand_t command);
+INTERNAL void renderqueue__internal_add_to_bucket(list_t * const render_commands, const rendercommand_t command);
+INTERNAL void rendercommand__internal_shader_upload_uniforms(const rendercommand_t * const command);
+INTERNAL void renderqueue__internal__draw_lines(const list_t *const commands);
+INTERNAL void renderqueue__internal__draw_triangles(const list_t *const commands);
 
 renderqueue_t renderqueue_init(void)
 {
     return (renderqueue_t) {
         .buckets    = {0},
-        .arena      = arena_init(NULL, 5 * MB),
         .internal   = {
             .instancebuffer     = glinstancebuffer_init(2 * MB),
-            .frame_arena        = arena_init(NULL, 1 * MB)
+            .frame_arena        = arena_init(NULL, 0.5 * GB),
         },
     };
 }
 
 INTERNAL void renderqueue__internal_bucket_init_and_add_command(renderqueue_t *const self, const rendercommand_t command, const u16 idx)
 {
-    self->buckets[idx] = list_init(rendercommand_t, self->arena);
+    self->buckets[idx] = list_init(rendercommand_t, self->internal.frame_arena);
     list_append(&self->buckets[idx], command);
 }
 
@@ -57,7 +59,7 @@ void renderqueue_pass_command(renderqueue_t *const self, const rendercommand_t c
         ? renderqueue__internal__configure_instance_buffer(self, cmd) 
         : cmd;
 
-    if (renderqueue__internal_check_for_batchable_commands(self, command)) {
+    if (renderqueue__internal__check_for_batchable_commands(self, command)) {
         return;
     }
 
@@ -87,7 +89,6 @@ void renderqueue_destroy(renderqueue_t *const self)
         list_destroy(&self->buckets[idx]);
     }
     glinstancebuffer_destroy(&self->internal.instancebuffer);
-    arena_destroy(self->arena);
     arena_destroy(self->internal.frame_arena);
 }
 
@@ -97,19 +98,26 @@ void renderqueue__internal_validate_command(renderqueue_t *const queue, const re
     //unintentional mismatches - or through an error during runtime to reorder the textures (better) so we can avoid the sorting
     //all together
 
+    if (command.vtx.type == RENDERCOMMAND_VTX_TYPE_MESH)
     {
         //NOTE: Mesh validation
-        ASSERT(command.mesh);
-        ASSERT(command.mesh->vao_id > 0);
-        ASSERT(command.mesh->attribute_count > 0);
-        ASSERT(command.mesh->index_count > 0);
+        ASSERT(command.vtx.data.mesh);
+        ASSERT(command.vtx.data.mesh->vao_id > 0);
+        ASSERT(command.vtx.data.mesh->attribute_count > 0);
+        ASSERT(command.vtx.data.mesh->index_count > 0);
+    }
+
+    if (command.vtx.type == RENDERCOMMAND_VTX_TYPE_TRIANGLES || command.vtx.type == RENDERCOMMAND_VTX_TYPE_LINE) 
+    {
+        ASSERT(command.material.texture.count == 0);
+        ASSERT(command.instance.size == 0);
     }
 
     {
         //NOTE: Shader + uniform validation
         ASSERT(command.material.shader.data);
         if (command.material.shader.data && (command.material.shader.uniforms.count != glshader_get_uniform_count(command.material.shader.data)))
-            eprint("render command is missing uniform value, check shader `%.*s` or `%.*s` to find missing uniforms - (shader expects %u uniforms but only provided %u uniforms", 
+            eprint("Render command is missing uniform value, check shader `%.*s` or `%.*s` to find missing uniforms - (shader expects %u uniforms but only provided %u uniforms", 
                 command.material.shader.data->vs.len, command.material.shader.data->vs.data, 
                 command.material.shader.data->fg.len, command.material.shader.data->fg.data,
                 glshader_get_uniform_count(command.material.shader.data),
@@ -121,7 +129,7 @@ void renderqueue__internal_validate_command(renderqueue_t *const queue, const re
         //NOTE: instance data is passed as stack pointer references - will use the arena to allocate to better simplify the API.
         //Also this would reduce the memory layout for entire renderqueue since we eariler was sticking to 512 size buffer for each command
         if (command.instance.raw_data && !command.instance.size) eprint("Found instance data but size not specified");
-        if (!command.instance.raw_data && command.instance.size) eprint("instance size initalized but instance data is null");
+        if (!command.instance.raw_data && command.instance.size) eprint("Instance size initalized but instance data is null");
 
     }
 }
@@ -131,7 +139,7 @@ void renderqueue__internal_add_to_bucket(list_t * const render_commands, const r
     list_append(render_commands, command);
 }
 
-bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const queue, const rendercommand_t command)
+INTERNAL bool renderqueue__internal__check_for_batchable_commands(renderqueue_t *const queue, const rendercommand_t command)
 {
     for (u8 idx = 0; idx < MAX_RENDER_BUCKETS_ALLOWED; idx++)
     {
@@ -149,9 +157,19 @@ bool renderqueue__internal_check_for_batchable_commands(renderqueue_t *const que
             return true;
         };
 
-        if (command.mesh->vao_id != first_render_command->mesh->vao_id)             continue;
-        if (command.draw_mode != first_render_command->draw_mode)                   continue;
-        if (command.enable_wireframe != first_render_command->enable_wireframe)     continue;
+        if (command.vtx.type == first_render_command->vtx.type) 
+        {
+            if (command.vtx.type == RENDERCOMMAND_VTX_TYPE_MESH) {
+
+                if (command.vtx.data.mesh->vao_id != first_render_command->vtx.data.mesh->vao_id)   continue;
+                if (command.enable_wireframe != first_render_command->enable_wireframe)             continue;
+
+            } else if (command.vtx.type == RENDERCOMMAND_VTX_TYPE_TRIANGLES) {
+
+                if (command.enable_wireframe != first_render_command->enable_wireframe) continue;
+
+            }
+        }
 
         const bool has_same_shader = rendercommand__internal_compare_shader_and_uniforms(
             first_render_command, 
@@ -211,13 +229,13 @@ void renderqueue__internal_render_all_meshes_in_bucket(const list_t * const buck
         const glshader_t * const shader = command->material.shader.data;
         ASSERT(shader);
 
-        GL_CHECK(glBindVertexArray(command->mesh->vao_id));
+        GL_CHECK(glBindVertexArray(command->vtx.data.mesh->vao_id));
 
         glshader_upload_uniforms(shader, command->material.shader.uniforms);
 
         GL_CHECK(glDrawElements(
-            command->draw_mode, 
-            command->mesh->index_count, 
+            GL_TRIANGLES, 
+            command->vtx.data.mesh->index_count, 
             GL_UNSIGNED_INT, 
             0
         ));
@@ -236,8 +254,19 @@ void renderqueue_dispatch(renderqueue_t *const self)
         const list_t *bucket_commands = &self->buckets[idx];
         if (!bucket_commands->len) continue;
 
-        const rendercommand_t *first_command = list_get_value(bucket_commands, 0);
-        ASSERT(first_command->mesh->vao_id);
+        const rendercommand_t *const first_command = list_get_value(bucket_commands, 0);
+
+        if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_LINE) {
+            renderqueue__internal__draw_lines(bucket_commands);
+            continue;
+        }
+
+        if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_TRIANGLES) {
+            renderqueue__internal__draw_triangles(bucket_commands);
+            continue;
+        }
+
+        ASSERT(first_command->vtx.data.mesh->vao_id);
 
         if (first_command->enable_wireframe)    GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
         else                                    GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
@@ -279,7 +308,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
                 );
             }
 
-            GL_CHECK(glBindVertexArray(first_command->mesh->vao_id));
+            GL_CHECK(glBindVertexArray(first_command->vtx.data.mesh->vao_id));
 
             glinstancebuffer_bind(
                 &self->internal.instancebuffer, 
@@ -290,8 +319,8 @@ void renderqueue_dispatch(renderqueue_t *const self)
                 glshader_upload_uniforms(shader, first_command->material.shader.uniforms);
 
             GL_CHECK(glDrawElementsInstanced(
-                first_command->draw_mode, 
-                first_command->mesh->index_count, 
+                GL_TRIANGLES, 
+                first_command->vtx.data.mesh->index_count, 
                 GL_UNSIGNED_INT, 
                 0,
                 bucket_commands->len));
@@ -308,13 +337,129 @@ void renderqueue_dispatch(renderqueue_t *const self)
 
 void renderqueue_flush(renderqueue_t *const self)
 {
-    for (u8 idx = 0; idx < MAX_RENDER_BUCKETS_ALLOWED; idx++)
+    memset(self->buckets, 0, sizeof(self->buckets));
+    arena_clear(self->internal.frame_arena);
+}
+
+INTERNAL void renderqueue__internal__draw_lines(const list_t *const commands)
+{
+    const u32 buffersize = commands->len * sizeof(f32) * 14;
+    buffer_t buffer = {
+        .raw_data = stackarena_push(global_runtimectx->stackarena, buffersize),
+        .size = 0 
+    };
+
+    list_iterator(commands, iter)
     {
-        if (list_is_init(&self->buckets[idx]))
-            list_clear(&self->buckets[idx]);
+        ASSERT(buffer.size <= buffersize);
+        const rendercommand_t *const command = iter;
+        const f32 vtx_buffer[] = {
+            command->vtx.data.line.start.x,  command->vtx.data.line.start.y,  command->vtx.data.line.start.z,  command->vtx.data.line.color.r, command->vtx.data.line.color.g, command->vtx.data.line.color.b, command->vtx.data.line.color.a,
+            command->vtx.data.line.end.x,    command->vtx.data.line.end.y,    command->vtx.data.line.end.z,    command->vtx.data.line.color.r, command->vtx.data.line.color.g, command->vtx.data.line.color.b, command->vtx.data.line.color.a,
+        };
+        memcpy((u8 *)buffer.raw_data + buffer.size, vtx_buffer, sizeof(vtx_buffer));
+        buffer.size += sizeof(vtx_buffer);
     }
 
-    arena_clear(self->internal.frame_arena);
+    const glshader_t *const shader  = ((rendercommand_t *)commands->data)->material.shader.data;
+    const gluniforms_t uniforms     = ((rendercommand_t *)commands->data)->material.shader.uniforms;
+    ASSERT(shader);
+    ASSERT(uniforms.count);
+
+    glrenderer3d_drawcall((glrendercall_t){
+        .draw_mode = GL_LINES,
+        .vtx = {
+            [VBO_STREAM_TYPE_GEOMETRY] = buffer,
+        },
+        .shader_config = {
+            .shader = shader,
+            .uniforms = uniforms,
+        },
+        .attrs = {
+            .count = 2,
+            .attr = {
+                [0] = { 
+                    .ncmp = 3, 
+                    .interleaved = {
+                        .offset = 0,
+                        .stride = sizeof(f32) * 7
+                    }, 
+                    .type = GL_FLOAT 
+                },
+                [1] = { 
+                    .ncmp = 4, 
+                    .interleaved = {
+                        .offset = sizeof(f32) * 3,
+                        .stride = sizeof(f32) * 7
+                    }, 
+                    .type = GL_FLOAT 
+                }
+            }
+        }
+    });
+
+    stackarena_pop(global_runtimectx->stackarena);
+}
+
+INTERNAL void renderqueue__internal__draw_triangles(const list_t *const commands)
+{
+    const u32 buffersize = commands->len * (sizeof(vec3s[3]) + sizeof(vec4s[3]));
+    buffer_t buffer = {
+        .raw_data = stackarena_push(global_runtimectx->stackarena, buffersize),
+        .size = 0 
+    };
+
+    list_iterator(commands, iter)
+    {
+        ASSERT(buffer.size <= buffersize);
+        const rendercommand_t *const command = iter;
+        const f32 vtx_buffer[] = {
+            command->vtx.data.triangles.points[0].x,  command->vtx.data.triangles.points[0].y,  command->vtx.data.triangles.points[0].z,  command->vtx.data.triangles.color.r, command->vtx.data.triangles.color.g, command->vtx.data.triangles.color.b, command->vtx.data.triangles.color.a,
+            command->vtx.data.triangles.points[1].x,  command->vtx.data.triangles.points[1].y,  command->vtx.data.triangles.points[1].z,  command->vtx.data.triangles.color.r, command->vtx.data.triangles.color.g, command->vtx.data.triangles.color.b, command->vtx.data.triangles.color.a,
+            command->vtx.data.triangles.points[2].x,  command->vtx.data.triangles.points[2].y,  command->vtx.data.triangles.points[2].z,  command->vtx.data.triangles.color.r, command->vtx.data.triangles.color.g, command->vtx.data.triangles.color.b, command->vtx.data.triangles.color.a,
+        };
+        memcpy((u8 *)buffer.raw_data + buffer.size, vtx_buffer, sizeof(vtx_buffer));
+        buffer.size += sizeof(vtx_buffer);
+    }
+
+    const glshader_t *const shader  = ((rendercommand_t *)commands->data)->material.shader.data;        ASSERT(shader);
+    const gluniforms_t uniforms     = ((rendercommand_t *)commands->data)->material.shader.uniforms;    ASSERT(uniforms.count);
+    const bool is_wireframe         = ((rendercommand_t *)commands->data)->enable_wireframe;
+
+    glrenderer3d_drawcall((glrendercall_t){
+        .draw_mode = GL_TRIANGLES,
+        .is_wireframe = is_wireframe,
+        .vtx = {
+            [VBO_STREAM_TYPE_GEOMETRY] = buffer,
+        },
+        .shader_config = {
+            .shader = shader,
+            .uniforms = uniforms,
+        },
+        .attrs = {
+            .count = 2,
+            .attr = {
+                [0] = { 
+                    .ncmp = 3, 
+                    .interleaved = {
+                        .offset = 0,
+                        .stride = sizeof(f32) * 7
+                    }, 
+                    .type = GL_FLOAT 
+                },
+                [1] = { 
+                    .ncmp = 4, 
+                    .interleaved = {
+                        .offset = sizeof(f32) * 3,
+                        .stride = sizeof(f32) * 7
+                    }, 
+                    .type = GL_FLOAT 
+                }
+            }
+        }
+    });
+
+    stackarena_pop(global_runtimectx->stackarena);
 }
 
 #endif

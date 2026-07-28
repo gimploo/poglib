@@ -136,11 +136,16 @@ INTERNAL void * arena__internal__reserve_memory_16byte_aligned(arena_t *const se
 
 void * arena__internal__reserve_tracked(arena_t *const self, const u64 memory_size, const char *file, int line, const char *func)
 {
+#ifdef ARENA_ENABLE_MEMORY_LOGGER
     if (!self->meta.lifetime_owner) arena_logger_init(self, self->capacity, file, line);
+#endif
 
     void *const mem = arena__internal__reserve_memory_16byte_aligned(self, memory_size);
+
+#ifdef ARENA_ENABLE_MEMORY_LOGGER
     if (mem) 
         arena_logger_log_alloc(self, memory_size, file, line, func);
+#endif
 
     return mem;
 }
@@ -222,14 +227,22 @@ void arena_giveback(arena_t *const self, void *const ptr, const u64 size)
 void arena_clear(arena_t *self)
 {
     while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
+    {
         self->memblock.size = sizeof(arena_t);
+        memset(&self->freeblocks, 0, sizeof(self->freeblocks));
+    }
     atomic_flag_clear(&self->meta.lock);
+#ifdef ARENA_ENABLE_MEMORY_LOGGER
     arena_logger_clear_log(self);
+#endif
 }
 
 void arena_destroy(arena_t *const self)
 {
+
+#ifdef ARENA_ENABLE_MEMORY_LOGGER
     arena_logger_destroy(self);
+#endif
 
     if (self->meta.lifetime_owner) {
         arena_giveback(self->meta.lifetime_owner, self->memblock.memory, self->capacity);

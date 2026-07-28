@@ -61,8 +61,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
             ecs_material_resolve_per_mesh_uniforms(cmp_model, shader, idx, &mesh_uniforms);
 
             rendercommand_t cmd = {
-                .mesh = &gpu_loaded_asset->meshes.data[idx],
-                .draw_mode = RENDER_COMMAND_DRAW_MODE_TRIANGLE,
+                .vtx.data.mesh = &gpu_loaded_asset->meshes.data[idx],
                 .enable_wireframe = false,
                 .instance = {0},
                 .material = {
