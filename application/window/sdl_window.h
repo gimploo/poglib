@@ -1,4 +1,5 @@
 #pragma once
+#include "../../gfx/gl/common.h"
 #ifdef _WIN64
 #include <SDL2/SDL_hints.h>
 #include <SDL2/SDL_video.h>
@@ -10,11 +11,7 @@
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <SDL2/SDL.h>
-#ifdef __gl_h_
-    #include <SDL2/SDL_opengl.h>
-#else 
-    #include <SDL2/SDL_render.h>
-#endif
+#include <SDL2/SDL_opengl.h>
 
 //TODO: (subwindow) this approach was to have a debug window, but at the moment can only 
 //hold one sub window at a time. In the future lets implement a list of 
@@ -98,11 +95,7 @@ typedef struct window_t {
     u32                 __sdl_window_id;    // useful for managing multiple windows
     SDL_Window          *__sdl_window;      // initializes the window 
     SDL_Event           __sdl_event;
-#ifndef __gl_h_
-    SDL_Surface         *__sdl_surface;
-#else 
     SDL_GLContext       __glcontext;
-#endif 
 
 } window_t ;
 
@@ -351,7 +344,6 @@ static inline window_t __subwindow_init(const char *title, u64 width, u64 height
         eprint("SDL Error: %s", SDL_GetError());
 
 
-#ifdef __gl_h_
     glewExperimental = true; // if using GLEW version 1.13 or earlier
     output.__glcontext = SDL_GL_CreateContext(output.__sdl_window);
     if (!output.__glcontext) eprint("SDL Error: %s\n", SDL_GetError());
@@ -362,14 +354,7 @@ static inline window_t __subwindow_init(const char *title, u64 width, u64 height
     GLenum glewError = glewInit();
     if (glewError != GLEW_OK) eprint("GLEW Error: %s\n", glewGetErrorString(glewError));
 
-    printf("[OUTPUT] Using OpenGL render\n");
-
-#else 
-    output.__sdl_surface = SDL_GetWindowSurface(output.__sdl_window);
-    if (!output.__sdl_surface) eprint("SDL Error: %s\n", SDL_GetError());
-
-    printf("[OUTPUT] Using standard sdl2 render\n");
-#endif
+    logging("[OUTPUT] Using OpenGL render\n");
 
     output.__sdl_window_id  = SDL_GetWindowID(output.__sdl_window);
 
@@ -494,7 +479,7 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     SDL_GL_GetDrawableSize(win.__sdl_window, &actual_window_dimensions.width, &actual_window_dimensions.height);
 
     if (actual_window_dimensions.width != width || actual_window_dimensions.height != height) {
-        logging("Mismatch in window dimenions provided and drawable region created by SDL2, window dimenions (%i, %i) != drawable area (%i, %i)",
+        logging("Mismatch in window dimenions provided and drawable region created by SDL2, window dimenions (%lu, %lu) != drawable area (%lu, %lu)",
             width, height, actual_window_dimensions.width, actual_window_dimensions.height
         );
     }

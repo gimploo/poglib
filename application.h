@@ -1,18 +1,7 @@
 #pragma once
-#include "basic.h"
-#include "gfx/glrenderer3d.h"
 #include "poglib/basic/arena.h"
 #include "poglib/basic/common.h"
-#if defined(WINDOW_GLFW)
-#   pragma message("GLFW NOT FULLY IMPLEMENTED, REQUIRES ADDITIONAL WORK")
-#   include "application/window/glfw_window.h"
-#elif defined(WINDOW_SDL)
-#   include "application/window/sdl_window.h"
-#else
-#   pragma message("WINDOW IMPLEMENTATION NOT SPECIFIED - RUNNING SDL VERSION (DEFAULT)")
-#   include "application/window/sdl_window.h"
-#endif
-
+#include "application/window/sdl_window.h"
 #include "application/stopwatch.h"
 #include "sound/audio_device.h"
 #include "font/glfreetypefont.h"
