@@ -3,10 +3,6 @@
 #include "poglib/util/glcamera.h"
 #include <poglib/external/joltc/include/joltc.h>
 
-#ifndef JOLT_DEBUG_RENDERER
-#define JOLT_DEBUG_RENDERER
-#endif
-
 typedef struct {
     const glshader_t    *const lineshader;
     JPH_DebugRenderer   *handle;
