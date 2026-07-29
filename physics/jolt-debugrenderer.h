@@ -3,6 +3,10 @@
 #include "poglib/util/glcamera.h"
 #include <poglib/external/joltc/include/joltc.h>
 
+#ifndef JOLT_DEBUG_RENDERER
+#define JOLT_DEBUG_RENDERER
+#endif
+
 typedef struct {
     const glshader_t    *const lineshader;
     JPH_DebugRenderer   *handle;
@@ -35,7 +39,7 @@ INTERNAL void joltdebugrenderer_draw__internal__triangle_callback(void *user_dat
             .enable_wireframe = true,
             .vtx = {
                 .type = RENDERCOMMAND_VTX_TYPE_TRIANGLES,
-                .data.triangles = (rendercommand_primitive_triangle_t){
+                .data.triangle = (rendercommand_primitive_triangle_t){
                     .color = jph_color_to_vec4s(color),
                     .points = {
                         *(vec3s *)v1, *(vec3s *)v2, *(vec3s *)v3,

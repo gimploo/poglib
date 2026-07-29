@@ -3,6 +3,8 @@
 #include <poglib/math.h>
 #include <poglib/external/joltc/include/joltc.h>
 #include "./jolt-debugrenderer.h"
+#include "poglib/math/la.h"
+#include "poglib/util/workbench/common.h"
 
 //TODO: see if whether the system needs its own arena.
 
@@ -336,12 +338,56 @@ void joltphysics_body_destroy(const JPH_BodyID body_id)
 JPH_RayCastResult joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir)
 {
     ASSERT(global_joltphysics_instance);
-    const JPH_NarrowPhaseQuery const *npq = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
+    const JPH_NarrowPhaseQuery *const npq = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
     JPH_RayCastResult hit = {0};
     if (JPH_NarrowPhaseQuery_CastRay(npq, (JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, &hit, NULL, NULL, NULL)) {
         return hit;
     }
     return (JPH_RayCastResult){0};
+}
+
+f32 joltphysics_sphere_shapecast__internal__JPH_CastShapeCollectorCallback(void* context, const JPH_ShapeCastResult* result)
+{
+}
+
+bool joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius)
+{
+    ASSERT(global_joltphysics_instance);
+    const JPH_NarrowPhaseQuery *const npq   = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
+    const matrix4f_t worldtransform         = glms_translate_make(ray_pos);
+    const vec3s baseoffset                  = vec3f(0.f);
+    JPH_ShapeCastSettings setting; 
+    JPH_ShapeCastSettings_Init(&setting);
+
+    JPH_Shape *castshape = (JPH_Shape *)JPH_SphereShape_Create(radius);
+    const bool hit = JPH_NarrowPhaseQuery_CastShape(
+        npq,
+        castshape,
+        (JPH_RMat4 *)&worldtransform, 
+        (JPH_Vec3 *)&dir,
+        &setting,
+        (JPH_Vec3 *)&baseoffset,
+        joltphysics_sphere_shapecast__internal__JPH_CastShapeCollectorCallback, 
+        NULL,
+        NULL,//const JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
+        NULL,//const JPH_ObjectLayerFilter* objectLayerFilter,
+        NULL,//const JPH_BodyFilter* bodyFilter,
+        NULL //const JPH_ShapeFilter* shapeFilter);
+    );
+
+#ifndef JOLT_DISABLE_RAYCAST_DRAW
+    const vec3s scale = vec3f(1.0f);
+    JPH_RMat4 centerOfMassTransform = (JPH_RMat4){GLM_MAT4_IDENTITY_INIT};
+    JPH_Shape_Draw(
+        castshape,
+        global_workbench->joltrenderer->handle, 
+        &centerOfMassTransform, 
+        (JPH_Vec3 *)&scale, 
+        0xff0000ff, false, true);
+#endif
+    JPH_Shape_Destroy(castshape);
+
+    return hit;
 }
 
 #endif

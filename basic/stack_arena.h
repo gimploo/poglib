@@ -33,7 +33,7 @@ u8 * stackarena_push(stackarena_t *const self, const u64 size)
 
     const u64 space_left = self->capacity - ((u64)self->top - (u64)self->mem);
     if (size > space_left) {
-        eprint("stack arena is full");
+        eprint("stack arena is full, requested %llu from already filled size %llu", size, self->capacity);
     }
 
     u8 *const mem = (void *)self->top;

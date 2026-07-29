@@ -1,8 +1,7 @@
 #pragma once
-#include <poglib/physics/jolt-wrapper.h>
 #include "./types.h"
 #include "poglib/basic/arena.h"
-#include "poglib/external/joltc/include/joltc.h"
+#include "poglib/physics/jolt-wrapper.h"
 
 typedef struct {
 

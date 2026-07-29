@@ -35,7 +35,7 @@ runtimectx_t * runtimectx_init(void)
             .raw_data = calloc(4 * MB, 1),
             .size = 4 * MB
         },
-        .stackarena = stackarena_init(1 * MB)
+        .stackarena = stackarena_init(0.5 * GB)
     };
 
     global_runtimectx = o;

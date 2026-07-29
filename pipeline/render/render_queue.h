@@ -414,9 +414,9 @@ INTERNAL void renderqueue__internal__draw_triangles(const list_t *const commands
         ASSERT(buffer.size <= buffersize);
         const rendercommand_t *const command = iter;
         const f32 vtx_buffer[] = {
-            command->vtx.data.triangles.points[0].x,  command->vtx.data.triangles.points[0].y,  command->vtx.data.triangles.points[0].z,  command->vtx.data.triangles.color.r, command->vtx.data.triangles.color.g, command->vtx.data.triangles.color.b, command->vtx.data.triangles.color.a,
-            command->vtx.data.triangles.points[1].x,  command->vtx.data.triangles.points[1].y,  command->vtx.data.triangles.points[1].z,  command->vtx.data.triangles.color.r, command->vtx.data.triangles.color.g, command->vtx.data.triangles.color.b, command->vtx.data.triangles.color.a,
-            command->vtx.data.triangles.points[2].x,  command->vtx.data.triangles.points[2].y,  command->vtx.data.triangles.points[2].z,  command->vtx.data.triangles.color.r, command->vtx.data.triangles.color.g, command->vtx.data.triangles.color.b, command->vtx.data.triangles.color.a,
+            command->vtx.data.triangle.points[0].x,  command->vtx.data.triangle.points[0].y,  command->vtx.data.triangle.points[0].z,  command->vtx.data.triangle.color.r, command->vtx.data.triangle.color.g, command->vtx.data.triangle.color.b, command->vtx.data.triangle.color.a,
+            command->vtx.data.triangle.points[1].x,  command->vtx.data.triangle.points[1].y,  command->vtx.data.triangle.points[1].z,  command->vtx.data.triangle.color.r, command->vtx.data.triangle.color.g, command->vtx.data.triangle.color.b, command->vtx.data.triangle.color.a,
+            command->vtx.data.triangle.points[2].x,  command->vtx.data.triangle.points[2].y,  command->vtx.data.triangle.points[2].z,  command->vtx.data.triangle.color.r, command->vtx.data.triangle.color.g, command->vtx.data.triangle.color.b, command->vtx.data.triangle.color.a,
         };
         memcpy((u8 *)buffer.raw_data + buffer.size, vtx_buffer, sizeof(vtx_buffer));
         buffer.size += sizeof(vtx_buffer);

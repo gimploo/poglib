@@ -38,7 +38,7 @@ struct rendercommand_t {
             RENDERCOMMAND_VTX_TYPE_TRIANGLES    = 2,
         } type;
         union {
-            rendercommand_primitive_triangle_t  triangles;
+            rendercommand_primitive_triangle_t  triangle;
             rendercommand_primitive_line_t      line;
             gpu_mesh_t *const                   mesh;
         } data;

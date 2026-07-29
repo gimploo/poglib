@@ -471,7 +471,7 @@ glmodel_t glmodel_init(const str_t filepath)
                 animation_t *first = list_get_value(&o.animator.animations, 0);
                 list_iterator(&first->channels, iter) {
                     if (strcmp(((node_anim_t *)iter)->node_name, name.data) == 0) {
-                        o.internal.root_channel_idx = (i64)list_iterator_index;
+                        o.internal.root_channel_idx = (u64)list_iterator_index;
                         break;
                     }
                 }
@@ -480,7 +480,7 @@ glmodel_t glmodel_init(const str_t filepath)
         }
     }
 
-    logging("Completed loading model %s ...", filepath);
+    logging("Completed loading model "STR_FMT" ...", STR_ARG(filepath));
 
     return o;
 }
