@@ -1,5 +1,4 @@
 #pragma once
-#include "poglib/util/assetmanager.h"
 #include <poglib/basic.h>
 #include <poglib/gfx/glrenderer3d.h>
 #include <poglib/gfx/gl/instance-buffer.h>

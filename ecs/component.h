@@ -46,7 +46,6 @@ u32 ecs_componentmanager__internal_get_pool_capacity(const ecs_component_type ty
     switch(type)
     {
         case ECS_CMP_CAMERA:            return 10;
-        case ECS_CMP_MATERIAL:          return 128;
         default:                        return ECS_ENTITY_MAX_COUNT / 2;
     }
 }
@@ -361,8 +360,8 @@ void ecs_componentmanager__internal_update_cmpdata(const ecs_cmp_patch_payload_t
     {
         case ECS_CMP_COLLIDER: {
             const ecs_component_collider_t *const collider = (ecs_component_collider_t *)entry->entity_cmpdata;
-            if (!request.is_active)     JPH_BodyInterface_RemoveBody(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id);
-            else                        JPH_BodyInterface_AddBody(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, JPH_Activation_Activate);
+            if (!request.is_active)     JPH_BodyInterface_RemoveBody(global_joltphysics_instance->bodyinterface, collider->internal.body_id);
+            else                        JPH_BodyInterface_AddBody(global_joltphysics_instance->bodyinterface, collider->internal.body_id, JPH_Activation_Activate);
         } break;
 
         default: return;
@@ -414,7 +413,7 @@ void ecs_componentmanager__internal_cmp_cleanup(const ecs_component_type type, c
     {
         case ECS_CMP_COLLIDER: {
             const ecs_component_collider_t *collider = (ecs_component_collider_t *)poolentry->entity_cmpdata;
-            if (collider->internal.body_id)                 JPH_BodyInterface_RemoveAndDestroyBody(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id);
+            if (collider->internal.body_id)                 JPH_BodyInterface_RemoveAndDestroyBody(global_joltphysics_instance->bodyinterface, collider->internal.body_id);
             else if (collider->internal.kinematic_body)     JPH_CharacterBase_Destroy((JPH_CharacterBase *)collider->internal.kinematic_body);
         } break;
 

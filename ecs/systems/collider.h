@@ -46,7 +46,7 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
                     collider->internal.kinematic_body, 
                     APPLICATION_UPDATE_FIXED_TIME_STEP, 
                     collider->object_layer_type,
-                    global_physics_sys_jolt_instance->physics_system,
+                    global_joltphysics_instance->physics_system,
                     NULL,
                     NULL
                 );
@@ -60,7 +60,7 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
 
             case JPH_MotionType_Dynamic:
                 ASSERT(collider->internal.body_id);
-                JPH_BodyInterface_GetPositionAndRotation(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Vec3 *)&collider->internal.position, (JPH_Quat *)&collider->internal.orientation);
+                JPH_BodyInterface_GetPositionAndRotation(global_joltphysics_instance->bodyinterface, collider->internal.body_id, (JPH_Vec3 *)&collider->internal.position, (JPH_Quat *)&collider->internal.orientation);
                 transform->position     = collider->internal.position;
                 transform->orientation  = collider->internal.orientation;
             break;

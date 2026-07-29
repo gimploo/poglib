@@ -45,7 +45,7 @@ ecs_t * ecs_init(void)
 {
     ASSERT(!global_ecs);
 
-    arena_t *const arena    = arena_init(NULL, 2 * MB);
+    arena_t *const arena    = arena_init(NULL, 30 * MB);
     global_ecs              = arena_reserve(arena, sizeof(ecs_t));
 
     *global_ecs = (ecs_t){

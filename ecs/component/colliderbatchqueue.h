@@ -164,7 +164,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
             case JPH_MotionType_Dynamic:
                 ASSERT(body_settings);
                 collider->internal.body_id = JPH_BodyInterface_CreateAndAddBody(
-                    global_physics_sys_jolt_instance->bodyinterface, 
+                    global_joltphysics_instance->bodyinterface, 
                     body_settings, 
                     JPH_Activation_Activate
                 );
@@ -180,7 +180,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     }
                 };
                 JPH_BodyInterface_SetUserData(
-                    global_physics_sys_jolt_instance->bodyinterface,
+                    global_joltphysics_instance->bodyinterface,
                     collider->internal.body_id,
                     (u64)arena_store(self->arena, &userdata, sizeof(userdata))
                 );
@@ -192,14 +192,14 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     (JPH_RVec3 *)&collider->internal.position,
                     (JPH_Quat *) &collider->internal.orientation,
                     0,
-                    global_physics_sys_jolt_instance->physics_system
+                    global_joltphysics_instance->physics_system
                 );
             break;
             default: eprint("motion type not accounted for");
         }
 
         if (optimize_broadphase) {
-            JPH_PhysicsSystem_OptimizeBroadPhase(global_physics_sys_jolt_instance->physics_system);
+            JPH_PhysicsSystem_OptimizeBroadPhase(global_joltphysics_instance->physics_system);
             logging("optimizied broadphase");
         }
 

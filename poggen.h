@@ -20,7 +20,7 @@ typedef struct {
 
 typedef struct {
     bool phy_simulation_started;
-    physics_sys_jolt_t *instance;
+    joltphysics_t *instance;
 } poggen__internal_physics_t;
 
 typedef struct poggen_t {
@@ -50,10 +50,10 @@ poggen_t *                          poggen_init(application_t *const app, const 
 void                                poggen_remove_scene(poggen_t *self, str_t label);
 void                                poggen_change_scene(poggen_t *self, str_t scene_label);
 
-void                                poggen_register_physics_rules(poggen_t * const self, const physics_sys_jolt_rules_config_t config);
+void                                poggen_register_physics_rules(poggen_t * const self, const joltphysics_rules_config_t config);
 void *                              poggen_get_scene_content(const poggen_t *const self); 
 window_t *                          poggen_get_window(const poggen_t *self);
-physics_sys_jolt_event_queue_t *    poggen_get_physics_collision_events(const poggen_t * const self);
+joltphysics_event_queue_t *         poggen_get_physics_collision_events(const poggen_t * const self);
 
 void                                poggen_update_commandqueue_registry(poggen_t *const self, const commandregistry_t registry);
 void                                poggen_ecs_generate_entities_from_meshes(poggen_t *const self, const str_t filepath);
@@ -99,7 +99,7 @@ poggen_t * poggen_init(application_t *const app, const poggen_config_t config)
                 .physics     = config.enable_physics 
                                ? (poggen__internal_physics_t){
                                    .phy_simulation_started = false,
-                                    .instance = physics_sys_jolt_init(arena)
+                                    .instance = joltphysics_init(arena)
                                } : (poggen__internal_physics_t){0},
                 .commandqueue = {0},
             },
@@ -123,7 +123,7 @@ void poggen__internal_add_scene(poggen_t *const self, const scene_t scene_config
         self->current_scene = scene;
 
     if (self->config.enable_physics && !self->systems.physics.phy_simulation_started) {
-        physics_sys_jolt_start_simulation(self->systems.physics.instance);
+        joltphysics_start_simulation(self->systems.physics.instance);
         self->systems.physics.phy_simulation_started = true;
     }
 
@@ -184,7 +184,7 @@ void poggen_update(poggen_t *const self)
     current_scene->__input(current_scene, dt);
 
     if (self->systems.physics.phy_simulation_started)
-        physics_sys_jolt_update(self->systems.physics.instance, dt);
+        joltphysics_update(self->systems.physics.instance, dt);
 
     scene__internal_update(current_scene, dt);
 }
@@ -202,7 +202,7 @@ void poggen_destroy(poggen_t *const self)
     hashtable_destroy(&self->scenes);
 
     if (self->config.enable_physics)
-        physics_sys_jolt_destroy(self->systems.physics.instance);
+        joltphysics_destroy(self->systems.physics.instance);
 
     renderqueue_destroy(&self->systems.renderqueue);
     arena_destroy(self->arena);
@@ -210,16 +210,16 @@ void poggen_destroy(poggen_t *const self)
     global_engine = NULL;
 }
 
-void poggen_register_physics_rules(poggen_t *const self, const physics_sys_jolt_rules_config_t config)
+void poggen_register_physics_rules(poggen_t *const self, const joltphysics_rules_config_t config)
 {
     ASSERT(self->config.enable_physics);
     ASSERT(self->systems.physics.instance);
 
-    physics_sys_jolt_set_interaction_rules(self->systems.physics.instance, config);
-    physics_sys_jolt_start_simulation(self->systems.physics.instance);
+    joltphysics_set_interaction_rules(self->systems.physics.instance, config);
+    joltphysics_start_simulation(self->systems.physics.instance);
 }
 
-physics_sys_jolt_event_queue_t * poggen_get_physics_collision_events(const poggen_t *const self)
+joltphysics_event_queue_t * poggen_get_physics_collision_events(const poggen_t *const self)
 {
     if (!self->config.enable_physics) {
         eprint("Enable physics first, to use this");

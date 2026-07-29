@@ -88,6 +88,8 @@ typedef struct {
 
     } editor;
 
+    jolt_debugrenderer_t *joltrenderer;
+
 } workbench_t;
 
 
