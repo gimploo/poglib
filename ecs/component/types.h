@@ -1,10 +1,11 @@
 #pragma once
 #include <poglib/basic.h>
 #include <poglib/math.h>
-#include <poglib/physics/jolt-wrapper.h>
+#include <poglib/external/joltc/include/joltc.h>
 #include <poglib/util/glcamera.h>
 #include <poglib/gfx/gl/shader.h>
 #include <poglib/gfx/gl/texture_types.h>
+#include <poglib/gfx/model/assimp.h>
 
 #define ECS_CMP_INVALID_IDX -1
 
