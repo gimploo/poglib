@@ -1,7 +1,7 @@
 #pragma once
+#include <poglib/basic.h>
 #include "../gl/texture2d.h"
 #include "../gl/types.h"
-#include <poglib/basic.h>
 #include "./animation.h"
 #include "poglib/basic/arena.h"
 #include "poglib/basic/ds/hashtable.h"

@@ -54,11 +54,11 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
     u32 picked = 0;
     {
         const vec3f_t ray_dir = glms_vec3_scale(dir, 1000.0f);
-        JPH_RayCastResult hit = physics_sys_jolt_raycast(cam->position, ray_dir);
+        JPH_RayCastResult hit = joltphysics_raycast(cam->position, ray_dir);
         if (hit.bodyID) {
             const ecs_collider_jolt_userdata_t *const userdata =
                 (ecs_collider_jolt_userdata_t *)JPH_BodyInterface_GetUserData(
-                    global_physics_sys_jolt_instance->bodyinterface,
+                    global_joltphysics_instance->bodyinterface,
                     hit.bodyID
                 );
             picked = userdata->internal.ecs_collider->internal.entity_id;
@@ -94,7 +94,7 @@ INTERNAL void workbench_editor__internal__scale_mesh_collider(ecs_component_coll
     JPH_MeshShapeSettings *settings = JPH_MeshShapeSettings_Create2((const JPH_Vec3 *)scaled_vtx, vtx_count, tris, tri_count);
     JPH_MeshShapeSettings_Sanitize(settings);
     JPH_Shape *newShape = (JPH_Shape *)JPH_MeshShapeSettings_CreateShape(settings);
-    JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, newShape, false, JPH_Activation_DontActivate);
+    JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_id, newShape, false, JPH_Activation_DontActivate);
     JPH_Shape_Destroy(newShape);
     JPH_ShapeSettings_Destroy((JPH_ShapeSettings *)settings);
 
@@ -119,13 +119,13 @@ INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(v
             collider->dim.cylinder.radius       = transform->scale.x;
             collider->dim.cylinder.half_height  = transform->scale.y;
             JPH_Shape *newShape = (JPH_Shape *)JPH_CylinderShape_Create(collider->dim.cylinder.half_height, collider->dim.cylinder.radius);
-            JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
+            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
             JPH_Shape_Destroy((JPH_Shape *)newShape);
         } break;
         case COLLIDER_SHAPE_TYPE_SPHERE:
         case COLLIDER_SHAPE_TYPE_CAPSULE: {
             JPH_Shape *scaled = JPH_Shape_ScaleShape(collider->internal.shape, (JPH_Vec3 *)&transform->scale);
-            JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)scaled, false, JPH_Activation_DontActivate);
+            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)scaled, false, JPH_Activation_DontActivate);
             JPH_Shape_Destroy(scaled);
        } break;
         case COLLIDER_SHAPE_TYPE_CUBE: {
@@ -133,7 +133,7 @@ INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(v
             collider->dim.cube.half_height = transform->scale.y;
             collider->dim.cube.half_depth  = transform->scale.z;
             JPH_BoxShape *newShape = JPH_BoxShape_Create((JPH_Vec3 *)&collider->dim.cube, JPH_DEFAULT_CONVEX_RADIUS);
-            JPH_BodyInterface_SetShape(global_physics_sys_jolt_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
+            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
             JPH_Shape_Destroy((JPH_Shape *)newShape);
        } break;
         case COLLIDER_SHAPE_TYPE_MESH: 
@@ -616,7 +616,7 @@ INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collide
         ASSERT(transform);
 
         JPH_BodyInterface_SetPositionAndRotation(
-            global_physics_sys_jolt_instance->bodyinterface, 
+            global_joltphysics_instance->bodyinterface, 
             collider->internal.body_id, 
             (JPH_Vec3 *)&transform->position, 
             &(JPH_Quat) {

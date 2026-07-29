@@ -1,20 +1,19 @@
 #pragma once
 #include "poglib/pipeline/render/render_queue.h"
-#include "poglib/util/workbench/common.h"
+#include "poglib/util/glcamera.h"
 #include <poglib/external/joltc/include/joltc.h>
-#include <poglib/poggen.h>
-#include <poglib/ecs.h>
 
 typedef struct {
-    poggen_t            *engine;
-    glshader_t          *lineshader;
+    const glshader_t    *const lineshader;
     JPH_DebugRenderer   *handle;
     JPH_DrawSettings    settings;
+    renderqueue_t       *renderqueue;
     struct {
-        matrix4f_t view;
-        matrix4f_t projection;
+        matrix4f_t  view;
+        matrix4f_t  projection;
+        f32         aspect_ratio;
     } frame;
-} jph_debugrenderer_t;
+} jolt_debugrenderer_t;
 
 
 INTERNAL vec4s jph_color_to_vec4s(const JPH_Color c)
@@ -23,22 +22,15 @@ INTERNAL vec4s jph_color_to_vec4s(const JPH_Color c)
     const f32 g = (f32)((c >> 16) & 0xFF) / 255.0f;
     const f32 b = (f32)((c >> 8) & 0xFF) / 255.0f;
     const f32 a = (f32)(c & 0xFF) / 255.0f;
-    return (vec4s){r, g, b, a};
+    return (vec4s){ r, g, b, a};
 }
 
-INTERNAL void joltdebugrenderer_draw__internal__triangle_callback(void *user_data, const JPH_RVec3 *v1, const JPH_RVec3 *v2, const JPH_RVec3 *v3, const JPH_Color color, JPH_DebugRenderer_CastShadow cast_shadow)
+INTERNAL void joltdebugrenderer_draw__internal__triangle_callback(void *user_data, const JPH_RVec3 *v1, const JPH_RVec3 *v2, const JPH_RVec3 *v3, const JPH_Color color, const JPH_DebugRenderer_CastShadow cast_shadow)
 {
-    jph_debugrenderer_t *const ctx = user_data;
-    const mat4s view = glcamera_getview(ecs_get_active_camera(global_ecs));
-    const matrix4f_t proj = glms_perspective(
-        radians(45),
-        ctx->engine->handle.app->window.aspect_ratio,
-        1.0f,
-        10000.0f
-    );
+    jolt_debugrenderer_t *const ctx = user_data;
 
     renderqueue_pass_command(
-        &ctx->engine->systems.renderqueue,
+        ctx->renderqueue,
         (rendercommand_t) {
             .enable_wireframe = true,
             .vtx = {
@@ -68,9 +60,9 @@ INTERNAL void joltdebugrenderer_draw__internal__triangle_callback(void *user_dat
 
 INTERNAL void joltdebugrenderer_draw__internal__line_callback(void *const user_data, const JPH_RVec3 *const from, const JPH_RVec3 *const to, const JPH_Color color)
 {
-    jph_debugrenderer_t *const ctx = user_data;
+    jolt_debugrenderer_t *const ctx = user_data;
     renderqueue_pass_command(
-        &ctx->engine->systems.renderqueue,
+        ctx->renderqueue,
         (rendercommand_t) {
             .vtx = {
                 .type = RENDERCOMMAND_VTX_TYPE_LINE,
@@ -107,23 +99,17 @@ const JPH_DebugRenderer_Procs joltdebugrenderer_callbacks = {
     .DrawText3D     = joltdebugrenderer_draw__internal__text_callback,
 };
 
-jph_debugrenderer_t * joltdebugrenderer_init(void)
-{
-    ASSERT(global_workbench);
-    ASSERT(global_engine);
-
-    const glshader_t *const line_shader = (glshader_t *)assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id);
-    ASSERT(line_shader);
-
-    jph_debugrenderer_t *jph_debugrenderer = mem_init(&(jph_debugrenderer_t){
-        .engine         = global_engine,
+jolt_debugrenderer_t * joltdebugrenderer_init(
+    renderqueue_t *const renderqueue, 
+    const glshader_t *const line_shader
+) {
+    jolt_debugrenderer_t *const jph_debugrenderer = mem_init(&(jolt_debugrenderer_t){
+        .renderqueue    = renderqueue,
         .lineshader     = line_shader,
     }, sizeof(*jph_debugrenderer));
 
+    jph_debugrenderer->handle   = JPH_DebugRenderer_Create(jph_debugrenderer);
     JPH_DebugRenderer_SetProcs(&joltdebugrenderer_callbacks);
-    jph_debugrenderer->handle = JPH_DebugRenderer_Create(jph_debugrenderer);
-
-    jph_debugrenderer->settings = (JPH_DrawSettings){0};
     JPH_DrawSettings_InitDefault(&jph_debugrenderer->settings);
     jph_debugrenderer->settings.drawShape            = true;
     jph_debugrenderer->settings.drawShapeWireframe   = false;
@@ -132,30 +118,33 @@ jph_debugrenderer_t * joltdebugrenderer_init(void)
     return jph_debugrenderer;
 }
 
-void joltdebugrenderer_render(jph_debugrenderer_t *const self)
-{
-    if (!global_workbench->enable_collider) return;
+void joltdebugrenderer_render(
+    jolt_debugrenderer_t *const self,
+    JPH_PhysicsSystem *const joltphysicssystem,
+    const glcamera_t *const camera,
+    const f32 aspect_ratio
+) {
+    ASSERT(joltphysicssystem);
 
-    self->frame.view = glcamera_getview(ecs_get_active_camera(global_ecs));
+    self->frame.view = glcamera_getview(camera);
     self->frame.projection = glms_perspective(
         radians(45),
-        self->engine->handle.app->window.aspect_ratio,
+        aspect_ratio,
         1.0f,
         10000.0f
     );
 
     JPH_DebugRenderer_NextFrame(self->handle);
     JPH_PhysicsSystem_DrawBodies(
-        global_physics_sys_jolt_instance->physics_system,
+        joltphysicssystem,
         &self->settings,
         self->handle,
         NULL
     );
 }
 
-void joltdebugrenderer_destroy(jph_debugrenderer_t *const self)
+void joltdebugrenderer_destroy(jolt_debugrenderer_t *const self)
 {
-    ASSERT(global_workbench);
     JPH_DebugRenderer_Destroy(self->handle);
     mem_free(self, sizeof(*self));
 }

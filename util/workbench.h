@@ -377,7 +377,7 @@ workbench_t * workbench_init(arena_t *const arena)
                     }
                 }
             },
-        }
+        },
     };
 
 
@@ -387,10 +387,15 @@ workbench_t * workbench_init(arena_t *const arena)
 
     workbench_ecs_populate_entities();
 
+    global_workbench->joltrenderer = joltdebugrenderer_init(
+        &global_engine->systems.renderqueue, 
+        (glshader_t *)assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id)
+    );
+
     return global_workbench;
 }
 
-INTERNAL matrix4f_t workbench__internal__get_camera_view(const workbench_t *const self)
+INTERNAL matrix4f_t workbench__internal__get_camera_view(void)
 {
     glcamera_t *camera = ecs_get_active_camera(global_ecs);
     return glcamera_getview(camera);
@@ -472,6 +477,8 @@ void workbench_destroy(void)
     glshader_destroy(&self->shader);
     gui_destroy(&self->gui.handle);
 
+    joltdebugrenderer_destroy(self->joltrenderer);
+
     global_workbench = NULL;
 }
 
@@ -486,11 +493,10 @@ void workbench_render(void)
 
     if (!self->is_active) return;
 
-
     if (!self->disable_grid) {
         workbench__internal_render_grid(
             &self->shader,
-            workbench__internal__get_camera_view(self),
+            workbench__internal__get_camera_view(),
             glms_perspective(
                 radians(45), 
                 global_engine->handle.app->window.aspect_ratio, 
@@ -551,7 +557,7 @@ void workbench_render_camera(
                        },
                        [1] = {
                            .name = str("view"),
-                           .value = workbench__internal__get_camera_view(global_workbench)
+                           .value = workbench__internal__get_camera_view()
                        }
                     }
                 }
@@ -622,7 +628,7 @@ void workbench_render_marker(
                        },
                        [1] = {
                            .name = str("view"),
-                           .value = workbench__internal__get_camera_view(self)
+                           .value = workbench__internal__get_camera_view()
                        }
                     }
                 }
@@ -686,9 +692,14 @@ void workbench_toggle(void)
 void workbench__internal__show_colliders(workbench_t *const self)
 {
     ASSERT(global_engine);
-    ASSERT(global_physics_sys_jolt_instance);
+    ASSERT(global_joltphysics_instance);
 
-    if (!global_workbench->enable_collider) return;
+    joltdebugrenderer_render(
+        self->joltrenderer,
+        global_joltphysics_instance->physics_system,
+        ecs_get_active_camera(global_ecs),
+        global_engine->handle.app->window.aspect_ratio
+    );
 
 }
 
