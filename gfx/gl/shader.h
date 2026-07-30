@@ -329,7 +329,8 @@ void glshader_upload_uniforms(const glshader_t * const shader, const gluniforms_
         const str_t name = uniforms.data[idx].name;
         const gluniform_value_t * const value = &uniforms.data[idx].value;
 
-        const gluniform_meta_t *meta = (gluniform_meta_t *)hashtable_get_value(&shader->internal.uniformlocs, (hashtable_key_t){ .str = name });
+        const gluniform_meta_t *meta = (gluniform_meta_t *)hashtable_get_value_or_null(&shader->internal.uniformlocs, (hashtable_key_t){ .str = name });
+        if (!meta) continue;
         const u32 loc_idx = meta->internal.loc_idx;
 
         switch(meta->type)
