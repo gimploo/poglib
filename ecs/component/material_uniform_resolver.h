@@ -61,7 +61,6 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
 
     const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(cmp_manager, entity_id, ECS_CMP_TRANSFORM | ECS_CMP_MODEL | ECS_CMP_MESH);
     const ecs_component_transform_t *const transform = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
-    const ecs_component_transform_t *const mesh = view.entity_cmp_data[ECS_CMP_MESH_IDX];
     ASSERT(transform);
 
     const matrix4f_t model_transform = glms_mat4_mul(

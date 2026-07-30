@@ -44,6 +44,14 @@ behaviorautomata_t behaviorautomata_init(arena_t * const arena)
     };
 }
 
+behaviorautomata_state_t behaviorautomata_peek_state(const behaviorautomata_t *const self)
+{
+    if (stack_is_empty(&self->stack)) {
+        return (behaviorautomata_state_t){0};
+    }
+    return *(behaviorautomata_state_t *)stack_peek(&self->stack);
+}
+
 void behaviorautomata_push_state(behaviorautomata_t *const self, behaviorautomata_state_t state)
 {
     if (!stack_is_empty(&self->stack)) {

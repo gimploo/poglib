@@ -221,6 +221,10 @@ workbench_t * workbench_init(arena_t *const arena)
                             .name = str_lit("view"),
                             .type = GL_UNIFORM_TYPE_MATRIX4F
                         },
+                        [2] = {
+                            .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
+                            .type = GL_UNIFORM_TYPE_VEC3F
+                        }
                     }
                 }
             ),
@@ -242,7 +246,8 @@ workbench_t * workbench_init(arena_t *const arena)
                     }
                 }
             ),
-            .atlas_id = assetmanager_load_spriteatlas(assetmanager, str(POGLIB_ROOT_DIR"/res/sprites/prototype.png"), 8, 4),
+            //.atlas_id = assetmanager_load_spriteatlas(assetmanager, str(POGLIB_ROOT_DIR"/res/sprites/prototype.png"), 8, 4),
+            .atlas_id = assetmanager_load_spriteatlas(assetmanager, str(POGLIB_ROOT_DIR"/res/sprites/kenny-prototype-atlas.png"), 16, 5), 
         },
         .player_camera_position = vec3f(0.f),
         .render_config = {
@@ -558,6 +563,10 @@ void workbench_render_camera(
                        [1] = {
                            .name = str("view"),
                            .value = workbench__internal__get_camera_view()
+                       },
+                       [2] = {
+                           .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
+                           .value.vec3 = global_workbench->world_camera.handle->position,
                        }
                     }
                 }
@@ -603,7 +612,7 @@ void workbench_render_marker(
                 .scale = vec4f(0.05f),
                 .orientation = {0.f, 0.f, 0.f, 1.f},
                 .color = color,
-                .uv = spriteatlas_get_sprite(atlas, PROTOTYPE_SPRITE_YELLOW_T),
+                .uv = spriteatlas_get_sprite(atlas, 0),
             },
             .size = sizeof(rendercommand_instance_primitive_mesh_t)
         },
@@ -629,6 +638,10 @@ void workbench_render_marker(
                        [1] = {
                            .name = str("view"),
                            .value = workbench__internal__get_camera_view()
+                       },
+                       [2] = {
+                           .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
+                           .value.vec3 = global_workbench->world_camera.handle->position,
                        }
                     }
                 }
