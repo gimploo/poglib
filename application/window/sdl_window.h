@@ -1,5 +1,6 @@
 #pragma once
 #include "../../gfx/gl/common.h"
+#include "../../gfx/gl/glconfig.h"
 #ifdef _WIN64
 #include <SDL2/SDL_hints.h>
 #include <SDL2/SDL_video.h>
@@ -420,10 +421,10 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
 
 #ifdef __gl_h_
 
-    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4))
+    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, POGLIB_GL_CONTEXT_MAJOR_VERSION))
         eprint("SDL GL Error: %s\n", SDL_GetError());
 
-    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3))
+    if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, POGLIB_GL_CONTEXT_MINOR_VERSION))
         eprint("SDL GL Error: %s\n", SDL_GetError());
 
     if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE))

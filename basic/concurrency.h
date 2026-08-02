@@ -158,7 +158,7 @@ void taskresponse_destroy(taskresponse_t *self)
 #ifdef _WIN32
     thrd_exit(obj->thrd_id._Tid);
 #else
-    thrd_exit(obj->thrd_id);
+    thrd_exit((intptr_t)obj->thrd_id);
 #endif
 }
 

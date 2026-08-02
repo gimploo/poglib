@@ -84,7 +84,7 @@ typedef struct {
             ecs_component_transform_t transform;
         } workbench_editor_action_snapshot;
 
-        stack_t workbench_editor_action_history;
+        ds_stack_t workbench_editor_action_history;
 
     } editor;
 

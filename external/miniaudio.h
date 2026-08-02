@@ -33497,12 +33497,24 @@ References
 #endif
 
 #if defined(MA_APPLE_DESKTOP)
-#include <CoreAudio/CoreAudio.h>
+    #pragma push_macro("local")
+    #pragma push_macro("global")
+    #undef local
+    #undef global
+    #include <CoreAudio/CoreAudio.h>
+    #pragma pop_macro("global")
+    #pragma pop_macro("local")
 #else
 #include <AVFoundation/AVFoundation.h>
 #endif
 
+#pragma push_macro("local")
+#pragma push_macro("global")
+#undef local
+#undef global
 #include <AudioToolbox/AudioToolbox.h>
+#pragma pop_macro("global")
+#pragma pop_macro("local")
 
 /* CoreFoundation */
 typedef Boolean (* ma_CFStringGetCString_proc)(CFStringRef theString, char* buffer, CFIndex bufferSize, CFStringEncoding encoding);

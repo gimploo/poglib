@@ -249,6 +249,27 @@ void renderqueue_dispatch(renderqueue_t *const self)
     u32 binded_shader_id = 0;
     u32 instance_starting_offset = 0;
 
+    //NOTE: Stage every instanced bucket's data into the CPU scratch first so the
+    //GPU upload can happen exactly once per frame (glinstancebuffer_upload).
+    for (u8 idx = 0; idx < MAX_DRAW_CALLS_PER_FRAME_COUNT; idx++)
+    {
+        const list_t *bucket_commands = &self->buckets[idx];
+        if (!bucket_commands->len) continue;
+
+        const rendercommand_t *const first_command = list_get_value(bucket_commands, 0);
+
+        if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_LINE) continue;
+        if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_TRIANGLES) continue;
+        if (first_command->instance.size <= 0) continue;
+
+        list_iterator(bucket_commands, iter)
+        {
+            const rendercommand_t *const cmd = (rendercommand_t *)iter;
+            glinstancebuffer_push(&self->internal.instancebuffer, cmd->instance.raw_data, cmd->instance.size);
+        }
+    }
+    glinstancebuffer_upload(&self->internal.instancebuffer);
+
     for (u8 idx = 0; idx < MAX_DRAW_CALLS_PER_FRAME_COUNT; idx++)
     {
         const list_t *bucket_commands = &self->buckets[idx];
@@ -296,24 +317,14 @@ void renderqueue_dispatch(renderqueue_t *const self)
         //NOTE: Use instance if configured
         const bool is_instanced = first_command->instance.size > 0;
         if (is_instanced) {
-            //NOTE: copy over instace data into the gl instance buffer
-            instance_starting_offset = glinstancebuffer_get_current_offest(&self->internal.instancebuffer);
-            list_iterator(bucket_commands, iter)
-            {
-                const rendercommand_t *const cmd = (rendercommand_t *)iter;
-                glinstancebuffer_push(
-                    &self->internal.instancebuffer,
-                    cmd->instance.raw_data,
-                    cmd->instance.size
-                );
-            }
-
+            //NOTE: instance data was already staged and uploaded in the pre-pass above
             GL_CHECK(glBindVertexArray(first_command->vtx.data.mesh->vao_id));
 
             glinstancebuffer_bind(
                 &self->internal.instancebuffer, 
                 instance_starting_offset,
                 bucket_commands->len * first_command->instance.size);
+            instance_starting_offset += bucket_commands->len * first_command->instance.size;
 
             if (binded_shader_id)
                 glshader_upload_uniforms(shader, first_command->material.shader.uniforms);

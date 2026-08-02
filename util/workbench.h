@@ -208,7 +208,11 @@ workbench_t * workbench_init(arena_t *const arena)
         .primitives = {
             .mesh_shader_id = assetmanager_load_glsl_shader(
                 assetmanager,
+#ifdef __APPLE__
+                str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-vtx.410.glsl"),
+#else
                 str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-vtx.glsl"),
+#endif
                 str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-frag.glsl"),
                 (gluniform_registry_t){ 
                     .count = 2,

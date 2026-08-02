@@ -7,7 +7,7 @@
                             - STACK DATA STRUCTURE -
 =============================================================================*/
 
-typedef struct stack_t {
+typedef struct ds_stack_t {
 
     u64     len;
     u8      *__data;
@@ -19,27 +19,27 @@ typedef struct stack_t {
     struct {
         arena_t *arena;
     } internal;
-} stack_t ;
+} ds_stack_t ;
 
 
 #define             stack_init(CAPACITY, TYPE, PARENA)\
                         stack__internal_init((CAPACITY), #TYPE, sizeof(TYPE), (PARENA), _Alignof(TYPE))
-void                stack_push(stack_t *const stack, const void *const elem_ref, const u64 elem_size);
-void *              stack_peek(const stack_t * const self);
-void                stack_pop(stack_t *);
+void                stack_push(ds_stack_t *const stack, const void *const elem_ref, const u64 elem_size);
+void *              stack_peek(const ds_stack_t * const self);
+void                stack_pop(ds_stack_t *);
 #define             stack_is_empty(pstack)\
                         ((pstack)->__top == -1 ? true : false)
 #define             stack_is_full(pstack)\
                         ((pstack)->__top == (i64)((pstack)->__capacity - 1) ? true : false)
-void                stack_print(stack_t *stack, void (*print_elem)(void *));
-void                stack_destroy(stack_t *);
+void                stack_print(ds_stack_t *stack, void (*print_elem)(void *));
+void                stack_destroy(ds_stack_t *);
 
 #ifndef IGNORE_STACK_IMPLEMENTATION
 /*-----------------------------------------------------------------------------
                                 IMPLEMENTATION
 -----------------------------------------------------------------------------*/
 
-stack_t stack__internal_init(const u64 capacity, const char *elem_type, const u32 elem_size, arena_t * const arena, const u32 mem_alignment)
+ds_stack_t stack__internal_init(const u64 capacity, const char *elem_type, const u32 elem_size, arena_t * const arena, const u32 mem_alignment)
 {
     assert(elem_type);
     assert(elem_size > 0);
@@ -48,7 +48,7 @@ stack_t stack__internal_init(const u64 capacity, const char *elem_type, const u3
     //FIXME: this is stupid - dont need to do all this
     if (elem_type[strlen(elem_type) - 1] == '*') flag = true;
 
-    stack_t o = {
+    ds_stack_t o = {
         .len                   = 0,
         .__data                = arena ? (u8 *)arena_reserve(arena, capacity * elem_size) : calloc(1, capacity * elem_size),
         .__top                 = -1,
@@ -64,7 +64,7 @@ stack_t stack__internal_init(const u64 capacity, const char *elem_type, const u3
 }
 
 
-void stack_push(stack_t *const stack, const void *const elem_ref, const u64 elem_size)
+void stack_push(ds_stack_t *const stack, const void *const elem_ref, const u64 elem_size)
 {
     // NOTE: since sizeof void * is 8 bytes and maximum size of a primitive data type 
     // available in c is also 8 bytes, having the array hold it by value is enough,
@@ -84,7 +84,7 @@ void stack_push(stack_t *const stack, const void *const elem_ref, const u64 elem
 
 }
 
-void stack_pop(stack_t *stack)
+void stack_pop(ds_stack_t *stack)
 {
     if (stack == NULL) eprint("stack argument is null");
     if (stack->__top == -1) eprint("underflow");
@@ -94,7 +94,7 @@ void stack_pop(stack_t *stack)
 }
 
 
-void stack_print(stack_t *stack, void (*print_elem)(void *))
+void stack_print(ds_stack_t *stack, void (*print_elem)(void *))
 {
     if (stack == NULL) eprint("stack_print: stack argument is null");
 
@@ -109,7 +109,7 @@ void stack_print(stack_t *stack, void (*print_elem)(void *))
     printf("---------------------------\n");
 }
 
-void stack_destroy(stack_t *stack)
+void stack_destroy(ds_stack_t *stack)
 {
     assert(stack);
 
@@ -128,13 +128,13 @@ void stack_destroy(stack_t *stack)
     stack->len = 0;
 }
 
-void * stack_peek(const stack_t *const self)
+void * stack_peek(const ds_stack_t *const self)
 {
     ASSERT(self->len);
     return self->__data + self->__elem_size * self->__top;
 }
 
-void stack_clear(stack_t *const self)
+void stack_clear(ds_stack_t *const self)
 {
     self->len   = 0;
     self->__top = -1;

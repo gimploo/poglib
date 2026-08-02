@@ -62,10 +62,10 @@ mpsc_queue__internal_item_t * mpsc_queue__internal_get_item(const mpsc_queue_t *
 
 void mpsc_queue_put(mpsc_queue_t * const self, void * const item_addr)
 {
-    u64 claimed_tail_index;
+    uintmax_t claimed_tail_index;
     while (true) {
-        u64 current_head_index = atomic_load_explicit(&self->head, memory_order_acquire);
-        u64 current_tail_index = atomic_load_explicit(&self->tail, memory_order_relaxed);
+        uintmax_t current_head_index = atomic_load_explicit(&self->head, memory_order_acquire);
+        uintmax_t current_tail_index = atomic_load_explicit(&self->tail, memory_order_relaxed);
 
         if (mpsc_queue__internal__is_full(current_head_index, current_tail_index, self->internals.capacity)) {
             eprint("MPSC Queue is full");
