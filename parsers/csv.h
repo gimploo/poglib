@@ -528,7 +528,7 @@ size_t csv_get_line_num_of_string_restricted_to_a_header_field(CSV *csv, size_t 
     return line_num;
 }
 
-void csv_get_all_line_nums_of_string_restricted_to_a_header_field(CSV *csv, stack_t *buffer, size_t field_num, str_t *find_word)
+void csv_get_all_line_nums_of_string_restricted_to_a_header_field(CSV *csv, ds_stack_t *buffer, size_t field_num, str_t *find_word)
 {
     if (csv == NULL) {
         fprintf(stderr, "%s: csv argument is null\n", __func__);
