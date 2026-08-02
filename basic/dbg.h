@@ -11,7 +11,11 @@
 #endif
 #include <string.h>
 #include "./ds/linkedlist.h"
-#include <threads.h>
+#ifdef __APPLE__
+    #include <poglib/external/tinycthread.h>
+#else
+    #include <threads.h>
+#endif
 
 #define DEFAULT_DBG_MEM_LOG_PATH "bin/dbg_mem_log.txt"
 const char *IGNORE_FILES[] = { "stb_image.h", "stb_truetype.h", "jolt-wrapper.h" };
@@ -41,8 +45,17 @@ typedef struct dbg_t {
 
 } dbg_t ;
 
+#if !defined(__APPLE__)
 static dbg_t global_debug;
-#if defined(DEBUG)
+#endif
+
+#if defined(__APPLE__) && defined(DEBUG)
+    /* macOS: the debug memory allocator and stacktracer are compiled out
+       (no execinfo backend, and malloc/free interception conflicts with
+       single-header libs like miniaudio). These are no-ops here. */
+    #define     dbg_init()          ((void)0)
+    #define     dbg_destroy()       ((void)0)
+#elif defined(DEBUG)
     void        dbg_init(void);
 #define         dbg_destroy() dbg__internal_destroy(false)
 #else 
@@ -55,7 +68,9 @@ static dbg_t global_debug;
                             - STACK TRACE -
 ===============================================================================*/
 
-#if defined(DEBUG)
+#if defined(__APPLE__) && defined(DEBUG)
+    #define     stacktrace_print()  ((void)0)
+#elif defined(DEBUG)
     void        stacktrace_print(void);
 #else
     #define stacktrace_print() fprintf(stderr, "[❗] Missing DEBUG macro, define DEBUG before including library\n")
@@ -65,7 +80,7 @@ static dbg_t global_debug;
 #include "arena_logger.h"
 
 
-#if !defined(IGNORE_MYDBG_IMPLEMENTATION) && defined(DEBUG)
+#if !defined(IGNORE_MYDBG_IMPLEMENTATION) && defined(DEBUG) && !defined(__APPLE__)
 
 // Wrapper of common memory allocating function in stdlib 
 
@@ -174,6 +189,13 @@ void __dbg_set_stacktraces(dbg_node_info_t *dn)
     }
     dn->nstacktraces = count;
 
+#else
+    /* macOS (and any other platform): no stacktrace capture, so leave the
+       arrays zeroed to keep _debug_free/_debug_realloc from freeing garbage. */
+    dn->nstacktraces = 0;
+    for (int i = 0; i < MAX_STACKTRACES_IN_NODE; i++) {
+        dn->stacktraces[i] = NULL;
+    }
 #endif
 
 #define malloc(N)       _debug_malloc((N), __FILE__, __LINE__, __func__)
@@ -523,7 +545,7 @@ void dbg__internal_destroy(bool did_program_crashed)
 
 
 
-#if !defined(IGNORE_STACKTRACE_IMPLEMENTATION) && defined(DEBUG)
+#if !defined(IGNORE_STACKTRACE_IMPLEMENTATION) && defined(DEBUG) && !defined(__APPLE__)
 
 #ifdef _WIN64
 

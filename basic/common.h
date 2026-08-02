@@ -6,7 +6,11 @@
 #include <stddef.h>
 #include <string.h>
 #include <time.h>
-#include <threads.h>
+#ifdef __APPLE__
+    #include <poglib/external/tinycthread.h>
+#else
+    #include <threads.h>
+#endif
 #include <stdalign.h>
 #include <stdatomic.h>
 #include <inttypes.h>

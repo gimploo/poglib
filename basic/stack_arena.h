@@ -4,7 +4,7 @@
 
 typedef struct stackarena_t stackarena_t;
 struct stackarena_t {
-    stack_t requestedsizes;
+    ds_stack_t requestedsizes;
     u8      *mem;
     u64     capacity;
     u64     top;

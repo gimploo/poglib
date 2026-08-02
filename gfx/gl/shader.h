@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include "glconfig.h"
 #include "material.h"
 #include "maps.h"
 #include "poglib/basic/arena.h"
@@ -75,7 +76,7 @@ typedef struct {
 
 
 const char * const DEFAULT_VSHADER = 
-    "#version 430 core\n"
+    POGLIB_GLSL_VERSION_PREFIX
     "layout (location = 0) in vec3 v_pos;\n"
     "layout (location = 1) in vec4 v_color;\n"
     "layout (location = 2) in vec2 v_tex_coord;\n"
@@ -91,7 +92,7 @@ const char * const DEFAULT_VSHADER =
     "}";
 
 const char * const DEFAULT_FSHADER = 
-    "#version 430 core\n"
+    POGLIB_GLSL_VERSION_PREFIX
     "in vec4 color;\n"
     "in vec2 tex_coord;\n"
     "\n"
@@ -107,7 +108,7 @@ const char * const DEFAULT_FSHADER =
     "}";
 
 const char * const DEFAULT_SIMPLE_SHAPES_VSHADER = 
-    "#version 430 core\n"
+    POGLIB_GLSL_VERSION_PREFIX
     "layout (location = 0) in vec3 v_pos;\n"
     "layout (location = 1) in vec4 v_uv;\n"
     "layout (location = 2) in vec2 v_normals;\n"

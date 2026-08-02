@@ -230,23 +230,53 @@ void assetmanager_destroy(assetmanager_t *const self)
     arena_destroy(self->arena);
 }
 
+#ifdef __APPLE__
+/* macOS caps GL at 4.1 core, so any shader stored with a 4.2+ GLSL version must be
+   swapped for its pre-built 410 variant. Save files reference the base versions,
+   so this remaps them centrally (workbench/collision-scene already pass the .410 files). */
+INTERNAL str_t assetmanager__internal__macos_shader_variant(assetmanager_t *const self, const str_t filepath, const char *const base_name, const char *const variant_name)
+{
+    const u32 base_len = (u32)strlen(base_name);
+    const u32 varn_len = (u32)strlen(variant_name);
+
+    if (filepath.len < base_len) return filepath;
+    if (memcmp(filepath.data + filepath.len - base_len, base_name, base_len) != 0) return filepath;
+
+    char buffer[1024];
+    ASSERT((filepath.len - base_len + varn_len + 1) <= ARRAY_LEN(buffer));
+
+    const u32 prefix_len = filepath.len - base_len;
+    memcpy(buffer, filepath.data, prefix_len);
+    memcpy(buffer + prefix_len, variant_name, varn_len);
+    buffer[prefix_len + varn_len] = '\0';
+
+    return str_clone(str_from_cstr(buffer, prefix_len + varn_len), self->arena);
+}
+#endif
+
 u32 assetmanager_load_glsl_shader(assetmanager_t *const self, const str_t vtx_filepath, const str_t frag_filepath, const gluniform_registry_t registry) 
 {
+#ifdef __APPLE__
+    str_t resolved_vtx = assetmanager__internal__macos_shader_variant(self, vtx_filepath, "instance-vtx.glsl", "instance-vtx.410.glsl");
+    resolved_vtx = assetmanager__internal__macos_shader_variant(self, resolved_vtx, "blockoutlevelshader.vs", "blockoutlevelshader.410.vs");
+#else
+    const str_t resolved_vtx = vtx_filepath;
+#endif
     hashtable_iterator(&self->assetmaps[ASSET_TYPE_GLSL_SHADER], iter)
     {
         const hashtable_entry_t *const table_entry = iter;
         glshader_t *const shader = table_entry->value;
 
-        if (str_cmp(shader->fg, frag_filepath) && str_cmp(shader->vs, vtx_filepath) && registry.count == shader->internal.uniformlocs.entries.len) 
+        if (str_cmp(shader->fg, frag_filepath) && str_cmp(shader->vs, resolved_vtx) && registry.count == shader->internal.uniformlocs.entries.len) 
             return table_entry->key.u32;
     }
 
     const u32 asset_id = ++self->internal.asset_idx_generator;
 
     glshader_t *shader = arena_reserve(self->arena, sizeof(glshader_t));
-    *shader = glshader_init(vtx_filepath, frag_filepath, registry, self->arena);
+    *shader = glshader_init(resolved_vtx, frag_filepath, registry, self->arena);
 
-    assetmanager__internal_add_asset_meta_data(self, ASSET_TYPE_GLSL_SHADER, asset_id, vtx_filepath, frag_filepath, shader);
+    assetmanager__internal_add_asset_meta_data(self, ASSET_TYPE_GLSL_SHADER, asset_id, resolved_vtx, frag_filepath, shader);
     hashtable_insert(&self->assetmaps[ASSET_TYPE_GLSL_SHADER], (hashtable_key_t){.u32 = asset_id}, shader);
     logging("Shader compiled %s, %s", shader->fg.data, shader->vs.data);
 

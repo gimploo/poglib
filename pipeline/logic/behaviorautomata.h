@@ -26,7 +26,7 @@ struct behaviorautomata_state_t {
 };
 
 struct behaviorautomata_t {
-    stack_t stack;
+    ds_stack_t stack;
 };
 
 behaviorautomata_t          behaviorautomata_init(arena_t * const arena);
