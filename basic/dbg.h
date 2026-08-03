@@ -546,7 +546,7 @@ void dbg__internal_destroy(bool did_program_crashed)
 
 
 
-#if !defined(IGNORE_STACKTRACE_IMPLEMENTATION) && defined(DEBUG)
+#if !defined(IGNORE_STACKTRACE_IMPLEMENTATION) && defined(DEBUG) && !defined(__APPLE__)
 
 #ifdef _WIN64
 
