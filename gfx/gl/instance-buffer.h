@@ -1,7 +1,6 @@
 #pragma once
 #include "./common.h"
 #include "./glconfig.h"
-#include <stdlib.h>
 
 #define INSTANCE_BUFFER_COUNT 3
 

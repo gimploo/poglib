@@ -50,11 +50,11 @@ static dbg_t global_debug;
 #endif
 
 #if defined(__APPLE__) && defined(DEBUG)
-    /* macOS: the debug memory allocator and stacktracer are compiled out
-       (no execinfo backend, and malloc/free interception conflicts with
-       single-header libs like miniaudio). These are no-ops here. */
-    #define     dbg_init()          ((void)0)
-    #define     dbg_destroy()       ((void)0)
+   //NOTE: macOS: the debug memory allocator and stacktracer are compiled out
+   // (no C11 threads/backtrace, and malloc/free interception conflicts with
+   // single-header libs like miniaudio). These stubs state the reason.
+    #define     dbg_init()          fprintf(stderr, "[!] DBG disabled on macOS (no C11 threads/backtrace; allocator conflicts with miniaudio)\n")
+    #define     dbg_destroy()       fprintf(stderr, "[!] DBG disabled on macOS (no C11 threads/backtrace; allocator conflicts with miniaudio)\n")
 #elif defined(DEBUG)
     void        dbg_init(void);
 #define         dbg_destroy() dbg__internal_destroy(false)
@@ -69,7 +69,8 @@ static dbg_t global_debug;
 ===============================================================================*/
 
 #if defined(__APPLE__) && defined(DEBUG)
-    #define     stacktrace_print()  ((void)0)
+    /* macOS: no execinfo backtrace backend, so stacktraces are unavailable. */
+    #define     stacktrace_print()  fprintf(stderr, "[!] Stacktrace unavailable on macOS\n")
 #elif defined(DEBUG)
     void        stacktrace_print(void);
 #else
@@ -545,7 +546,7 @@ void dbg__internal_destroy(bool did_program_crashed)
 
 
 
-#if !defined(IGNORE_STACKTRACE_IMPLEMENTATION) && defined(DEBUG) && !defined(__APPLE__)
+#if !defined(IGNORE_STACKTRACE_IMPLEMENTATION) && defined(DEBUG)
 
 #ifdef _WIN64
 
