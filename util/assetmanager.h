@@ -234,8 +234,7 @@ void assetmanager_destroy(assetmanager_t *const self)
 /* macOS caps GL at 4.1 core, so any shader stored with a 4.2+ GLSL version must be
    swapped for its pre-built 410 variant. Save files reference the base versions,
    so this remaps them centrally (workbench/collision-scene already pass the .410 files). */
-INTERNAL str_t assetmanager__internal__macos_shader_variant(assetmanager_t *const self, const str_t filepath, const char *const base_name, const char *const variant_name)
-{
+INTERNAL str_t assetmanager__internal__macos_shader_variant(assetmanager_t *const self, const str_t filepath, const char *const base_name, const char *const variant_name) {
     const u32 base_len = (u32)strlen(base_name);
     const u32 varn_len = (u32)strlen(variant_name);
 
@@ -258,7 +257,6 @@ u32 assetmanager_load_glsl_shader(assetmanager_t *const self, const str_t vtx_fi
 {
 #ifdef __APPLE__
     str_t resolved_vtx = assetmanager__internal__macos_shader_variant(self, vtx_filepath, "instance-vtx.glsl", "instance-vtx.410.glsl");
-    resolved_vtx = assetmanager__internal__macos_shader_variant(self, resolved_vtx, "blockoutlevelshader.vs", "blockoutlevelshader.410.vs");
 #else
     const str_t resolved_vtx = vtx_filepath;
 #endif
