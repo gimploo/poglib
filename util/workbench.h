@@ -291,7 +291,7 @@ workbench_t * workbench_init(arena_t *const arena)
                 [WORKBENCH_ACTION_TYPE_MOUSE_KEYBOARD_UNSELECT_ENTITY] = {
                     .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
                     .sdl_keyboard_key = {
-                        .main       = SDL_SCANCODE_ESCAPE,
+                        .main       = SDL_SCANCODE_CAPSLOCK,
                         .trigger    = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
                     }
                 },
@@ -338,11 +338,19 @@ workbench_t * workbench_init(arena_t *const arena)
                         .trigger= SDL_MOUSESTATE_JUST_PRESSED,
                     },
                 },
-                [WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY] = {
+                [WORKBENCH_ACTION_TYPE_KEYBOARD_COPY_ENTITY] = {
                     .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
                     .sdl_keyboard_key = {
                         .modifier = SDL_SCANCODE_LCTRL,
                         .main = SDL_SCANCODE_C,
+                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
+                    }
+                },
+                [WORKBENCH_ACTION_TYPE_KEYBOARD_PASTE_ENTITY] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
+                    .sdl_keyboard_key = {
+                        .modifier = SDL_SCANCODE_LCTRL,
+                        .main = SDL_SCANCODE_V,
                         .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
                     }
                 },
@@ -665,7 +673,8 @@ void workbench_update(const f32 dt)
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION))          workbench_editor_select_closest_entity();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_KEYBOARD_UNSELECT_ENTITY))  workbench_editor_savechanges();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME))                global_workbench->render_config.wireframe_mode = !global_workbench->render_config.wireframe_mode;
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY))       workbench_editor_copypaste_entity();
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_COPY_ENTITY))            workbench_editor_copy_entity();
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_PASTE_ENTITY))           workbench_editor_paste_entity();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY))          workbench_editor_delete_entity();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_UNDO))                            workbench_editor_action_history_pop(global_workbench, global_ecs);
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_SAVE))                            workbench_editor_save_to_file(global_workbench, global_ecs);
