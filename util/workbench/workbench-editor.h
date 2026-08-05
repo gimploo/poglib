@@ -11,11 +11,13 @@
 #include <poglib/ecs.h>
 #include <poglib/util/glb_export.h>
 #include "./ui/workbench-ui.h"
+#include "poglib/util/workbench/common.h"
 
 
 void            workbench_editor_update(void);
+void                workbench_editor_copy_entity(void);
+void                workbench_editor_paste_entity(void);
 void                workbench_editor_delete_entity(void);
-void                workbench_editor_copypaste_entity(void);
 void                workbench_editor_select_closest_entity(void);
 void                workbench_editor_action_history_push(workbench_t *const self, const workbench_editor_ecs_action_t action);
 void                workbench_editor_action_history_pop(workbench_t *const self, ecs_t *const ecs);
@@ -51,8 +53,8 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
         dir                 = glms_vec3_normalize(glms_vec3_sub(*(vec3f_t *)&far_w, *(vec3f_t *)&near_w));
     }
 
-    u32 picked = 0;
     {
+        u32 picked = 0;
         const vec3f_t ray_dir = glms_vec3_scale(dir, 1000.0f);
         JPH_RayCastResult hit = joltphysics_raycast(cam->position, ray_dir);
         if (hit.bodyID) {
@@ -63,9 +65,9 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
                 );
             picked = userdata->internal.ecs_collider->internal.entity_id;
         }
+        global_workbench->editor.mouse_closest_to_entity_id = picked;
     }
 
-    global_workbench->editor.mouse_closest_to_entity_id = picked;
 }
 
 INTERNAL void workbench_editor__internal__scale_mesh_collider(ecs_component_collider_t *const collider, const ecs_component_transform_t transform)
@@ -664,12 +666,31 @@ void workbench_editor_select_player(void)
         global_workbench, global_ecs, WORKBENCH_RESERVED_ENTITY_ID_COUNT);
 }
 
-void workbench_editor_copypaste_entity(void)
+void workbench_editor_copy_entity(void)
 {
     if (!global_workbench->editor.current_selected_entity_id) return;
 
-    const u32 target_entity_id = global_workbench->editor.current_selected_entity_id;
-    const u32 new_entity_id = ecs_entity_duplicate(global_ecs, global_workbench->editor.current_selected_entity_id);
+    global_workbench->editor.copied_entity_id = global_workbench->editor.current_selected_entity_id;
+    logging("Copied entity (%u)", global_workbench->editor.current_selected_entity_id);
+}
+void workbench_editor_paste_entity(void)
+{
+    if (!global_workbench->editor.copied_entity_id) return;
+
+    vec3s position = {0};
+    if (global_workbench->editor.mouse_closest_to_entity_id)  {
+        const ecs_entity_query_t view               = ecs_entity_query_components(global_ecs, global_workbench->editor.mouse_closest_to_entity_id, ECS_CMP_TRANSFORM);
+        const ecs_component_transform_t *transform  = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+        position = transform->position;
+    }
+
+    const u32 new_entity_id = ecs_entity_duplicate(global_ecs, global_workbench->editor.copied_entity_id);
+    {
+        ecs_entity_query_t view               = ecs_entity_query_components(global_ecs, new_entity_id, ECS_CMP_TRANSFORM);
+        ecs_component_transform_t *transform  = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+        transform->position = position;
+        transform->position.y += 2.f * transform->scale.y;
+    }
 
     workbench_editor__internal__select_entity_id(global_workbench, global_ecs, new_entity_id);
 
@@ -678,7 +699,7 @@ void workbench_editor_copypaste_entity(void)
         .is_created = true,
     });
 
-    logging("Duplicated entity (%u) - new entity id (%u)", target_entity_id, new_entity_id);
+    logging("Pasted new entity with id (%u)", new_entity_id);
 }
 
 void workbench_editor_delete_entity(void)

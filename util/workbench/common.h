@@ -4,6 +4,7 @@
 #include <poglib/util/glcamera.h>
 #include "poglib/ecs/component/types.h"
 #include "poglib/input/commandregistry.h"
+#include "poglib/physics/jolt-debugrenderer.h"
 
 typedef enum WORKBENCH_RESERVED_ENTITY_ID {
 
@@ -24,7 +25,8 @@ typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT,
     WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME,
     WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION,
-    WORKBENCH_ACTION_TYPE_KEYBOARD_COPYPASTE_ENTITY,
+    WORKBENCH_ACTION_TYPE_KEYBOARD_COPY_ENTITY,
+    WORKBENCH_ACTION_TYPE_KEYBOARD_PASTE_ENTITY,
     WORKBENCH_ACTION_TYPE_KEYBOARD_DELETE_ENTITY,
     WORKBENCH_ACTION_TYPE_UNDO,
     WORKBENCH_ACTION_TYPE_SAVE,
@@ -77,6 +79,7 @@ typedef struct {
         u32 mouse_closest_to_entity_id;
         u32 prev_selected_entity_id;
         u32 current_selected_entity_id;
+        u32 copied_entity_id;
         ecs_component_transform_t *selected_entity_transform;
 
         struct {
