@@ -49,6 +49,11 @@ typedef struct {
     bool disable_grid;
 
     struct {
+        f32 current_volume;
+        bool mute_sound;
+    } audio;
+
+    struct {
         bool wireframe_mode;
     } render_config;
 

@@ -271,6 +271,10 @@ workbench_t * workbench_init(arena_t *const arena)
         .editor = {
             .workbench_editor_action_history = stack_init(100, workbench_editor_ecs_action_t, arena),
         },
+        .audio = {
+            .mute_sound = false,
+            .current_volume = ma_engine_get_volume(&global_audio_engine),
+        },
         .commandregistry = (commandregistry_t){
             .count = WORKBENCH_ACTION_TYPE_COUNT,
             .registry = {
