@@ -4,11 +4,25 @@
 #include "poglib/basic/color.h"
 #include "poglib/basic/str.h"
 #include "poglib/poggen.h"
+#include "poglib/util/workbench/common.h"
 #include <poglib/gui.h>
 
-
-void workbench_editor_render_header(gui_t *const gui, const vec3f_t camera_pos, const vec2f_t cam_orientation, bool *const enable_collider)
+void workbench_editor__internal__toggle_mute(void)
 {
+    global_workbench->audio.mute_sound = !global_workbench->audio.mute_sound;
+    if (global_workbench->audio.mute_sound)     ma_engine_set_volume(&global_audio_engine, 0.f);
+    else                                        ma_engine_set_volume(&global_audio_engine, global_workbench->audio.current_volume);
+
+    if (global_workbench->audio.mute_sound)     logging("Audio muted");
+    else                                        logging("Audio unmuted");
+}
+
+void workbench_editor_render_header(
+    gui_t *const gui, 
+    const vec3f_t camera_pos, 
+    const vec2f_t cam_orientation, 
+    bool *const enable_collider
+) {
     char tempbuffer[1024] = {0};
 
     gui_ui_compose_begin(gui, (ui_config_t){
@@ -251,6 +265,51 @@ void workbench_editor_render_header(gui_t *const gui, const vec3f_t camera_pos, 
                 .base = COLOR_BLACK,
             },
             .text = str("show colliders"),
+        });
+        gui_ui_compose_end(gui);
+    }
+    gui_ui_compose_end(gui);
+
+    //NOTE: mute sound
+    gui_ui_compose_begin(gui, (ui_config_t) {
+        .composition = {
+            .styles = UI_STYLE_ROUNDED_CORNERS,
+            .traits = UI_BEHAVIOR_CLICKABLE | UI_BEHAVIOR_HOVERABLE 
+        },
+        .onclick = workbench_editor__internal__toggle_mute,
+        .dim = {
+            .min_height = 30,
+            .min_width = 50,
+        },
+        .color = {
+            .base = COLOR_WHITE,
+            .highlight = COLOR_GRAY
+        },
+        .margin = {
+            .left = 5, 
+            .right = 5,
+            .top = 10,
+            .bottom = 10 
+        },
+        .padding = {
+            .left = 5,
+            .top = 5,
+            .bottom = 5,
+            .right = 5
+        }
+    });{
+        gui_ui_compose_begin(gui, (ui_config_t) {
+            .composition = {
+                .styles = UI_STYLE_ONLY_TEXT
+            },
+            .dim = {
+                .min_height = 40,
+                .min_width = 40,
+            },
+            .color = {
+                .base = COLOR_BLACK,
+            },
+            .text = str("mute"),
         });
         gui_ui_compose_end(gui);
     }

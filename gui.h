@@ -62,6 +62,7 @@ typedef enum {
     UI_LAYOUT_VERTICAL = 1
 } ui_layout_t;
 
+
 typedef struct {
 
     void *ref;
@@ -111,6 +112,9 @@ typedef struct {
     struct {
         u32 id;
     } internal;
+
+    //NOTE: callbacks
+    void (*onclick)(void);
 
 } ui_config_t;
 
@@ -257,10 +261,15 @@ void gui__internal_update_state(gui_t *gui, const ui_config_t config)
 
     gui->internal.is_mouse_on_ui = is_cursor_on_ui;
 
-    if ((config.composition.traits & UI_BEHAVIOR_TRACK_STATE_TOGGLE) && is_ui_clicked) {
-        ASSERT(config.binding.size == sizeof(bool));
-        *(bool *)config.binding.ref = !*(bool *)config.binding.ref;
+    if (is_ui_clicked) {
+        if ((config.composition.traits & UI_BEHAVIOR_TRACK_STATE_TOGGLE)) {
+            ASSERT(config.binding.ref);
+            ASSERT(config.binding.size == sizeof(bool));
+            *(bool *)config.binding.ref = !*(bool *)config.binding.ref;
+        }
+        if (config.onclick) config.onclick();
     }
+
 
     if (config.composition.traits & UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG) {
 
@@ -285,7 +294,7 @@ void gui__internal_update_state(gui_t *gui, const ui_config_t config)
     }
 }
 
-vec4f_t gui__internal_get_color(const gui_t *gui, const ui_config_t config)
+INTERNAL vec4f_t gui__internal__get_color(const gui_t *gui, const ui_config_t config)
 {
     if ((config.composition.traits & UI_BEHAVIOR_HOVERABLE) == 0) {
         return config.color.base;
@@ -325,7 +334,7 @@ void gui_ui_compose_end(gui_t *gui)
     gui__internal_ui_pop_cursor_layout(gui);
 }
 
-void gui__internal_ui_validate_config(const ui_config_t config)
+INTERNAL void gui__internal__ui_validate_config(const ui_config_t config)
 {
     ASSERT(config.dim.min_height);
     ASSERT(config.dim.min_width);
@@ -486,13 +495,13 @@ u32 gui_ui_compose_begin(gui_t *const gui, ui_config_t config)
 {
     config.internal.id = ++gui->internal.ui_id_generator;
 
-    gui__internal_ui_validate_config(config);
+    gui__internal__ui_validate_config(config);
 
     const ui_region_t child_region = gui__internal_ui_add_child(gui, config);
 
     gui__internal_update_state(gui, config);
 
-    const vec4f_t computed_color = gui__internal_get_color(gui, config);
+    const vec4f_t computed_color = gui__internal__get_color(gui, config);
 
     if (config.composition.styles & UI_STYLE_ONLY_TEXT) {
         gui__internal_ui_create_text_internal(gui, child_region, config);
