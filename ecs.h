@@ -243,8 +243,8 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
     ASSERT(global_engine);
     logging("ECS save file `%.*s` exist, loading it.", filepath.len, filepath.data);
 
-    arena_t *const scratch = arena_init(NULL, 0.5 * MB);
-    const str_t buffer = str_read_file_to_str(scratch, filepath);
+    arena_t *const scratch = arena_init(NULL, 50 * MB);
+    str_t buffer = str_read_file_to_str(scratch, filepath);
     {
         const str_views_t lines     = str_split(buffer, '\n', scratch);
         u64 line_cursor             = ecs_serializer_validate_header(lines);
