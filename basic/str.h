@@ -124,11 +124,8 @@ str_t str_read_file_to_str(arena_t *const arena, const str_t file_path)
     assert(size > 0);
 
     //NOTE: the +1 hold the null character
-    char *__buffer = (char *)malloc(size+1);
-    if (__buffer == NULL) {
-        fprintf(stderr, "%s: malloc failed\n", __func__);
-        exit(1);
-    }
+    char *buffer = arena_reserve(arena, size+1);
+    ASSERT(buffer);
 
     FILE *fp = fopen(file_path.data, "r");
     if (fp == NULL) {
@@ -138,13 +135,13 @@ str_t str_read_file_to_str(arena_t *const arena, const str_t file_path)
 
     //NOTE: here the the contents in the file including the
     //null character is copied over to __buffer
-    fread(__buffer, size, 1, fp);
+    fread(buffer, size, 1, fp);
 
     //NOTE: being extra carefull to ensure its null terminated (optional)
-    __buffer[size] = '\0';
+    buffer[size] = '\0';
     fclose(fp);
 
-    return str_init(arena, __buffer);
+    return str_init(arena, buffer);
 }
 
 // Returns the pos of the word in __buffer
