@@ -335,15 +335,37 @@ void joltphysics_body_destroy(const JPH_BodyID body_id)
         body_id);
 }
 
-JPH_RayCastResult joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir)
+typedef struct {
+    JPH_RayCastResult   result;
+    JPH_Vec3            hitnormal;
+} joltraycast_result_t;
+
+joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir)
 {
     ASSERT(global_joltphysics_instance);
     const JPH_NarrowPhaseQuery *const npq = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
     JPH_RayCastResult hit = {0};
     if (JPH_NarrowPhaseQuery_CastRay(npq, (JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, &hit, NULL, NULL, NULL)) {
-        return hit;
+
+        JPH_Vec3 hit_normal = {0};
+        JPH_Vec3 hit_position = {0};
+
+        JPH_RayCast_GetPointOnRay((JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, hit.fraction, &hit_position);
+
+        const JPH_BodyLockInterface *lock = JPH_PhysicsSystem_GetBodyLockInterface(global_joltphysics_instance->physics_system);
+        JPH_BodyLockMultiRead* multireadlock = JPH_BodyLockInterface_LockMultiRead(lock, (JPH_BodyID[]) { hit.bodyID }, 1);
+        {
+            const JPH_Body *body = JPH_BodyLockMultiRead_GetBody(multireadlock, 0);
+            ASSERT(body);
+            JPH_Body_GetWorldSpaceSurfaceNormal(body, hit.subShapeID2, &hit_position, &hit_normal);
+        }
+        JPH_BodyLockMultiRead_Destroy(multireadlock);
+        return (joltraycast_result_t){
+            .result     = hit,
+            .hitnormal  = hit_normal
+        };
     }
-    return (JPH_RayCastResult){0};
+    return (joltraycast_result_t){0};
 }
 
 f32 joltphysics_sphere_shapecast__internal__JPH_CastShapeCollectorCallback(void* context, const JPH_ShapeCastResult* result)

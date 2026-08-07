@@ -56,7 +56,7 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
     {
         u32 picked = 0;
         const vec3f_t ray_dir = glms_vec3_scale(dir, 1000.0f);
-        JPH_RayCastResult hit = joltphysics_raycast(cam->position, ray_dir);
+        JPH_RayCastResult hit = joltphysics_raycast(cam->position, ray_dir).result;
         if (hit.bodyID) {
             const ecs_collider_jolt_userdata_t *const userdata =
                 (ecs_collider_jolt_userdata_t *)JPH_BodyInterface_GetUserData(
@@ -497,8 +497,8 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
     const matrix4f_t view, 
     const matrix4f_t proj
 ) {
-    const f32 axis_length = 1000.f;
-    rendercommand_primitive_line_t gizmo[3] = {
+    const f32 axis_length = 10000.f;
+    const rendercommand_primitive_line_t gizmo[3] = {
         //NOTE: X axis
         {
             .start  = { entitypos.x, entitypos.y, entitypos.z },

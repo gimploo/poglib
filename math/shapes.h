@@ -101,6 +101,9 @@ trif_t trif(vec3f_t pos, f32 side)
     };
 }
 
+#define VEC2I_FMT "%i %i"
+#define VEC2I_ARG(VEC) (VEC).raw[0], (VEC).raw[1]
+
 #define VEC2F_FMT "%f %f"
 #define VEC2F_ARG(VEC) (VEC).raw[0], (VEC).raw[1]
 

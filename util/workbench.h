@@ -32,18 +32,18 @@ INTERNAL void workbench__internal__worldcamera_input_handler(ecs_component_input
     const bool panning      = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_MIDDLE_CLICK_DRAG);
     const bool zoom_in      = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN);
     const bool zoom_out     = bitmask & (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT);
-    const bool zoom_fast    = bitmask & ((1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN_FAST) | (1 << WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT_FAST));
+    const bool highsens     = bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_HIGHER_SENS);
 
     const f32 drag_sensitivity      = 0.3f;
-    const f32 zoom_sensitivity      = !zoom_fast ? 50.0f : 200.f;
+    const f32 zoom_sensitivity      = !highsens ? 50.0f : 500.f;
     f32 z_offset                    = 0.f;
     const vec2i_t mouse_rel         = window_mouse_get_relative_position(global_window);
 
     if (panning) {
-        const f32 pane_sensitivity   = 2.f * dt;
+        const f32 pane_sensitivity = highsens ? 20.f : 2.f;
         const vec2s mouse_rel_offset = (vec2s) { 
-            (f32)mouse_rel.x * pane_sensitivity * -1.f,
-            (f32)mouse_rel.y * pane_sensitivity
+            (f32)mouse_rel.x * pane_sensitivity * -1.f * dt,
+            (f32)mouse_rel.y * pane_sensitivity * dt
         };
         state->current_position = glms_vec3_add(
             state->current_position, 
@@ -314,19 +314,11 @@ workbench_t * workbench_init(arena_t *const arena)
                     .type = COMMANDINPUTKEY_TYPE_MOUSE,
                     .sdl_mouse.wheel = SDL_MOUSEWHEEL_DOWN,
                 },
-                [WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_IN_FAST] = {
-                    .type = COMMANDINPUTKEY_TYPE_MOUSE,
-                    .sdl_mouse = {
-                        .wheel = SDL_MOUSEWHEEL_UP,
-                        .modifier = SDL_SCANCODE_LSHIFT,
-                    }
-                },
-                [WORKBENCH_ACTION_TYPE_CAMERA_ZOOM_OUT_FAST] = {
-                    .type = COMMANDINPUTKEY_TYPE_MOUSE,
-                    .sdl_mouse = {
-                        .wheel = SDL_MOUSEWHEEL_DOWN,
-                        .modifier = SDL_SCANCODE_LSHIFT,
-                    }
+                [WORKBENCH_ACTION_TYPE_MOUSE_HIGHER_SENS] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
+                    .sdl_keyboard_key = {
+                        .main = SDL_SCANCODE_LSHIFT,
+                    },
                 },
                 [WORKBENCH_ACTION_TYPE_TOGGLE_WIREFRAME] = {
                     .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
