@@ -5,7 +5,6 @@
 #include "poglib/ecs/component/material_uniform_resolver.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/gfx/model/assimp.h"
-#include "poglib/pipeline/render/common.h"
 #include "poglib/pipeline/render/render_queue.h"
 #include "poglib/poggen.h"
 #include "poglib/util/asset.h"
@@ -16,7 +15,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
     ASSERT(global_engine);
     ASSERT(ctx.active_camera);
 
-    slot_t *primary_pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_MODEL_IDX);
+    slot_t *const primary_pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_MODEL_IDX);
 
     slot_iterator(primary_pool, ITER)
     {

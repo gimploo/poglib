@@ -678,6 +678,7 @@ void workbench_update(const f32 dt)
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_SELECT_PLAYER))          workbench_editor_select_player();
 
     workbench_editor_update();
+
 }
 
 
@@ -716,11 +717,9 @@ void workbench__internal__show_colliders(workbench_t *const self)
     ASSERT(global_engine);
     ASSERT(global_joltphysics_instance);
 
-    joltdebugrenderer_render(
+    joltdebugrenderer_render_colliders(
         self->joltrenderer,
-        global_joltphysics_instance->physics_system,
-        ecs_get_active_camera(global_ecs),
-        global_engine->handle.app->window.aspect_ratio
+        global_joltphysics_instance->physics_system
     );
 
 }
