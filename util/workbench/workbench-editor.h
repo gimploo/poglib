@@ -34,8 +34,8 @@ INTERNAL void workbench_editor__internal__select_entity_id(workbench_t *const se
 
 INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
 {
-    vec2f_t ndc = window_mouse_get_norm_position(global_window);
-    glcamera_t *cam = global_workbench->world_camera.handle;
+    const vec2f_t ndc = window_mouse_get_norm_position(global_window);
+    const glcamera_t *const cam = global_workbench->world_camera.handle;
 
     vec3f_t dir = {0};
     {
@@ -85,7 +85,8 @@ INTERNAL void workbench_editor__internal__scale_mesh_collider(ecs_component_coll
     }
 
     JPH_IndexedTriangle *tris = (JPH_IndexedTriangle *)stackarena_push(global_runtimectx->stackarena, tri_count * sizeof(JPH_IndexedTriangle));
-    for (u32 i = 0; i < tri_count; i++) {
+    for (u32 i = 0; i < tri_count; i++)
+    {
         tris[i] = (JPH_IndexedTriangle){
             .i1 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 0] : i * 3 + 0,
             .i2 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 1] : i * 3 + 1,

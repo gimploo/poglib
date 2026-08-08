@@ -399,16 +399,14 @@ bool joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, cons
         NULL //const JPH_ShapeFilter* shapeFilter);
     );
 
-    if (global_workbench->enable_collider) {
-        const vec3s scale = vec3f(1.0f);
-        JPH_RMat4 centerOfMassTransform = (JPH_RMat4){GLM_MAT4_IDENTITY_INIT};
-        JPH_Shape_Draw(
-            castshape,
-            global_workbench->joltrenderer->handle, 
-            &centerOfMassTransform, 
-            (JPH_Vec3 *)&scale, 
-            0xff0000ff, false, false);
-    }
+    const vec3s scale = vec3f(1.0f);
+    JPH_RMat4 centerOfMassTransform = (JPH_RMat4){GLM_MAT4_IDENTITY_INIT};
+    JPH_Shape_Draw(
+        castshape,
+        global_workbench->joltrenderer->handle, 
+        &centerOfMassTransform, 
+        (JPH_Vec3 *)&scale, 
+        0xff0000ff, false, false);
     JPH_Shape_Destroy(castshape);
 
     return hit;

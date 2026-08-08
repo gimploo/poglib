@@ -118,14 +118,11 @@ jolt_debugrenderer_t * joltdebugrenderer_init(
     return jph_debugrenderer;
 }
 
-void joltdebugrenderer_render(
+void joltdebugrenderer_update(
     jolt_debugrenderer_t *const self,
-    JPH_PhysicsSystem *const joltphysicssystem,
     const glcamera_t *const camera,
-    const f32 aspect_ratio
-) {
-    ASSERT(joltphysicssystem);
-
+    const f32 aspect_ratio)
+{
     self->frame.view = glcamera_getview(camera);
     self->frame.projection = glms_perspective(
         radians(45),
@@ -133,6 +130,13 @@ void joltdebugrenderer_render(
         1.0f,
         10000.0f
     );
+}
+
+void joltdebugrenderer_render_colliders(
+    jolt_debugrenderer_t *const self,
+    JPH_PhysicsSystem *const joltphysicssystem
+) {
+    ASSERT(joltphysicssystem);
 
     JPH_DebugRenderer_NextFrame(self->handle);
     JPH_PhysicsSystem_DrawBodies(
