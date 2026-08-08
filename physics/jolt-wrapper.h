@@ -338,6 +338,7 @@ void joltphysics_body_destroy(const JPH_BodyID body_id)
 typedef struct {
     JPH_RayCastResult   result;
     JPH_Vec3            hitnormal;
+    JPH_Vec3            hitposition;
 } joltraycast_result_t;
 
 joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir)
@@ -362,7 +363,8 @@ joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t di
         JPH_BodyLockMultiRead_Destroy(multireadlock);
         return (joltraycast_result_t){
             .result     = hit,
-            .hitnormal  = hit_normal
+            .hitnormal  = hit_normal,
+            .hitposition = hit_position
         };
     }
     return (joltraycast_result_t){0};
