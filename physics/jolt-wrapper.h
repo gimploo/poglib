@@ -102,7 +102,6 @@ INTERNAL bool joltphysics__internal__assertfailurefunc(const char* expression, c
 
     eprint("Failure in jolt - check above for more details");
     return false;
-
 }
 
 joltphysics_t * joltphysics_init(arena_t * const arena)
@@ -378,8 +377,8 @@ bool joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, cons
 {
     ASSERT(global_joltphysics_instance);
     const JPH_NarrowPhaseQuery *const npq   = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
-    const matrix4f_t worldtransform         = glms_translate_make(ray_pos);
-    const vec3s baseoffset                  = vec3f(0.f);
+    const matrix4f_t worldtransform = glms_translate_make(ray_pos);
+    const vec3s baseoffset  = vec3f(0.f);
     JPH_ShapeCastSettings setting; 
     JPH_ShapeCastSettings_Init(&setting);
 
@@ -387,10 +386,10 @@ bool joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, cons
     const bool hit = JPH_NarrowPhaseQuery_CastShape(
         npq,
         castshape,
-        (JPH_RMat4 *)&worldtransform, 
+        (JPH_Mat4 *)&worldtransform, 
         (JPH_Vec3 *)&dir,
         &setting,
-        (JPH_Vec3 *)&baseoffset,
+        &(JPH_Vec3){0},
         joltphysics_sphere_shapecast__internal__JPH_CastShapeCollectorCallback, 
         NULL,
         NULL,//const JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
@@ -399,14 +398,13 @@ bool joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, cons
         NULL //const JPH_ShapeFilter* shapeFilter);
     );
 
-    const vec3s scale = vec3f(1.0f);
-    JPH_RMat4 centerOfMassTransform = (JPH_RMat4){GLM_MAT4_IDENTITY_INIT};
+    const matrix4f_t transform = glms_translate_make(glms_vec3_add(ray_pos, dir));
     JPH_Shape_Draw(
         castshape,
         global_workbench->joltrenderer->handle, 
-        &centerOfMassTransform, 
-        (JPH_Vec3 *)&scale, 
-        0xff0000ff, false, false);
+        (JPH_Mat4 *)&transform,
+        &(JPH_Vec3){ 1.0f, 1.0f, 1.0f }, 
+        hit ? 0x00ff00ff  :0xff0000ff, false, false);
     JPH_Shape_Destroy(castshape);
 
     return hit;
