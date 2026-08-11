@@ -226,7 +226,7 @@ joltphysics_event_queue_t * poggen_get_physics_collision_events(const poggen_t *
     }
 
     ASSERT(self->systems.physics.instance);
-    return physics_sys_get_collision_event_queue(self->systems.physics.instance);
+    return joltphysics_get_collision_eventqueue(self->systems.physics.instance);
 }
 
 void poggen_update_commandqueue_registry(poggen_t *const self, const commandregistry_t registry)

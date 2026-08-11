@@ -11,7 +11,7 @@ void workbench_editor__internal__toggle_mute(void)
 {
     global_workbench->audio.mute_sound = !global_workbench->audio.mute_sound;
     if (global_workbench->audio.mute_sound)     ma_engine_set_volume(&global_audio_engine, 0.f);
-    else                                        ma_engine_set_volume(&global_audio_engine, global_workbench->audio.current_volume);
+    else                                        ma_engine_set_volume(&global_audio_engine, global_workbench->audio.original_volume);
 
     if (global_workbench->audio.mute_sound)     logging("Audio muted");
     else                                        logging("Audio unmuted");
@@ -21,7 +21,8 @@ void workbench_editor_render_header(
     gui_t *const gui, 
     const vec3f_t camera_pos, 
     const vec2f_t cam_orientation, 
-    bool *const enable_collider
+    bool *const enable_collider,
+    const bool is_volume_mute
 ) {
     char tempbuffer[1024] = {0};
 
@@ -279,7 +280,7 @@ void workbench_editor_render_header(
         .onclick = workbench_editor__internal__toggle_mute,
         .dim = {
             .min_height = 30,
-            .min_width = 50,
+            .min_width = is_volume_mute ? 50 : 60,
         },
         .color = {
             .base = COLOR_WHITE,
@@ -309,7 +310,7 @@ void workbench_editor_render_header(
             .color = {
                 .base = COLOR_BLACK,
             },
-            .text = str("mute"),
+            .text = is_volume_mute ? str("unmute") : str("mute"),
         });
         gui_ui_compose_end(gui);
     }

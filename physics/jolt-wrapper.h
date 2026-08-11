@@ -6,6 +6,22 @@
 #include "poglib/math/la.h"
 #include "poglib/util/workbench/common.h"
 
+typedef struct {
+
+    JPH_RayCastResult   result;
+    JPH_Vec3            hitnormal;
+    JPH_Vec3            hitposition;
+
+} joltraycast_result_t;
+
+typedef struct {
+
+    bool                is_hit;
+    JPH_ShapeCastResult result;
+    JPH_Vec3            hitposition;
+
+} joltshapecast_result_t;
+
 //TODO: see if whether the system needs its own arena.
 
 typedef struct {
@@ -78,12 +94,12 @@ void                                joltphysics_set_interaction_rules(
 void                                joltphysics_start_simulation(joltphysics_t *self);
 
 void                                joltphysics_update(joltphysics_t *self, const f32 dt);
-joltphysics_event_queue_t *    physics_sys_get_collision_event_queue(const joltphysics_t * const self);
+joltphysics_event_queue_t *         joltphysics_get_collision_eventqueue(const joltphysics_t * const self);
 
-void                                joltphysics_destroy(joltphysics_t *self);
+void                           joltphysics_destroy(joltphysics_t *self);
 
-void                                joltphysics_character_destroy(JPH_CharacterVirtual *character);
-void                                joltphysics_body_destroy(JPH_BodyID body_id);
+void                           joltphysics_character_destroy(JPH_CharacterVirtual *character);
+void                           joltphysics_body_destroy(JPH_BodyID body_id);
 
 
 #ifndef IGNORE_JOLT_WRAPPER_IMPLEMENTATION
@@ -317,7 +333,7 @@ void joltphysics_update(joltphysics_t *self, const f32 dt) {
     self->internal.double_buffer_event_queue.write_queue->count = 0;
 }
 
-joltphysics_event_queue_t * physics_sys_get_collision_event_queue(const joltphysics_t *const self)
+joltphysics_event_queue_t * joltphysics_get_collision_eventqueue(const joltphysics_t *const self)
 {
     return self->internal.double_buffer_event_queue.read_queue;
 }
@@ -333,12 +349,6 @@ void joltphysics_body_destroy(const JPH_BodyID body_id)
         global_joltphysics_instance->bodyinterface,
         body_id);
 }
-
-typedef struct {
-    JPH_RayCastResult   result;
-    JPH_Vec3            hitnormal;
-    JPH_Vec3            hitposition;
-} joltraycast_result_t;
 
 joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir)
 {
@@ -371,18 +381,20 @@ joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t di
 
 f32 joltphysics_sphere_shapecast__internal__JPH_CastShapeCollectorCallback(void* context, const JPH_ShapeCastResult* result)
 {
+    *(JPH_ShapeCastResult *)context = *result;
 }
 
-bool joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius)
+joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius)
 {
     ASSERT(global_joltphysics_instance);
     const JPH_NarrowPhaseQuery *const npq   = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
     const matrix4f_t worldtransform = glms_translate_make(ray_pos);
-    const vec3s baseoffset  = vec3f(0.f);
     JPH_ShapeCastSettings setting; 
     JPH_ShapeCastSettings_Init(&setting);
 
     JPH_Shape *castshape = (JPH_Shape *)JPH_SphereShape_Create(radius);
+    JPH_ShapeCastResult result = {0};
+
     const bool hit = JPH_NarrowPhaseQuery_CastShape(
         npq,
         castshape,
@@ -391,23 +403,35 @@ bool joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, cons
         &setting,
         &(JPH_Vec3){0},
         joltphysics_sphere_shapecast__internal__JPH_CastShapeCollectorCallback, 
-        NULL,
+        &result,
         NULL,//const JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
         NULL,//const JPH_ObjectLayerFilter* objectLayerFilter,
         NULL,//const JPH_BodyFilter* bodyFilter,
         NULL //const JPH_ShapeFilter* shapeFilter);
     );
 
-    const matrix4f_t transform = glms_translate_make(glms_vec3_add(ray_pos, dir));
-    JPH_Shape_Draw(
-        castshape,
-        global_workbench->joltrenderer->handle, 
-        (JPH_Mat4 *)&transform,
-        &(JPH_Vec3){ 1.0f, 1.0f, 1.0f }, 
-        hit ? 0x00ff00ff  :0xff0000ff, false, false);
+    JPH_Vec3 hit_position = {0};
+    if (hit) 
+    {
+        JPH_RayCast_GetPointOnRay((JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, result.fraction, &hit_position);
+        const matrix4f_t transform = glms_translate_make(*(vec3s *)&hit_position);
+        JPH_Shape_Draw(
+            castshape,
+            global_workbench->joltrenderer->handle, 
+            (JPH_Mat4 *)&transform,
+            &(JPH_Vec3){ 1.0f, 1.0f, 1.0f }, 
+            0x00ff00ff, //hit ? 0x00ff00ff : 0xff0000ff, 
+            false, 
+            false
+        );
+    }
     JPH_Shape_Destroy(castshape);
 
-    return hit;
+    return (joltshapecast_result_t){
+        .is_hit = hit,
+        .result = result,
+        .hitposition = hit_position,
+    };
 }
 
 #endif

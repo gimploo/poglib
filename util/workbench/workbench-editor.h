@@ -572,7 +572,8 @@ void workbench_editor_render(void)
             &global_workbench->gui.handle,
             global_workbench->world_camera.handle->position,
             global_workbench->world_camera.handle->euler_angle,
-            &global_workbench->enable_collider
+            &global_workbench->enable_collider,
+            global_workbench->audio.mute_sound
         );
         workbench_editor__internal_show_entity_info_for_selected_entity();
     }

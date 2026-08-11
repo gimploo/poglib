@@ -272,8 +272,8 @@ workbench_t * workbench_init(arena_t *const arena)
             .workbench_editor_action_history = stack_init(100, workbench_editor_ecs_action_t, arena),
         },
         .audio = {
-            .mute_sound = false,
-            .current_volume = ma_engine_get_volume(&global_audio_engine),
+            .mute_sound = true,
+            .original_volume = ma_engine_get_volume(&global_audio_engine),
         },
         .commandregistry = (commandregistry_t){
             .count = WORKBENCH_ACTION_TYPE_COUNT,
@@ -399,6 +399,8 @@ workbench_t * workbench_init(arena_t *const arena)
     global_workbench = arena_store(arena, &workbench, sizeof(workbench));
 
     workbench_ecs_populate_entities();
+
+    if (global_workbench->audio.mute_sound) ma_engine_set_volume(&global_audio_engine, 0.f);
 
     global_workbench->joltrenderer = joltdebugrenderer_init(
         &global_engine->systems.renderqueue, 
