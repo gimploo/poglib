@@ -48,7 +48,7 @@ typedef struct {
     bool disable_grid;
 
     struct {
-        f32 current_volume;
+        f32 original_volume;
         bool mute_sound;
     } audio;
 
