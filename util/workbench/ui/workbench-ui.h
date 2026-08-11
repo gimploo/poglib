@@ -280,7 +280,7 @@ void workbench_editor_render_header(
         .onclick = workbench_editor__internal__toggle_mute,
         .dim = {
             .min_height = 30,
-            .min_width = is_volume_mute ? 50 : 60,
+            .min_width = !is_volume_mute ? 50 : 60,
         },
         .color = {
             .base = COLOR_WHITE,
