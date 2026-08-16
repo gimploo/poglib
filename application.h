@@ -113,10 +113,15 @@ void application_run(application_t *const app)
     if (!app->render)               eprint("application render function is missing");
     if (!app->destroy)              eprint("application shutdown function is missing");
 
-    u64 flags = 0;
-#if defined(WINDOW_SDL)
-    flags = SDL_INIT_EVERYTHING;
-#endif
+    //NOTE: removed `audio`, reason is that minaudio is used now for audio 
+    //also removed `haptic` for now, as i dont know what we would use it for anyway
+    const u64 SDL_FLAGS = 
+        SDL_INIT_TIMER 
+        | SDL_INIT_VIDEO 
+        | SDL_INIT_EVENTS 
+        | SDL_INIT_JOYSTICK 
+        | SDL_INIT_GAMECONTROLLER 
+        | SDL_INIT_SENSOR;
 
     runtimectx_init();
 
@@ -127,7 +132,7 @@ void application_run(application_t *const app)
             app->window.title, 
             app->window.width, 
             app->window.height, 
-            flags);
+            SDL_FLAGS);
     assert(win);
 
     win->background_color = app->window.background_color;
