@@ -1,12 +1,12 @@
 #pragma once
 #include "../../gfx/gl/common.h"
 #include "../../gfx/gl/glconfig.h"
-#ifdef _WIN64
-#include <SDL2/SDL_hints.h>
-#include <SDL2/SDL_video.h>
+#if defined(_WIN64)
+    #include <SDL2/SDL_hints.h>
+    #include <SDL2/SDL_video.h>
 #else
-#include "SDL_hints.h"
-#include "SDL_video.h"
+    #include "SDL_hints.h"
+    #include "SDL_video.h"
 #endif
 #include "poglib/basic/common.h"
 #include <poglib/basic.h>
@@ -60,6 +60,14 @@ typedef enum {
 
 } sdl_mousebuttontype;
 
+typedef enum {
+
+    SDL_GAMECONTROLLER_STICK_LEFT   = 0,
+    SDL_GAMECONTROLLER_STICK_RIGHT  = 1,
+
+} sdl_gamecontroller_sticktype;
+
+
 typedef struct window_t {
 
     bool                is_open;
@@ -89,6 +97,24 @@ typedef struct window_t {
     } keyboard;
 
     struct {
+
+        struct {
+            f32 left;
+            f32 right;
+        } trigger;
+
+        struct {
+            bool state[SDL_CONTROLLER_BUTTON_MAX];
+        } button;
+
+        struct {
+            SDL_GameController *handle;
+            vec2s stick_dirs[2];
+        } internal;
+
+    } gamecontroller;
+
+    struct {
         bool                is_active;
         struct window_t     *window;        // Holds subwindow address
     } subwindow;
@@ -113,9 +139,9 @@ bool                window_keyboard_is_key_just_pressed(const window_t *const wi
 bool                window_keyboard_is_key_held(const window_t *const window, const SDL_Keycode key);
 bool                window_keyboard_is_key_pressed(const window_t *const window, const SDL_Keycode key);
 
-bool                window_mouse_button_just_pressed(window_t *window, sdl_mousebuttontype button);
-bool                window_mouse_button_is_pressed(window_t *window, sdl_mousebuttontype button);
-bool                window_mouse_button_is_held(window_t *window, sdl_mousebuttontype button);
+bool                window_mouse_button_just_pressed(const window_t *const window, const sdl_mousebuttontype button);
+bool                window_mouse_button_is_pressed(const window_t *const window, const sdl_mousebuttontype button);
+bool                window_mouse_button_is_held(const window_t *const window, const sdl_mousebuttontype button);
 
 bool                window_mouse_wheel_is_scroll_up(const window_t *const w);
 bool                window_mouse_wheel_is_scroll_down(const window_t *const w);
@@ -155,8 +181,12 @@ void            window_subwindow_destroy(window_t *subwindow);
 
 #define DEFAULT_BACKGROUND_COLOR (vec4f_t ){ 1.0f, 0.0f, 0.0f, 1.0f}
 
+
+INTERNAL void window__internal__joystick_init(window_t *const self);
+INTERNAL void window__internal__joystick_destroy(window_t *const self);
+
 bool window_mouse_button_just_pressed(
-        window_t *window, 
+        const window_t *const window, 
         sdl_mousebuttontype button)
 {
     const bool is_active = window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED 
@@ -165,8 +195,8 @@ bool window_mouse_button_just_pressed(
 }
 
 bool window_mouse_button_is_pressed(
-        window_t *window,
-        sdl_mousebuttontype button)
+        const window_t *const window,
+        const sdl_mousebuttontype button)
 {
     const bool is_active = window->mouse.button == button 
         && (window->mouse.state == SDL_MOUSESTATE_JUST_PRESSED 
@@ -176,24 +206,24 @@ bool window_mouse_button_is_pressed(
 }
 
 bool window_mouse_button_is_held(
-        window_t *window,
-        sdl_mousebuttontype button)
+        const window_t *const window,
+        const sdl_mousebuttontype button)
 {
   return window->mouse.state == SDL_MOUSESTATE_HELD &&
          window->mouse.button == button;
 }
 
 bool window_mouse_button_is_dragged(
-        window_t *window,
-        sdl_mousebuttontype button)
+        const window_t *const window,
+        const sdl_mousebuttontype button)
 {
   return window->mouse.state == SDL_MOUSESTATE_DRAG &&
          window->mouse.button == button;
 }
 
 bool window_mouse_button_is_released(
-        window_t *window,
-        sdl_mousebuttontype button)
+        const window_t *const window,
+        const sdl_mousebuttontype button)
 {
   return window->mouse.state == SDL_MOUSESTATE_RELEASED &&
          window->mouse.button == button;
@@ -486,6 +516,8 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     }
 
     win.__sdl_window_id = SDL_GetWindowID(win.__sdl_window);
+
+    window__internal__joystick_init(&win);
 
     global_window = (window_t *)calloc(1, sizeof(window_t ));
     assert(global_window);
@@ -863,12 +895,81 @@ void window_poll_input_events(window_t *const window)
                 window__internal__keyboard_update_buffers(window, SDL_KEYUP, event->key.keysym.scancode);
             break;
 
-            //default:
+            case SDL_CONTROLLERBUTTONDOWN: {
+                const u8 button = event->cbutton.button;
+                ASSERT(button < ARRAY_LEN(window->gamecontroller.button.state));
+                window->gamecontroller.button.state[button]         = true;
+                //const char* buttonstring = SDL_GameControllerGetStringForButton(button);
+                //printf("button pressed = %s\n", buttonstring);
+            } break;
+
+            case SDL_CONTROLLERBUTTONUP: {
+                const u8 button = event->cbutton.button;
+                ASSERT(button < ARRAY_LEN(window->gamecontroller.button.state));
+                window->gamecontroller.button.state[button] = false;
+                //const char* buttonstring = SDL_GameControllerGetStringForButton(button);
+                //printf("button released = %s\n", buttonstring);
+            } break;
+
+            case SDL_CONTROLLERDEVICEADDED:
+                if (!window->gamecontroller.internal.handle) {
+                    window__internal__joystick_init(window);
+                    logging("joystick connected");
+                }
+            break;
+            case SDL_CONTROLLERDEVICEREMOVED:
+                if (window->gamecontroller.internal.handle) {
+                    window__internal__joystick_destroy(window);
+                    logging("joystick disconnected");
+                }
+            break;
+
+            case SDL_CONTROLLERAXISMOTION: {
+                //NOTE: only handling the first joystick for the time begining, maybe if plan is to bring coop,
+                //might need to visit this
+
+                const u8 FIRST_JOYSTICK = 0;
+                const i16 raw_value = event->caxis.value;
+
+                if (event->caxis.which == FIRST_JOYSTICK) 
+                {
+                    if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
+
+                        window->gamecontroller.trigger.left = raw_value;
+
+                    } else if (event->caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT) {
+
+                        window->gamecontroller.trigger.right = raw_value;
+
+                    } else if(event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX || event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
+
+                        const f32 value = (event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX) ? raw_value : -1 * raw_value;
+                        window->gamecontroller.internal.stick_dirs[0].raw[
+                           event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX ? 0 : 1
+                        ] = value;
+
+                    } else if (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX || event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTY) {
+
+                        const f32 value = (event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX) ? raw_value : -1 * raw_value;
+                        window->gamecontroller.internal.stick_dirs[1].raw[
+                            event->caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX ? 0 : 1
+                        ] = value;
+                    }
+                }
+
+                //const char* axis_string = SDL_GameControllerGetStringForAxis(event->caxis.axis);
+                //printf("axis %s\n", axis_string);
+
+            } break;
+
+            default:
                 //SDL_ShowSimpleMessageBox(0, "ERROR", "Key not accounted for", window->__sdl_window);
                 //window->is_open = false;
+            break;
         }
     }
 
+    //NOTE: think i did this to distinguish bw mouse button being held vs mouse being dragged while held
     if (!is_mouse_moving && window->mouse.state == SDL_MOUSESTATE_DRAG) {
         window->mouse.state = SDL_MOUSESTATE_HELD;
     }
@@ -978,6 +1079,46 @@ void window_lock_mouse(const window_t *const self, const bool lock_mouse)
     (void)self;
     SDL_SetRelativeMouseMode(lock_mouse);
     SDL_GetRelativeMouseState(NULL, NULL);
+}
+
+bool window_gamecontroller_is_connected(const window_t *const self)
+{
+    return self->gamecontroller.internal.handle != NULL;
+}
+
+vec2s window_gamecontroller_get_controller_axis(const window_t *const self, const sdl_gamecontroller_sticktype sticktype)
+{
+    const f32 threshold = 4000.f;
+
+    if (fabs(self->gamecontroller.internal.stick_dirs[sticktype].x) < threshold && fabs(self->gamecontroller.internal.stick_dirs[sticktype].y) < threshold) {
+        return (vec2s){0};
+    }
+
+    //printf(VEC2F_FMT"\n", VEC2F_ARG(self->gamecontroller.internal.stick_dirs[sticktype]));
+
+    return (vec2s) {
+        .x = self->gamecontroller.internal.stick_dirs[sticktype].x,
+        .y = self->gamecontroller.internal.stick_dirs[sticktype].y
+    };
+}
+
+INTERNAL void window__internal__joystick_init(window_t *const self)
+{
+    const i32 numjoys = SDL_NumJoysticks();
+    if (!numjoys) {
+        self->gamecontroller.internal.handle = NULL;
+        return;
+    };
+
+    self->gamecontroller.internal.handle = SDL_GameControllerOpen(0);
+    logging("game controller detected: %s\n", SDL_GameControllerName(self->gamecontroller.internal.handle));
+}
+
+INTERNAL void window__internal__joystick_destroy(window_t *const self)
+{
+    ASSERT(self->gamecontroller.internal.handle);
+    SDL_GameControllerClose(self->gamecontroller.internal.handle);
+    memset(&self->gamecontroller, 0, sizeof(self->gamecontroller));
 }
 
 #endif 
