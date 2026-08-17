@@ -21,18 +21,21 @@ struct behaviorautomata_state_t {
     u16                             state_type;
     behaviorautomata_ctx_t          ctx;
     void (*start)(behaviorautomata_t *const, behaviorautomata_ctx_t *const ctx);
-    void (*update)(behaviorautomata_t *const, const commandqueue_t * const queue, behaviorautomata_ctx_t * const ctx, const f32 delta_time);
+    void (*update)(behaviorautomata_t *const, const commandqueue_t *const queue, behaviorautomata_ctx_t *const ctx, const f32 delta_time);
     void (*exit)(behaviorautomata_t *const, behaviorautomata_ctx_t *const ctx);
 };
 
 struct behaviorautomata_t {
     ds_stack_t stack;
+    struct {
+        u16 prevstate;
+    } internal;
 };
 
-behaviorautomata_t          behaviorautomata_init(arena_t * const arena);
-void                        behaviorautomata_pop_state(behaviorautomata_t * const self);
-void                        behaviorautomata_push_state(behaviorautomata_t * const self, behaviorautomata_state_t state);
-void                        behaviorautomata_update(behaviorautomata_t * const self, const commandqueue_t * const queue, const f32 delta_time);
+behaviorautomata_t          behaviorautomata_init(arena_t *const arena);
+void                        behaviorautomata_pop_state(behaviorautomata_t *const self);
+void                        behaviorautomata_push_state(behaviorautomata_t *const self, const behaviorautomata_state_t state);
+void                        behaviorautomata_update(behaviorautomata_t *const self, const commandqueue_t *const queue, const f32 delta_time);
 
 #ifndef IGNORE_BEHAVIORAUTOMATA_IMPLEMENTATION
 
@@ -41,6 +44,9 @@ behaviorautomata_t behaviorautomata_init(arena_t * const arena)
     ASSERT(arena);
     return (behaviorautomata_t){
         .stack = stack_init(10, behaviorautomata_state_t, arena),
+        .internal = {
+            .prevstate = 0
+        }
     };
 }
 
@@ -67,11 +73,15 @@ void behaviorautomata_pop_state(behaviorautomata_t * const self) {
     if (stack_is_empty(&self->stack)) return;
 
     behaviorautomata_state_t *state = stack_peek(&self->stack);
+
+    self->internal.prevstate = state->state_type;
+
     stack_pop(&self->stack);
     state->exit(self, &state->ctx);
 
     state = stack_peek(&self->stack);
     state->start(self, &state->ctx);
+
 }
 
 void behaviorautomata_update(behaviorautomata_t * const self, const commandqueue_t * const queue, const f32 delta_time) {
@@ -82,4 +92,10 @@ void behaviorautomata_update(behaviorautomata_t * const self, const commandqueue
 
     //logging("running state = %i", state->state_type);
 }
+
+u16 behaviorautomata_get_prevstate(behaviorautomata_t *const self)
+{
+    return self->internal.prevstate;
+}
+
 #endif
