@@ -16,7 +16,7 @@
 typedef struct application_t {
 
     struct {
-        char                *title;
+        str_t               title;
         u32                 width;
         u32                 height;
         f32                 aspect_ratio;
@@ -105,7 +105,7 @@ void application_run(application_t *const app)
 #endif
 
     if (app == NULL)                eprint("application argument is null");
-    if (!app->window.title)         eprint("application title is missing ");
+    if (!app->window.title.len)     eprint("application title is missing ");
     if (app->window.width <= 0)     eprint("provide a proper width to the application");
     if (app->window.height <= 0)    eprint("provide a proper height to the application");
     if (!app->init)                 eprint("application init funciton is missing");
@@ -129,7 +129,7 @@ void application_run(application_t *const app)
     app->context.base_dir = __get_base_dir();
 
     window_t *win = window_init(
-            app->window.title, 
+            app->window.title.data, 
             app->window.width, 
             app->window.height, 
             SDL_FLAGS);

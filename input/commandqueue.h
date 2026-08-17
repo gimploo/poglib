@@ -210,8 +210,8 @@ INTERNAL bool commandqueue__internal_check_joystick_axis_changed_from_rest(const
 bool commandqueue__internal_check_joystickbutton_trigger(const commandinputbinding_t input)
 {
     const SDL_GameControllerButton button = input.sdl_gamecontroller.button;
-    if ((u8)button >= ARRAY_LEN(global_window->gamecontroller.button.state)) return false;
-    return global_window->gamecontroller.button.state[button];
+    if ((u8)button >= ARRAY_LEN(global_window->gamecontroller.button.pressed)) return false;
+    return global_window->gamecontroller.button.pressed[button];
 }
 
 

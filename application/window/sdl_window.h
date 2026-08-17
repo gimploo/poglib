@@ -104,7 +104,8 @@ typedef struct window_t {
         } trigger;
 
         struct {
-            bool state[SDL_CONTROLLER_BUTTON_MAX];
+            bool pressed[SDL_CONTROLLER_BUTTON_MAX];
+            bool justpressed[SDL_CONTROLLER_BUTTON_MAX];
         } button;
 
         struct {
@@ -897,16 +898,21 @@ void window_poll_input_events(window_t *const window)
 
             case SDL_CONTROLLERBUTTONDOWN: {
                 const u8 button = event->cbutton.button;
-                ASSERT(button < ARRAY_LEN(window->gamecontroller.button.state));
-                window->gamecontroller.button.state[button]         = true;
+                ASSERT(button < ARRAY_LEN(window->gamecontroller.button.pressed));
+
+                if (window->gamecontroller.button.pressed[button])  window->gamecontroller.button.justpressed[button] = false;
+                else                                                window->gamecontroller.button.justpressed[button] = true;
+
+                window->gamecontroller.button.pressed[button] = true;
                 //const char* buttonstring = SDL_GameControllerGetStringForButton(button);
                 //printf("button pressed = %s\n", buttonstring);
             } break;
 
             case SDL_CONTROLLERBUTTONUP: {
                 const u8 button = event->cbutton.button;
-                ASSERT(button < ARRAY_LEN(window->gamecontroller.button.state));
-                window->gamecontroller.button.state[button] = false;
+                ASSERT(button < ARRAY_LEN(window->gamecontroller.button.pressed));
+                window->gamecontroller.button.pressed[button] = false;
+                window->gamecontroller.button.justpressed[button] = false;
                 //const char* buttonstring = SDL_GameControllerGetStringForButton(button);
                 //printf("button released = %s\n", buttonstring);
             } break;
@@ -1072,6 +1078,7 @@ void window_flush_transient_data(window_t *const self)
     self->mouse.wheel.state = SDL_MOUSEWHEEL_NONE;
 
     memset(&self->keyboard.just_pressed, 0, sizeof(self->keyboard.just_pressed));
+    memset(&self->gamecontroller.button.justpressed, 0, sizeof(self->gamecontroller.button.justpressed));
 }
 
 void window_lock_mouse(const window_t *const self, const bool lock_mouse)
@@ -1084,6 +1091,16 @@ void window_lock_mouse(const window_t *const self, const bool lock_mouse)
 bool window_gamecontroller_is_connected(const window_t *const self)
 {
     return self->gamecontroller.internal.handle != NULL;
+}
+
+bool window_gamecontroller_is_button_pressed(const window_t *const self, const SDL_GameControllerButton button)
+{
+    return self->gamecontroller.button.pressed[button];
+}
+
+bool window_gamecontroller_is_button_justpressed(const window_t *const self, const SDL_GameControllerButton button)
+{
+    return self->gamecontroller.button.justpressed[button];
 }
 
 vec2s window_gamecontroller_get_controller_axis(const window_t *const self, const sdl_gamecontroller_sticktype sticktype)
