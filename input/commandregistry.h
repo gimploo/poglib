@@ -58,7 +58,10 @@ typedef struct {
             SDL_GameControllerAxis data;
         } axis;
 
-        SDL_GameControllerButton  button;
+        struct {
+            commandinput_trigger_type   trigger;
+            SDL_GameControllerButton    data;
+        } button;
 
     } sdl_gamecontroller;
 

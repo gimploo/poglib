@@ -7,14 +7,12 @@
 
 #define MAX_ALLOWED_COMMANDS_PER_FRAME 6
 
-typedef u16 command_t;
-
 typedef struct {
 
     commandregistry_t registry;
 
     struct {
-        u16 bitmask;
+        u32 bitmask;
     } internal;
 
 } commandqueue_t;
@@ -23,14 +21,15 @@ typedef struct {
 commandqueue_t      commandqueue(const commandregistry_t registry);
 void                commandqueue_sync(commandqueue_t * const self);
 void                commandqueue_update_registry(commandqueue_t *const self, const commandregistry_t registry);
-u16                 commandqueue_get_commands_as_bitmask(const commandqueue_t * const self);
+u32                 commandqueue_get_commands_as_bitmask(const commandqueue_t * const self);
 void                commandqueue_flush(commandqueue_t * const self);
 
 
 #ifndef IGNORE_COMMAND_BUFFER_IMPLEMENTATION
 
 bool commandqueue__internal_check_mousebutton_trigger(const commandinputbinding_t input);
-bool commandqueue__internal_check_joystickbutton_trigger(const commandinputbinding_t input);
+bool commandqueue__internal_check_joystickbutton_justpressed(const commandinputbinding_t input);
+bool commandqueue__internal_check_joystickbutton_pressed(const commandinputbinding_t input);
 bool commandqueue__internal_check_joystick_axis_changed_from_rest(const commandinputbinding_t input);
 
 commandqueue_t commandqueue(const commandregistry_t registry) 
@@ -44,9 +43,9 @@ commandqueue_t commandqueue(const commandregistry_t registry)
 }
 
 
-void cq__internal_print_u16_bitmask(uint16_t mask) {
-    for (int i = 15; i >= 0; i--) {
-        uint16_t bit = (mask >> i) & 1;
+void cq__internal_print_u32_bitmask(u32 mask) {
+    for (int i = 31; i >= 0; i--) {
+        const u32 bit = (mask >> i) & 1;
         printf("%u", bit);
         if (i % 4 == 0 && i != 0) printf(" "); // Add spacing for readability
     }
@@ -117,15 +116,17 @@ void commandqueue_sync(commandqueue_t * const self)
 
         if (binding.type & COMMANDINPUTKEY_TYPE_JOYSTICK) {
 
-            if (binding.sdl_gamecontroller.type == COMMANDINPUT_CONTROLLER_BUTTON && commandqueue__internal_check_joystickbutton_trigger(binding))
-                self->internal.bitmask |= (1 << command_type);
+            if (binding.sdl_gamecontroller.type == COMMANDINPUT_CONTROLLER_BUTTON) {
+                if (binding.sdl_gamecontroller.button.trigger == COMMANDINPUT_TRIGGER_TYPE_PRESSED && commandqueue__internal_check_joystickbutton_pressed(binding))
+                    self->internal.bitmask |= (1 << command_type);
+                else if (binding.sdl_gamecontroller.button.trigger == COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED && commandqueue__internal_check_joystickbutton_justpressed(binding))
+                    self->internal.bitmask |= (1 << command_type);
+            }
 
             if (binding.sdl_gamecontroller.type == COMMANDINPUT_CONTROLLER_AXIS && commandqueue__internal_check_joystick_axis_changed_from_rest(binding)) 
                 self->internal.bitmask |= (1 << command_type);
-
-            //printf("JS Tracked %i\n", command_type);
         }
-        //printf("Bitmask: ");cq__internal_print_u16_bitmask(self->internal.bitmask);
+        //printf("Bitmask: ");cq__internal_print_u32_bitmask(self->internal.bitmask);
     }
     //printf("-------------------- END BATCH --------------------------------\n");
 }
@@ -207,15 +208,22 @@ INTERNAL bool commandqueue__internal_check_joystick_axis_changed_from_rest(const
 }
 
 
-bool commandqueue__internal_check_joystickbutton_trigger(const commandinputbinding_t input)
+INTERNAL bool commandqueue__internal_check_joystickbutton_pressed(const commandinputbinding_t input)
 {
-    const SDL_GameControllerButton button = input.sdl_gamecontroller.button;
+    const SDL_GameControllerButton button = input.sdl_gamecontroller.button.data;
     if ((u8)button >= ARRAY_LEN(global_window->gamecontroller.button.pressed)) return false;
     return global_window->gamecontroller.button.pressed[button];
 }
 
+INTERNAL bool commandqueue__internal_check_joystickbutton_justpressed(const commandinputbinding_t input)
+{
+    const SDL_GameControllerButton button = input.sdl_gamecontroller.button.data;
+    if ((u8)button >= ARRAY_LEN(global_window->gamecontroller.button.justpressed)) return false;
+    return global_window->gamecontroller.button.justpressed[button];
+}
 
-u16 commandqueue_get_commands_as_bitmask(const commandqueue_t *const self) {
+
+u32 commandqueue_get_commands_as_bitmask(const commandqueue_t *const self) {
     ASSERT(self);
     return self->internal.bitmask;
 }

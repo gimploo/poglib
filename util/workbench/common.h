@@ -4,7 +4,20 @@
 #include <poglib/util/glcamera.h>
 #include "poglib/ecs/component/types.h"
 #include "poglib/input/commandregistry.h"
-#include "poglib/physics/jolt-debugrenderer.h"
+#include "poglib/pipeline/render/render_queue.h"
+
+typedef struct {
+    const glshader_t    *const lineshader;
+    JPH_DebugRenderer   *handle;
+    JPH_DrawSettings    settings;
+    renderqueue_t       *renderqueue;
+    struct {
+        matrix4f_t  view;
+        matrix4f_t  projection;
+        f32         aspect_ratio;
+    } frame;
+} jolt_debugrenderer_t;
+
 
 typedef enum WORKBENCH_RESERVED_ENTITY_ID {
 
@@ -31,6 +44,7 @@ typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_SAVE,
     WORKBENCH_ACTION_TYPE_EXPORT_GLB,
     WORKBENCH_ACTION_TYPE_KEYBOARD_SELECT_PLAYER,
+    WORKBENCH_ACTION_TYPE_TOGGLE_JOLT_RENDERER,
     WORKBENCH_ACTION_TYPE_COUNT
 } workbench_action_type;
 
@@ -45,6 +59,7 @@ typedef struct {
 
     bool is_active;
     bool enable_collider;
+    bool disable_joltrenderer;
     bool disable_grid;
 
     struct {
