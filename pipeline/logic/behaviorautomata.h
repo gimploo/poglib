@@ -14,7 +14,7 @@ typedef struct behaviorautomata_state_t behaviorautomata_state_t;
 typedef struct behaviorautomata_ctx_t behaviorautomata_ctx_t;
 
 struct behaviorautomata_ctx_t {
-    void    *payload;
+    void *payload;
 };
 
 struct behaviorautomata_state_t {
@@ -27,9 +27,6 @@ struct behaviorautomata_state_t {
 
 struct behaviorautomata_t {
     ds_stack_t stack;
-    struct {
-        u16 prevstate;
-    } internal;
 };
 
 behaviorautomata_t          behaviorautomata_init(arena_t *const arena);
@@ -44,9 +41,6 @@ behaviorautomata_t behaviorautomata_init(arena_t * const arena)
     ASSERT(arena);
     return (behaviorautomata_t){
         .stack = stack_init(10, behaviorautomata_state_t, arena),
-        .internal = {
-            .prevstate = 0
-        }
     };
 }
 
@@ -74,8 +68,6 @@ void behaviorautomata_pop_state(behaviorautomata_t * const self) {
 
     behaviorautomata_state_t *state = stack_peek(&self->stack);
 
-    self->internal.prevstate = state->state_type;
-
     stack_pop(&self->stack);
     state->exit(self, &state->ctx);
 
@@ -91,11 +83,6 @@ void behaviorautomata_update(behaviorautomata_t * const self, const commandqueue
     state->update(self, queue, &state->ctx, delta_time);
 
     //logging("running state = %i", state->state_type);
-}
-
-u16 behaviorautomata_get_prevstate(behaviorautomata_t *const self)
-{
-    return self->internal.prevstate;
 }
 
 #endif

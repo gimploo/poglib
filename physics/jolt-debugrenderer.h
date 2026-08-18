@@ -123,6 +123,8 @@ void joltdebugrenderer_update(
     const glcamera_t *const camera,
     const f32 aspect_ratio)
 {
+    JPH_DebugRenderer_NextFrame(self->handle);
+
     self->frame.view = glcamera_getview(camera);
     self->frame.projection = glms_perspective(
         radians(45),
@@ -138,7 +140,6 @@ void joltdebugrenderer_render_colliders(
 ) {
     ASSERT(joltphysicssystem);
 
-    JPH_DebugRenderer_NextFrame(self->handle);
     JPH_PhysicsSystem_DrawBodies(
         joltphysicssystem,
         &self->settings,
