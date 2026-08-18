@@ -175,6 +175,7 @@ workbench_t * workbench_init(arena_t *const arena)
 
     workbench_t workbench = {
         .is_active = false,
+        .disable_joltrenderer = false,
         .shader = glshader_init(
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.vs"), 
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.fs"),
@@ -387,6 +388,20 @@ workbench_t * workbench_init(arena_t *const arena)
                     .sdl_keyboard_key = {
                         .main = SDL_SCANCODE_P,
                         .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
+                    }
+                },
+                [WORKBENCH_ACTION_TYPE_TOGGLE_JOLT_RENDERER] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD | COMMANDINPUTKEY_TYPE_JOYSTICK,
+                    .sdl_keyboard_key = {
+                        .main = SDL_SCANCODE_J,
+                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
+                    },
+                    .sdl_gamecontroller = {
+                        .type = COMMANDINPUT_CONTROLLER_BUTTON,
+                        .button = {
+                            .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED,
+                            .data = SDL_CONTROLLER_BUTTON_BACK,
+                        }
                     }
                 }
             },
@@ -664,6 +679,12 @@ void workbench_render_marker(
 
 void workbench_update(const f32 dt)
 {
+    joltdebugrenderer_update(
+        global_workbench->joltrenderer,
+        ecs_get_active_camera(global_ecs),
+        global_engine->handle.app->window.aspect_ratio
+    );
+
     if (!global_workbench->is_active) return;
 
     const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
@@ -678,9 +699,12 @@ void workbench_update(const f32 dt)
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_SAVE))                            workbench_editor_save_to_file(global_workbench, global_ecs);
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_EXPORT_GLB))                      workbench_editor_export_glb(global_ecs);
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_SELECT_PLAYER))          workbench_editor_select_player();
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_TOGGLE_JOLT_RENDERER)) {
+        global_workbench->disable_joltrenderer = !global_workbench->disable_joltrenderer;
+        logging("Joltrenderer `%s`", global_workbench->disable_joltrenderer ? "disabled" : "enabled");
+    }
 
     workbench_editor_update();
-
 }
 
 
@@ -719,10 +743,12 @@ void workbench__internal__show_colliders(workbench_t *const self)
     ASSERT(global_engine);
     ASSERT(global_joltphysics_instance);
 
-    joltdebugrenderer_render_colliders(
-        self->joltrenderer,
-        global_joltphysics_instance->physics_system
-    );
+    if (!self->disable_joltrenderer)
+        joltdebugrenderer_render_colliders(
+            self->joltrenderer,
+            global_joltphysics_instance->physics_system
+        );
 
+    self->enable_collider = !self->disable_joltrenderer && self->enable_collider;
 }
 

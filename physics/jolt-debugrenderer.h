@@ -2,19 +2,7 @@
 #include "poglib/pipeline/render/render_queue.h"
 #include "poglib/util/glcamera.h"
 #include <poglib/external/joltc/include/joltc.h>
-
-typedef struct {
-    const glshader_t    *const lineshader;
-    JPH_DebugRenderer   *handle;
-    JPH_DrawSettings    settings;
-    renderqueue_t       *renderqueue;
-    struct {
-        matrix4f_t  view;
-        matrix4f_t  projection;
-        f32         aspect_ratio;
-    } frame;
-} jolt_debugrenderer_t;
-
+#include <poglib/util/workbench/common.h>
 
 INTERNAL vec4s jph_color_to_vec4s(const JPH_Color c)
 {
@@ -27,6 +15,8 @@ INTERNAL vec4s jph_color_to_vec4s(const JPH_Color c)
 
 INTERNAL void joltdebugrenderer_draw__internal__triangle_callback(void *user_data, const JPH_RVec3 *v1, const JPH_RVec3 *v2, const JPH_RVec3 *v3, const JPH_Color color, const JPH_DebugRenderer_CastShadow cast_shadow)
 {
+    if (global_workbench->disable_joltrenderer) return;
+
     jolt_debugrenderer_t *const ctx = user_data;
 
     renderqueue_pass_command(
@@ -60,6 +50,8 @@ INTERNAL void joltdebugrenderer_draw__internal__triangle_callback(void *user_dat
 
 INTERNAL void joltdebugrenderer_draw__internal__line_callback(void *const user_data, const JPH_RVec3 *const from, const JPH_RVec3 *const to, const JPH_Color color)
 {
+    if (global_workbench->disable_joltrenderer) return;
+
     jolt_debugrenderer_t *const ctx = user_data;
     renderqueue_pass_command(
         ctx->renderqueue,
@@ -90,6 +82,7 @@ INTERNAL void joltdebugrenderer_draw__internal__line_callback(void *const user_d
 
 INTERNAL void joltdebugrenderer_draw__internal__text_callback(void *user_data, const JPH_RVec3 *position, const char *str, JPH_Color color, float height)
 {
+    if (global_workbench->disable_joltrenderer) return;
     eprint("not implemented");
 }
 
