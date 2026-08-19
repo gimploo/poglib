@@ -274,20 +274,20 @@ void gui__internal_update_state(gui_t *gui, const ui_config_t config)
     if (config.composition.traits & UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG) {
 
         if (is_ui_clicked) {
+            window_lock_mouse(global_window, true);
             gui->internal.mouse_lock_on_ui.ui_id = config.internal.id;
         }
 
         if (gui->internal.mouse_lock_on_ui.ui_id == config.internal.id) {
-            i32 rel = global_window->mouse.rel.x;
-            const f32 prev_val = *(f32 *)config.binding.ref;
+            const f32 rel = (f32)global_window->mouse.rel.x;
             {
                 if (config.binding.invert)   *((f32 *)config.binding.ref) -= (rel / 10.f);
                 else                         *((f32 *)config.binding.ref) += (rel / 10.f);
             }
-            const f32 new_val = *(f32 *)config.binding.ref;
         }
 
         if (gui->internal.mouse_lock_on_ui.ui_id && window_mouse_button_is_released(global_window, SDL_MOUSEBUTTON_LEFT)) {
+            window_lock_mouse(global_window, false);
             gui->internal.mouse_lock_on_ui.last_mouseclick_released_ui_id = gui->internal.mouse_lock_on_ui.ui_id;
             gui->internal.mouse_lock_on_ui.ui_id = 0;
         }

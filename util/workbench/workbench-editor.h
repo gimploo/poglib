@@ -503,19 +503,19 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
         //NOTE: X axis
         {
             .start  = { entitypos.x, entitypos.y, entitypos.z },
-            .end    = { entitypos.x * axis_length, entitypos.y, entitypos.z },
+            .end    = { entitypos.x + axis_length, entitypos.y, entitypos.z },
             .color  = {1.0f, 0.0f, 0.0f, 1.0f},
         },
         //NOTE: Y axis
         {
             .start  = { entitypos.x, entitypos.y, entitypos.z },
-            .end    = { entitypos.x, entitypos.y * axis_length, entitypos.z },
+            .end    = { entitypos.x, entitypos.y + axis_length, entitypos.z },
             .color  = {0.0f, 1.0f, 0.0f, 1.0f},
         },
         //NOTE: Z axis
         {
             .start  = { entitypos.x, entitypos.y, entitypos.z },
-            .end    = { entitypos.x, entitypos.y, entitypos.z * axis_length },
+            .end    = { entitypos.x, entitypos.y, entitypos.z + axis_length },
             .color  = {0.0f, 0.0f, 1.0f, 1.0f},
         },
     };
