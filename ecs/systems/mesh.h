@@ -88,7 +88,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                     .translation = (vec4f_t) { transform->position.x, transform->position.y, transform->position.z, 0.f },
                     .scale = (vec4f_t) { transform->scale.x, transform->scale.y,  transform->scale.z,  0.f },
                     .orientation = *(vec4f_t *)&transform->orientation,
-                    .color = is_editor_selected ? COLOR_RED : COLOR_BIEGE,
+                    .color = is_editor_selected ? COLOR_RED : material->color,
                     .uv = uv,
                 },
                 .size = sizeof(rendercommand_instance_primitive_mesh_t)

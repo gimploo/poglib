@@ -1128,7 +1128,7 @@ INTERNAL void window__internal__joystick_init(window_t *const self)
     };
 
     self->gamecontroller.internal.handle = SDL_GameControllerOpen(0);
-    logging("game controller detected: %s\n", SDL_GameControllerName(self->gamecontroller.internal.handle));
+    logging("game controller detected: %s", SDL_GameControllerName(self->gamecontroller.internal.handle));
 }
 
 INTERNAL void window__internal__joystick_destroy(window_t *const self)

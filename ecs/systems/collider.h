@@ -35,27 +35,32 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
                 {
                     const JPH_GroundState ground = JPH_CharacterBase_GetGroundState((JPH_CharacterBase *)collider->internal.kinematic_body);
                     if (ground != JPH_GroundState_OnGround)     transform->velocity.y += -9.81f * APPLICATION_UPDATE_FIXED_TIME_STEP;
-                    else                                        transform->velocity.y = 0.f;
+                    else                                        transform->velocity.y = 0.0f;
                 }
 
-                //NOTE: It was initially recommended to use JPH_CharacterVirtualExtendedUpdate to handle gravity but there
-                //are so many unknowns in that its better not tackling them now but later.
 
                 JPH_CharacterVirtual_SetLinearVelocity(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->velocity);
-                JPH_CharacterVirtual_Update(
-                    collider->internal.kinematic_body, 
-                    APPLICATION_UPDATE_FIXED_TIME_STEP, 
-                    collider->object_layer_type,
-                    global_joltphysics_instance->physics_system,
-                    NULL,
-                    NULL
+
+                // 3. Replaces both your manual gravity accumulation and standard Update()
+                JPH_CharacterVirtual_ExtendedUpdate(
+                        collider->internal.kinematic_body,
+                        APPLICATION_UPDATE_FIXED_TIME_STEP,
+                        &(JPH_ExtendedUpdateSettings){
+                            .stickToFloorStepDown = { 0.f, -0.5f, 0.0f }
+                        },
+                        collider->object_layer_type,
+                        global_joltphysics_instance->physics_system,
+                        NULL,
+                        NULL
                 );
+
+                //NOTE: not sure whether we need this, but keeping just incase if we would want this in the future
+                //JPH_CharacterVirtual_GetLinearVelocity(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->velocity);
                 JPH_CharacterVirtual_GetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&collider->internal.position);
                 JPH_CharacterVirtual_GetRotation(collider->internal.kinematic_body, (JPH_Quat *)&collider->internal.orientation);
 
                 transform->orientation  = collider->internal.orientation;
                 transform->position     = collider->internal.position;
-
             } break;
 
             case JPH_MotionType_Dynamic:
