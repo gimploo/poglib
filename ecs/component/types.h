@@ -109,6 +109,7 @@ struct ecs_component_material_t {
         u32 count;
         u32 asset_ids[ECS_COMPONENT_MATERIAL_TEXTURE_MAX_COUNT];
     } textures;
+    vec4s color;
     struct {
         gluniforms_t uniform_values;
     } internal;

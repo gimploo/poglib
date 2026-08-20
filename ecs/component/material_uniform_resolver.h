@@ -143,7 +143,7 @@ INTERNAL void ecs_material_resolve_per_mesh_uniforms(
 
     if (glshader_uniform_is_support(shader, ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_MODEL_BONES])) {
         out_uniforms->data[out_uniforms->count].name              = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_MODEL_BONES];
-        out_uniforms->data[out_uniforms->count].value.mat4s.count = model->transforms.data[mesh_idx].len;
+        out_uniforms->data[out_uniforms->count].value.mat4s.count = (u32)model->transforms.data[mesh_idx].len;
         out_uniforms->data[out_uniforms->count].value.mat4s.data  = (matrix4f_t *)model->transforms.data[mesh_idx].data;
         out_uniforms->count++;
     }
