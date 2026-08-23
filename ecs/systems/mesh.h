@@ -36,7 +36,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             entry->entity_id, 
             ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM | ECS_CMP_SPRITE);
 
-        const ecs_component_material_t *material = view.entity_cmp_data[ECS_CMP_MATERIAL_IDX];
+        ecs_component_material_t *material = view.entity_cmp_data[ECS_CMP_MATERIAL_IDX];
         ASSERT(material);
 
         const ecs_component_transform_t *transform = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
@@ -76,6 +76,11 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 .type = GL_TEXTURE_TYPE_NORMAL,
                 .source.normal_texture = texture
             };
+        }
+
+        //NOTE: backwards compatabitlity for color in material
+        {
+            material->color = material->color.a == 0.f ? COLOR_WHITE : material->color;
         }
 
         const rendercommand_t command = {
