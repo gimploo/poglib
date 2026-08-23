@@ -687,7 +687,7 @@ void workbench_update(const f32 dt)
 
     if (!global_workbench->is_active) return;
 
-    const u32 bitmask = commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue);
+    const u32 bitmask = commandqueue_get_bitmask(&global_engine->systems.commandqueue);
 
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_ENTITY_SELECTION))          workbench_editor_select_closest_entity();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_MOUSE_KEYBOARD_UNSELECT_ENTITY))  workbench_editor_savechanges();

@@ -21,7 +21,7 @@ typedef struct {
 commandqueue_t      commandqueue(const commandregistry_t registry);
 void                commandqueue_sync(commandqueue_t * const self);
 void                commandqueue_update_registry(commandqueue_t *const self, const commandregistry_t registry);
-u32                 commandqueue_get_commands_as_bitmask(const commandqueue_t * const self);
+u32                 commandqueue_get_bitmask(const commandqueue_t * const self);
 void                commandqueue_flush(commandqueue_t * const self);
 
 
@@ -223,7 +223,7 @@ INTERNAL bool commandqueue__internal_check_joystickbutton_justpressed(const comm
 }
 
 
-u32 commandqueue_get_commands_as_bitmask(const commandqueue_t *const self) {
+u32 commandqueue_get_bitmask(const commandqueue_t *const self) {
     ASSERT(self);
     return self->internal.bitmask;
 }

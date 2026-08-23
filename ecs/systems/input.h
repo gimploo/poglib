@@ -50,7 +50,7 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
 
         input_cmp->input_behavior(
             &input_cmp->internal.state, 
-            commandqueue_get_commands_as_bitmask(&global_engine->systems.commandqueue),
+            commandqueue_get_bitmask(&global_engine->systems.commandqueue),
             APPLICATION_UPDATE_FIXED_TIME_STEP
         );
     }

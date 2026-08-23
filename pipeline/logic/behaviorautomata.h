@@ -76,7 +76,7 @@ void behaviorautomata_pop_state(behaviorautomata_t * const self) {
 
 }
 
-void behaviorautomata_update(behaviorautomata_t * const self, const commandqueue_t * const queue, const f32 delta_time) {
+void behaviorautomata_update(behaviorautomata_t *const self, const commandqueue_t *const queue, const f32 delta_time) {
     if (!self->stack.len) return;
 
     behaviorautomata_state_t *state = stack_peek(&self->stack);
