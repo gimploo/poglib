@@ -99,15 +99,17 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     ? collider->dim.mesh.idx.count / 3 
                     : vtx_count / 3;
 
-                vec3f_t *scaled_vtx = arena_reserve(self->arena, vtx_count * sizeof(vec3f_t));
-                for (u32 i = 0; i < vtx_count; i++) {
+                vec3f_t *const scaled_vtx = arena_reserve(self->arena, vtx_count * sizeof(vec3f_t));
+                for (u32 i = 0; i < vtx_count; i++)
+                {
                     scaled_vtx[i].x = collider->dim.mesh.vtx.data[i].x * collider->internal.scale.x;
                     scaled_vtx[i].y = collider->dim.mesh.vtx.data[i].y * collider->internal.scale.y;
                     scaled_vtx[i].z = collider->dim.mesh.vtx.data[i].z * collider->internal.scale.z;
                 }
 
                 JPH_IndexedTriangle *const tris = arena_reserve(self->arena, tri_count * sizeof(JPH_IndexedTriangle));
-                for (u32 i = 0; i < tri_count; i++) {
+                for (u32 i = 0; i < tri_count; i++) 
+                {
                     tris[i] = (JPH_IndexedTriangle){
                         .i1 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 0] : i * 3 + 0,
                         .i2 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 1] : i * 3 + 1,
@@ -115,7 +117,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     };
                 }
 
-                JPH_MeshShapeSettings *settings = JPH_MeshShapeSettings_Create2(
+                JPH_MeshShapeSettings *const settings = JPH_MeshShapeSettings_Create2(
                     (const JPH_Vec3 *)scaled_vtx,
                     vtx_count,
                     tris,

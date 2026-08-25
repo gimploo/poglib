@@ -28,20 +28,20 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
             case JPH_MotionType_Kinematic: {
                 ASSERT(collider->internal.kinematic_body);
 
-                JPH_CharacterVirtual_SetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->position);
+                const bool has_changed = !glms_vec3_eqv(transform->position, collider->internal.position);
+                if (has_changed)
+                    JPH_CharacterVirtual_SetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->position);
+
                 JPH_CharacterVirtual_SetRotation(collider->internal.kinematic_body, (JPH_Quat *)&transform->orientation);
 
                 //NOTE: handles gravity on the collider (y axis)
                 {
                     const JPH_GroundState ground = JPH_CharacterBase_GetGroundState((JPH_CharacterBase *)collider->internal.kinematic_body);
-                    if (ground != JPH_GroundState_OnGround)     transform->velocity.y += -9.81f * APPLICATION_UPDATE_FIXED_TIME_STEP;
-                    else                                        transform->velocity.y = 0.0f;
+                    if (ground == JPH_GroundState_OnGround && transform->velocity.y < 0.f)      transform->velocity.y = 0.f;
+                    else if (ground != JPH_GroundState_OnGround)                                transform->velocity.y -= 0.1f;
                 }
 
-
                 JPH_CharacterVirtual_SetLinearVelocity(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->velocity);
-
-                // 3. Replaces both your manual gravity accumulation and standard Update()
                 JPH_CharacterVirtual_ExtendedUpdate(
                         collider->internal.kinematic_body,
                         APPLICATION_UPDATE_FIXED_TIME_STEP,
