@@ -90,9 +90,11 @@ f32 randf32(const f32 min, const f32 max)
 }
 
 typedef struct {
+
     u32     size;
     bool    is_on_heap;
     void    *raw_data;
+
 } buffer_t;
 
 #define buffer(FIXED_CAPACITY)              \
