@@ -5,7 +5,11 @@
 
 typedef struct {
 
-    queue_t queue;
+    struct {
+        buffer_t data;
+        i32 top;
+    } array_buffer;
+
     arena_t *arena;
 
 } colliderbatchqueue_t;
@@ -21,17 +25,28 @@ void                        colliderbatchqueue_upload_to_jolt(colliderbatchqueue
 colliderbatchqueue_t colliderbatchqueue(arena_t *const arena)
 {
     ASSERT(arena);
-    colliderbatchqueue_t result = {0};
-    result.queue = queue_init(10000, ecs_component_collider_t *, arena);
-    result.arena = arena_init(arena, 1 * MB);
-    return result;
+    const u32 buffersize = sizeof(ecs_component_collider_t *) * 10000;
+    return (colliderbatchqueue_t){
+        .array_buffer.data = (buffer_t){
+            .size       = buffersize,
+            .raw_data   = (u8 *)arena_reserve(arena, buffersize)
+        },
+        .array_buffer.top = -1,
+        .arena = arena_init(arena, 1 * MB),
+    };
 }
 
 
 void colliderbatchqueue_add(colliderbatchqueue_t *const self, ecs_component_collider_t *const collider)
 {
     ASSERT(self);
-    queue_put(&self->queue, collider, sizeof(ecs_component_collider_t *));
+    ASSERT(collider);
+
+    memcpy(
+        (ecs_component_collider_t **)self->array_buffer.data.raw_data + ++self->array_buffer.top, 
+        &collider, 
+        sizeof(ecs_component_collider_t *)
+    );
 }
 
 i32 colliderbatchqueue__internal_qsort_compare(const void *const x, const void *const y)
@@ -58,29 +73,31 @@ i32 colliderbatchqueue__internal_qsort_compare(const void *const x, const void *
 
 void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
 {
-    if (!self->queue.len) return;
+    if (self->array_buffer.top == -1) return;
 
-    qsort(self->queue.__data, self->queue.len, sizeof(ecs_component_collider_t *), colliderbatchqueue__internal_qsort_compare);
+    qsort(self->array_buffer.data.raw_data, self->array_buffer.top + 1, sizeof(ecs_component_collider_t *), colliderbatchqueue__internal_qsort_compare);
 
     JPH_Shape *shape                        = NULL;
     JPH_BodyCreationSettings *body_settings = NULL;
     JPH_CharacterVirtualSettings settings   = {0};
     JPH_MotionType prev_motion_type         = JPH_MotionType_None;
 
-    while(!queue_is_empty(&self->queue))
+    for (i32 idx = 0; idx <= self->array_buffer.top; idx++)
     {
-        ecs_component_collider_t *const collider    = queue_get(&self->queue);
+        ecs_component_collider_t *const collider    = ((ecs_component_collider_t **)self->array_buffer.data.raw_data)[idx];
         const bool diff_motion_type                 = prev_motion_type != collider->motion_type;
 
         //NOTE: we club all static motion types together before moving on to other motion types, this way we would
         //know when to optimize the broadphase i.e. after all static types are completely done.
+        //  *   Added logic to run the optimize broadphase if the last remainig item is a static object and no other are left 
+        //      afterwards of a different motion type (edge case)
         const bool optimize_broadphase = (diff_motion_type && prev_motion_type == JPH_MotionType_Static) 
-            || (!self->queue.len && prev_motion_type == JPH_MotionType_Static);
+            || ((idx == self->array_buffer.top) && prev_motion_type == JPH_MotionType_Static);
 
         switch(collider->shape_type)
         {
             case COLLIDER_SHAPE_TYPE_CUBE:
-                shape = (JPH_Shape *)JPH_BoxShape_Create((const JPH_Vec3 *)&collider->dim.cube, JPH_DEFAULT_CONVEX_RADIUS);
+                shape = (JPH_Shape *)JPH_BoxShape_Create((JPH_Vec3 *)&collider->dim.cube, JPH_DEFAULT_CONVEX_RADIUS);
             break;
             case COLLIDER_SHAPE_TYPE_CAPSULE:
                 shape = (JPH_Shape *)JPH_CapsuleShape_Create(collider->dim.capsule.half_height, collider->dim.capsule.radius);
@@ -211,6 +228,12 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
         }
 #endif
         prev_motion_type  = collider->motion_type;
+    }
+
+    //NOTE: reseting array_buffer
+    {
+        self->array_buffer.top = -1;
+        memset(self->array_buffer.data.raw_data, 0, self->array_buffer.data.size);
     }
 
 }

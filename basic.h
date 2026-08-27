@@ -11,7 +11,6 @@
 #include "basic/file.h"
 #include "basic/color.h"
 #include "basic/str.h"
-#include "basic/buffer.h"
 #include "basic/util.h"
 #include "basic/concurrency.h"
 #include "basic/arena.h"
