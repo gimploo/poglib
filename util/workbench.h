@@ -13,6 +13,8 @@ workbench_t *   workbench_init(arena_t * const arena);
 void            workbench_ecs_populate_entities(void);
 void            workbench_update(const f32 dt);
 void            workbench_render(void);
+void                workbench_draw_sphere(const vec3s position, const f32 radius);
+void                workbench_draw_line(const vec3s startpos, const vec3s endpos, const vec4s startcolor, const vec4s endcolor);
 void                workbench_toggle(void);
 void            workbench_destroy(void);
 
@@ -175,7 +177,7 @@ workbench_t * workbench_init(arena_t *const arena)
 
     workbench_t workbench = {
         .is_active = false,
-        .disable_joltrenderer = false,
+        .disable_joltrenderer = true,
         .shader = glshader_init(
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.vs"), 
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.fs"),
@@ -750,5 +752,162 @@ void workbench__internal__show_colliders(workbench_t *const self)
         );
 
     self->enable_collider = !self->disable_joltrenderer && self->enable_collider;
+}
+
+void workbench_draw_sphere(const vec3s position, const f32 radius)
+{
+    const matrix4f_t perspective_projection  = glms_perspective(
+        radians(45), 
+        global_engine->handle.app->window.aspect_ratio, 
+        1.0f, 
+        10000.0f
+    );
+    const assetmanager_t *const assetmanager = &global_engine->systems.assets;
+
+    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_SPHERE);
+    if(!asset) {
+        return;
+    }
+    ASSERT(asset->meshes.count);
+
+    renderqueue_pass_command(
+        &global_engine->systems.renderqueue,
+        (rendercommand_t) {
+            .enable_wireframe = true,
+            .instance = (buffer_t){
+                .raw_data = &(rendercommand_instance_primitive_mesh_t) {
+                    .translation = { position.x, position.y, position.z, 0.f },
+                    .orientation = GLMS_QUAT_IDENTITY_INIT, 
+                    .scale = vec4f(radius),
+                    .color = COLOR_BLUE,
+                },
+                .size = sizeof(rendercommand_instance_primitive_mesh_t)
+            },
+            .vtx = {
+                .type = RENDERCOMMAND_VTX_TYPE_MESH,
+                .data.mesh = asset->meshes.data,
+            },
+            .material = {
+                .texture = {0},
+                .shader = {
+                    .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.mesh_shader_id),
+                    .uniforms = {
+                        .count = 2,
+                        .data = {
+                           [0] = {
+                               .name = str("projection"),
+                               .value = perspective_projection
+                           },
+                           [1] = {
+                               .name = str("view"),
+                               .value = workbench__internal__get_camera_view()
+                           },
+                           [2] = {
+                               .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
+                               .value.vec3 = global_workbench->world_camera.handle->position,
+                           }
+                        }
+                    }
+                }
+            }
+        }
+    );
+}
+
+void workbench_draw_capsule(const vec3s position, const quaternionf_t orientation)
+{
+    const matrix4f_t perspective_projection  = glms_perspective(
+        radians(45), 
+        global_engine->handle.app->window.aspect_ratio, 
+        1.0f, 
+        10000.0f
+    );
+    const assetmanager_t *const assetmanager = &global_engine->systems.assets;
+
+    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAPSULE);
+    if(!asset) {
+        return;
+    }
+    ASSERT(asset->meshes.count);
+
+    renderqueue_pass_command(
+        &global_engine->systems.renderqueue,
+        (rendercommand_t) {
+            .enable_wireframe = true,
+            .instance = (buffer_t){
+                .raw_data = &(rendercommand_instance_primitive_mesh_t) {
+                    .translation = { position.x, position.y, position.z, 0.f },
+                    .orientation = *(vec4s *)&orientation, 
+                    .scale = vec4f(1.f),
+                    .color = COLOR_BLUE,
+                },
+                .size = sizeof(rendercommand_instance_primitive_mesh_t)
+            },
+            .vtx = {
+                .type = RENDERCOMMAND_VTX_TYPE_MESH,
+                .data.mesh = asset->meshes.data,
+            },
+            .material = {
+                .texture = {0},
+                .shader = {
+                    .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.mesh_shader_id),
+                    .uniforms = {
+                        .count = 2,
+                        .data = {
+                           [0] = {
+                               .name = str("projection"),
+                               .value = perspective_projection
+                           },
+                           [1] = {
+                               .name = str("view"),
+                               .value = workbench__internal__get_camera_view()
+                           },
+                           [2] = {
+                               .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
+                               .value.vec3 = global_workbench->world_camera.handle->position,
+                           }
+                        }
+                    }
+                }
+            }
+        }
+    );
+}
+
+
+void workbench_draw_line(const vec3s startpos, const vec3s endpos, const vec4s startcolor, const vec4s endcolor)
+{
+    renderqueue_pass_command(
+        &global_engine->systems.renderqueue, 
+        (rendercommand_t) {
+            .material = {
+                .shader = {
+                    .data = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id),
+                    .uniforms = {
+                        .count = 2,
+                        .data = {
+                            [0] = {
+                                .name = str("projection"),
+                                .value = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f),
+                            },
+                            [1] = {
+                                .name = str("view"),
+                                .value = glcamera_getview(ecs_get_active_camera(global_ecs)),
+                            }
+                        }
+                    }
+                },
+            },
+            .vtx = {
+                .type = RENDERCOMMAND_VTX_TYPE_LINE,
+                .data.line = {
+                    .start  = startpos,
+                    .end    = endpos,
+                    .startcolor  = startcolor,
+                    .endcolor  = endcolor,
+                },
+            }
+        }
+    );
 }
 

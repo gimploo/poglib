@@ -215,15 +215,10 @@ void ecs_componentmanager_add(ecs_componentmanager_t *const self, const u32 enti
 
         ecs_component_poolentry_t *const entry = slot_insert(pool, pool->len, buf.raw_data, ECS_CMP_POOL_HEADER_SIZE + cmp_size);
 
-        switch(cmp_type)
-        {
-            case ECS_CMP_COLLIDER:
-            {
-                ecs_component_collider_t *collider = (ecs_component_collider_t *)entry->entity_cmpdata;
-                collider->internal.entity_id = entity_id;
-                colliderbatchqueue_add(&self->internal.colliderbatch, collider);
-            }
-            break;
+        if (cmp_type == ECS_CMP_COLLIDER) {
+            ecs_component_collider_t *const collider = (ecs_component_collider_t *)entry->entity_cmpdata;
+            collider->internal.entity_id = entity_id;
+            colliderbatchqueue_add(&self->internal.colliderbatch, collider);
         }
     }
 

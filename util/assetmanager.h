@@ -73,6 +73,7 @@ typedef struct {
 INTERNAL void assetmanager__internal_add_asset_meta_data(assetmanager_t *const self, const asset_type type, const u32 asset_id, const str_t filepath1, const str_t filepath2, void *const asset_data);
 INTERNAL void assetmanager__internal_write_uniformlocs_to_file(const hashtable_entry_t *const entry, buffer_t *const buffer);
 INTERNAL void assetmanager__internal__notify(const taskparams_t params);
+INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *const self);
 
 assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
 {
@@ -93,7 +94,7 @@ assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
         .gpu_uploaded_assets    = hashtable_init(ASSET_TYPE_COUNT * MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gpu_asset_t), .type = HT_STORAGE_BY_REFERENCE }, arena),
         .internal = {
             .asset_idx_generator        = GL_MESH_PRIMITIVE_TYPE_COUNT,
-            .asset_staging_queue        = mpsc_queue(arena, MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT),
+            .asset_staging_queue        = mpsc_queue(arena, MAX_ASSETS_ALLOWED_PER_TYPE * 10 * ASSET_TYPE_COUNT),
             .notification_queue         = queue_init(10, asset_loaded_event_t, arena)
         }
     };
@@ -411,6 +412,94 @@ void assetmanager_update(assetmanager_t *const self)
     assetmanager__internal__process_loaded_assets(self);
 }
 
+void assetmanager__internal__upload_sphere_to_gpu(assetmanager_t *const self)
+{
+    const u32 asset_id = GL_MESH_PRIMITIVE_TYPE_SPHERE;
+
+    vao_t vao = vao_init();
+    vao_bind(&vao);
+
+    vbo_t vbo = vbo_init((vbo_config_t) {
+        .usage = GL_STATIC_DRAW,
+        .chunks = {
+            [VBO_STREAM_TYPE_GEOMETRY] = { 
+                .buffer = {
+                    .raw_data = (u8 *)MESH_SPHERE_VTX_NORMAL_UV_BUFFER,
+                    .size = sizeof(MESH_SPHERE_VTX_NORMAL_UV_BUFFER),
+                }, 
+                .index_count = ARRAY_LEN(MESH_SPHERE_EBO_BUFFER)
+            },
+            [VBO_STREAM_TYPE_INSTANCE] = {0},
+        }
+    });
+
+    const ebo_t ebo = ebo_init(&vbo, MESH_SPHERE_EBO_BUFFER, ARRAY_LEN(MESH_SPHERE_EBO_BUFFER));
+
+    //Pos
+    vao_set_attributes(
+        &vao,
+        &vbo, 
+        3, 
+        GL_FLOAT, 
+        false, 
+        sizeof(f32) * 8, 
+        0, 
+        false,
+        VBO_STREAM_TYPE_GEOMETRY
+    );
+
+    //Norm
+    vao_set_attributes(
+        &vao,
+        &vbo, 
+        3, 
+        GL_FLOAT, 
+        false, 
+        sizeof(f32) * 8, 
+        sizeof(f32) * 3, 
+        false,
+        VBO_STREAM_TYPE_GEOMETRY
+    );
+
+    //UV
+    vao_set_attributes(
+        &vao,
+        &vbo, 
+        2, 
+        GL_FLOAT, 
+        false, 
+        sizeof(f32) * 8, 
+        sizeof(f32) * 6, 
+        false,
+        VBO_STREAM_TYPE_GEOMETRY
+    );
+    vao_unbind();
+
+
+    gpu_mesh_t * const gpu_mesh = arena_store(
+        self->arena, 
+        &(gpu_mesh_t) {
+            .vao_id = vao.id,
+            .index_count = ebo.indices_count,
+            .attribute_count = vbo.internals.attribute_index + 1
+        },
+        sizeof(gpu_mesh_t)
+    );
+
+    gpu_asset_t * const gpu_asset = arena_store(
+        self->arena, 
+        &(gpu_asset_t) {
+            .asset_id = asset_id,
+            .meshes = {
+            .count = 1,
+                .data = gpu_mesh
+            }
+        },
+        sizeof(gpu_asset_t));
+
+    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
+}
+
 void assetmanager__internal__upload_cube_to_gpu(assetmanager_t *const self)
 {
     const u32 asset_id = GL_MESH_PRIMITIVE_TYPE_CUBE;
@@ -499,80 +588,6 @@ void assetmanager__internal__upload_cube_to_gpu(assetmanager_t *const self)
     hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
 }
 
-
-void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *const self)
-{
-    const u32 asset_id = GL_MESH_PRIMITIVE_TYPE_CAPSULE;
-
-    vao_t vao = vao_init();
-    vao_bind(&vao);
-
-    vbo_t vbo = vbo_init((vbo_config_t) {
-        .usage = GL_STATIC_DRAW,
-        .chunks = {
-            [VBO_STREAM_TYPE_GEOMETRY] = { 
-                .buffer = {
-                    .raw_data = (u8 *)DEFAULT_CAPSULE_VERTICES_WITH_NORMALS,
-                    .size = sizeof(DEFAULT_CAPSULE_VERTICES_WITH_NORMALS),
-                }, 
-                .index_count = ARRAY_LEN(DEFAULT_CAPSULE_INDICES)
-            },
-            [VBO_STREAM_TYPE_INSTANCE] = {0},
-        }
-    });
-
-    const ebo_t ebo = ebo_init(&vbo, DEFAULT_CAPSULE_INDICES, ARRAY_LEN(DEFAULT_CAPSULE_INDICES));
-
-    //Pos
-    vao_set_attributes(
-        &vao,
-        &vbo, 
-        3, 
-        GL_FLOAT, 
-        false, 
-        sizeof(f32) * 6, 
-        0, 
-        false,
-        VBO_STREAM_TYPE_GEOMETRY
-    );
-
-    //Norm
-    vao_set_attributes(
-        &vao,
-        &vbo, 
-        3, 
-        GL_FLOAT, 
-        false, 
-        sizeof(f32) * 6, 
-        sizeof(f32) * 3, 
-        false,
-        VBO_STREAM_TYPE_GEOMETRY
-    );
-
-    vao_unbind();
-
-    gpu_mesh_t * const gpu_mesh = arena_store(
-        self->arena, 
-        &(gpu_mesh_t) {
-            .vao_id = vao.id,
-            .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_index + 1
-        },
-        sizeof(gpu_mesh_t));
-
-    const gpu_asset_t * const gpu_asset = arena_store(
-        self->arena, 
-        &(gpu_asset_t) {
-            .asset_id = asset_id,
-            .meshes = {
-            .count = 1,
-                .data = gpu_mesh
-            }
-        },
-        sizeof(gpu_asset_t));
-
-    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
-}
 
 
 void assetmanager__internal__upload_cylinder_to_gpu(assetmanager_t *const self)
@@ -728,6 +743,7 @@ void assetmanager_load_all_primitives(assetmanager_t *const self)
     assetmanager__internal__upload_capsule_to_gpu(self);
     assetmanager__internal__upload_cylinder_to_gpu(self);
     assetmanager__internal__upload_camera_model(self);
+    assetmanager__internal__upload_sphere_to_gpu(self);
 
     logging("loaded all primitive shapes");
 }
@@ -943,6 +959,94 @@ wwise_audio_t assetmanager_load_audios_from_wwise(assetmanager_t *const self)
     logging("loaded wwise config");
 
     return result;
+}
+
+INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *const self)
+{
+    const u32 asset_id = GL_MESH_PRIMITIVE_TYPE_CAPSULE;
+
+    vao_t vao = vao_init();
+    vao_bind(&vao);
+
+    vbo_t vbo = vbo_init((vbo_config_t) {
+        .usage = GL_STATIC_DRAW,
+        .chunks = {
+            [VBO_STREAM_TYPE_GEOMETRY] = { 
+                .buffer = {
+                    .raw_data = (u8 *)MESH_CAPSULE_VTX_NORMAL_UV_BUFFER,
+                    .size = sizeof(MESH_CAPSULE_VTX_NORMAL_UV_BUFFER),
+                }, 
+                .index_count = ARRAY_LEN(MESH_CAPSULE_EBO_BUFFER)
+            },
+            [VBO_STREAM_TYPE_INSTANCE] = {0},
+        }
+    });
+
+    const ebo_t ebo = ebo_init(&vbo, MESH_CAPSULE_EBO_BUFFER, ARRAY_LEN(MESH_CAPSULE_EBO_BUFFER));
+
+    //Pos
+    vao_set_attributes(
+        &vao,
+        &vbo, 
+        3, 
+        GL_FLOAT, 
+        false, 
+        sizeof(f32) * 8, 
+        0, 
+        false,
+        VBO_STREAM_TYPE_GEOMETRY
+    );
+
+    //Norm
+    vao_set_attributes(
+        &vao,
+        &vbo, 
+        3, 
+        GL_FLOAT, 
+        false, 
+        sizeof(f32) * 8, 
+        sizeof(f32) * 3, 
+        false,
+        VBO_STREAM_TYPE_GEOMETRY
+    );
+
+    //UV
+    vao_set_attributes(
+        &vao,
+        &vbo, 
+        2, 
+        GL_FLOAT, 
+        false, 
+        sizeof(f32) * 8, 
+        sizeof(f32) * 6, 
+        false,
+        VBO_STREAM_TYPE_GEOMETRY
+    );
+    vao_unbind();
+
+
+    gpu_mesh_t *const gpu_mesh = arena_store(
+        self->arena, 
+        &(gpu_mesh_t) {
+            .vao_id = vao.id,
+            .index_count = ebo.indices_count,
+            .attribute_count = vbo.internals.attribute_index + 1
+        },
+        sizeof(gpu_mesh_t)
+    );
+
+    gpu_asset_t *const gpu_asset = arena_store(
+        self->arena, 
+        &(gpu_asset_t) {
+            .asset_id = asset_id,
+            .meshes = {
+            .count = 1,
+                .data = gpu_mesh
+            }
+        },
+        sizeof(gpu_asset_t));
+
+    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
 }
 
 #endif

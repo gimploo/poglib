@@ -28,10 +28,7 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
             case JPH_MotionType_Kinematic: {
                 ASSERT(collider->internal.kinematic_body);
 
-                const bool has_changed = !glms_vec3_eqv(transform->position, collider->internal.position);
-                if (has_changed)
-                    JPH_CharacterVirtual_SetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->position);
-
+                JPH_CharacterVirtual_SetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->position);
                 JPH_CharacterVirtual_SetRotation(collider->internal.kinematic_body, (JPH_Quat *)&transform->orientation);
 
                 //NOTE: handles gravity on the collider (y axis)

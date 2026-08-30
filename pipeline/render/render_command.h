@@ -19,7 +19,8 @@ typedef struct rendercommand_primitive_line_t rendercommand_primitive_line_t;
 struct rendercommand_primitive_line_t {
     vec3f_t start;
     vec3f_t end;
-    vec4f_t color;
+    vec4f_t startcolor;
+    vec4f_t endcolor;
 };
 
 typedef struct rendercommand_primitive_triangle_t rendercommand_primitive_triangle_t;

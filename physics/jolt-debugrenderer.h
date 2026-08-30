@@ -59,9 +59,6 @@ INTERNAL void joltdebugrenderer_draw__internal__line_callback(void *const user_d
             .vtx = {
                 .type = RENDERCOMMAND_VTX_TYPE_LINE,
                 .data.line = {
-                    .color  = jph_color_to_vec4s(color),
-                    .start  = *(vec3s *)from,
-                    .end    = *(vec3s *)to
                 },
             },
             .material = {

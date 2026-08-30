@@ -365,8 +365,8 @@ INTERNAL void renderqueue__internal__draw_lines(const list_t *const commands)
         ASSERT(buffer.size <= buffersize);
         const rendercommand_t *const command = iter;
         const f32 vtx_buffer[] = {
-            command->vtx.data.line.start.x,  command->vtx.data.line.start.y,  command->vtx.data.line.start.z,  command->vtx.data.line.color.r, command->vtx.data.line.color.g, command->vtx.data.line.color.b, command->vtx.data.line.color.a,
-            command->vtx.data.line.end.x,    command->vtx.data.line.end.y,    command->vtx.data.line.end.z,    command->vtx.data.line.color.r, command->vtx.data.line.color.g, command->vtx.data.line.color.b, command->vtx.data.line.color.a,
+            command->vtx.data.line.start.x,  command->vtx.data.line.start.y,  command->vtx.data.line.start.z,  command->vtx.data.line.startcolor.r, command->vtx.data.line.startcolor.g, command->vtx.data.line.startcolor.b, command->vtx.data.line.startcolor.a,
+            command->vtx.data.line.end.x,    command->vtx.data.line.end.y,    command->vtx.data.line.end.z,    command->vtx.data.line.endcolor.r, command->vtx.data.line.endcolor.g, command->vtx.data.line.endcolor.b, command->vtx.data.line.endcolor.a,
         };
         memcpy((u8 *)buffer.raw_data + buffer.size, vtx_buffer, sizeof(vtx_buffer));
         buffer.size += sizeof(vtx_buffer);
