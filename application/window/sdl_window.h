@@ -1115,7 +1115,7 @@ vec2s window_gamecontroller_get_controller_axis(const window_t *const self, cons
 
     return (vec2s) {
         .x = self->gamecontroller.internal.stick_dirs[sticktype].x,
-        .y = self->gamecontroller.internal.stick_dirs[sticktype].y
+        .y = -1.f * self->gamecontroller.internal.stick_dirs[sticktype].y
     };
 }
 

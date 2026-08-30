@@ -121,6 +121,7 @@ typedef enum glmesh_primitive_type {
     GL_MESH_PRIMITIVE_TYPE_CAPSULE  = 2,
     GL_MESH_PRIMITIVE_TYPE_CAMERA   = 3,
     GL_MESH_PRIMITIVE_TYPE_CYLINDER = 4,
+    GL_MESH_PRIMITIVE_TYPE_SPHERE = 5,
     GL_MESH_PRIMITIVE_TYPE_COUNT
 } glmesh_primitive_type;
 

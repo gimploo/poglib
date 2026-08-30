@@ -104,7 +104,8 @@ queue_t __impl_queue_init(u64 capacity, u64 elem_size, const char *elem_type, ar
     ASSERT(elem_size > 0);
     ASSERT(arena);
 
-    const bool flag = elem_type[strlen(elem_type) - 1] == '*';
+    //TODO: inline values for element size <= 8 i.e sizeof(void *)
+
     return (queue_t) {
         .len = 0 ,
         .__data = arena_reserve(arena, elem_size * capacity),
@@ -112,7 +113,7 @@ queue_t __impl_queue_init(u64 capacity, u64 elem_size, const char *elem_type, ar
         .__end = 0,
         .__capacity = capacity,
         .__elem_size = elem_size,
-        .__are_values_pointers = flag,
+        .__are_values_pointers = sizeof(void *) == elem_size,
         .internal = {
             .arena = arena,
         }
@@ -132,9 +133,9 @@ void queue_put(queue_t *const self, const void *elemaddr, const u64 elemsize)
 {
     if (self == NULL)                   eprint("queue_put: queue argument is null");
     if (elemaddr == NULL)               eprint("queue_put: elem argument is null");
-    if (elemsize != self->__elem_size)  eprint("expected elem_size %li but got %li", self->__elem_size, elemsize);
+    if (elemsize != self->__elem_size)  eprint("expected elem_size %llu but got %llu", self->__elem_size, elemsize);
 
-    if (queue_is_full(self)) eprint("overflow (queue size `%li`)", self->__capacity);
+    if (queue_is_full(self)) eprint("overflow (queue size `%lli`)", self->__capacity);
 
     void *dest = (self->__data + self->__end * self->__elem_size);
     if (self->__are_values_pointers)    memcpy(dest, &elemaddr, sizeof(void *));
@@ -164,9 +165,9 @@ void * __queue_get_value_at_index(const queue_t *queue, const u64 index)
 
 void * __impl_queue_get(queue_t *queue)
 {
-    if (queue == NULL)          eprint("queue_get: queue argument is null");
-    if (queue->__elem_size > 8)   eprint("element size exceeds 8 bytes, use queue_get_in_buffer() instead");
-    if (queue_is_empty(queue))  eprint("underflow");
+    if (queue == NULL)              eprint("queue_get: queue argument is null");
+    if (queue->__elem_size > 8)     eprint("element size exceeds 8 bytes, use queue_get_in_buffer() instead");
+    if (queue_is_empty(queue))      eprint("underflow");
 
     void *elem_pos = NULL;
     if (queue->__are_values_pointers)
@@ -184,7 +185,7 @@ void queue_get_in_buffer(queue_t *queue, buffer_t buffer)
 {
     if (queue == NULL)                      eprint("queue_get: queue argument is null");
     if (queue_is_empty(queue))              eprint("underflow");
-    if (buffer.size < queue->__elem_size)   eprint("buffer is too smol, expected %lu but given %u", queue->__elem_size, buffer.size);
+    if (buffer.size < queue->__elem_size)   eprint("buffer is too smol, expected %llu but given %u", queue->__elem_size, buffer.size);
 
     void *elem_pos = NULL;
     if (queue->__are_values_pointers)

@@ -2,7 +2,6 @@
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <poglib/external/joltc/include/joltc.h>
-#include "./jolt-debugrenderer.h"
 #include "poglib/math/la.h"
 #include "poglib/util/workbench/common.h"
 
@@ -19,18 +18,21 @@ typedef struct {
     bool                is_hit;
     JPH_ShapeCastResult result;
     JPH_Vec3            hitposition;
+    JPH_Vec3            hitnormal;
 
 } joltshapecast_result_t;
 
 //TODO: see if whether the system needs its own arena.
 
 typedef struct {
+
     void *entity_a;
     void *entity_b;
     JPH_BodyID id_a;
     JPH_BodyID id_b;
     //TODO: Add manifold data here if the scene needs the contact point/normal
     vec3 contact_point; 
+
 } joltphysics_collision_event_t;
 
 typedef struct {
@@ -382,6 +384,7 @@ joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t di
 f32 joltphysics_sphere_shapecast__internal__JPH_CastShapeCollectorCallback(void* context, const JPH_ShapeCastResult* result)
 {
     *(JPH_ShapeCastResult *)context = *result;
+    return 0.f;
 }
 
 joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius)
@@ -411,19 +414,33 @@ joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const
     );
 
     JPH_Vec3 hit_position = {0};
+    JPH_Vec3 hit_normal = {0};
     if (hit) 
     {
         JPH_RayCast_GetPointOnRay((JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, result.fraction, &hit_position);
-        const matrix4f_t transform = glms_translate_make(*(vec3s *)&hit_position);
-        JPH_Shape_Draw(
-            castshape,
-            global_workbench->joltrenderer->handle, 
-            (JPH_Mat4 *)&transform,
-            &(JPH_Vec3){ 1.0f, 1.0f, 1.0f }, 
-            0x00ff00ff, //hit ? 0x00ff00ff : 0xff0000ff, 
-            false, 
-            false
-        );
+
+        const JPH_BodyLockInterface *lock = JPH_PhysicsSystem_GetBodyLockInterface(global_joltphysics_instance->physics_system);
+        JPH_BodyLockMultiRead* multireadlock = JPH_BodyLockInterface_LockMultiRead(lock, (JPH_BodyID[]) { result.bodyID2 }, 1);
+        {
+            const JPH_Body *body = JPH_BodyLockMultiRead_GetBody(multireadlock, 0);
+            ASSERT(body);
+            JPH_Body_GetWorldSpaceSurfaceNormal(body, result.subShapeID2, &hit_position, &hit_normal);
+        }
+        JPH_BodyLockMultiRead_Destroy(multireadlock);
+
+        if (!global_workbench->disable_joltrenderer)
+        {
+            const matrix4f_t transform = glms_translate_make(*(vec3s *)&hit_position);
+            JPH_Shape_Draw(
+                castshape,
+                global_workbench->joltrenderer->handle, 
+                (JPH_Mat4 *)&transform,
+                &(JPH_Vec3){ 1.0f, 1.0f, 1.0f }, 
+                0x00ff00ff,
+                false, 
+                false
+            );
+        }
     }
     JPH_Shape_Destroy(castshape);
 
@@ -431,6 +448,7 @@ joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const
         .is_hit = hit,
         .result = result,
         .hitposition = hit_position,
+        .hitnormal = hit_normal,
     };
 }
 
