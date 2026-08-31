@@ -3,6 +3,11 @@
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
 
+//TODO: i dont think its appropriate to have to always manually apply velocity 
+//to transform every time rather have it be done here instead. Last time i tried
+//it broke the game so lets rethink or maybe in a future game we can think to 
+//change this
+
 void ecs_system_transfrom__internal_source_manual(
         ecs_component_transform_t *const transform,
         ecs_component_input_t *const input
