@@ -81,8 +81,6 @@ void behaviorautomata_update(behaviorautomata_t *const self, const commandqueue_
 
     behaviorautomata_state_t *state = stack_peek(&self->stack);
     state->update(self, queue, &state->ctx, delta_time);
-
-    //logging("running state = %i", state->state_type);
 }
 
 #endif

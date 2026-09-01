@@ -362,6 +362,7 @@ INTERNAL void assetmanager__internal__process_loaded_assets(assetmanager_t *cons
 
         if (!ASSET_ASYNC_LOADING_SUPPORT[task->type]) continue;
 
+        //logging("processing asset type '%i' ...", task->type);
         switch(task->type)
         {
             case ASSET_TYPE_MODEL:

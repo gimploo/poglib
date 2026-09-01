@@ -13,7 +13,7 @@ workbench_t *   workbench_init(arena_t * const arena);
 void            workbench_ecs_populate_entities(void);
 void            workbench_update(const f32 dt);
 void            workbench_render(void);
-void                workbench_draw_sphere(const vec3s position, const f32 radius);
+void                workbench_draw_sphere(const vec3s position, const f32 radius, const vec4s color);
 void                workbench_draw_line(const vec3s startpos, const vec3s endpos, const vec4s startcolor, const vec4s endcolor);
 void                workbench_toggle(void);
 void            workbench_destroy(void);
@@ -218,7 +218,7 @@ workbench_t * workbench_init(arena_t *const arena)
 #endif
                 str(POGLIB_ROOT_DIR"/pipeline/render/shader/instance-frag.glsl"),
                 (gluniform_registry_t){ 
-                    .count = 2,
+                    .count = 3,
                     .data = {
                         [0] = {
                             .name = str_lit("projection"),
@@ -229,9 +229,13 @@ workbench_t * workbench_init(arena_t *const arena)
                             .type = GL_UNIFORM_TYPE_MATRIX4F
                         },
                         [2] = {
+                            .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_TEXTURE_AVAILABILITY],
+                            .type = GL_UNIFORM_TYPE_BOOL
+                        },
+                        [3] = {
                             .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
                             .type = GL_UNIFORM_TYPE_VEC3F
-                        }
+                        },
                     }
                 }
             ),
@@ -581,7 +585,7 @@ void workbench_render_camera(
             .shader = {
                 .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.mesh_shader_id),
                 .uniforms = {
-                    .count = 2,
+                    .count = 3,
                     .data = {
                        [0] = {
                            .name = str("projection"),
@@ -592,6 +596,10 @@ void workbench_render_camera(
                            .value = workbench__internal__get_camera_view()
                        },
                        [2] = {
+                           .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_TEXTURE_AVAILABILITY],
+                           .value.boolean = false,
+                       },
+                       [3] = {
                            .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
                            .value.vec3 = global_workbench->world_camera.handle->position,
                        }
@@ -656,7 +664,7 @@ void workbench_render_marker(
             .shader = {
                 .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, self->primitives.mesh_shader_id),
                 .uniforms = {
-                    .count = 2,
+                    .count = 3,
                     .data = {
                        [0] = {
                            .name = str("projection"),
@@ -667,6 +675,10 @@ void workbench_render_marker(
                            .value = workbench__internal__get_camera_view()
                        },
                        [2] = {
+                           .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_TEXTURE_AVAILABILITY],
+                           .value.boolean = true,
+                       },
+                       [3] = {
                            .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
                            .value.vec3 = global_workbench->world_camera.handle->position,
                        }
@@ -754,7 +766,7 @@ void workbench__internal__show_colliders(workbench_t *const self)
     self->enable_collider = !self->disable_joltrenderer && self->enable_collider;
 }
 
-void workbench_draw_sphere(const vec3s position, const f32 radius)
+void workbench_draw_sphere(const vec3s position, const f32 radius, const vec4s color)
 {
     const matrix4f_t perspective_projection  = glms_perspective(
         radians(45), 
@@ -779,7 +791,7 @@ void workbench_draw_sphere(const vec3s position, const f32 radius)
                     .translation = { position.x, position.y, position.z, 0.f },
                     .orientation = GLMS_QUAT_IDENTITY_INIT, 
                     .scale = vec4f(radius),
-                    .color = COLOR_BLUE,
+                    .color = color,
                 },
                 .size = sizeof(rendercommand_instance_primitive_mesh_t)
             },
@@ -792,7 +804,7 @@ void workbench_draw_sphere(const vec3s position, const f32 radius)
                 .shader = {
                     .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.mesh_shader_id),
                     .uniforms = {
-                        .count = 2,
+                        .count = 3,
                         .data = {
                            [0] = {
                                .name = str("projection"),
@@ -803,6 +815,10 @@ void workbench_draw_sphere(const vec3s position, const f32 radius)
                                .value = workbench__internal__get_camera_view()
                            },
                            [2] = {
+                               .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_TEXTURE_AVAILABILITY],
+                               .value.boolean = false,
+                           },
+                           [3] = {
                                .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
                                .value.vec3 = global_workbench->world_camera.handle->position,
                            }

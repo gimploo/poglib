@@ -8,13 +8,13 @@ in vec3 FragPos;
 
 uniform sampler2D prototypeTexture;
 uniform vec3 camerapos;
+uniform bool has_texture;
 
 const float FADE_START = 40.0;
 const float FADE_END   = 120.0;
 
 void main()
 {
-    vec4 texColor = texture(prototypeTexture, uv);
 /*
 
     // 2. Calculate distance from camera to fragment
@@ -31,5 +31,9 @@ void main()
     FragColor = color * blendedColor;
 */
 
-    FragColor = color * texColor;
+    if (has_texture) {
+        FragColor = texture(prototypeTexture, uv) * color;
+    } else {
+        FragColor = color;
+    }
 }
