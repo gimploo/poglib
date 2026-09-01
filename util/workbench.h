@@ -9,7 +9,7 @@
 #include "poglib/physics/jolt-debugrenderer.h"
 #include "poglib/util/workbench/workbench-editor.h"
 
-workbench_t *   workbench_init(arena_t * const arena);
+workbench_t *   workbench_init(arena_t *const arena);
 void            workbench_ecs_populate_entities(void);
 void            workbench_update(const f32 dt);
 void            workbench_render(void);
@@ -583,7 +583,7 @@ void workbench_render_camera(
         .material = {
             .texture = {0},
             .shader = {
-                .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.mesh_shader_id),
+                .data = (glshader_t *)assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.mesh_shader_id),
                 .uniforms = {
                     .count = 3,
                     .data = {
@@ -662,7 +662,7 @@ void workbench_render_marker(
                 }
             },
             .shader = {
-                .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, self->primitives.mesh_shader_id),
+                .data = (glshader_t *)assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, self->primitives.mesh_shader_id),
                 .uniforms = {
                     .count = 3,
                     .data = {
@@ -693,11 +693,12 @@ void workbench_render_marker(
 
 void workbench_update(const f32 dt)
 {
-    joltdebugrenderer_update(
-        global_workbench->joltrenderer,
-        ecs_get_active_camera(global_ecs),
-        global_engine->handle.app->window.aspect_ratio
-    );
+    if (!global_workbench->disable_joltrenderer)
+        joltdebugrenderer_update(
+            global_workbench->joltrenderer,
+            ecs_get_active_camera(global_ecs),
+            global_engine->handle.app->window.aspect_ratio
+        );
 
     if (!global_workbench->is_active) return;
 
@@ -802,7 +803,7 @@ void workbench_draw_sphere(const vec3s position, const f32 radius, const vec4s c
             .material = {
                 .texture = {0},
                 .shader = {
-                    .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.mesh_shader_id),
+                    .data = (glshader_t *)assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.mesh_shader_id),
                     .uniforms = {
                         .count = 3,
                         .data = {
@@ -866,7 +867,7 @@ void workbench_draw_capsule(const vec3s position, const quaternionf_t orientatio
             .material = {
                 .texture = {0},
                 .shader = {
-                    .data = assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.mesh_shader_id),
+                    .data = (glshader_t *)assetmanager_get_assetresource(assetmanager, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.mesh_shader_id),
                     .uniforms = {
                         .count = 2,
                         .data = {

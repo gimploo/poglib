@@ -51,7 +51,6 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
                         NULL
                 );
 
-                //NOTE: not sure whether we need this, but keeping just incase if we would want this in the future
                 JPH_CharacterVirtual_GetLinearVelocity(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->velocity);
                 JPH_CharacterVirtual_GetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&collider->internal.position);
                 JPH_CharacterVirtual_GetRotation(collider->internal.kinematic_body, (JPH_Quat *)&collider->internal.orientation);
