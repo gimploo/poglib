@@ -21,6 +21,7 @@ typedef enum ecs_uniform_supported_types {
     ECS_UNIFORM_TRANSFORM,
     ECS_UNIFORM_MODEL_BONES,
     ECS_UNIFORM_MATERIAL_COLOR,
+    ECS_UNIFORM_TEXTURE_AVAILABILITY,
     ECS_UNIFORM_SUPPORTED_COUNT,
 
 } ecs_uniform_supported_types;
@@ -35,7 +36,8 @@ const str_t ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SUPPORTED_COUNT] = {
     [ECS_UNIFORM_LIGHT_POSITION]            = str_lit("light.position"),
     [ECS_UNIFORM_TRANSFORM]                 = str_lit("transform"),
     [ECS_UNIFORM_MODEL_BONES]               = str_lit("uBones"),
-    [ECS_UNIFORM_MATERIAL_COLOR]            = str_lit("material.color")
+    [ECS_UNIFORM_MATERIAL_COLOR]            = str_lit("material.color"),
+    [ECS_UNIFORM_TEXTURE_AVAILABILITY]      = str_lit("has_texture"),
 };
 
 
@@ -105,6 +107,9 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
             break;
             case ECS_UNIFORM_TRANSFORM:
                 value.mat4 = model_transform;
+            break;
+            case ECS_UNIFORM_TEXTURE_AVAILABILITY:
+                value.boolean = material->textures.count > 0;
             break;
 
             //NOTE: these are handled in model's resolver
