@@ -41,20 +41,20 @@ struct rendercommand_t {
         union {
             rendercommand_primitive_triangle_t  triangle;
             rendercommand_primitive_line_t      line;
-            gpu_mesh_t *const                   mesh;
+            gpu_mesh_t                          *mesh;
         } data;
     } vtx;
 
     struct {
         struct {
-            gluniforms_t uniforms;
-            const glshader_t *data;
+            gluniforms_t    uniforms;
+            glshader_t      *data;
         } shader;
         gltexturelist_t texture;
     } material;
 
-    buffer_t                    instance;
-    bool                        enable_wireframe;
+    buffer_t    instance;
+    bool        enable_wireframe;
 };
 
 #ifndef IGNORE_RENDER_COMMAND_IMPLEMENTATION
