@@ -45,6 +45,7 @@ typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_EXPORT_GLB,
     WORKBENCH_ACTION_TYPE_KEYBOARD_SELECT_PLAYER,
     WORKBENCH_ACTION_TYPE_TOGGLE_JOLT_RENDERER,
+    WORKBENCH_ACTION_TYPE_CLEAR,
     WORKBENCH_ACTION_TYPE_COUNT
 } workbench_action_type;
 
@@ -86,6 +87,9 @@ typedef struct {
     vec3f_t player_camera_position;
 
     commandregistry_t commandregistry;
+
+    //NOTE: brought this to have some commands persist longer than a single frame for debug purposes
+    list_t persist_rendercommands;
 
     struct {
         u32 entity_id;
