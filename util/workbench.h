@@ -14,7 +14,7 @@ void            workbench_ecs_populate_entities(void);
 void            workbench_update(const f32 dt);
 void            workbench_render(void);
 void                workbench_draw_sphere(const vec3s position, const f32 radius, const vec4s color);
-void                workbench_draw_line(const vec3s startpos, const vec3s endpos, const vec4s startcolor, const vec4s endcolor);
+void                workbench_draw_line(const vec3s startpos, const vec3s endpos, const vec4s startcolor, const vec4s endcolor, const bool persist);
 void                workbench_toggle(void);
 void            workbench_destroy(void);
 
@@ -178,6 +178,7 @@ workbench_t * workbench_init(arena_t *const arena)
     workbench_t workbench = {
         .is_active = false,
         .disable_joltrenderer = true,
+        .persist_rendercommands = list_init(rendercommand_t, arena),
         .shader = glshader_init(
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.vs"), 
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.fs"),
@@ -409,6 +410,14 @@ workbench_t * workbench_init(arena_t *const arena)
                             .data = SDL_CONTROLLER_BUTTON_BACK,
                         }
                     }
+                },
+                [WORKBENCH_ACTION_TYPE_CLEAR] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
+                    .sdl_keyboard_key = {
+                        .main = SDL_SCANCODE_C,
+                        .modifier = SDL_SCANCODE_LALT,
+                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
+                    }
                 }
             },
         },
@@ -518,6 +527,15 @@ void workbench_destroy(void)
     global_workbench = NULL;
 }
 
+INTERNAL void workbench__internal__render_persistent_rendercommands(const workbench_t *const self)
+{
+    list_iterator(&self->persist_rendercommands, iter)
+    {
+        const rendercommand_t *const rc = iter;
+        renderqueue_pass_command(&global_engine->systems.renderqueue, *rc);
+    }
+}
+
 void workbench_render(void)
 {
     ASSERT(global_workbench);
@@ -526,6 +544,8 @@ void workbench_render(void)
     if (self->enable_collider) {
         workbench__internal__show_colliders(self);
     }
+
+    workbench__internal__render_persistent_rendercommands(self);
 
     if (!self->is_active) return;
 
@@ -719,6 +739,11 @@ void workbench_update(const f32 dt)
         logging("Joltrenderer `%s`", global_workbench->disable_joltrenderer ? "disabled" : "enabled");
     }
 
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_CLEAR)) {
+        list_clear(&global_workbench->persist_rendercommands);
+    }
+
+
     workbench_editor_update();
 }
 
@@ -892,39 +917,42 @@ void workbench_draw_capsule(const vec3s position, const quaternionf_t orientatio
 }
 
 
-void workbench_draw_line(const vec3s startpos, const vec3s endpos, const vec4s startcolor, const vec4s endcolor)
+void workbench_draw_line(const vec3s startpos, const vec3s endpos, const vec4s startcolor, const vec4s endcolor, const bool persist)
 {
-    renderqueue_pass_command(
-        &global_engine->systems.renderqueue, 
-        (rendercommand_t) {
-            .material = {
-                .shader = {
-                    .data = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id),
-                    .uniforms = {
-                        .count = 2,
-                        .data = {
-                            [0] = {
-                                .name = str("projection"),
-                                .value = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f),
-                            },
-                            [1] = {
-                                .name = str("view"),
-                                .value = glcamera_getview(ecs_get_active_camera(global_ecs)),
-                            }
+    const rendercommand_t command = {
+        .material = {
+            .shader = {
+                .data = (glshader_t *)assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id),
+                .uniforms = {
+                    .count = 2,
+                    .data = {
+                        [0] = {
+                            .name = str("projection"),
+                            .value = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f),
+                        },
+                        [1] = {
+                            .name = str("view"),
+                            .value = glcamera_getview(ecs_get_active_camera(global_ecs)),
                         }
                     }
-                },
+                }
             },
-            .vtx = {
-                .type = RENDERCOMMAND_VTX_TYPE_LINE,
-                .data.line = {
-                    .start  = startpos,
-                    .end    = endpos,
-                    .startcolor  = startcolor,
-                    .endcolor  = endcolor,
-                },
-            }
+        },
+        .vtx = {
+            .type = RENDERCOMMAND_VTX_TYPE_LINE,
+            .data.line = {
+                .start  = startpos,
+                .end    = endpos,
+                .startcolor  = startcolor,
+                .endcolor  = endcolor,
+            },
         }
-    );
+    };
+
+    renderqueue_pass_command(&global_engine->systems.renderqueue, command);
+
+    if (persist) {
+        list_append(&global_workbench->persist_rendercommands, command);
+    }
 }
 
