@@ -428,6 +428,7 @@ joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const
         }
         JPH_BodyLockMultiRead_Destroy(multireadlock);
 
+#if 0
         if (!global_workbench->disable_joltrenderer)
         {
             const matrix4f_t transform = glms_translate_make(*(vec3s *)&hit_position);
@@ -441,6 +442,7 @@ joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const
                 false
             );
         }
+#endif
     }
     JPH_Shape_Destroy(castshape);
 

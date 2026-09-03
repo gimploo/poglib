@@ -624,18 +624,23 @@ INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collide
         ecs_component_transform_t *const transform = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
         ASSERT(transform);
 
-        JPH_BodyInterface_SetPositionAndRotation(
-            global_joltphysics_instance->bodyinterface, 
-            collider->internal.body_id, 
-            (JPH_Vec3 *)&transform->position, 
-            &(JPH_Quat) {
-                .x = transform->orientation.x,
-                .y = transform->orientation.y,
-                .z = transform->orientation.z,
-                .w = transform->orientation.w,
-            },
-            JPH_Activation_DontActivate
-        );
+        if (!collider->internal.kinematic_body) {
+            JPH_BodyInterface_SetPositionAndRotation(
+                global_joltphysics_instance->bodyinterface, 
+                collider->internal.body_id, 
+                (JPH_Vec3 *)&transform->position, 
+                &(JPH_Quat) {
+                    .x = transform->orientation.x,
+                    .y = transform->orientation.y,
+                    .z = transform->orientation.z,
+                    .w = transform->orientation.w,
+                },
+                JPH_Activation_DontActivate
+            );
+        } else {
+            JPH_CharacterVirtual_SetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->position);
+            JPH_CharacterVirtual_SetRotation(collider->internal.kinematic_body, (JPH_Quat *)&transform->orientation);
+        }
 
         collider->internal.position     = transform->position;
         collider->internal.orientation  = transform->orientation;
