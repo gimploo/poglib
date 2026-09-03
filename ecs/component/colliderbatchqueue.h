@@ -140,6 +140,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     tris,
                     tri_count
                 );
+                JPH_MeshShapeSettings_SetBuildQuality(settings, JPH_Mesh_Shape_BuildQuality_FavorRuntimePerformance);
                 JPH_MeshShapeSettings_Sanitize(settings);
                 shape = (JPH_Shape *)JPH_MeshShapeSettings_CreateShape(settings);
                 JPH_ShapeSettings_Destroy((JPH_ShapeSettings *)settings);

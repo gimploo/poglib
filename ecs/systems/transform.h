@@ -16,7 +16,7 @@ void ecs_system_transfrom__internal_source_manual(
 
     transform->position     = input->internal.state.current_position;
     transform->orientation  = glms_quat_normalize(input->internal.state.current_orientation);
-    transform->velocity     = input->internal.state.velocity;
+    transform->velocity     = glms_quat_rotatev(transform->orientation, input->internal.state.local_velocity);
 }
 
 void ecs_system_transform(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)

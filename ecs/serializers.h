@@ -167,7 +167,7 @@ INTERNAL void ecs_input_serializer(file_t *const file, const void *const cmp_dat
     SERIALIZE_KV(file, buf, "\t\t", "direction_source %d", in->direction_source);
     SERIALIZE_KV(file, buf, "\t\t", "state_current_orientation %f %f %f %f", s->current_orientation.x, s->current_orientation.y, s->current_orientation.z, s->current_orientation.w);
     SERIALIZE_KV(file, buf, "\t\t", "state_current_position %f %f %f", s->current_position.x, s->current_position.y, s->current_position.z);
-    SERIALIZE_KV(file, buf, "\t\t", "state_velocity %f %f %f", s->velocity.x, s->velocity.y, s->velocity.z);
+    SERIALIZE_KV(file, buf, "\t\t", "state_velocity %f %f %f", s->local_velocity.x, s->local_velocity.y, s->local_velocity.z);
     SERIALIZE_KV(file, buf, "\t\t", "state_front %f %f %f", s->front.x, s->front.y, s->front.z);
     SERIALIZE_KV(file, buf, "\t\t", "state_right %f %f %f", s->right.x, s->right.y, s->right.z);
     SERIALIZE_KV(file, buf, "\t\t", "state_up %f %f %f", s->up.x, s->up.y, s->up.z);
@@ -189,7 +189,7 @@ INTERNAL u64 ecs_input_deserializer(const str_views_t lines, const u64 line_idx,
         if      (str_cmp(pair.pair[0], str("direction_source")))           sscanf(pair.pair[1].data, "%d", (int *)&in->direction_source);
         else if (str_cmp(pair.pair[0], str("state_current_orientation")))  sscanf(pair.pair[1].data, "%f %f %f %f", &s->current_orientation.x, &s->current_orientation.y, &s->current_orientation.z, &s->current_orientation.w);
         else if (str_cmp(pair.pair[0], str("state_current_position")))     sscanf(pair.pair[1].data, "%f %f %f", &s->current_position.x, &s->current_position.y, &s->current_position.z);
-        else if (str_cmp(pair.pair[0], str("state_velocity")))             sscanf(pair.pair[1].data, "%f %f %f", &s->velocity.x, &s->velocity.y, &s->velocity.z);
+        else if (str_cmp(pair.pair[0], str("state_velocity")))             sscanf(pair.pair[1].data, "%f %f %f", &s->local_velocity.x, &s->local_velocity.y, &s->local_velocity.z);
         else if (str_cmp(pair.pair[0], str("state_front")))                sscanf(pair.pair[1].data, "%f %f %f", &s->front.x, &s->front.y, &s->front.z);
         else if (str_cmp(pair.pair[0], str("state_right")))                sscanf(pair.pair[1].data, "%f %f %f", &s->right.x, &s->right.y, &s->right.z);
         else if (str_cmp(pair.pair[0], str("state_up")))                   sscanf(pair.pair[1].data, "%f %f %f", &s->up.x, &s->up.y, &s->up.z);
