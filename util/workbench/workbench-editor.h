@@ -525,7 +525,7 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
         rendercommand_t rendercommand = {
             .material = {
                 .shader = {
-                    .data = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id),
+                    .data = (glshader_t *)assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id),
                     .uniforms = {
                         .count = 2,
                         .data = {
