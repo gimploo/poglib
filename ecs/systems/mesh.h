@@ -101,7 +101,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             .material = {
                 .texture = textures,
                 .shader = {
-                    .data = shader,
+                    .data = (glshader_t *)shader,
                     .uniforms = material->internal.uniform_values,
                 }
             }
