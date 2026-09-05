@@ -7,7 +7,7 @@
 #include "poglib/pipeline/render/render_queue.h"
 
 typedef struct {
-    const glshader_t    *const lineshader;
+    glshader_t          *lineshader;
     JPH_DebugRenderer   *handle;
     JPH_DrawSettings    settings;
     renderqueue_t       *renderqueue;

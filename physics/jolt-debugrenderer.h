@@ -91,7 +91,7 @@ const JPH_DebugRenderer_Procs joltdebugrenderer_callbacks = {
 
 jolt_debugrenderer_t * joltdebugrenderer_init(
     renderqueue_t *const renderqueue, 
-    const glshader_t *const line_shader
+    glshader_t *const line_shader
 ) {
     jolt_debugrenderer_t *const jph_debugrenderer = mem_init(&(jolt_debugrenderer_t){
         .renderqueue    = renderqueue,
