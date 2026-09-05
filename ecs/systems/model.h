@@ -66,7 +66,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                 .material = {
                     .texture = textures,
                     .shader = {
-                        .data = shader,
+                        .data = (glshader_t *)shader,
                         .uniforms = mesh_uniforms,
                     }
                 }
