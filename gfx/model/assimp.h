@@ -82,10 +82,18 @@ typedef struct glmodel_t {
     arena_t *arena;
 
     struct {
+
         str_t           directory_path;
-        animation_t     *active_animation;
         i64             root_channel_idx;
-        f32             blendfactor;
+
+        //TODO: maybe get rid of this after completing blend
+        animation_t     *active_animation;
+
+        struct {
+            animation_t *target_animation;
+            f32         factor;
+        } blend;
+
     } internal;
 
 } glmodel_t;
@@ -567,20 +575,58 @@ void debug_assimp_vertex_bones(const struct aiScene *scene) {
 }
 
 // Helper function to process node hierarchy for animation
-INTERNAL void assimp__internal__process_node_anim(glmodel_t *const self, struct aiNode *node, const matrix4f_t parent_transform, const list_t *const channels, const animation_t *const current_anim) 
+INTERNAL void assimp__internal__process_node_anim(glmodel_t *const self, struct aiNode *node, const matrix4f_t parent_transform) 
 {
     ASSERT(node);
 
-    const str_t node_name       = str_from_cstr(node->mName.data, node->mName.length);
-    matrix4f_t node_transform   = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
-    const f32 blendfactor       = self->internal.blendfactor;
+    const animation_t *const current_anim   = self->internal.active_animation;
+    const animation_t *const target_anim    = self->internal.blend.target_animation;
+    const f32 blendfactor                   = self->internal.blend.factor;
+    const str_t node_name                   = str_from_cstr(node->mName.data, node->mName.length);
 
-    // Find animation channel for this node
-    list_iterator(channels, iter) {
+    matrix4f_t node_transform               = glms_mat4_transpose(*(matrix4f_t *)&node->mTransformation);
+
+    node_anim_t *c_node_channel = NULL;
+    list_iterator(&current_anim->channels, iter) {
         node_anim_t *const channel = iter;
         if (strcmp(channel->node_name, node_name.data) == 0) {
-            node_transform = compute_node_transform(channel, self->current_time, current_anim->duration);
+            c_node_channel = channel;
             break;
+        }
+    }
+
+    if (target_anim) 
+    {
+        node_anim_t *t_node_channel = NULL;
+        list_iterator(&target_anim->channels, iter) {
+            node_anim_t *const channel = iter;
+            if (strcmp(channel->node_name, node_name.data) == 0) {
+                t_node_channel = channel;  
+                break;
+            }
+        }
+
+        if (t_node_channel && c_node_channel)
+        {
+            node_transform = compute_blend_node_transform(
+                c_node_channel,
+                t_node_channel,
+                current_anim->duration,
+                target_anim->duration,
+                self->current_time,
+                blendfactor
+            );
+
+        }
+
+    } else {
+
+        list_iterator(&current_anim->channels, iter) {
+            node_anim_t *const channel = iter;
+            if (strcmp(channel->node_name, node_name.data) == 0) {
+                node_transform = compute_node_transform(channel, self->current_time, current_anim->duration);
+                break;
+            }
         }
     }
 
@@ -604,7 +650,7 @@ INTERNAL void assimp__internal__process_node_anim(glmodel_t *const self, struct 
 
     // Recurse through children
     for (u32 i = 0; i < node->mNumChildren; i++) {
-        assimp__internal__process_node_anim(self, node->mChildren[i], global_transform, channels, current_anim);
+        assimp__internal__process_node_anim(self, node->mChildren[i], global_transform);
     }
 }
 
@@ -628,18 +674,19 @@ void glmodel_play_animation(glmodel_t *const self, const f32 dt)
         list_clear(&self->transforms.data[idx]);
 
     animation_t *const current_anim = self->internal.active_animation;
-    self->current_time += dt * current_anim->ticks_per_second;
 
-    {
-        //logging("playing animation %s", current_anim->name);
-    }
+    self->current_time = fmodf(
+        self->current_time + (dt * current_anim->ticks_per_second), 
+        current_anim->duration
+    );
 
-    //if (self->current_time >= current_anim->duration)
-
-    self->current_time = fmod(self->current_time, current_anim->duration);
-
-    if (self->scene->mRootNode)     assimp__internal__process_node_anim(self, self->scene->mRootNode, MATRIX4F_IDENTITY, &current_anim->channels, current_anim);
-    else                            eprint("No root node available.");
+    if (self->scene->mRootNode)
+        assimp__internal__process_node_anim(
+            self, 
+            self->scene->mRootNode, 
+            MATRIX4F_IDENTITY
+        );
+    else eprint("No root node available.");
 
     for (u32 mesh_idx = 0; mesh_idx < self->meshes.len; mesh_idx++) {
         while (self->transforms.data[mesh_idx].len < MAX_BONES) {
@@ -649,18 +696,35 @@ void glmodel_play_animation(glmodel_t *const self, const f32 dt)
 
 }
 
+void glmodel_set_blendfactor(glmodel_t *const self, const f32 blendfactor)
+{
+    self->internal.blend.factor = blendfactor;
+}
+
 animation_t * glmodel_set_animation(glmodel_t *const self, const str_t animation_label, const f32 blendfactor)
 {
     if (!self->animator.animations.len) eprint("No animations in model");
+
+    self->internal.blend.factor = blendfactor;
 
     if (self->internal.active_animation && strcmp(self->internal.active_animation->name, animation_label.data) == 0) {
         return self->internal.active_animation;
     }
 
     animation_t *const current_anim = animator_get_animation(&self->animator, animation_label.data);
-    self->current_time = 0.0f;
-    self->internal.active_animation = current_anim;
-    self->internal.blendfactor = blendfactor;
+
+    self->current_time                  = 0.0f;
+    self->internal.active_animation     = current_anim;
+
+    if (!self->internal.active_animation) {
+
+        self->internal.blend.target_animation = NULL;
+
+    } else {
+
+        self->internal.blend.target_animation = current_anim;
+
+    }
 
     return current_anim;
 }
