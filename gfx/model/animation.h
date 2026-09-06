@@ -191,7 +191,7 @@ void animator_load_all_animations(animator_t *self, const struct aiScene *scene,
 }
 
 // Helper function to find the position keyframe at or before the current time
-static position_key_t animation__internal_get_position_key(const list_t *position_keys, f32 time, f32 duration) {
+INTERNAL position_key_t animation__internal_get_position_key(const list_t *position_keys, f32 time, f32 duration) {
     position_key_t result = {0};
     if (position_keys->len == 0) return result;
 
@@ -219,7 +219,7 @@ static position_key_t animation__internal_get_position_key(const list_t *positio
 }
 
 // Helper function to find the rotation keyframe at or before the current time
-static rotation_key_t animation__internal_get_rotation_key(const list_t *rotation_keys, f32 time, f32 duration) {
+INTERNAL rotation_key_t animation__internal_get_rotation_key(const list_t *rotation_keys, f32 time, f32 duration) {
     rotation_key_t result = { .value = QUATERNIONF_IDENTITY };
     if (rotation_keys->len == 0) return result;
 
@@ -245,7 +245,7 @@ static rotation_key_t animation__internal_get_rotation_key(const list_t *rotatio
 }
 
 // Helper function to find the scaling keyframe at or before the current time
-static scaling_key_t animation__internal_get_scaling_key(const list_t *scaling_keys, f32 time, f32 duration) {
+INTERNAL scaling_key_t animation__internal_get_scaling_key(const list_t *scaling_keys, f32 time, f32 duration) {
     scaling_key_t result = { .value = (vec3f_t){1.0f, 1.0f, 1.0f} };
     if (scaling_keys->len == 0) return result;
 
