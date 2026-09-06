@@ -284,3 +284,32 @@ matrix4f_t compute_node_transform(const node_anim_t *node_anim, f32 time, f32 du
 }
 
 
+matrix4f_t compute_blend_node_transform(
+    const node_anim_t *const node1, 
+    const node_anim_t *const node2, 
+    const f32 duration1,
+    const f32 duration2,
+    const f32 time, 
+    const f32 blendfactor
+) {
+
+    const position_key_t pos1_key    = animation__internal_get_position_key(&node1->position_keys, time, duration1);
+    const rotation_key_t rot1_key    = animation__internal_get_rotation_key(&node1->rotation_keys, time, duration1);
+    const scaling_key_t scale1_key   = animation__internal_get_scaling_key(&node1->scaling_keys, time, duration1);
+
+    const position_key_t pos2_key    = animation__internal_get_position_key(&node2->position_keys, time, duration2);
+    const rotation_key_t rot2_key    = animation__internal_get_rotation_key(&node2->rotation_keys, time, duration2);
+    const scaling_key_t scale2_key   = animation__internal_get_scaling_key(&node2->scaling_keys, time, duration2);
+
+    const vec3s pos_key     = glms_vec3_lerp(pos1_key.value, pos2_key.value, blendfactor);
+    const versors rot_key   = glms_quat_slerp(rot1_key.value, rot2_key.value, blendfactor);
+    const vec3s scale_key   = glms_vec3_lerp(scale1_key.value, scale2_key.value, blendfactor);
+
+    const matrix4f_t translation    = glms_translate_make(pos_key);
+    const matrix4f_t rotation       = glms_quat_mat4(rot_key);
+    const matrix4f_t scale          = glms_scale_make(scale_key);
+
+    return glms_mat4_mul(glms_mat4_mul(translation, rotation), scale);
+}
+
+
