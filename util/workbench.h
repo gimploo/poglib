@@ -303,7 +303,7 @@ workbench_t * workbench_init(arena_t *const arena)
                 [WORKBENCH_ACTION_TYPE_MOUSE_KEYBOARD_UNSELECT_ENTITY] = {
                     .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
                     .sdl_keyboard_key = {
-                        .main       = SDL_SCANCODE_CAPSLOCK,
+                        .main       = SDL_SCANCODE_ESCAPE,
                         .trigger    = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
                     }
                 },
