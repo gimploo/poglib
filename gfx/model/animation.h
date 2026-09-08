@@ -10,7 +10,7 @@ typedef struct {
 
 typedef struct {
     f32 tick;                   // Keyframe time in ticks
-    quaternionf_t value;        // Rotation value (quaternion)
+    versors value;        // Rotation value (quaternion)
 } rotation_key_t;
 
 typedef struct {
@@ -121,8 +121,8 @@ void __load_channel_rotations(const struct aiNodeAnim *node, list_t *rot)
     {
         const struct aiQuatKey vk = node->mRotationKeys[i];
         const rotation_key_t n = {
-            .tick = vk.mTime,
-            .value = (quaternionf_t){ .x = vk.mValue.x, .y = vk.mValue.y, .z = vk.mValue.z, .w = vk.mValue.w }
+            .tick = (f32)vk.mTime,
+            .value = (versors){ .x = vk.mValue.x, .y = vk.mValue.y, .z = vk.mValue.z, .w = vk.mValue.w }
         };
         list_append(rot, n);
     }
@@ -176,7 +176,7 @@ void animator_load_all_animations(animator_t *self, const struct aiScene *scene,
             hit_count++;
         }
 
-        if (!ai->mTicksPerSecond) eprint("ticks are zero? for this animation %.*s", ai->mName.length, ai->mName.data);
+        if (ai->mTicksPerSecond <= 0.f) eprint("ticks are zero? for this animation %.*s", ai->mName.length, ai->mName.data);
 
         animation_t item = __animation_init(
             ai->mName.data,
@@ -191,11 +191,13 @@ void animator_load_all_animations(animator_t *self, const struct aiScene *scene,
 }
 
 // Helper function to find the position keyframe at or before the current time
-INTERNAL position_key_t animation__internal_get_position_key(const list_t *position_keys, f32 time, f32 duration) {
+INTERNAL position_key_t animation__internal__get_position_key(const list_t *const position_keys, f32 time, const f32 duration) 
+{
     position_key_t result = {0};
+
     if (position_keys->len == 0) return result;
 
-    if (time > duration) time = duration;
+    time = MIN(time, duration);
 
     position_key_t *prev = NULL;
     list_iterator(position_keys, iter) {
@@ -203,7 +205,7 @@ INTERNAL position_key_t animation__internal_get_position_key(const list_t *posit
         if (key->tick > time) {
             if (prev) {
                 // Interpolate between prev and key
-                f32 t = (time - prev->tick) / (key->tick - prev->tick);
+                const f32 t = (time - prev->tick) / (key->tick - prev->tick);
                 result.tick = time;
                 result.value = glms_vec3_lerp(prev->value, key->value, t);
                 return result;
@@ -219,11 +221,15 @@ INTERNAL position_key_t animation__internal_get_position_key(const list_t *posit
 }
 
 // Helper function to find the rotation keyframe at or before the current time
-INTERNAL rotation_key_t animation__internal_get_rotation_key(const list_t *rotation_keys, f32 time, f32 duration) {
-    rotation_key_t result = { .value = QUATERNIONF_IDENTITY };
+INTERNAL rotation_key_t animation__internal__get_rotation_key(const list_t *rotation_keys, f32 time, f32 duration) {
+    rotation_key_t result = {
+        .tick = 0.f,
+        .value = GLM_QUAT_IDENTITY_INIT
+    };
+
     if (rotation_keys->len == 0) return result;
 
-    time = fmod(time, duration);
+    time = fmodf(time, duration);
 
     rotation_key_t *prev = NULL;
     list_iterator(rotation_keys, iter) {
@@ -233,7 +239,7 @@ INTERNAL rotation_key_t animation__internal_get_rotation_key(const list_t *rotat
                 // Interpolate between prev and key (slerp for quaternions)
                 const f32 t = (time - prev->tick) / (key->tick - prev->tick);
                 result.tick = time;
-                result.value = quaternionf_slerp(prev->value, key->value, t);
+                result.value = glms_quat_slerp(prev->value, key->value, t);
                 return result;
             } else {
                 return *(rotation_key_t *)list_get_value(rotation_keys, 0);
@@ -245,7 +251,7 @@ INTERNAL rotation_key_t animation__internal_get_rotation_key(const list_t *rotat
 }
 
 // Helper function to find the scaling keyframe at or before the current time
-INTERNAL scaling_key_t animation__internal_get_scaling_key(const list_t *scaling_keys, f32 time, f32 duration) {
+INTERNAL scaling_key_t animation__internal__get_scaling_key(const list_t *scaling_keys, f32 time, f32 duration) {
     scaling_key_t result = { .value = (vec3f_t){1.0f, 1.0f, 1.0f} };
     if (scaling_keys->len == 0) return result;
 
@@ -272,9 +278,9 @@ INTERNAL scaling_key_t animation__internal_get_scaling_key(const list_t *scaling
 
 // Helper function to compute the transformation matrix for a node animation
 matrix4f_t compute_node_transform(const node_anim_t *node_anim, f32 time, f32 duration) {
-    const position_key_t pos_key    = animation__internal_get_position_key(&node_anim->position_keys, time, duration);
-    const rotation_key_t rot_key    = animation__internal_get_rotation_key(&node_anim->rotation_keys, time, duration);
-    const scaling_key_t scale_key   = animation__internal_get_scaling_key(&node_anim->scaling_keys, time, duration);
+    const position_key_t pos_key    = animation__internal__get_position_key(&node_anim->position_keys, time, duration);
+    const rotation_key_t rot_key    = animation__internal__get_rotation_key(&node_anim->rotation_keys, time, duration);
+    const scaling_key_t scale_key   = animation__internal__get_scaling_key(&node_anim->scaling_keys, time, duration);
 
     const matrix4f_t translation    = glms_translate_make(pos_key.value);
     const matrix4f_t rotation       = glms_quat_mat4(rot_key.value);
@@ -285,21 +291,22 @@ matrix4f_t compute_node_transform(const node_anim_t *node_anim, f32 time, f32 du
 
 
 matrix4f_t compute_blend_node_transform(
-    const node_anim_t *const node1, 
-    const node_anim_t *const node2, 
-    const f32 duration1,
-    const f32 duration2,
-    const f32 time, 
+    const node_anim_t *const currentnode, 
+    const node_anim_t *const targetnode, 
+    const f32 currentduration,
+    const f32 targetduration,
+    const f32 currentime, 
+    const f32 targettime, 
     const f32 blendfactor
 ) {
 
-    const position_key_t pos1_key    = animation__internal_get_position_key(&node1->position_keys, time, duration1);
-    const rotation_key_t rot1_key    = animation__internal_get_rotation_key(&node1->rotation_keys, time, duration1);
-    const scaling_key_t scale1_key   = animation__internal_get_scaling_key(&node1->scaling_keys, time, duration1);
+    const position_key_t pos1_key    = animation__internal__get_position_key(&currentnode->position_keys, currentime, currentduration);
+    const rotation_key_t rot1_key    = animation__internal__get_rotation_key(&currentnode->rotation_keys, currentime, currentduration);
+    const scaling_key_t scale1_key   = animation__internal__get_scaling_key(&currentnode->scaling_keys, currentime, currentduration);
 
-    const position_key_t pos2_key    = animation__internal_get_position_key(&node2->position_keys, time, duration2);
-    const rotation_key_t rot2_key    = animation__internal_get_rotation_key(&node2->rotation_keys, time, duration2);
-    const scaling_key_t scale2_key   = animation__internal_get_scaling_key(&node2->scaling_keys, time, duration2);
+    const position_key_t pos2_key    = animation__internal__get_position_key(&targetnode->position_keys, targettime, targetduration);
+    const rotation_key_t rot2_key    = animation__internal__get_rotation_key(&targetnode->rotation_keys, targettime, targetduration);
+    const scaling_key_t scale2_key   = animation__internal__get_scaling_key(&targetnode->scaling_keys, targettime, targetduration);
 
     const vec3s pos_key     = glms_vec3_lerp(pos1_key.value, pos2_key.value, blendfactor);
     const versors rot_key   = glms_quat_slerp(rot1_key.value, rot2_key.value, blendfactor);
