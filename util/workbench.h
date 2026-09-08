@@ -856,7 +856,7 @@ void workbench_draw_sphere(const vec3s position, const f32 radius, const vec4s c
     );
 }
 
-void workbench_draw_capsule(const vec3s position, const quaternionf_t orientation)
+void workbench_draw_capsule(const vec3s position, const versors orientation)
 {
     const matrix4f_t perspective_projection  = glms_perspective(
         radians(45), 
