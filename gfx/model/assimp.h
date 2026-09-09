@@ -450,7 +450,7 @@ glmodel_t glmodel_init(const str_t filepath)
             .blend = { 
                 .target_animation = NULL,
                 .factor = 1.0f,
-                .blendspeed = 0.5f
+                .blendspeed = 1.0f
            },
         },
     };
@@ -756,6 +756,7 @@ animation_t * glmodel_set_animation(glmodel_t *const self, const str_t animation
         self->internal.active_animation = current_anim;
         self->internal.blend.target_animation = NULL;
         self->internal.blend.factor = 1.0f;
+        self->internal.blend.blendspeed = 1.0f;
 
 
     } else if (self->internal.blend.target_animation) {
