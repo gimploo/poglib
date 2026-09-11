@@ -19,21 +19,21 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
         ecs_entity_query_t query                    = ecs_componentmanager__internal__query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM);
         ecs_component_transform_t *transform        = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
 
-        //HACK: is this good ? - who tf knows - keep this till i get smarter :p
-        if (transform->source == ECS_CMP_TRANSFORM_SOURCE_ANIMATION || global_workbench->is_active)
+        if (global_workbench->is_active)
             continue;
 
         switch(collider->motion_type)
         {
             case JPH_MotionType_Kinematic: {
-                ASSERT(collider->internal.kinematic_body);
+                ASSERT(collider->internal.kinematicbody);
 
                 //JPH_CharacterVirtual_SetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->position);
-                JPH_CharacterVirtual_SetRotation(collider->internal.kinematic_body, (JPH_Quat *)&transform->orientation);
+                JPH_CharacterVirtual_SetRotation(collider->internal.kinematicbody, (JPH_Quat *)&transform->orientation);
 
                 //NOTE: handles gravity on the collider (y axis)
                 {
-                    const JPH_GroundState groundstate = JPH_CharacterBase_GetGroundState((JPH_CharacterBase *)collider->internal.kinematic_body);
+                    const JPH_GroundState groundstate = JPH_CharacterBase_GetGroundState((JPH_CharacterBase *)collider->internal.kinematicbody);
+                    collider->internal.kinematicbody_groundstate = groundstate;
 
                     if (groundstate == JPH_GroundState_OnGround) {
                         if (transform->velocity.y < -0.1) 
@@ -43,10 +43,10 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
                     }
                 }
 
-                JPH_CharacterVirtual_SetLinearVelocity(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->velocity);
+                JPH_CharacterVirtual_SetLinearVelocity(collider->internal.kinematicbody, (JPH_Vec3 *)&transform->velocity);
 
                 JPH_CharacterVirtual_ExtendedUpdate(
-                    collider->internal.kinematic_body,
+                    collider->internal.kinematicbody,
                     APPLICATION_UPDATE_FIXED_TIME_STEP,
                     &(JPH_ExtendedUpdateSettings){
                         .stickToFloorStepDown = { 0.f, -0.5f, 0.0f },
@@ -57,9 +57,9 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
                     NULL
                 );
 
-                JPH_CharacterVirtual_GetLinearVelocity(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->velocity);
-                JPH_CharacterVirtual_GetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&collider->internal.position);
-                JPH_CharacterVirtual_GetRotation(collider->internal.kinematic_body, (JPH_Quat *)&collider->internal.orientation);
+                JPH_CharacterVirtual_GetLinearVelocity(collider->internal.kinematicbody, (JPH_Vec3 *)&transform->velocity);
+                JPH_CharacterVirtual_GetPosition(collider->internal.kinematicbody, (JPH_Vec3 *)&collider->internal.position);
+                JPH_CharacterVirtual_GetRotation(collider->internal.kinematicbody, (JPH_Quat *)&collider->internal.orientation);
 
                 transform->orientation  = collider->internal.orientation;
                 transform->position     = collider->internal.position;

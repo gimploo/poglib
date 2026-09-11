@@ -206,7 +206,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                 JPH_BodyCreationSettings_Destroy(body_settings);
             break;
             case JPH_MotionType_Kinematic:
-                collider->internal.kinematic_body = JPH_CharacterVirtual_Create(
+                collider->internal.kinematicbody = JPH_CharacterVirtual_Create(
                     &settings,
                     (JPH_RVec3 *)&collider->internal.position,
                     (JPH_Quat *) &collider->internal.orientation,

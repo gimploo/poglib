@@ -48,8 +48,6 @@ struct ecs_component_transform_t {
     enum {
         ECS_CMP_TRANSFORM_SOURCE_NONE,
         ECS_CMP_TRANSFORM_SOURCE_INPUT,
-        ECS_CMP_TRANSFORM_SOURCE_PHYSICS,
-        ECS_CMP_TRANSFORM_SOURCE_ANIMATION,
     } source;
 };
 
@@ -146,12 +144,12 @@ typedef struct ecs_component_collider_t ecs_component_collider_t;
 typedef struct ecs_collider_jolt_userdata_t ecs_collider_jolt_userdata_t;
 
 typedef enum {
-    COLLIDER_SHAPE_TYPE_NONE        = 0,
-    COLLIDER_SHAPE_TYPE_CAPSULE     = 1,
-    COLLIDER_SHAPE_TYPE_SPHERE      = 2,
-    COLLIDER_SHAPE_TYPE_CUBE        = 3,
-    COLLIDER_SHAPE_TYPE_CYLINDER    = 4,
-    COLLIDER_SHAPE_TYPE_MESH        = 5,
+    COLLIDER_SHAPE_TYPE_NONE                = 0,
+    COLLIDER_SHAPE_TYPE_CAPSULE             = 1,
+    COLLIDER_SHAPE_TYPE_SPHERE              = 2,
+    COLLIDER_SHAPE_TYPE_CUBE                = 3,
+    COLLIDER_SHAPE_TYPE_CYLINDER            = 4,
+    COLLIDER_SHAPE_TYPE_MESH                = 5,
     COLLIDER_SHAPE_TYPE_COUNT,
 } collider_shape_type;
 
@@ -192,7 +190,8 @@ struct ecs_component_collider_t {
     collider_shape_dimension_t      dim;
     struct {
         JPH_BodyID                  body_id;
-        JPH_CharacterVirtual        *kinematic_body;
+        JPH_GroundState             kinematicbody_groundstate;
+        JPH_CharacterVirtual        *kinematicbody;
         vec3f_t                     position;
         versors                     orientation;
         u32                         entity_id;

@@ -106,33 +106,25 @@ void ecs_component__internal_bundle_validate_and_initalize_internals(ecs_compone
         if (++idx == ECS_CMP_COUNT)
             break;
 
-        const ecs_component_type cmp_type = 1 << idx;
-        if (!(config->signature & cmp_type))
+        const ecs_component_type cmp_type = (ecs_component_type)(1 << idx);
+        if (!(config->signature & (u32)cmp_type))
             continue;
 
         switch(cmp_type)
         {
             case ECS_CMP_TRANSFORM: {
-                if (config->component[ECS_CMP_TRANSFORM_IDX].transform.orientation.w == 0) {
+                if (config->component[ECS_CMP_TRANSFORM_IDX].transform.orientation.w == 0.00f) {
                     config->component[ECS_CMP_TRANSFORM_IDX].transform.orientation = GLM_QUAT_IDENTITY;
                 } else {
                     config->component[ECS_CMP_TRANSFORM_IDX].transform.orientation = glms_quat_normalize(config->component[ECS_CMP_TRANSFORM_IDX].transform.orientation);
                 }
-                if (config->component[ECS_CMP_TRANSFORM_IDX].transform.source == ECS_CMP_TRANSFORM_SOURCE_PHYSICS) {
-                    ASSERT(config->signature & ECS_CMP_COLLIDER);
-                }
 
-                if (config->component[ECS_CMP_TRANSFORM_IDX].transform.scale.x == 0 
-                        && config->component[ECS_CMP_TRANSFORM_IDX].transform.scale.y == 0 
-                        && config->component[ECS_CMP_TRANSFORM_IDX].transform.scale.z == 0) {
+                if (config->component[ECS_CMP_TRANSFORM_IDX].transform.scale.x == 0.00f 
+                        && config->component[ECS_CMP_TRANSFORM_IDX].transform.scale.y == 0.00f 
+                        && config->component[ECS_CMP_TRANSFORM_IDX].transform.scale.z == 0.00f) {
                     config->component[ECS_CMP_TRANSFORM_IDX].transform.scale = vec3f(1.0f);
                 }
 
-                if (config->component[ECS_CMP_TRANSFORM_IDX].transform.source == ECS_CMP_TRANSFORM_SOURCE_ANIMATION) {
-                    if(config->signature & ECS_CMP_COLLIDER) {
-                        eprint("configuring transform source as animation and also setting phy collider to that entity - is not a supported use case");
-                    }
-                }
             } break;
             case ECS_CMP_COLLIDER: {
                 ASSERT(config->signature & (ECS_CMP_TRANSFORM));
@@ -409,7 +401,7 @@ void ecs_componentmanager__internal_cmp_cleanup(const ecs_component_type type, c
         case ECS_CMP_COLLIDER: {
             const ecs_component_collider_t *collider = (ecs_component_collider_t *)poolentry->entity_cmpdata;
             if (collider->internal.body_id)                 JPH_BodyInterface_RemoveAndDestroyBody(global_joltphysics_instance->bodyinterface, collider->internal.body_id);
-            else if (collider->internal.kinematic_body)     JPH_CharacterBase_Destroy((JPH_CharacterBase *)collider->internal.kinematic_body);
+            else if (collider->internal.kinematicbody)     JPH_CharacterBase_Destroy((JPH_CharacterBase *)collider->internal.kinematicbody);
         } break;
 
         default: return;
