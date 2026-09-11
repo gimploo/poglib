@@ -114,7 +114,7 @@ INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(v
 
     //FIXME: For kinematic bodies theres no direct API to do this, it was suggested to use  
     // to destroy and recreate the CharacterVirtual with a new scaled shape.
-    if (collider->internal.kinematic_body) return;
+    if (collider->internal.kinematicbody) return;
 
     switch(collider->shape_type)
     {
@@ -624,7 +624,7 @@ INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collide
         ecs_component_transform_t *const transform = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
         ASSERT(transform);
 
-        if (!collider->internal.kinematic_body) {
+        if (!collider->internal.kinematicbody) {
             JPH_BodyInterface_SetPositionAndRotation(
                 global_joltphysics_instance->bodyinterface, 
                 collider->internal.body_id, 
@@ -638,8 +638,8 @@ INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collide
                 JPH_Activation_DontActivate
             );
         } else {
-            JPH_CharacterVirtual_SetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->position);
-            JPH_CharacterVirtual_SetRotation(collider->internal.kinematic_body, (JPH_Quat *)&transform->orientation);
+            JPH_CharacterVirtual_SetPosition(collider->internal.kinematicbody, (JPH_Vec3 *)&transform->position);
+            JPH_CharacterVirtual_SetRotation(collider->internal.kinematicbody, (JPH_Quat *)&transform->orientation);
         }
 
         collider->internal.position     = transform->position;

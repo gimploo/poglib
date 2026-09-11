@@ -42,8 +42,6 @@ void ecs_system_transform(ecs_componentmanager_t *const cmp_manager, const ecs_s
                 );
             break;
 
-            case ECS_CMP_TRANSFORM_SOURCE_ANIMATION:    //NOTE: animation system updates the position and orientation directly 
-            case ECS_CMP_TRANSFORM_SOURCE_PHYSICS:      //NOTE: physics system updates the position and orientation directly 
             case ECS_CMP_TRANSFORM_SOURCE_NONE:
             break;
 
