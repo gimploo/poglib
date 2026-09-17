@@ -17,8 +17,8 @@ typedef struct {
 
     bool                is_hit;
     JPH_ShapeCastResult result;
-    JPH_Vec3            hitposition;
-    JPH_Vec3            hitnormal;
+    vec3s            hitposition;
+    vec3s            hitnormal;
 
 } joltshapecast_result_t;
 
@@ -97,6 +97,10 @@ void                                joltphysics_start_simulation(joltphysics_t *
 
 void                                joltphysics_update(joltphysics_t *self, const f32 dt);
 joltphysics_event_queue_t *         joltphysics_get_collision_eventqueue(const joltphysics_t * const self);
+
+joltraycast_result_t                joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir);
+joltshapecast_result_t              joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius);
+joltshapecast_result_t              joltphysics_capsule_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius, const f32 halfheight);
 
 void                           joltphysics_destroy(joltphysics_t *self);
 
@@ -352,6 +356,7 @@ void joltphysics_body_destroy(const JPH_BodyID body_id)
         body_id);
 }
 
+
 joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir)
 {
     ASSERT(global_joltphysics_instance);
@@ -381,12 +386,12 @@ joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t di
     return (joltraycast_result_t){0};
 }
 
-void joltphysics_sphere_shapecast__internal__JPH_CastShapeCollectorCallback(void* context, const JPH_ShapeCastResult* result)
+void joltphysics_shapecast__internal__JPH_CastShapeCollectorCallback(void* context, const JPH_ShapeCastResult* result)
 {
     *(JPH_ShapeCastResult *)context = *result;
 }
 
-joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius)
+joltshapecast_result_t joltphysics_capsule_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius, const f32 halfheight)
 {
     ASSERT(global_joltphysics_instance);
     const JPH_NarrowPhaseQuery *const npq   = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
@@ -395,7 +400,7 @@ joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const
     JPH_ShapeCastSettings_Init(&setting);
     setting.useShrunkenShapeAndConvexRadius = true;
 
-    JPH_Shape *castshape = (JPH_Shape *)JPH_SphereShape_Create(radius);
+    JPH_Shape *castshape = (JPH_Shape *)JPH_CapsuleShape_Create(halfheight, radius);
     JPH_ShapeCastResult result = {0};
 
     const bool hit = JPH_NarrowPhaseQuery_CastShape2(
@@ -406,7 +411,7 @@ joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const
         &setting,
         &(JPH_Vec3){0},
         JPH_CollisionCollectorType_ClosestHit,
-        joltphysics_sphere_shapecast__internal__JPH_CastShapeCollectorCallback, 
+        joltphysics_shapecast__internal__JPH_CastShapeCollectorCallback, 
         &result,
         NULL,//const JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
         NULL,//const JPH_ObjectLayerFilter* objectLayerFilter,
@@ -441,8 +446,68 @@ joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const
     return (joltshapecast_result_t){
         .is_hit = hit,
         .result = result,
-        .hitposition = hit_position,
-        .hitnormal = *(JPH_Vec3 *)&hit_normal,
+        .hitposition = *(vec3s *)&hit_position,
+        .hitnormal = hit_normal,
+    };
+}
+
+joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius)
+{
+    ASSERT(global_joltphysics_instance);
+    const JPH_NarrowPhaseQuery *const npq   = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
+    const matrix4f_t worldtransform = glms_translate_make(ray_pos);
+    JPH_ShapeCastSettings setting; 
+    JPH_ShapeCastSettings_Init(&setting);
+    setting.useShrunkenShapeAndConvexRadius = true;
+
+    JPH_Shape *castshape = (JPH_Shape *)JPH_SphereShape_Create(radius);
+    JPH_ShapeCastResult result = {0};
+
+    const bool hit = JPH_NarrowPhaseQuery_CastShape2(
+        npq,
+        castshape,
+        (JPH_Mat4 *)&worldtransform, 
+        (JPH_Vec3 *)&dir,
+        &setting,
+        &(JPH_Vec3){0},
+        JPH_CollisionCollectorType_ClosestHit,
+        joltphysics_shapecast__internal__JPH_CastShapeCollectorCallback, 
+        &result,
+        NULL,//const JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
+        NULL,//const JPH_ObjectLayerFilter* objectLayerFilter,
+        NULL,//const JPH_BodyFilter* bodyFilter,
+        NULL //const JPH_ShapeFilter* shapeFilter);
+    );
+
+    JPH_Vec3 hit_position = {0};
+    vec3s hit_normal = {0};
+    if (hit) 
+    {
+        hit_position = result.contactPointOn1;
+        hit_normal = glms_vec3_normalize(glms_vec3_negate((*(vec3s *)&result.penetrationAxis)));
+#if 0
+        if (!global_workbench->disable_joltrenderer)
+        {
+            const matrix4f_t transform = glms_translate_make(*(vec3s *)&hit_position);
+            JPH_Shape_Draw(
+                castshape,
+                global_workbench->joltrenderer->handle, 
+                (JPH_Mat4 *)&transform,
+                &(JPH_Vec3){ 1.0f, 1.0f, 1.0f }, 
+                0x00ff00ff,
+                false, 
+                false
+            );
+        }
+#endif
+    }
+    JPH_Shape_Destroy(castshape);
+
+    return (joltshapecast_result_t){
+        .is_hit = hit,
+        .result = result,
+        .hitposition = *(vec3s *)&hit_position,
+        .hitnormal = hit_normal,
     };
 }
 

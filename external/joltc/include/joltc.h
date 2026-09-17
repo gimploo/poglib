@@ -638,6 +638,8 @@ typedef struct JPH_CollideShapeResult {
 } JPH_CollideShapeResult;
 
 typedef struct JPH_ShapeCastResult {
+	//NOTE: contactPointOn1 gives you the point on the surface of the casting sphere itself, 
+	//whereas contactPointOn2 gives you the contact point on the surface of the obstacle (Shape 2)
 	JPH_Vec3           contactPointOn1;
 	JPH_Vec3           contactPointOn2;
 	JPH_Vec3           penetrationAxis;

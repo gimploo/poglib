@@ -61,9 +61,10 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
     const matrix4f_t projection  = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
     const matrix4f_t camera_view = glcamera_getview(active_camera);
 
-    const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(cmp_manager, entity_id, ECS_CMP_TRANSFORM | ECS_CMP_MODEL | ECS_CMP_MESH);
-    const ecs_component_transform_t *const transform = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+    const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(cmp_manager, entity_id, ECS_CMP_TRANSFORM | ECS_CMP_SPRITE);
+    const ecs_component_transform_t *const transform    = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
     ASSERT(transform);
+    const ecs_component_sprite_t *const sprite          = view.entity_cmp_data[ECS_CMP_SPRITE_IDX];
 
     const matrix4f_t model_transform = glms_mat4_mul(
         glms_translate_make(transform->position), 
@@ -109,7 +110,7 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
                 value.mat4 = model_transform;
             break;
             case ECS_UNIFORM_TEXTURE_AVAILABILITY:
-                value.boolean = material->textures.count > 0;
+                value.boolean = material->textures.count > 0 || (sprite && sprite->spritesheet_asset_id != INVALID_ASSET_ID);
             break;
 
             //NOTE: these are handled in model's resolver

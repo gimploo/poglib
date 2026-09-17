@@ -287,7 +287,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                     },
                     .color = {
                         .base = COLOR_RED,
-                        .highlight = COLOR_LIGHTRED,
+                        .highlight = COLOR_LIGHT_RED,
                     },
                     .binding = {
                         .ref = (void *)&transform_bindings[idx]->x,
@@ -323,7 +323,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                     },
                     .color = {
                         .base = COLOR_GREEN,
-                        .highlight = COLOR_LIGHTGREEN,
+                        .highlight = COLOR_LIGHT_GREEN,
                     },
                     .dim = {
                         .min_width = 50,
@@ -369,7 +369,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
                     const u32 z_id = gui_ui_compose_begin(gui, (ui_config_t){
                         .color = {
                             .base = COLOR_BLUE,
-                            .highlight = COLOR_LIGHTBLUE,
+                            .highlight = COLOR_LIGHT_BLUE,
                         },
                         .composition = {
                             .traits = UI_BEHAVIOR_TRACK_STATE_LOCK_MOUSE_ON_DRAG | UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE
