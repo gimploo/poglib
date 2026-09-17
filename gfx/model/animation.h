@@ -28,7 +28,7 @@ typedef struct {
 typedef struct {
     //TODO: change this to str_t
     const char *name;      // Animation name
-    f32 duration;          // Duration in ticks
+    f32 total_ticks;          // Duration in ticks
     f32 ticks_per_second;  // Ticks per second for time conversion
     list_t channels;       // List of node_anim_t (one per animated node/bone)
 } animation_t;
@@ -77,7 +77,7 @@ animation_t __animation_init(const char *name, const f32 duration, const f32 tic
 {
     return (animation_t ) {
         .name = name,
-        .duration = duration,
+        .total_ticks = duration,
         .ticks_per_second = ticks_per_second,
         .channels = list_init(node_anim_t, arena)
     };
@@ -197,7 +197,7 @@ INTERNAL position_key_t animation__internal__get_position_key(const list_t *cons
 
     if (position_keys->len == 0) return result;
 
-    time = MIN(time, duration);
+    time = fmodf(time, duration);
 
     position_key_t *prev = NULL;
     list_iterator(position_keys, iter) {
@@ -255,7 +255,7 @@ INTERNAL scaling_key_t animation__internal__get_scaling_key(const list_t *scalin
     scaling_key_t result = { .value = (vec3f_t){1.0f, 1.0f, 1.0f} };
     if (scaling_keys->len == 0) return result;
 
-    time = fmod(time, duration);
+    time = fmodf(time, duration);
 
     scaling_key_t *prev = NULL;
     list_iterator(scaling_keys, iter) {

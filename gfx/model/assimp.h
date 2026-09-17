@@ -449,7 +449,7 @@ glmodel_t glmodel_init(const str_t filepath)
             .directory_path     = str_get_directory_path(filepath),
             .blend = { 
                 .target_animation = NULL,
-                .factor = 1.0f,
+                .factor = 0.f,
                 .blendspeed = 1.0f
            },
         },
@@ -622,8 +622,8 @@ INTERNAL void assimp__internal__process_node_anim(glmodel_t *const self, struct 
             node_transform = compute_blend_node_transform(
                 c_node_channel,
                 t_node_channel,
-                current_anim->duration,
-                target_anim->duration,
+                current_anim->total_ticks,
+                target_anim->total_ticks,
                 self->internal.prev_time,
                 self->current_time,
                 blendfactor
@@ -636,7 +636,7 @@ INTERNAL void assimp__internal__process_node_anim(glmodel_t *const self, struct 
         list_iterator(&current_anim->channels, iter) {
             node_anim_t *const channel = iter;
             if (strcmp(channel->node_name, node_name.data) == 0) {
-                node_transform = compute_node_transform(channel, self->current_time, current_anim->duration);
+                node_transform = compute_node_transform(channel, self->current_time, current_anim->total_ticks);
                 break;
             }
         }
@@ -682,7 +682,7 @@ f32 glmodel_get_playing_animation_loop_count(const glmodel_t *const self, const 
 
     if (!animation) return 0;
 
-    return ((self->current_time + dt * animation->ticks_per_second)) / animation->duration;
+    return ((self->current_time + dt * animation->ticks_per_second)) / animation->total_ticks;
 }
 
 void glmodel_play_animation(glmodel_t *const self, const f32 dt)
@@ -696,7 +696,7 @@ void glmodel_play_animation(glmodel_t *const self, const f32 dt)
 
     self->current_time = fmodf(
         self->current_time + (dt * current_anim->ticks_per_second), 
-        current_anim->duration
+        current_anim->total_ticks
     );
 
     if (self->internal.blend.target_animation) {
@@ -758,6 +758,7 @@ animation_t * glmodel_set_animation(glmodel_t *const self, const str_t animation
         self->internal.blend.factor = 1.0f;
         self->internal.blend.blendspeed = 1.0f;
 
+        //printf("play animation "STR_FMT"\n", STR_ARG(animation_label));
 
     } else if (self->internal.blend.target_animation) {
 
@@ -766,9 +767,11 @@ animation_t * glmodel_set_animation(glmodel_t *const self, const str_t animation
         self->internal.blend.factor = 0.0f;
         self->internal.blend.blendspeed = blendspeed;
 
+        //printf("blending animation from UNFINISHED %s to " STR_FMT "\n", self->internal.active_animation->name, STR_ARG(animation_label));
 
     } else {
 
+        //printf("blending animation from %s to " STR_FMT "\n", self->internal.active_animation->name, STR_ARG(animation_label));
 
         self->internal.blend.target_animation = current_anim;
         self->internal.blend.factor = 0.0f;
@@ -873,7 +876,7 @@ vec3f_t glmodel_get_rootnode_position(const glmodel_t *self, const char *animati
     const node_anim_t *ch = list_get_value(&anim->channels, (u64)self->internal.root_channel_idx);
     if (!ch) eprint("root channel not found in animation channel");
 
-    const matrix4f_t m = compute_node_transform(ch, time, anim->duration);
+    const matrix4f_t m = compute_node_transform(ch, time, anim->total_ticks);
     return (vec3f_t){ m.raw[3][0], m.raw[3][1], m.raw[3][2] };
 }
 
