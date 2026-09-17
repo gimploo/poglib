@@ -2,11 +2,12 @@
 
 #define COLOR_BLACK                         (vec4f_t ){0.0f, 0.0f, 0.0f ,1.0f}
 #define COLOR_RED                           (vec4f_t ){1.0f, 0.0f, 0.0f, 1.0f}
-#define COLOR_LIGHTRED                      (vec4f_t ){0.5f, 0.0f, 0.0f, 1.0f}
-#define COLOR_BLUE                          (vec4f_t ){0.0f, 0.0f, 1.0f, 1.0f}
-#define COLOR_LIGHTBLUE                     (vec4f_t ){0.0f, 0.0f, 0.5f, 1.0f}
+#define COLOR_LIGHT_RED                      (vec4f_t ){0.5f, 0.0f, 0.0f, 1.0f}
+#define COLOR_DARK_BLUE                     (vec4f_t ){0.0f, 0.0f, 1.0f, 1.0f}
+#define COLOR_BLUE                          (vec4f_t ){0.0f, 0.0f, 0.5f, 1.0f}
+#define COLOR_LIGHT_BLUE                    (vec4f_t ){0.0f, 0.0f, 0.25f, 1.0f}
 #define COLOR_GREEN                         (vec4f_t ){0.0f, 1.0f, 0.0f, 1.0f}
-#define COLOR_LIGHTGREEN                    (vec4f_t ){0.0f, 0.5f, 0.0f, 1.0f}
+#define COLOR_LIGHT_GREEN                    (vec4f_t ){0.0f, 0.5f, 0.0f, 1.0f}
 #define COLOR_WHITE                         (vec4f_t ){1.0f, 1.0f, 1.0f, 1.0f}
 #define COLOR_OFFWHITE                      (vec4f_t){0.8f, 0.8f, 0.8f, 1.0f}
 #define COLOR_NOT_AS_BRIGHT_AS_WHITE        (vec4f_t ){0.9f, 0.9f, 0.9f, 1.0f}
@@ -17,6 +18,7 @@
 
 // --- Debug Palette (High Visibility) ---
 #define COLOR_ORANGE        (vec4f_t){1.00f, 0.57f, 0.00f, 1.0f }
+#define COLOR_LIGHT_ORANGE        (vec4f_t){1.00f, 0.285f, 0.00f, 1.0f }
 #define COLOR_LIGHTORANGE   (vec4f_t){0.80f, 0.27f, 0.00f, 1.0f }
 #define COLOR_MINT    (vec4f_t){0.00f, 1.00f, 0.62f, 1.0f }
 #define COLOR_CYAN    (vec4f_t){0.00f, 0.90f, 1.00f, 1.0f }
