@@ -733,13 +733,14 @@ animation_t * glmodel_set_animation(glmodel_t *const self, const str_t animation
 {
     if (!self->animator.animations.len) eprint("No animations in model");
 
-    if (self->internal.active_animation && strcmp(self->internal.active_animation->name, animation_label.data) == 0) {
-        return self->internal.active_animation;
-    }
+    if (self->internal.active_animation
+        && !self->internal.blend.target_animation
+        && strcmp(self->internal.active_animation->name, animation_label.data) == 0
+    ) return self->internal.active_animation;
 
-    if (self->internal.blend.target_animation && strcmp(self->internal.blend.target_animation->name, animation_label.data) == 0) {
-        return self->internal.blend.target_animation;
-    }
+    if (self->internal.blend.target_animation 
+        && strcmp(self->internal.blend.target_animation->name, animation_label.data) == 0
+    ) return self->internal.blend.target_animation;
 
     animation_t *const current_anim = animator_get_animation(&self->animator, animation_label.data);
     if (!current_anim) {
