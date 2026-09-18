@@ -341,7 +341,7 @@ void assetmanager__internal__upload_model_to_gpu(
     }
 
     list_iterator(&model->textures, iter) {
-        model_texture_t *mt = (model_texture_t *)iter;
+        glmodel_texture_t *mt = (glmodel_texture_t *)iter;
         gltexture2d_upload_to_gpu(&mt->texture);
     }
 

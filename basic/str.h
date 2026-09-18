@@ -10,7 +10,7 @@
 typedef struct str_t {
 
     char      *data;
-    u32       len;
+    u64       len;
     struct {
         bool heap_allocated;
     } internal;
@@ -31,7 +31,7 @@ typedef struct {
 #define         str(STRING)              (str_t ) { .data = STRING, .len = sizeof(STRING) - 1, .internal.heap_allocated = false }
 #define         str_lit(STRING)          { .data = STRING, .len = sizeof(STRING) - 1, .internal.heap_allocated = false }
 str_t           str_init(arena_t *arena, const char * const __buffer);
-str_t           str_from_cstr(const char *data, const u32 len);
+str_t           str_from_cstr(const char *data, const u64 len);
 void            str_free(str_t *x);
 void            str_get_data(const str_t *data, char *output);
 u32             str_where_is_string_in_buffer(str_t *word, str_t *__buffer);
@@ -40,7 +40,7 @@ str_t           str_cpy_delimiter(str_t *__buffer, char ch);
 bool            str_cmp(const str_t a, const str_t b);
 void            str_cpy(str_t *dest, str_t *source);
 str_t           str_get_directory_path(const str_t str);
-str_t           str_join(arena_t *arena, const str_t *part1, const char *part2);
+str_t           str_join(arena_t *const arena, const str_t part1, const str_t part2);
 str_views_t     str_split(const str_t buffer, const char separator, arena_t *const arena);
 str_t           str_trim(const str_t buffer);
 str_pair_t      str_partition(const str_t buffer, const char partition_at);
@@ -238,18 +238,16 @@ void str_get_data(const str_t *data, char *output)
     memcpy(output, data->data, data->len);
 }
 
-str_t str_join(arena_t *arena, const str_t *part1, const char *part2)
+str_t str_join(arena_t *const arena, const str_t part1, const str_t part2)
 {
-    ASSERT(part1);
-    ASSERT(part2);
+    ASSERT(part1.len);
+    ASSERT(part2.len);
 
-    const u32 part2_len = strlen(part2);
-
-    char *buffer = arena_reserve(arena, sizeof(char) * (part1->len + part2_len + 1));
+    char *const buffer = arena_reserve(arena, sizeof(char) * (part1.len + part2.len + 1));
     ASSERT(buffer);
-    sprintf(buffer, "%.*s%s", part1->len, part1->data, part2);
+    sprintf(buffer, STR_FMT STR_FMT, part1.len, part1.data, part2.len, part2.data);
     return (str_t) {
-        .len = part1->len + part2_len,
+        .len = part1.len + part2.len,
         .data = buffer,
         .internal.heap_allocated = false
     };
@@ -258,7 +256,7 @@ str_t str_join(arena_t *arena, const str_t *part1, const char *part2)
 //credit: gunslinger
 void cstr_get_file_extension(const char *filepath, char output[32])
 {
-    u32 str_len = strlen(filepath);
+    u64 str_len = strlen(filepath);
     const char* at = (filepath + str_len - 1);
     while (*at != '.' && at != filepath)
     {
@@ -277,7 +275,7 @@ void cstr_get_file_extension(const char *filepath, char output[32])
     }
 }
 
-str_t str_from_cstr(const char *data, const u32 len)
+str_t str_from_cstr(const char *data, const u64 len)
 {
     return (str_t) {
         .data = (char *)data,
