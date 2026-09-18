@@ -33,8 +33,9 @@ gltexture2d_t        gltexture2d_embedded_init(u8 *buffer, u32 buffer_size);
 gltexture2d_t        gltexture2d_empty_init(u32 width, u32 height);
 void                 gltexture2d_upload_to_gpu(gltexture2d_t *texture);
 gltexture2d_t        gltexture2d_load_from_file(const char *filepath);
-gltexture2d_t        gltexture2d_load_from_memory(u8 *buffer, u32 buffer_size);
+gltexture2d_t        gltexture2d_load_from_memory(const u8 *const buffer, const u32 buffer_size, const str_t path);
 void                 gltexture2d_destroy(const gltexture2d_t *texture);
+bool                 gltexture2d_is_same(const gltexture2d_t *const texture1, const gltexture2d_t *const texture2);
 //NOTE:(macro)       gltexture2d_bind(gltexture2d_t *, u32 slot) --> void
 //NOTE:(macro)       gltexture2d_unbind(void) --> void
 void                 gltexture2d_dump(const gltexture2d_t *texture);
@@ -113,7 +114,7 @@ gltexture2d_t gltexture2d_load_from_file(const char *filepath)
     };
 }
 
-gltexture2d_t gltexture2d_load_from_memory(u8 *buffer, u32 buffer_size)
+gltexture2d_t gltexture2d_load_from_memory(const u8 *const buffer, const u32 buffer_size, const str_t path)
 {
     i32 width, height, bpp;
     u8 *pixels = (u8 *)stbi_load_from_memory(buffer, buffer_size, &width, &height, &bpp, STBI_default);
@@ -121,7 +122,7 @@ gltexture2d_t gltexture2d_load_from_memory(u8 *buffer, u32 buffer_size)
 
     return (gltexture2d_t) {
         .id = 0,
-        .filepath = {0},
+        .filepath = path,
         .buf = pixels,
         .width = width,
         .height = height,
@@ -293,6 +294,16 @@ void gltexture2d_upload_to_gpu(gltexture2d_t *texture)
     GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
     GL_LOG("Texture `%i` successfully created", texture->id);
+}
+
+bool gltexture2d_is_same(const gltexture2d_t *const texture1, const gltexture2d_t *const texture2)
+{
+    const bool both_embedded    = texture1->id == 0 && texture2->id == 0;
+    const bool both_fileloaded  = texture1->id > 0 && texture2->id > 0;
+
+    if (!both_embedded && !both_fileloaded) return false;
+
+    return str_cmp(texture1->filepath, texture2->filepath);
 }
 
 #endif //__TEXTURE_H__
