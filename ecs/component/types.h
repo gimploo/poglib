@@ -19,6 +19,7 @@ typedef enum {
     ECS_CMP_COLLIDER_IDX        = 5,
     ECS_CMP_MESH_IDX            = 6,
     ECS_CMP_SPRITE_IDX          = 7,
+    ECS_CMP_LIGHT_IDX           = 8, 
     ECS_CMP_COUNT
 
 } ecs_component_storage_index;
@@ -32,7 +33,8 @@ typedef enum {
     ECS_CMP_CAMERA              = 1 << ECS_CMP_CAMERA_IDX,
     ECS_CMP_COLLIDER            = 1 << ECS_CMP_COLLIDER_IDX,
     ECS_CMP_MESH                = 1 << ECS_CMP_MESH_IDX,
-    ECS_CMP_SPRITE              = 1 << ECS_CMP_SPRITE_IDX
+    ECS_CMP_SPRITE              = 1 << ECS_CMP_SPRITE_IDX,
+    ECS_CMP_LIGHT               = 1 << ECS_CMP_LIGHT_IDX 
 
 } ecs_component_type;
 
@@ -103,11 +105,11 @@ typedef struct ecs_component_material_t ecs_component_material_t;
 struct ecs_component_material_t {
 
     u32 shader_asset_id;
+    vec4s color;
     struct {
         u32 count;
         u32 asset_ids[ECS_COMPONENT_MATERIAL_TEXTURE_MAX_COUNT];
     } textures;
-    vec4s color;
     struct {
         gluniforms_t uniform_values;
     } internal;
@@ -154,7 +156,7 @@ typedef enum {
 } collider_shape_type;
 
 typedef union {
-    f32 raw[3];
+    vec3s raw;
     struct {
         f32 half_width;
         f32 half_height;
@@ -202,17 +204,21 @@ struct ecs_component_collider_t {
     } internal;
 };
 
-//NOTE: Jolt stores a u64 value / reference, as per requirement we would need to 
-//pass an heap allocated refernce to `ecs_collider_jolt_userdata_t` if we begin to 
-//expand this struct further
 struct ecs_collider_jolt_userdata_t {
     JPH_ObjectLayer objectlayertype;
-    collider_shape_dimension_t dimension;
-    struct {
-        ecs_component_collider_t *ecs_collider;
-    } internal;
+    u32 entity_id;
 };
 
+/* =========================== LIGHT ================================== */
+
+typedef struct ecs_component_light_t  ecs_component_light_t;
+struct ecs_component_light_t {
+    vec4s color;
+    f32 constant;
+    f32 linear;
+    f32 quadratic;
+    f32 radius;
+};
 
 /* =========================== MISC ==========================================*/
 
@@ -242,6 +248,7 @@ struct ecs_componentbundle_t {
             ecs_component_camera_t      camera;
             ecs_component_collider_t    collider;
             ecs_component_sprite_t      sprite;
+            ecs_component_light_t       light;
         };
     } component[ECS_CMP_COUNT];
 

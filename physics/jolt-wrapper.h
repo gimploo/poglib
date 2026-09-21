@@ -5,13 +5,21 @@
 #include "poglib/math/la.h"
 #include "poglib/util/workbench/common.h"
 
+#define POGGEN_RESERVED_OBJECT_LAYER_TYPE    0                   //NOTE: used primarily in the workbench for selecting entities
+
 typedef struct {
 
     JPH_RayCastResult   result;
-    JPH_Vec3            hitnormal;
     JPH_Vec3            hitposition;
 
 } joltraycast_result_t;
+
+typedef struct {
+
+    u32 count;
+    JPH_RayCastResult results[32];
+
+} joltraycast_results_t;
 
 typedef struct {
 
@@ -70,10 +78,10 @@ global joltphysics_t *global_joltphysics_instance = NULL;
 #define MAX_COLLISION_INTERACTABILITY_ENTRIES       32 
 
 typedef enum {
-    PHY_BP_STATIC = 0,
-    PHY_BP_DYNAMIC = 1,
-    PHY_BP_SENSORS = 2,
-    PHY_BP_DEBRIS = 3,
+    JOLT_BP_STATIC          = 0,
+    JOLT_BP_DYNAMIC         = 1,
+    JOLT_BP_SENSORS         = 2,
+    JOLT_BP_DEBRIS          = 3,
     PHY_BP_COUNT
 } broadphase_type;
 
@@ -99,6 +107,7 @@ void                                joltphysics_update(joltphysics_t *self, cons
 joltphysics_event_queue_t *         joltphysics_get_collision_eventqueue(const joltphysics_t * const self);
 
 joltraycast_result_t                joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir);
+joltraycast_results_t               joltphysics_raycastall(const vec3f_t ray_pos, const vec3f_t dir);
 joltshapecast_result_t              joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius);
 joltshapecast_result_t              joltphysics_capsule_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius, const f32 halfheight);
 
@@ -179,27 +188,29 @@ void joltphysics_set_interaction_rules(joltphysics_t * const self, const joltphy
 {
     ASSERT(config.count < MAX_COLLISION_INTERACTABILITY_ENTRIES);
 
-    JPH_ObjectLayerPairFilter* objectLayerPairFilterTable = JPH_ObjectLayerPairFilterTable_Create(config.count * 2);
-
-    u8 max_objectlayer_type = 0;
-    u8 max_broadphase_type = 0;
+    u16 max_objectlayer_type = 0;
     for (u32 i = 0; i < config.count; i++) {
         for (u8 j = 0; j < 2; j++) {
             if (config.data[i][j].objectlayer_type > max_objectlayer_type)
                 max_objectlayer_type = config.data[i][j].objectlayer_type;
-            if (config.data[i][j].broadphase_type > max_broadphase_type)
-                max_broadphase_type = config.data[i][j].broadphase_type;
         }
     }
+
+    JPH_ObjectLayerPairFilter* objectLayerPairFilterTable = JPH_ObjectLayerPairFilterTable_Create(max_objectlayer_type + 1);
 
     struct {
         bool is_occupied;
         collision_objectlayer_broadphase_config_t config;
     } objectlayer_configs[MAX_COLLISION_INTERACTABILITY_ENTRIES] = {0};
-    u16 objectlayer_count = 0;
+
+#ifdef DEBUG
+    u8 objectlayer_count = 1; //NOTE: to include the JOLT_EDITOR_ONLY for proxy colliders
+#else
+    u8 objectlayer_count = 0;
+#endif
 
     bool broadphase_types[MAX_COLLISION_INTERACTABILITY_ENTRIES] = {0};
-    u16 broadphase_count = 0;
+    u8 broadphase_count = 0;
 
     for (u32 index = 0; index < config.count; index++)
     {
@@ -216,8 +227,10 @@ void joltphysics_set_interaction_rules(joltphysics_t * const self, const joltphy
 
         for (u8 objectlayer_config_index = 0; objectlayer_config_index < 2; objectlayer_config_index++)
         {
-            const u8 config_object_type = config.data[index][objectlayer_config_index].objectlayer_type;
-            const u8 config_broadphase_type = config.data[index][objectlayer_config_index].broadphase_type;
+            const u16 config_object_type = config.data[index][objectlayer_config_index].objectlayer_type;
+            if(config_object_type == 0) eprint("Value '0' is reserved for in engine object layer type.");
+
+            const u16 config_broadphase_type = config.data[index][objectlayer_config_index].broadphase_type;
             const bool same_broadphase = objectlayer_configs[config_object_type].config.broadphase_type == config_broadphase_type;
 
             if (objectlayer_configs[config_object_type].is_occupied && same_broadphase)
@@ -242,10 +255,20 @@ void joltphysics_set_interaction_rules(joltphysics_t * const self, const joltphy
     for (u8 index = 0; index < objectlayer_count; index++)
     {
         JPH_BroadPhaseLayerInterfaceTable_MapObjectToBroadPhaseLayer(
-                router, 
-                objectlayer_configs[index].config.objectlayer_type, 
-                objectlayer_configs[index].config.broadphase_type);
+            router, 
+            objectlayer_configs[index].config.objectlayer_type, 
+            (JPH_BroadPhaseLayer)objectlayer_configs[index].config.broadphase_type
+        );
     }
+
+#ifdef DEBUG
+    //NOTE: this is to create proxy colliders for editor use only
+    JPH_BroadPhaseLayerInterfaceTable_MapObjectToBroadPhaseLayer(
+        router,
+        POGGEN_RESERVED_OBJECT_LAYER_TYPE,
+        (JPH_BroadPhaseLayer)JOLT_BP_STATIC
+    );
+#endif
 
 
     JPH_ObjectVsBroadPhaseLayerFilter* objectVsBroadPhaseLayerFilter = JPH_ObjectVsBroadPhaseLayerFilterTable_Create(
@@ -356,6 +379,38 @@ void joltphysics_body_destroy(const JPH_BodyID body_id)
         body_id);
 }
 
+INTERNAL void jph_narrowphasequery_castray3__internal__callback(void* context, const JPH_RayCastResult* result)
+{
+    joltraycast_results_t *const list = context;
+
+    if (list->count == ARRAY_LEN(list->results)) 
+        return;
+
+    list->results[list->count] = *result;
+    list->count++;
+}
+
+joltraycast_results_t joltphysics_raycastall(const vec3f_t ray_pos, const vec3f_t dir)
+{
+    ASSERT(global_joltphysics_instance);
+    const JPH_NarrowPhaseQuery *const npq = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
+    joltraycast_results_t list = {0};
+    JPH_RayCastSettings rayCastSettings = {0};
+    JPH_NarrowPhaseQuery_CastRay3(
+        npq,
+        (JPH_Vec3 *)&ray_pos,
+        (JPH_Vec3 *)&dir,
+        &rayCastSettings,
+        JPH_CollisionCollectorType_AllHitSorted,
+        jph_narrowphasequery_castray3__internal__callback,
+        &list,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+    );
+    return list;
+}
 
 joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir)
 {
@@ -364,22 +419,11 @@ joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t di
     JPH_RayCastResult hit = {0};
     if (JPH_NarrowPhaseQuery_CastRay(npq, (JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, &hit, NULL, NULL, NULL)) {
 
-        JPH_Vec3 hit_normal = {0};
         JPH_Vec3 hit_position = {0};
-
         JPH_RayCast_GetPointOnRay((JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, hit.fraction, &hit_position);
 
-        const JPH_BodyLockInterface *lock = JPH_PhysicsSystem_GetBodyLockInterface(global_joltphysics_instance->physics_system);
-        JPH_BodyLockMultiRead* multireadlock = JPH_BodyLockInterface_LockMultiRead(lock, (JPH_BodyID[]) { hit.bodyID }, 1);
-        {
-            const JPH_Body *body = JPH_BodyLockMultiRead_GetBody(multireadlock, 0);
-            ASSERT(body);
-            JPH_Body_GetWorldSpaceSurfaceNormal(body, hit.subShapeID2, &hit_position, &hit_normal);
-        }
-        JPH_BodyLockMultiRead_Destroy(multireadlock);
         return (joltraycast_result_t){
             .result     = hit,
-            .hitnormal  = hit_normal,
             .hitposition = hit_position
         };
     }

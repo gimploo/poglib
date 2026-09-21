@@ -156,8 +156,6 @@ INTERNAL void assimp__internal_glmesh_processMaterial(glmodel_t *self, const str
         list_append(&self->colors, color);
     }
 
-    //TODO: setup materials
-
     for (i32 type = aiTextureType_DIFFUSE; type <= aiTextureType_AMBIENT_OCCLUSION; type++)
     {
         const u32 count = aiGetMaterialTextureCount(material, type);
