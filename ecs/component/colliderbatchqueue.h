@@ -3,6 +3,8 @@
 #include "poglib/basic/arena.h"
 #include "poglib/physics/jolt-wrapper.h"
 
+//TODO: have the Editor object layer type be bulk inserted. explore the improvements for those
+
 typedef struct {
 
     struct {
@@ -65,8 +67,10 @@ i32 colliderbatchqueue__internal_qsort_compare(const void *const x, const void *
     if (c1->shape_type > c2->shape_type) return 1;
     if (c1->shape_type < c2->shape_type) return -1;
 
+#if 0
     if (c1->object_layer_type > c2->object_layer_type) return 1;
     if (c1->object_layer_type < c2->object_layer_type) return -1;
+#endif
 
     return memcmp(&c1->dim, &c2->dim, sizeof(collider_shape_dimension_t));
 }
@@ -75,7 +79,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
 {
     if (self->array_buffer.top == -1) return;
 
-    qsort(self->array_buffer.data.raw_data, self->array_buffer.top + 1, sizeof(ecs_component_collider_t *), colliderbatchqueue__internal_qsort_compare);
+    qsort(self->array_buffer.data.raw_data, (u64)(self->array_buffer.top + 1), sizeof(ecs_component_collider_t *), colliderbatchqueue__internal_qsort_compare);
 
     JPH_Shape *shape                        = NULL;
     JPH_BodyCreationSettings *body_settings = NULL;
@@ -168,11 +172,13 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     collider->motion_type, 
                     collider->object_layer_type
                 );
+                JPH_BodyCreationSettings_SetIsSensor(body_settings, collider->object_layer_type == POGGEN_RESERVED_OBJECT_LAYER_TYPE);
             break;
             case JPH_MotionType_Kinematic:
                 JPH_CharacterVirtualSettings_Init(&settings);
                 settings.base.shape = shape;
                 settings.shapeOffset = (JPH_Vec3){ 0, collider->dim.capsule.half_height + collider->dim.capsule.radius, 0 };
+                settings.characterPadding = 0.2f;
             break;
             default: eprint("Unknown motion type");
         }
@@ -185,7 +191,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                 collider->internal.body_id = JPH_BodyInterface_CreateAndAddBody(
                     global_joltphysics_instance->bodyinterface, 
                     body_settings, 
-                    JPH_Activation_Activate
+                    collider->motion_type == JPH_MotionType_Static ? JPH_Activation_DontActivate : JPH_Activation_Activate
                 );
 
                 //WARN: keeping it here like this so as to keep it easy to make the futher 
@@ -193,10 +199,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
 
                 const ecs_collider_jolt_userdata_t userdata = {
                     .objectlayertype = collider->object_layer_type,
-                    .dimension = collider->dim,
-                    .internal = {
-                        .ecs_collider = collider
-                    }
+                    .entity_id = collider->internal.entity_id,
                 };
                 JPH_BodyInterface_SetUserData(
                     global_joltphysics_instance->bodyinterface,

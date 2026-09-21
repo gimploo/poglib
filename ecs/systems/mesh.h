@@ -34,7 +34,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
         const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(
             cmp_manager, 
             entry->entity_id, 
-            ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM | ECS_CMP_SPRITE);
+            ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM | ECS_CMP_SPRITE | ECS_CMP_LIGHT);
 
         ecs_component_material_t *material = view.entity_cmp_data[ECS_CMP_MATERIAL_IDX];
         ASSERT(material);
@@ -44,6 +44,9 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
 
         const glshader_t *shader = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader_asset_id);
         ASSERT(shader);
+
+        const ecs_component_light_t *light = view.entity_cmp_data[ECS_CMP_LIGHT_IDX];
+        if (light && !global_workbench->is_active) continue;
 
         gltexturelist_t textures = {0};
 

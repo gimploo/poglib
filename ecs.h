@@ -8,6 +8,8 @@
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/ecs/serialization.h"
+#include "poglib/ecs/systems/light.h"
+#include "poglib/gfx/gl/ubo.h"
 #include "poglib/util/assetmanager.h"
 #include "poglib/poggen.h"
 #include "poglib/ecs/system.h"
@@ -52,6 +54,7 @@ ecs_t * ecs_init(void)
         .internal = {
             .entity_generator_counter = ECS_ENTITY_INVALID_ID,
             .active_camera = NULL,
+            .ubo = glubo_init(sizeof(gllightbuffer_t), GL_UBO_BINDING_IDX_LIGHT)
         },
         .managers = {
             .entitymanager      = ecs_entitymanager(arena),
@@ -92,9 +95,30 @@ void ecs_patch_entity(ecs_t *const self, const u32 entity_id, const ecs_cmp_patc
 
 u32 ecs_entity_add(ecs_t *const self, const ecs_componentbundle_t component_config)
 {
+    ecs_componentbundle_t modified_config = component_config;
+#ifdef DEBUG
+    const bool has_collider = component_config.signature & ECS_CMP_COLLIDER;
+    if (!has_collider) {
+        const vec3s final_collider_scale = glms_vec3_one();
+        modified_config.signature = modified_config.signature | ECS_CMP_COLLIDER;
+        modified_config.component[ECS_CMP_COLLIDER_IDX].collider = (ecs_component_collider_t) {
+            .motion_type = JPH_MotionType_Static,
+            .dim.cube = {
+                .half_depth     = final_collider_scale.z,
+                .half_width     = final_collider_scale.x,
+                .half_height    = final_collider_scale.y,
+            },
+            .shape_type = COLLIDER_SHAPE_TYPE_CUBE,
+            .object_layer_type = POGGEN_RESERVED_OBJECT_LAYER_TYPE 
+        };
+    }
+#else 
+    modified_config = component_config;
+#endif
+
     const ecs_entity_t new_entity = {
         .id                     = ++self->internal.entity_generator_counter,
-        .component_signature    = component_config.signature,
+        .component_signature    = modified_config.signature,
     };
 
     ecs_entitymanager_add(
@@ -105,7 +129,7 @@ u32 ecs_entity_add(ecs_t *const self, const ecs_componentbundle_t component_conf
     ecs_componentmanager_add(
         &self->managers.componentmanager,
         new_entity.id,
-        component_config
+        modified_config
     );
     return new_entity.id;
 }
@@ -211,7 +235,8 @@ void ecs_update(ecs_t *const self)
             &self->managers.componentmanager,
             (ecs_system_ctx_t) {
                 .active_camera = self->internal.active_camera,
-                .dt = APPLICATION_UPDATE_FIXED_TIME_STEP
+                .dt = APPLICATION_UPDATE_FIXED_TIME_STEP,
+                .ubo = &self->internal.ubo 
             }
         );
     }
@@ -224,6 +249,7 @@ ecs_entity_query_t ecs_entity_query_components(ecs_t *const self, const u32 enti
 
 void ecs_destroy(ecs_t *const self)
 {
+    glubo_destroy(&self->internal.ubo);
     arena_destroy(self->arena);
 }
 

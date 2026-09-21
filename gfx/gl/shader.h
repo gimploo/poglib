@@ -1,8 +1,6 @@
 #pragma once
 #include "common.h"
 #include "glconfig.h"
-#include "material.h"
-#include "maps.h"
 #include "poglib/basic/arena.h"
 #include "poglib/basic/ds/hashtable.h"
 #include "poglib/basic/str.h"
@@ -276,7 +274,7 @@ glshader_t glshader_from_cstr_init(const char *vs_code, const char *fs_code)
 }
 
 
-hashtable_t glshader__internal_uniforms_cache_locs(const u32 shader_id, const gluniform_meta_t *uniforms_array, const u16 uniforms_count, arena_t * const arena)
+INTERNAL hashtable_t glshader__internal__uniforms_cache_locs(const str_t filepaths[2], const u32 shader_id, const gluniform_meta_t *uniforms_array, const u16 uniforms_count, arena_t * const arena)
 {
     ASSERT(uniforms_array);
     if (!uniforms_count) 
@@ -295,12 +293,12 @@ hashtable_t glshader__internal_uniforms_cache_locs(const u32 shader_id, const gl
     for (u32 idx = 0; idx < uniforms_count; idx++)
     {
         const char *name = uniforms_array[idx].name.data;
-        if (!name) eprint("Uniform is null, re-check uniform registry for the shader");
+        if (!name) eprint("Uniform is null, re-check uniform registry for the shader - "STR_FMT" & "STR_FMT, STR_ARG(filepaths[0]), STR_ARG(filepaths[1]));
 
         i32 location;
         GL_CHECK(location = glGetUniformLocation(shader_id, name));
-        if (location == -1) 
-            eprint("[ERROR] `%s` uniform doesnt exist", name);
+        if (location == -1)
+            eprint("[ERROR] `%s` uniform doesnt exist, check "STR_FMT" & "STR_FMT, name, STR_ARG(filepaths[0]), STR_ARG(filepaths[1]));
 
         const gluniform_meta_t * const meta = arena_store(
             arena, 
@@ -308,7 +306,7 @@ hashtable_t glshader__internal_uniforms_cache_locs(const u32 shader_id, const gl
                 .name = uniforms_array[idx].name,
                 .type = uniforms_array[idx].type,
                 .internal = {
-                    .loc_idx = location
+                    .loc_idx = (u32)location
                 }
             },
             sizeof(gluniform_meta_t)
@@ -464,7 +462,8 @@ glshader_t glshader_init(
         arena
     );
 
-    shader.internal.uniformlocs = glshader__internal_uniforms_cache_locs(
+    shader.internal.uniformlocs = glshader__internal__uniforms_cache_locs(
+        (str_t[2]){ vtxpath, fgpath },
         shader.id, 
         uniforms.data,
         uniforms.count,

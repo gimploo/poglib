@@ -4,6 +4,7 @@
 #include "poglib/ecs/systems/camera.h"
 #include "poglib/ecs/systems/collider.h"
 #include "poglib/ecs/systems/input.h"
+#include "poglib/ecs/systems/light.h"
 #include "poglib/ecs/systems/mesh.h"
 #include "poglib/ecs/systems/model.h"
 #include "poglib/ecs/systems/transform.h"
@@ -54,6 +55,13 @@ void ecs_add_all_core_systems(ecs_t *const self)
         self, 
         (ecs_system_t) {
             .callback = ecs_system_material
+        }
+    );
+
+    ecs_add_system(
+        self, 
+        (ecs_system_t) {
+            .callback = ecs_system_light
         }
     );
 

@@ -19,8 +19,21 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
         ecs_entity_query_t query                    = ecs_componentmanager__internal__query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM);
         ecs_component_transform_t *transform        = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
 
-        if (global_workbench->is_active)
+        if (collider->object_layer_type == POGGEN_RESERVED_OBJECT_LAYER_TYPE) {
+
+            if (!global_workbench->is_active) continue;
+
+            JPH_BodyInterface_SetPositionAndRotation(
+                global_joltphysics_instance->bodyinterface,
+                collider->internal.body_id, 
+                (JPH_Vec3 *)&transform->position,
+                (JPH_Quat *)&transform->orientation,
+                JPH_Activation_DontActivate
+            );
             continue;
+        }
+
+        if (global_workbench->is_active) continue;
 
         switch(collider->motion_type)
         {
@@ -39,7 +52,7 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
                         if (transform->velocity.y < -0.1) 
                             transform->velocity.y = 0.f;
                     } else {
-                        transform->velocity.y += -9.81 * APPLICATION_UPDATE_FIXED_TIME_STEP;
+                        transform->velocity.y += -9.81f * APPLICATION_UPDATE_FIXED_TIME_STEP;
                     }
                 }
 

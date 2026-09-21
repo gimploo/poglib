@@ -4,6 +4,7 @@
 #include "poglib/ecs/component/types.h"
 #include "poglib/external/joltc/include/joltc.h"
 #include "poglib/gui.h"
+#include "poglib/math/shapes.h"
 #include "poglib/physics/jolt-wrapper.h"
 #include "poglib/pipeline/render/render_queue.h"
 #include "poglib/util/asset.h"
@@ -37,10 +38,19 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
     const vec2f_t ndc = window_mouse_get_norm_position(global_window);
     const glcamera_t *const cam = global_workbench->world_camera.handle;
 
+    //FIXME: this is not accurate at all, cant figure out the math behind why i did 
+    //it this way, need to understand and rework it - ideally the closest one must be selected
+    //but selection sometimes hit other entities beside meaning it could be the direction its pointing
+    //at is incorrect.
     vec3f_t dir = {0};
     {
-        const matrix4f_t view       = glcamera_getview(cam);
-        const matrix4f_t proj       = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 0.1f, 1000.0f);
+        const matrix4f_t view = glcamera_getview(cam);
+        const matrix4f_t proj = glms_perspective(
+            radians(45), 
+            global_engine->handle.app->window.aspect_ratio, 
+            1.0f, 
+            10000.0f
+        );
         const matrix4f_t inv_pv     = glms_mat4_inv(glms_mat4_mul(proj, view));
         const vec4f_t cam_near      = { ndc.x, ndc.y, -1.0f, 1.0f };
         const vec4f_t cam_far       = { ndc.x, ndc.y,  1.0f, 1.0f };
@@ -49,25 +59,34 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
         vec4f_t far_w       = glms_mat4_mulv(inv_pv, cam_far);
         near_w              = glms_vec4_scale(near_w, 1.0f / near_w.w);
         far_w               = glms_vec4_scale(far_w,  1.0f / far_w.w);
-
         dir                 = glms_vec3_normalize(glms_vec3_sub(*(vec3f_t *)&far_w, *(vec3f_t *)&near_w));
     }
 
     {
+        const vec3f_t ray_dir = glms_vec3_scale(dir, 100000.0f);
         u32 picked = 0;
-        const vec3f_t ray_dir = glms_vec3_scale(dir, 1000.0f);
-        JPH_RayCastResult hit = joltphysics_raycast(cam->position, ray_dir).result;
-        if (hit.bodyID) {
-            const ecs_collider_jolt_userdata_t *const userdata =
-                (ecs_collider_jolt_userdata_t *)JPH_BodyInterface_GetUserData(
-                    global_joltphysics_instance->bodyinterface,
-                    hit.bodyID
-                );
-            picked = userdata->internal.ecs_collider->internal.entity_id;
+        joltraycast_results_t hits = joltphysics_raycastall(cam->position, ray_dir);
+        if (hits.count == 0) return;
+
+        for (i32 idx = (i32)(hits.count - 1); idx >= 0; idx--)
+        {
+            const JPH_RayCastResult hit = hits.results[idx];
+            if (hit.bodyID) 
+            {
+                const ecs_collider_jolt_userdata_t *const userdata =
+                    (ecs_collider_jolt_userdata_t *)JPH_BodyInterface_GetUserData(
+                        global_joltphysics_instance->bodyinterface,
+                        hit.bodyID
+                    );
+                if (userdata->entity_id == WORKBENCH_RESERVED_ENTITY_ID_WORLDCAMERA
+                    || global_workbench->editor.mouse_closest_to_entity_id == userdata->entity_id)
+                    continue;
+
+                picked = userdata->entity_id;
+            }
         }
         global_workbench->editor.mouse_closest_to_entity_id = picked;
     }
-
 }
 
 INTERNAL void workbench_editor__internal__scale_mesh_collider(ecs_component_collider_t *const collider, const ecs_component_transform_t transform)

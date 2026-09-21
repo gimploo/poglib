@@ -15,9 +15,6 @@ typedef enum ecs_uniform_supported_types {
     ECS_UNIFORM_CAMERA_VIEW,
     ECS_UNIFORM_CAMERA_POSITION,
     ECS_UNIFORM_MODEL_TEXTURE,
-    ECS_UNIFORM_LIGHT_AMIBENT,
-    ECS_UNIFORM_LIGHT_COLOR,
-    ECS_UNIFORM_LIGHT_POSITION,
     ECS_UNIFORM_TRANSFORM,
     ECS_UNIFORM_MODEL_BONES,
     ECS_UNIFORM_MATERIAL_COLOR,
@@ -31,9 +28,6 @@ const str_t ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SUPPORTED_COUNT] = {
     [ECS_UNIFORM_CAMERA_VIEW]               = str_lit("view"),
     [ECS_UNIFORM_CAMERA_POSITION]           = str_lit("camerapos"),
     [ECS_UNIFORM_MODEL_TEXTURE]             = str_lit("u_texture"),
-    [ECS_UNIFORM_LIGHT_AMIBENT]             = str_lit("light.ambient"),
-    [ECS_UNIFORM_LIGHT_COLOR]               = str_lit("light.color"),
-    [ECS_UNIFORM_LIGHT_POSITION]            = str_lit("light.position"),
     [ECS_UNIFORM_TRANSFORM]                 = str_lit("transform"),
     [ECS_UNIFORM_MODEL_BONES]               = str_lit("uBones"),
     [ECS_UNIFORM_MATERIAL_COLOR]            = str_lit("material.color"),
@@ -75,7 +69,6 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
     );
 
     gluniforms_t uniforms_resolved = {0};
-
     for (ecs_uniform_supported_types uniform_idx = 0; uniform_idx < ECS_UNIFORM_SUPPORTED_COUNT; uniform_idx++)
     {
         const str_t uniform_name            = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[uniform_idx];
@@ -96,15 +89,6 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
             break;
             case ECS_UNIFORM_MODEL_TEXTURE:
                 value.i32 = 0;
-            break;
-            case ECS_UNIFORM_LIGHT_AMIBENT:
-                value.f32 = 1.0f;
-            break;
-            case ECS_UNIFORM_LIGHT_COLOR:
-                value.vec4 = (vec4f_t){1.0f, 1.0f, 1.0f, 1.0f};
-            break;
-            case ECS_UNIFORM_LIGHT_POSITION:
-                value.vec3 = (vec3f_t){0.f, 20.0f, 0.f};
             break;
             case ECS_UNIFORM_TRANSFORM:
                 value.mat4 = model_transform;
