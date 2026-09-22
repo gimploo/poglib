@@ -1,9 +1,12 @@
 #pragma once
 #include "poglib/ecs/component/colliderbatchqueue.h"
+#include "poglib/gfx/gl/depthbuffer.h"
 #include "poglib/util/glcamera.h"
 #include <poglib/basic.h>
 #include <poglib/ecs/component/types.h>
 #include <poglib/gfx/gl/ubo.h>
+
+#define ECS_LIGHT_MAX 8 
 
 /* -------------------------------- ENTITY -------------------------------------------- */
 
@@ -43,7 +46,7 @@ struct ecs_componentmanager_t {
     hashtable_t entity2components_lookup;                   //NOTE: tracks each index of an entity's component in the component 
                                                             //pool together packed into an array of `ECS_CMP_COUNT` size
     struct {
-        colliderbatchqueue_t colliderbatch;
+        colliderbatchqueue_t    colliderbatch;
     } internal;
 };
 

@@ -19,6 +19,7 @@ typedef enum ecs_uniform_supported_types {
     ECS_UNIFORM_MODEL_BONES,
     ECS_UNIFORM_MATERIAL_COLOR,
     ECS_UNIFORM_TEXTURE_AVAILABILITY,
+    ECS_UNIFORM_LIGHT_POSITION,
     ECS_UNIFORM_SUPPORTED_COUNT,
 
 } ecs_uniform_supported_types;
@@ -32,6 +33,7 @@ const str_t ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SUPPORTED_COUNT] = {
     [ECS_UNIFORM_MODEL_BONES]               = str_lit("uBones"),
     [ECS_UNIFORM_MATERIAL_COLOR]            = str_lit("material.color"),
     [ECS_UNIFORM_TEXTURE_AVAILABILITY]      = str_lit("has_texture"),
+    [ECS_UNIFORM_LIGHT_POSITION]            = str_lit("lightPos"),
 };
 
 

@@ -176,6 +176,7 @@ void poggen_update(poggen_t *const self)
     if (self->config.enable_physics && self->systems.physics.instance && !self->systems.physics.phy_simulation_started)
         eprint("Missed to register physics interaction rules, else DISABLE physics in config passed to engine");
 
+    renderqueue_flush(&global_engine->systems.renderqueue);
     assetmanager_update(&self->systems.assets);
 
     scene_t *current_scene = self->current_scene;

@@ -173,9 +173,7 @@ void application_run(application_t *const app)
         //
         //const f32 alpha = timer.accumulator / FIXED_DT;
 
-        window_gl_render_begin(win);
-            app->render(app, timer.raw_dt);
-        window_gl_render_end(win);
+        app->render(app, timer.raw_dt);
 
         //INFO: Smooth the FPS value so it doesn't flicker
         //0.95 keeps the old value, 0.05 takes the new value

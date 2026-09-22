@@ -179,6 +179,7 @@ workbench_t * workbench_init(arena_t *const arena)
         .is_active = false,
         .disable_joltrenderer = false,
         .persist_rendercommands = list_init(rendercommand_t, arena),
+        .renderqueue = renderqueue_init(),
         .shader = glshader_init(
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.vs"), 
             str(POGLIB_ROOT_DIR"/util/workbench/workbench-shader.fs"),
@@ -433,7 +434,7 @@ workbench_t * workbench_init(arena_t *const arena)
     if (global_workbench->audio.mute_sound) ma_engine_set_volume(&global_audio_engine, 0.f);
 
     global_workbench->joltrenderer = joltdebugrenderer_init(
-        &global_engine->systems.renderqueue, 
+        &global_workbench->renderqueue,
         (glshader_t *)assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id)
     );
 
@@ -523,16 +524,17 @@ void workbench_destroy(void)
     gui_destroy(&self->gui.handle);
 
     joltdebugrenderer_destroy(self->joltrenderer);
+    renderqueue_destroy(&self->renderqueue);
 
     global_workbench = NULL;
 }
 
-INTERNAL void workbench__internal__render_persistent_rendercommands(const workbench_t *const self)
+INTERNAL void workbench__internal__render_persistent_rendercommands(workbench_t *const self)
 {
     list_iterator(&self->persist_rendercommands, iter)
     {
         const rendercommand_t *const rc = iter;
-        renderqueue_pass_command(&global_engine->systems.renderqueue, *rc);
+        renderqueue_pass_command(&self->renderqueue, *rc);
     }
 }
 
@@ -547,7 +549,10 @@ void workbench_render(void)
 
     workbench__internal__render_persistent_rendercommands(self);
 
-    if (!self->is_active) return;
+    if (!self->is_active) {
+        renderqueue_dispatch(&self->renderqueue);
+        return;
+    }
 
     if (!self->disable_grid) {
         workbench__internal_render_grid(
@@ -564,6 +569,9 @@ void workbench_render(void)
 //    workbench__internal_render_lightsources(self);
 
     workbench_editor_render();
+
+    renderqueue_dispatch(&self->renderqueue);
+
 }
 
 
@@ -572,7 +580,7 @@ void workbench_render_camera(
     const versors orientation
 ) {
     ASSERT(global_workbench);
-    renderqueue_t * const renderqueue = &global_engine->systems.renderqueue;
+    renderqueue_t * const renderqueue = &global_workbench->renderqueue;
     const assetmanager_t * const assetmanager = &global_engine->systems.assets;
     const matrix4f_t perspective_projection  = glms_perspective(
         radians(45), 
@@ -640,7 +648,7 @@ void workbench_render_marker(
 ) {
     ASSERT(global_workbench);
     workbench_t *const self = global_workbench;
-    renderqueue_t * const renderqueue = &global_engine->systems.renderqueue;
+    renderqueue_t * const renderqueue = &self->renderqueue;
     const assetmanager_t * const assetmanager = &global_engine->systems.assets;
     const matrix4f_t perspective_projection  = glms_perspective(
         radians(45), 
@@ -720,6 +728,7 @@ void workbench_update(const f32 dt)
             global_engine->handle.app->window.aspect_ratio
         );
 
+    renderqueue_flush(&global_workbench->renderqueue);
     if (!global_workbench->is_active) return;
 
     const u32 bitmask = commandqueue_get_bitmask(&global_engine->systems.commandqueue);
@@ -775,6 +784,7 @@ void workbench_toggle(void)
         self->world_camera.entity_id
     );
 
+    //FIXME: have the workbench keep its own commandqueue instead of using the engines
     poggen_update_commandqueue_registry(global_engine, self->commandregistry);
 }
 
@@ -854,7 +864,7 @@ void workbench_draw_sphere(const vec3s position, const f32 radius, const vec4s c
         }
     };
 
-    renderqueue_pass_command(&global_engine->systems.renderqueue, command);
+    renderqueue_pass_command(&global_workbench->renderqueue, command);
 
     if (persist) {
         list_append(&global_workbench->persist_rendercommands, command);
@@ -878,7 +888,7 @@ void workbench_draw_capsule(const vec3s position, const versors orientation, con
     ASSERT(asset->meshes.count);
 
     renderqueue_pass_command(
-        &global_engine->systems.renderqueue,
+        &global_workbench->renderqueue,
         (rendercommand_t) {
             .enable_wireframe = true,
             .instance = (buffer_t){
@@ -958,7 +968,7 @@ void workbench_draw_line(const vec3s startpos, const vec3s endpos, const vec4s s
         }
     };
 
-    renderqueue_pass_command(&global_engine->systems.renderqueue, command);
+    renderqueue_pass_command(&global_workbench->renderqueue, command);
 
     if (persist) {
         list_append(&global_workbench->persist_rendercommands, command);

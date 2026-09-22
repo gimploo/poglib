@@ -12,13 +12,13 @@
 #include <poglib/image.h>
 
 typedef struct gltexture2d_t {
-    
-    GLuint          id; 
+
+    u32             id; 
     str_t           filepath;
     const u8        *buf;
-    int             width;
-    int             height;
-    int             bpp;        //BytesPerPixel
+    u32             width;
+    u32             height;
+    u32             bpp;        //BytesPerPixel
 
 } gltexture2d_t;
 

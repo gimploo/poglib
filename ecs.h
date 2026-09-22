@@ -10,7 +10,6 @@
 #include "poglib/ecs/serialization.h"
 #include "poglib/ecs/systems/light.h"
 #include "poglib/gfx/gl/ubo.h"
-#include "poglib/util/assetmanager.h"
 #include "poglib/poggen.h"
 #include "poglib/ecs/system.h"
 
@@ -53,8 +52,8 @@ ecs_t * ecs_init(void)
     *global_ecs = (ecs_t){
         .internal = {
             .entity_generator_counter = ECS_ENTITY_INVALID_ID,
-            .active_camera = NULL,
-            .ubo = glubo_init(sizeof(gllightbuffer_t), GL_UBO_BINDING_IDX_LIGHT)
+            .active_camera  = NULL,
+            .ubo            = glubo_init(sizeof(gllightbuffer_t), GL_UBO_BINDING_IDX_LIGHT),
         },
         .managers = {
             .entitymanager      = ecs_entitymanager(arena),
@@ -267,7 +266,7 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
 
     ASSERT(arena_is_init(self->arena));
     ASSERT(global_engine);
-    logging("ECS save file `%.*s` exist, loading it.", filepath.len, filepath.data);
+    logging("ECS save file `"STR_FMT"` exist, loading it.", STR_ARG(filepath));
 
     arena_t *const scratch = arena_init(NULL, 50 * MB);
     str_t buffer = str_read_file_to_str(scratch, filepath);

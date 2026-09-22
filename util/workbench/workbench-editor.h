@@ -565,7 +565,7 @@ INTERNAL void workbench_editor__internal_gizmo_draw_axis(
                 .data.line = gizmo[idx]
             }
         };
-        renderqueue_pass_command(&global_engine->systems.renderqueue, rendercommand);
+        renderqueue_pass_command(&global_workbench->renderqueue, rendercommand);
     }
 }
 

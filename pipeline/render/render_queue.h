@@ -300,7 +300,8 @@ void renderqueue_dispatch(renderqueue_t *const self)
         }
 
         //NOTE: bind textures
-        for(u8 tex_idx = 0; tex_idx < first_command->material.texture.count; tex_idx++) {
+        for(u8 tex_idx = 0; tex_idx < first_command->material.texture.count; tex_idx++) 
+        {
             const gltextureitem_t *item = &first_command->material.texture.items[tex_idx];
             switch (item->type) {
                 case GL_TEXTURE_TYPE_CUBEMAP:

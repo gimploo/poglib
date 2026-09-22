@@ -1,4 +1,5 @@
 #pragma once
+#include "poglib/gfx/gl/framebuffer.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <poglib/external/joltc/include/joltc.h>
@@ -213,6 +214,9 @@ struct ecs_collider_jolt_userdata_t {
 
 typedef struct ecs_component_light_t  ecs_component_light_t;
 struct ecs_component_light_t {
+    enum {
+        POINT_LIGHT = 0,
+    } type;
     vec4s color;
     f32 constant;
     f32 linear;

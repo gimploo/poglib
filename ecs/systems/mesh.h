@@ -81,6 +81,11 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             };
         }
 
+        //NOTE: adding shadow maps
+        if (((slot_t *)slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_LIGHT_IDX))->len != 0)
+        {
+        }
+
         //NOTE: backwards compatabitlity for color in material
         {
             material->color = material->color.a == 0.f ? COLOR_WHITE : material->color;

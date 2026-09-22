@@ -11,11 +11,11 @@
 #include "poglib/ecs/component/colliderbatchqueue.h"
 
 
-ecs_componentmanager_t          ecs_componentmanager(arena_t *arena);
-void                            ecs_componentmanager_update(ecs_componentmanager_t * const self);
-void                            ecs_componentmanager_add(ecs_componentmanager_t * const self, const u32 entityId, const ecs_componentbundle_t component_config);
-void                            ecs_componentmanager_remove(ecs_componentmanager_t * const self, const u32 entity_id, const ecs_component_type type);
-void                            ecs_componentmanager_removeall(ecs_componentmanager_t * const self, const u32 entity_id);
+ecs_componentmanager_t          ecs_componentmanager(arena_t *const arena);
+void                            ecs_componentmanager_update(ecs_componentmanager_t *const self);
+void                            ecs_componentmanager_add(ecs_componentmanager_t *const self, const u32 entityId, const ecs_componentbundle_t component_config);
+void                            ecs_componentmanager_remove(ecs_componentmanager_t *const self, const u32 entity_id, const ecs_component_type type);
+void                            ecs_componentmanager_removeall(ecs_componentmanager_t *const self, const u32 entity_id);
 ecs_component_entry_t           ecs_componentmanager_get_component(const ecs_componentmanager_t * const self, const u32 entity_id, const ecs_component_type cmp_type);
 void                            ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request);
 ecs_componentbundle_t           ecs_componentmanager_get_componentbundle_from_existing_entity(ecs_componentmanager_t *const self, const ecs_entity_t entity);
@@ -23,7 +23,7 @@ ecs_componentbundle_t           ecs_componentmanager_get_componentbundle_from_ex
 
 #ifndef IGNORE_ECS_COMPONENT_IMPLEMENTATION
 
-void ecs_componentmanager__internal_cmp_cleanup(const ecs_component_type type, const ecs_component_poolentry_t *poolentry);
+void ecs_componentmanager__internal__cmp_cleanup(const ecs_component_type type, const ecs_component_poolentry_t *poolentry);
 
 u16 ecs_component__internal_get_componenttype_size(const ecs_component_type type)
 {
@@ -47,6 +47,7 @@ u32 ecs_componentmanager__internal_get_pool_capacity(const ecs_component_type ty
     switch(type)
     {
         case ECS_CMP_CAMERA:            return 10;
+        case ECS_CMP_LIGHT:             return ECS_LIGHT_MAX;
         default:                        return ECS_ENTITY_MAX_COUNT;
     }
 }
@@ -65,7 +66,7 @@ ecs_componentmanager_t ecs_componentmanager(arena_t *arena)
             arena
         ),
         .internal = {
-            .colliderbatch = colliderbatchqueue(arena)
+            .colliderbatch  = colliderbatchqueue(arena),
         }
     };
 
@@ -253,7 +254,7 @@ void ecs_componentmanager_remove(ecs_componentmanager_t *const self, const u32 e
     cmp_idx_buffer[cmp_idx]                         = ECS_CMP_INVALID_IDX;
     ecs_component_poolentry_t *entry                = slot_get_value(componentpool, index_of_cmp_to_remove);
 
-    ecs_componentmanager__internal_cmp_cleanup(type, entry);
+    ecs_componentmanager__internal__cmp_cleanup(type, entry);
 
     if (is_last_element) {
         slot_delete(componentpool, index_of_cmp_to_remove);
@@ -395,7 +396,7 @@ void ecs_componentmanager_update(ecs_componentmanager_t *const self)
     colliderbatchqueue_upload_to_jolt(&self->internal.colliderbatch);
 }
 
-void ecs_componentmanager__internal_cmp_cleanup(const ecs_component_type type, const ecs_component_poolentry_t *poolentry)
+INTERNAL void ecs_componentmanager__internal__cmp_cleanup(const ecs_component_type type, const ecs_component_poolentry_t *const poolentry)
 {
     switch(type)
     {

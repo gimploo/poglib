@@ -86,7 +86,8 @@ typedef struct {
     glshader_t shader;
     vec3f_t player_camera_position;
 
-    commandregistry_t commandregistry;
+    commandregistry_t   commandregistry;
+    renderqueue_t       renderqueue;
 
     //NOTE: brought this to have some commands persist longer than a single frame for debug purposes
     list_t persist_rendercommands;
