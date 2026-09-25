@@ -177,7 +177,7 @@ workbench_t * workbench_init(arena_t *const arena)
 
     workbench_t workbench = {
         .is_active = false,
-        .disable_joltrenderer = false,
+        .disable_joltrenderer = true,
         .persist_rendercommands = list_init(rendercommand_t, arena),
         .renderqueue = renderqueue_init(),
         .shader = glshader_init(

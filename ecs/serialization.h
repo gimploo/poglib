@@ -231,7 +231,8 @@ hashtable_t ecs_serializer_load_all_assets(ecs_t *const self, arena_t *arena, ar
             case ASSET_TYPE_MODEL:
                  new_asset_id = assetmanager_load_model_async(
                     &global_engine->systems.assets,
-                    asstpath01
+                    asstpath01,
+                    false
                 );
             break;
 

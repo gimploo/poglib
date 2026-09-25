@@ -27,6 +27,11 @@ typedef struct {
     u32 vao_id;
     u32 index_count;
     u32 attribute_count;
+    struct {
+        buffer_t cpu_write;
+        buffer_t gpu_read;
+        u8 *gpu_mem;
+    } vbo;
 } gpu_mesh_t;
 
 typedef struct {
@@ -41,6 +46,7 @@ typedef struct asset_staging_event_t asset_staging_event_t;
 struct asset_staging_event_t {
     u32         asset_id;
     asset_type  type;
+    bool        is_simulated;
     void        *processed_data;
 };
 

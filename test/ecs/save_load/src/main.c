@@ -221,7 +221,7 @@ static void test_asset_loading_from_save(void)
 
     /* step 1: load a model asset */
     u32 model_id = assetmanager_load_model_async(&global_engine->systems.assets,
-        str("../../../res/models/scorpi.gltf"));
+        str("../../../res/models/scorpi.gltf"), false);
     TEST_ASSERT(model_id > 0, "asset_load: model loaded, got id");
 
     /* step 2: create entity referencing the model */

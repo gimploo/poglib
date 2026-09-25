@@ -38,6 +38,7 @@ u16 ecs_component__internal_get_componenttype_size(const ecs_component_type type
         case ECS_CMP_COLLIDER:          return sizeof(ecs_component_collider_t);
         case ECS_CMP_SPRITE:            return sizeof(ecs_component_sprite_t);
         case ECS_CMP_LIGHT:             return sizeof(ecs_component_light_t);
+        case ECS_CMP_SIMULATION:        return sizeof(ecs_component_simulation_t);
         default: eprint("missing component type - not implemented");
     }
 }
@@ -48,6 +49,7 @@ u32 ecs_componentmanager__internal_get_pool_capacity(const ecs_component_type ty
     {
         case ECS_CMP_CAMERA:            return 10;
         case ECS_CMP_LIGHT:             return ECS_LIGHT_MAX;
+        case ECS_CMP_SIMULATION:        return 5;
         default:                        return ECS_ENTITY_MAX_COUNT;
     }
 }
@@ -160,6 +162,10 @@ void ecs_component__internal_bundle_validate_and_initalize_internals(ecs_compone
             break;
             case ECS_CMP_CAMERA :
                 ASSERT(config->signature & (ECS_CMP_TRANSFORM));
+            break;
+
+            case ECS_CMP_SIMULATION:
+                ASSERT(config->signature & (ECS_CMP_COLLIDER));
             break;
         }
     }

@@ -7,6 +7,7 @@
 #include "poglib/ecs/systems/light.h"
 #include "poglib/ecs/systems/mesh.h"
 #include "poglib/ecs/systems/model.h"
+#include "poglib/ecs/systems/simulation.h"
 #include "poglib/ecs/systems/transform.h"
 #include "poglib/ecs/systems/material.h"
 
@@ -69,6 +70,13 @@ void ecs_add_all_core_systems(ecs_t *const self)
         self, 
         (ecs_system_t) {
             .callback = ecs_system_animation
+        }
+    );
+
+    ecs_add_system(
+        self, 
+        (ecs_system_t) {
+            .callback = ecs_system_simulation,
         }
     );
 

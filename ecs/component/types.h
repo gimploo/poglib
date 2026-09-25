@@ -1,5 +1,6 @@
 #pragma once
 #include "poglib/gfx/gl/framebuffer.h"
+#include "poglib/util/asset.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
 #include <poglib/external/joltc/include/joltc.h>
@@ -21,6 +22,7 @@ typedef enum {
     ECS_CMP_MESH_IDX            = 6,
     ECS_CMP_SPRITE_IDX          = 7,
     ECS_CMP_LIGHT_IDX           = 8, 
+    ECS_CMP_SIMULATION_IDX      = 9, 
     ECS_CMP_COUNT
 
 } ecs_component_storage_index;
@@ -35,7 +37,8 @@ typedef enum {
     ECS_CMP_COLLIDER            = 1 << ECS_CMP_COLLIDER_IDX,
     ECS_CMP_MESH                = 1 << ECS_CMP_MESH_IDX,
     ECS_CMP_SPRITE              = 1 << ECS_CMP_SPRITE_IDX,
-    ECS_CMP_LIGHT               = 1 << ECS_CMP_LIGHT_IDX 
+    ECS_CMP_LIGHT               = 1 << ECS_CMP_LIGHT_IDX,
+    ECS_CMP_SIMULATION          = 1 << ECS_CMP_SIMULATION_IDX,
 
 } ecs_component_type;
 
@@ -153,6 +156,7 @@ typedef enum {
     COLLIDER_SHAPE_TYPE_CUBE                = 3,
     COLLIDER_SHAPE_TYPE_CYLINDER            = 4,
     COLLIDER_SHAPE_TYPE_MESH                = 5,
+    COLLIDER_SHAPE_TYPE_SOFTBODY            = 6,
     COLLIDER_SHAPE_TYPE_COUNT,
 } collider_shape_type;
 
@@ -184,6 +188,16 @@ typedef union {
             u32 *data;
         } idx;
     } mesh;
+    struct {
+        struct {
+            u32 count;
+            vec3f_t *data;
+        } vtx;
+        struct {
+            u32 count;
+            u32 *data;
+        } idx;
+    } softbody;
 } collider_shape_dimension_t;
 
 struct ecs_component_collider_t {
@@ -224,6 +238,18 @@ struct ecs_component_light_t {
     f32 radius;
 };
 
+/* ========================== SIMULATION ============================= */
+
+typedef struct ecs_component_simulation_t ecs_component_simulation_t;
+struct ecs_component_simulation_t {
+
+    bool is_cloth;
+
+    struct {
+        gpu_asset_t *gpu_loaded_asset;
+    } internal;
+};
+
 /* =========================== MISC ==========================================*/
 
 typedef struct ecs_component_poolentry_t    ecs_component_poolentry_t;  //NOTE: used to iterate over a component pool
@@ -253,6 +279,7 @@ struct ecs_componentbundle_t {
             ecs_component_collider_t    collider;
             ecs_component_sprite_t      sprite;
             ecs_component_light_t       light;
+            ecs_component_simulation_t  simulation;
         };
     } component[ECS_CMP_COUNT];
 

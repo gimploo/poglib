@@ -57,18 +57,20 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
     const matrix4f_t projection  = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
     const matrix4f_t camera_view = glcamera_getview(active_camera);
 
-    const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(cmp_manager, entity_id, ECS_CMP_TRANSFORM | ECS_CMP_SPRITE);
+    const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(cmp_manager, entity_id, ECS_CMP_TRANSFORM | ECS_CMP_SPRITE | ECS_CMP_SIMULATION);
     const ecs_component_transform_t *const transform    = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
     ASSERT(transform);
     const ecs_component_sprite_t *const sprite          = view.entity_cmp_data[ECS_CMP_SPRITE_IDX];
 
-    const matrix4f_t model_transform = glms_mat4_mul(
+    const bool is_entity_simulated = view.entity_cmp_data[ECS_CMP_SIMULATION_IDX] != NULL;
+
+    const matrix4f_t model_transform = !is_entity_simulated ? glms_mat4_mul(
         glms_translate_make(transform->position), 
         glms_mat4_mul(
             glms_quat_mat4(transform->orientation), 
             glms_scale_make(transform->scale)
         )
-    );
+    ) : MATRIX4F_IDENTITY;
 
     gluniforms_t uniforms_resolved = {0};
     for (ecs_uniform_supported_types uniform_idx = 0; uniform_idx < ECS_UNIFORM_SUPPORTED_COUNT; uniform_idx++)

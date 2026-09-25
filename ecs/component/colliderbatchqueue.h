@@ -1,5 +1,6 @@
 #pragma once
 #include "./types.h"
+#include "joltc.h"
 #include "poglib/basic/arena.h"
 #include "poglib/physics/jolt-wrapper.h"
 
@@ -64,15 +65,7 @@ i32 colliderbatchqueue__internal_qsort_compare(const void *const x, const void *
         && (c2->motion_type == JPH_MotionType_Dynamic || c2->motion_type == JPH_MotionType_Kinematic)) 
         return -1;
 
-    if (c1->shape_type > c2->shape_type) return 1;
-    if (c1->shape_type < c2->shape_type) return -1;
-
-#if 0
-    if (c1->object_layer_type > c2->object_layer_type) return 1;
-    if (c1->object_layer_type < c2->object_layer_type) return -1;
-#endif
-
-    return memcmp(&c1->dim, &c2->dim, sizeof(collider_shape_dimension_t));
+    return 0;
 }
 
 void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
@@ -84,7 +77,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
     JPH_Shape *shape                        = NULL;
     JPH_BodyCreationSettings *body_settings = NULL;
     JPH_CharacterVirtualSettings settings   = {0};
-    JPH_MotionType prev_motion_type         = JPH_MotionType_None;
+    JPH_MotionType prev_motion_type         = 0;
 
     for (i32 idx = 0; idx <= self->array_buffer.top; idx++)
     {
@@ -151,6 +144,109 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
 
                 arena_giveback(self->arena, scaled_vtx, vtx_count * sizeof(vec3f_t));
                 arena_giveback(self->arena, tris, tri_count * sizeof(JPH_IndexedTriangle));
+            } break;
+
+            case COLLIDER_SHAPE_TYPE_SOFTBODY: {
+                JPH_SoftBodySharedSettings* shared_settings = JPH_SoftBodySharedSettings_Create();
+                const u32 vertex_count      = collider->dim.softbody.vtx.count;
+                const u32 triangle_count    = collider->dim.softbody.idx.count / 3;
+                const f32 *positions        = (f32 *)collider->dim.softbody.vtx.data;
+                const u32 *indices          = collider->dim.softbody.idx.data;
+
+                // Find max Y position (after scale applied)
+                f32 max_y = -FLT_MAX;
+                for (u32 i = 0; i < vertex_count; ++i) {
+                    f32 y = positions[i * 3 + 1] * collider->internal.scale.y;
+                    if (y > max_y) max_y = y;
+                }
+
+                // Find top vertices within epsilon of max_y
+#define PIN_EPSILON 0.001f
+                // Count how many vertices are at top
+                u32 top_vertex_count = 0;
+                for (u32 i = 0; i < vertex_count; ++i) {
+                    f32 y = positions[i * 3 + 1] * collider->internal.scale.y;
+                    if (fabsf(y - max_y) < PIN_EPSILON) top_vertex_count++;
+                }
+                //Step 2: Find leftmost/rightmost among top vertices
+                // Find min/max X among top vertices
+                f32 min_x = FLT_MAX, max_x = -FLT_MAX;
+                for (u32 i = 0; i < vertex_count; ++i) {
+                    f32 y = positions[i * 3 + 1] * collider->internal.scale.y;
+                    if (fabsf(y - max_y) < PIN_EPSILON) {
+                        f32 x = positions[i * 3 + 0] * collider->internal.scale.x;
+                        if (x < min_x) min_x = x;
+                        if (x > max_x) max_x = x;
+                    }
+                }
+
+                for (u32 index = 0; index < vertex_count; ++index) 
+                {
+                    JPH_SoftVertex v;
+                    v.position.x = positions[index * 3 + 0] * collider->internal.scale.x;
+                    v.position.y = positions[index * 3 + 1] * collider->internal.scale.y;
+                    v.position.z = positions[index * 3 + 2] * collider->internal.scale.z;
+                    v.velocity = (JPH_Vec3){0, 0, 0};
+                    v.invMass = 1.0f;
+
+                    // Pin top-left and top-right corners
+                    f32 y = v.position.y;
+                    f32 x = v.position.x;
+                    bool is_top = fabsf(y - max_y) < PIN_EPSILON;
+                    bool is_left_corner = is_top && fabsf(x - min_x) < PIN_EPSILON;
+                    bool is_right_corner = is_top && fabsf(x - max_x) < PIN_EPSILON;
+
+                    v.invMass = (is_left_corner || is_right_corner) ? 0.0f : 1.0f;
+
+                    JPH_SoftBodySharedSettings_AddVertex(shared_settings, &v);
+                }
+
+                for (u32 index = 0; index < triangle_count; ++index) 
+                {
+                    JPH_SoftFace face;
+                    face.vertex1 = indices[index * 3 + 0];
+                    face.vertex2 = indices[index * 3 + 1];
+                    face.vertex3 = indices[index * 3 + 2];
+                    face.materialIndex = 0;
+                    JPH_SoftBodySharedSettings_AddFace(shared_settings, &face);
+                }
+
+                JPH_SoftBodySharedSettings_CreateConstraints(shared_settings, 1.0f, JPH_SoftBodyBendType_None);
+                JPH_SoftBodySharedSettings_Optimize(shared_settings);
+
+                JPH_Vec3 pos = {collider->internal.position.x, collider->internal.position.y, collider->internal.position.z};
+                JPH_Quat rot = *(JPH_Quat *)&collider->internal.orientation;
+                JPH_SoftBodyCreationSettings* creation_settings = JPH_SoftBodyCreationSettings_Create2(shared_settings, &pos, &rot, collider->object_layer_type);
+                JPH_SoftBodyCreationSettings_SetNumIterations(creation_settings, 1);
+                JPH_SoftBodyCreationSettings_SetUpdatePosition(creation_settings, true);
+                JPH_SoftBodyCreationSettings_SetVertexRadius(creation_settings, 0.001f);
+                JPH_SoftBodyCreationSettings_SetPressure(creation_settings, 0.0f);
+
+                logging("Cloth: %u vertices, %u triangles", vertex_count, triangle_count);
+
+                collider->internal.body_id = JPH_BodyInterface_CreateAndAddSoftBody(
+                    global_joltphysics_instance->bodyinterface,
+                    creation_settings,
+                    JPH_Activation_Activate
+                );
+
+                JPH_SoftBodySharedSettings_Destroy(shared_settings);
+                JPH_SoftBodyCreationSettings_Destroy(creation_settings);
+
+                const ecs_collider_jolt_userdata_t userdata = {
+                    .objectlayertype = collider->object_layer_type,
+                    .entity_id = collider->internal.entity_id,
+                };
+                JPH_BodyInterface_SetUserData(
+                    global_joltphysics_instance->bodyinterface,
+                    collider->internal.body_id,
+                    (u64)arena_store(self->arena, &userdata, sizeof(userdata))
+                );
+
+                //TODO: this need to refactored, this will bring confusion in the future if its kept here
+                prev_motion_type  = collider->motion_type;
+                continue;
+
             } break;
 
             default: eprint("Collider shape type not accounted for here");

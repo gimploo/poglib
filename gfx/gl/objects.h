@@ -29,7 +29,8 @@ typedef struct {
     u32  id; 
     struct {
         vbo_config_t config;
-        i64     attribute_index;
+        i32  attribute_index; //TODO: rename this
+        void *mapped_ptr;
     } internals;
 } vbo_t ;
 
@@ -128,9 +129,10 @@ vbo_t vbo_static_init(
 vbo_t vbo_init(const vbo_config_t config)
 {
     u32 vbo_id;
+    void *mapped_ptr = NULL;
 
     u32 total_buffer_size = 0;
-    for(u32 idx = 0; idx < VBO_STREAM_TYPE_COUNT; idx++) {
+    for (u32 idx = 0; idx < VBO_STREAM_TYPE_COUNT; idx++) {
         total_buffer_size += config.chunks[idx].buffer.size;
     }
     ASSERT(total_buffer_size > 0);
@@ -138,24 +140,57 @@ vbo_t vbo_init(const vbo_config_t config)
     GL_CHECK(glGenBuffers(1, &vbo_id)); 
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo_id));
 
-    GL_CHECK(glBufferData(GL_ARRAY_BUFFER, total_buffer_size, NULL, config.usage));
+    const bool is_persistent = (config.usage == GL_DYNAMIC_DRAW);
 
+    if (is_persistent) {
+        // 1. Allocate immutable backing storage for the ENTIRE VBO upfront
+        GLbitfield storage_flags = GL_MAP_WRITE_BIT 
+                                 | GL_MAP_PERSISTENT_BIT 
+                                 | GL_MAP_COHERENT_BIT 
+                                 | GL_DYNAMIC_STORAGE_BIT;
+
+        GL_CHECK(glBufferStorage(GL_ARRAY_BUFFER, total_buffer_size, NULL, storage_flags));
+    } else {
+        // 2. Allocate mutable backing storage for the ENTIRE VBO upfront
+        GL_CHECK(glBufferData(GL_ARRAY_BUFFER, total_buffer_size, NULL, config.usage));
+    }
+
+    // 3. Populate chunks and map range if required
     for (u32 idx = 0, offset = 0; idx < VBO_STREAM_TYPE_COUNT; idx++)
     {
-        GL_CHECK(glBufferSubData(
-            GL_ARRAY_BUFFER, 
-            offset,
-            config.chunks[idx].buffer.size, 
-            config.chunks[idx].buffer.raw_data)
-        );
-        offset += config.chunks[idx].buffer.size;
+        u32 chunk_size = config.chunks[idx].buffer.size;
+        void *raw_data = config.chunks[idx].buffer.raw_data;
+
+        if (chunk_size == 0) continue;
+
+        if (idx == VBO_STREAM_TYPE_GEOMETRY && is_persistent) {
+            GLbitfield map_flags = GL_MAP_WRITE_BIT 
+                                 | GL_MAP_PERSISTENT_BIT 
+                                 | GL_MAP_COHERENT_BIT;
+
+            // Map using the actual chunk 'offset' inside the VBO
+            mapped_ptr = glMapBufferRange(GL_ARRAY_BUFFER, offset, chunk_size, map_flags);
+
+            // Direct memcpy into mapped memory for initial raw_data
+            if (raw_data && mapped_ptr) {
+                memcpy(mapped_ptr, raw_data, chunk_size);
+            }
+        } else {
+            // Safe to call glBufferSubData because storage for total_buffer_size was allocated upfront
+            if (raw_data) {
+                GL_CHECK(glBufferSubData(GL_ARRAY_BUFFER, offset, chunk_size, raw_data));
+            }
+        }
+
+        offset += chunk_size;
     }
 
     return (vbo_t) {
         .id = vbo_id,
         .internals = {
             .attribute_index = -1,
-            .config = config
+            .config = config,
+            .mapped_ptr = mapped_ptr,
         }
     };
 }

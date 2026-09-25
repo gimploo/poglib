@@ -58,6 +58,7 @@ typedef struct {
     JPH_ObjectVsBroadPhaseLayerFilter *objectvsbroadphaselayerfilter;
     JPH_PhysicsSystem *physics_system;
     JPH_BodyInterface *bodyinterface;
+    JPH_TempAllocator* temp_allocator;
     struct {
         bool rules_configured;
         struct {
@@ -168,7 +169,14 @@ joltphysics_t * joltphysics_init(arena_t * const arena)
     JPH_SetTraceHandler(joltphysics__internal__tracefunc);
     JPH_SetAssertFailureHandler(joltphysics__internal__assertfailurefunc);
 
-    output.jobsystem = JPH_JobSystemThreadPool_Create(NULL);
+    output.jobsystem = JPH_JobSystemThreadPool_Create(&(JobSystemThreadPoolConfig) {
+        .maxJobs = 2048,
+        .maxBarriers = 8,
+        .numThreads = -1
+    });
+
+    // Create temp allocator with 16MB buffer
+    output.temp_allocator = JPH_TempAllocator_Create(16 * 1024 * 1024);
 
     //NOTE: not used in example why ?
     //JPH_JobSystemCallback_Create(const JPH_JobSystemConfig* config);
@@ -287,6 +295,7 @@ void joltphysics_destroy(joltphysics_t *self)
 {
     JPH_Shutdown();
     JPH_JobSystem_Destroy(self->jobsystem);
+    JPH_TempAllocator_Destroy(self->temp_allocator);
 
     mem_free(global_joltphysics_instance, sizeof(joltphysics_t));
     global_joltphysics_instance = NULL;
@@ -330,7 +339,7 @@ void joltphysics_start_simulation(joltphysics_t *self)
 	self->systemsettings.maxBodies = 65536;
 	self->systemsettings.numBodyMutexes = 0;
 	self->systemsettings.maxBodyPairs = 65536;
-	self->systemsettings.maxContactConstraints = 65536;
+	self->systemsettings.maxContactConstraints = 1024;
 
 	self->systemsettings.objectVsBroadPhaseLayerFilter  = self->objectvsbroadphaselayerfilter;
 	self->systemsettings.broadPhaseLayerInterface       = self->broadphaselayerinterface_table;
@@ -339,6 +348,20 @@ void joltphysics_start_simulation(joltphysics_t *self)
 	self->physics_system    = JPH_PhysicsSystem_Create(&self->systemsettings);
 	self->bodyinterface     = JPH_PhysicsSystem_GetBodyInterface(self->physics_system);
 
+    JPH_PhysicsSystem_SetPhysicsSettings(
+        self->physics_system, 
+        &(JPH_PhysicsSettings) {
+            .numVelocitySteps       = 1,
+            .numPositionSteps       = 1,
+            .allowSleeping          = false,
+            .baumgarte              = 0.0f,
+            .penetrationSlop        = 0.1f,
+            .maxPenetrationDistance = 1.0f,
+            .useLargeIslandSplitter = false,
+        }
+    );
+
+#if 0
     joltphysics__internal_register_contact_listener(
         self, 
         (JPH_ContactListener_Procs ) {
@@ -348,18 +371,21 @@ void joltphysics_start_simulation(joltphysics_t *self)
             .OnContactValidate = NULL
         }
     );
+#endif
 }
 
 void joltphysics_update(joltphysics_t *self, const f32 dt) {
 
-    JPH_PhysicsSystem_Update(self->physics_system, dt, 1, self->jobsystem);
+    JPH_PhysicsSystem_Update2(self->physics_system, dt, 1, self->temp_allocator, self->jobsystem);
 
     //NOTE: no need to lock to swap the buffer as per gemini since no contention 
     //happens here as its post `JPH_PhysicsSystem_Update` call
+#if 0
     joltphysics_event_queue_t *const temp = self->internal.double_buffer_event_queue.read_queue;
     self->internal.double_buffer_event_queue.read_queue = self->internal.double_buffer_event_queue.write_queue;
     self->internal.double_buffer_event_queue.write_queue = temp;
     self->internal.double_buffer_event_queue.write_queue->count = 0;
+#endif
 }
 
 joltphysics_event_queue_t * joltphysics_get_collision_eventqueue(const joltphysics_t *const self)
