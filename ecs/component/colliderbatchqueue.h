@@ -211,18 +211,19 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     JPH_SoftBodySharedSettings_AddFace(shared_settings, &face);
                 }
 
-                JPH_SoftBodySharedSettings_CreateConstraints(shared_settings, 1.0f, JPH_SoftBodyBendType_None);
+                JPH_SoftBodySharedSettings_CreateConstraints(shared_settings, 0.01f, JPH_SoftBodyBendType_Distance);
                 JPH_SoftBodySharedSettings_Optimize(shared_settings);
 
                 JPH_Vec3 pos = {collider->internal.position.x, collider->internal.position.y, collider->internal.position.z};
                 JPH_Quat rot = *(JPH_Quat *)&collider->internal.orientation;
-                JPH_SoftBodyCreationSettings* creation_settings = JPH_SoftBodyCreationSettings_Create2(shared_settings, &pos, &rot, collider->object_layer_type);
-                JPH_SoftBodyCreationSettings_SetNumIterations(creation_settings, 1);
-                JPH_SoftBodyCreationSettings_SetUpdatePosition(creation_settings, true);
-                JPH_SoftBodyCreationSettings_SetVertexRadius(creation_settings, 0.001f);
-                JPH_SoftBodyCreationSettings_SetPressure(creation_settings, 0.0f);
 
-                logging("Cloth: %u vertices, %u triangles", vertex_count, triangle_count);
+                JPH_SoftBodyCreationSettings *creation_settings = JPH_SoftBodyCreationSettings_Create2(
+                    shared_settings, &pos, &rot, collider->object_layer_type
+                );
+                JPH_SoftBodyCreationSettings_SetNumIterations(creation_settings, 20);
+                JPH_SoftBodyCreationSettings_SetUpdatePosition(creation_settings, true);
+                JPH_SoftBodyCreationSettings_SetVertexRadius(creation_settings, 0.01f);
+                JPH_SoftBodyCreationSettings_SetPressure(creation_settings, 0.0f);
 
                 collider->internal.body_id = JPH_BodyInterface_CreateAndAddSoftBody(
                     global_joltphysics_instance->bodyinterface,

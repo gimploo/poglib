@@ -339,7 +339,7 @@ void joltphysics_start_simulation(joltphysics_t *self)
 	self->systemsettings.maxBodies = 65536;
 	self->systemsettings.numBodyMutexes = 0;
 	self->systemsettings.maxBodyPairs = 65536;
-	self->systemsettings.maxContactConstraints = 1024;
+	self->systemsettings.maxContactConstraints = 4096;
 
 	self->systemsettings.objectVsBroadPhaseLayerFilter  = self->objectvsbroadphaselayerfilter;
 	self->systemsettings.broadPhaseLayerInterface       = self->broadphaselayerinterface_table;
@@ -351,13 +351,13 @@ void joltphysics_start_simulation(joltphysics_t *self)
     JPH_PhysicsSystem_SetPhysicsSettings(
         self->physics_system, 
         &(JPH_PhysicsSettings) {
-            .numVelocitySteps       = 1,
-            .numPositionSteps       = 1,
+            .numVelocitySteps       = 20,
+            .numPositionSteps       = 20,
             .allowSleeping          = false,
-            .baumgarte              = 0.0f,
-            .penetrationSlop        = 0.1f,
+            .baumgarte              = 0.001f,
+            .penetrationSlop        = 0.005f,
             .maxPenetrationDistance = 1.0f,
-            .useLargeIslandSplitter = false,
+            .useLargeIslandSplitter = true,
         }
     );
 

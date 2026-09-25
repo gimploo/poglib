@@ -16,8 +16,11 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
         if (!entry->is_active) continue;
 
         ecs_component_collider_t *const collider    = (ecs_component_collider_t *)entry->entity_cmpdata;
-        ecs_entity_query_t query                    = ecs_componentmanager__internal__query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM);
+        ecs_entity_query_t query                    = ecs_componentmanager__internal__query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM | ECS_CMP_SIMULATION);
         ecs_component_transform_t *transform        = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+
+        if (query.entity_cmp_data[ECS_CMP_SIMULATION_IDX]) 
+            continue;
 
         if (collider->object_layer_type == POGGEN_RESERVED_OBJECT_LAYER_TYPE) {
 
@@ -40,7 +43,6 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
             case JPH_MotionType_Kinematic: {
                 ASSERT(collider->internal.kinematicbody);
 
-                //JPH_CharacterVirtual_SetPosition(collider->internal.kinematic_body, (JPH_Vec3 *)&transform->position);
                 JPH_CharacterVirtual_SetRotation(collider->internal.kinematicbody, (JPH_Quat *)&transform->orientation);
 
                 //NOTE: handles gravity on the collider (y axis)
@@ -80,9 +82,6 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
 
             case JPH_MotionType_Dynamic:
                 ASSERT(collider->internal.body_id);
-                if (collider->shape_type == COLLIDER_SHAPE_TYPE_SOFTBODY) {
-                    continue;
-                }
                 JPH_BodyInterface_GetPositionAndRotation(
                     global_joltphysics_instance->bodyinterface, 
                     collider->internal.body_id, 
