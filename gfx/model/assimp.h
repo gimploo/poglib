@@ -18,8 +18,6 @@
 #include <poglib/external/assimp/include/assimp/postprocess.h>
 #include <poglib/external/assimp/include/assimp/scene.h>
 
-//TODO: materials implementation is fucked - need to learn how do this
-
 #define MAX_BONES 128
 
 typedef struct {
@@ -59,6 +57,11 @@ typedef struct {
     enum aiTextureType  type;
 } glmodel_texture_t;
 
+
+typedef struct {
+    u16 tex_idx;
+} glmodel_material_t;
+
 typedef struct glmodel_t {
 
     str_t filepath;
@@ -66,7 +69,8 @@ typedef struct glmodel_t {
     list_t textures;
     list_t colors;
     list_t bone_infos;
-    //TODO: Implement materials;
+
+    slot_t materials;
 
     struct {
         u8 count;
@@ -156,7 +160,7 @@ INTERNAL void assimp__internal_glmesh_processMaterial(glmodel_t *self, const str
         list_append(&self->colors, color);
     }
 
-    for (i32 type = aiTextureType_DIFFUSE; type <= aiTextureType_AMBIENT_OCCLUSION; type++)
+    for (i32 type = aiTextureType_DIFFUSE; type < ARRAY_LEN(ASSIMP_TEXTURE_TYPES); type++)
     {
         const u32 count = aiGetMaterialTextureCount(material, type);
         for (u32 tex_idx = 0; tex_idx < count; tex_idx++)
@@ -185,7 +189,8 @@ INTERNAL void assimp__internal_glmesh_processMaterial(glmodel_t *self, const str
     }
 }
 
-INTERNAL glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh, arena_t *const arena) {
+INTERNAL glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh, arena_t *const arena)
+{
     // get the total total indicies in the mesh
     u64 total_indicies = 0;
     for (u32 i = 0; i < mesh->mNumFaces; i++)
@@ -251,7 +256,7 @@ INTERNAL glmesh_t assimp__internal_glmesh_processMesh(const struct aiMesh *mesh,
     return (glmesh_t){
         .vtx = vtx, 
         .idx = ind,
-        .material_index = mesh->mMaterialIndex
+        .material_idx = mesh->mMaterialIndex
     };
 }
 
@@ -352,7 +357,6 @@ u32 assimp__internal_get_total_bones(const struct aiScene *scene)
     }
     return total;
 }
-
 void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene *scene) 
 {
     //Map all bones to an index for easy lookup
@@ -369,11 +373,15 @@ void assimp__internal_glmesh_processScene(glmodel_t *self, const struct aiScene 
     }
 
     u64 processed_materials = 0;
+    self->materials = scene->mNumMaterials 
+        ? slot_init(scene->mNumMaterials, sizeof(glmodel_material_t), self->arena)
+        : (slot_t){0};
 
     for (u32 mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
     {
         struct aiMesh *mesh = scene->mMeshes[mesh_index];
 
+        //TODO: rethink why this is done for ? - whats the requirement to cache the transform
         self->transforms.data[mesh_index] = list_init(matrix4f_t, self->arena);
 
         const glmesh_t m = assimp__internal_glmesh_processMesh(mesh, self->arena);
@@ -414,7 +422,15 @@ INTERNAL gltexture2d_t assimp__internal__load_texture_from_path(glmodel_t *const
         ASSERT(index >= 0 && (u32)index < scene->mNumTextures);
         const struct aiTexture *aitexture = scene->mTextures[index];
         if (aitexture->mHeight == 0) {
-            return gltexture2d_load_from_memory((u8 *)aitexture->pcData, aitexture->mWidth, path);
+            return gltexture2d_embedded_init(
+                (buffer_t ){
+                    .raw_data = (u8 *)aitexture->pcData, 
+                    .size = aitexture->mWidth
+                },
+                str_from_cstr(aitexture->mFilename.data, aitexture->mFilename.length),
+                NULL,
+                false
+            );
         }
         ASSERT(0 && "Raw pixel embedded texture not supported via material reference");
     }
@@ -448,7 +464,9 @@ glmodel_t glmodel_init(const str_t filepath)
     logging("Loading model "STR_FMT" ...", STR_ARG(filepath));
 
     // Assimp: import model
-    const struct aiScene *scene = aiImportFile(filepath.data, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_LimitBoneWeights | aiProcess_CalcTangentSpace);
+    const struct aiScene *scene = aiImportFile(filepath.data, 
+        aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_LimitBoneWeights | aiProcess_CalcTangentSpace
+    );
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         eprint("ERROR::ASSIMP:: %s", aiGetErrorString());
     }
@@ -771,6 +789,11 @@ animation_t * glmodel_set_animation(glmodel_t *const self, const str_t animation
     }
 
     return current_anim;
+}
+
+u32 gmodel_get_texture_id_of_mesh(const glmodel_t *self, const u32 mesh_idx)
+{
+    
 }
 
 gltexturelist_t glmodel_get_texuturelist(const glmodel_t *self)

@@ -326,8 +326,8 @@ void glrenderer3d_draw(const glrendererconfig_t config)
             vbo_bind(&vbo);
             ebo = ebo_init(
                     &vbo, 
-                    (u32 *)config.calls.call[call_idx].idx.data, 
-                    config.calls.call[call_idx].idx.nmemb);
+                    (u8 *)config.calls.call[call_idx].idx.data, 
+                    config.calls.call[call_idx].idx.nmemb, sizeof(u32));
             ebo_bind(&ebo);
 
         } else {

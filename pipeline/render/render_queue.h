@@ -27,19 +27,20 @@ INTERNAL void renderqueue__internal__draw_triangles(const list_t *const commands
 
 renderqueue_t renderqueue_init(void)
 {
-    return (renderqueue_t) {
-        .buckets    = {0},
+    return (renderqueue_t ){
+        .buckets = {0},
         .internal   = {
             .instancebuffer     = glinstancebuffer_init(2 * MB),
-            .frame_arena        = arena_init(NULL, 0.5 * GB),
+            .frame_arena        = arena_init(NULL, GB / 2)
         },
     };
 }
 
-INTERNAL void renderqueue__internal_bucket_init_and_add_command(renderqueue_t *const self, const rendercommand_t command, const u16 idx)
+INTERNAL void renderqueue__internal_bucket_init_and_add_command(renderqueue_t *const self, const rendercommand_t command)
 {
-    self->buckets[idx] = list_init(rendercommand_t, self->internal.frame_arena);
-    list_append(&self->buckets[idx], command);
+    list_t new_bucket = list_init(rendercommand_t, self->internal.frame_arena);
+    list_append(&new_bucket, command);
+    list_append(&self->buckets, new_bucket);
 }
 
 INTERNAL rendercommand_t renderqueue__internal__configure_instance_buffer(renderqueue_t *const self, const rendercommand_t cmd)
@@ -59,35 +60,20 @@ void renderqueue_pass_command(renderqueue_t *const self, const rendercommand_t c
         ? renderqueue__internal__configure_instance_buffer(self, cmd) 
         : cmd;
 
-    if (renderqueue__internal__check_for_batchable_commands(self, command)) {
-        return;
+    if (!list_is_init(&self->buckets)) {
+
+        self->buckets = list_init(list_t, self->internal.frame_arena);
+        renderqueue__internal_bucket_init_and_add_command(self, command);
+
+    } else if (!renderqueue__internal__check_for_batchable_commands(self, command)) {
+
+        renderqueue__internal_bucket_init_and_add_command(self, command);
+
     }
-
-    for (u8 idx = 0; idx < ARRAY_LEN(self->buckets); idx++)
-    {
-        if (!list_is_init(&self->buckets[idx])) {
-            renderqueue__internal_bucket_init_and_add_command(self, command, idx);
-            return;
-        }
-
-        if (!self->buckets[idx].len) {
-            renderqueue__internal_add_to_bucket(&self->buckets[idx], command);
-            return;
-        }
-    }
-
-    eprint("Buckets fully filled");
 }
 
 void renderqueue_destroy(renderqueue_t *const self)
 {
-    for (u8 idx = 0; idx < MAX_RENDER_BUCKETS_ALLOWED; idx++)
-    {
-        if (!list_is_init(&self->buckets[idx])) 
-            continue;
-
-        list_destroy(&self->buckets[idx]);
-    }
     glinstancebuffer_destroy(&self->internal.instancebuffer);
     arena_destroy(self->internal.frame_arena);
 }
@@ -134,26 +120,24 @@ void renderqueue__internal_validate_command(renderqueue_t *const queue, const re
     }
 }
 
-void renderqueue__internal_add_to_bucket(list_t * const render_commands, const rendercommand_t command)
+void renderqueue__internal_add_to_bucket(list_t * const bucket, const rendercommand_t command)
 {
-    list_append(render_commands, command);
+    list_append(bucket, command);
 }
 
-INTERNAL bool renderqueue__internal__check_for_batchable_commands(renderqueue_t *const queue, const rendercommand_t command)
+INTERNAL bool renderqueue__internal__check_for_batchable_commands(renderqueue_t *const self, const rendercommand_t command)
 {
-    for (u8 idx = 0; idx < MAX_RENDER_BUCKETS_ALLOWED; idx++)
+    list_iterator(&self->buckets, iter)
     {
-        list_t *const commands = &queue->buckets[idx];
+        list_t *const bucket = iter;
 
-        if (!list_is_init(commands)) continue;
-
-        const rendercommand_t *const first_render_command = commands->len
-            ? list_get_value(commands, 0)
+        const rendercommand_t *const first_render_command = bucket->len
+            ? list_get_value(bucket, 0)
             : NULL;
 
         //NOTE: is the buckets empty and no commands found add to it
         if (!first_render_command) {
-            renderqueue__internal_add_to_bucket(commands, command);
+            renderqueue__internal_add_to_bucket(bucket, command);
             return true;
         };
 
@@ -187,7 +171,7 @@ INTERNAL bool renderqueue__internal__check_for_batchable_commands(renderqueue_t 
         if (!has_same_instance_size) 
             continue;
 
-        renderqueue__internal_add_to_bucket(commands, command);
+        renderqueue__internal_add_to_bucket(bucket, command);
         return true;
     }
     return false;
@@ -205,8 +189,8 @@ i32 renderqueue__internal_qsort_compare(const void *x, const void *y)
     if (!has_a) return 1;
     if (!has_b) return -1;
 
-    const rendercommand_t *cmd_a = list_get_value(bucket_a, 0);
-    const rendercommand_t *cmd_b = list_get_value(bucket_b, 0);
+    const rendercommand_t *cmd_a = (rendercommand_t *)list_get_value(bucket_a, 0);
+    const rendercommand_t *cmd_b = (rendercommand_t *)list_get_value(bucket_b, 0);
 
     const u32 shaderid_a = (cmd_a->material.shader.data == NULL) 
         ? 0
@@ -236,7 +220,7 @@ void renderqueue__internal_render_all_meshes_in_bucket(const list_t * const buck
         GL_CHECK(glDrawElements(
             GL_TRIANGLES, 
             command->vtx.data.mesh->index_count, 
-            GL_UNSIGNED_INT, 
+            command->vtx.data.mesh->index_type, 
             0
         ));
     }
@@ -244,16 +228,16 @@ void renderqueue__internal_render_all_meshes_in_bucket(const list_t * const buck
 
 void renderqueue_dispatch(renderqueue_t *const self)
 {
-    qsort(self->buckets, ARRAY_LEN(self->buckets), sizeof(list_t), renderqueue__internal_qsort_compare);
+    qsort(self->buckets.data, self->buckets.len, sizeof(list_t), renderqueue__internal_qsort_compare);
 
     u32 binded_shader_id = 0;
     u32 instance_starting_offset = 0;
 
     //NOTE: Stage every instanced bucket's data into the CPU scratch first so the
     //GPU upload can happen exactly once per frame (glinstancebuffer_upload).
-    for (u8 idx = 0; idx < MAX_DRAW_CALLS_PER_FRAME_COUNT; idx++)
+    list_iterator(&self->buckets, iter)
     {
-        const list_t *bucket_commands = &self->buckets[idx];
+        const list_t *bucket_commands = iter;
         if (!bucket_commands->len) continue;
 
         const rendercommand_t *const first_command = list_get_value(bucket_commands, 0);
@@ -270,20 +254,20 @@ void renderqueue_dispatch(renderqueue_t *const self)
     }
     glinstancebuffer_upload(&self->internal.instancebuffer);
 
-    for (u8 idx = 0; idx < MAX_DRAW_CALLS_PER_FRAME_COUNT; idx++)
+    list_iterator(&self->buckets, iter)
     {
-        const list_t *bucket_commands = &self->buckets[idx];
-        if (!bucket_commands->len) continue;
+        const list_t *bucket = iter;
+        if (!bucket->len) continue;
 
-        const rendercommand_t *const first_command = list_get_value(bucket_commands, 0);
+        const rendercommand_t *const first_command = list_get_value(bucket, 0);
 
         if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_LINE) {
-            renderqueue__internal__draw_lines(bucket_commands);
+            renderqueue__internal__draw_lines(bucket);
             continue;
         }
 
         if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_TRIANGLES) {
-            renderqueue__internal__draw_triangles(bucket_commands);
+            renderqueue__internal__draw_triangles(bucket);
             continue;
         }
 
@@ -324,8 +308,8 @@ void renderqueue_dispatch(renderqueue_t *const self)
             glinstancebuffer_bind(
                 &self->internal.instancebuffer, 
                 instance_starting_offset,
-                bucket_commands->len * first_command->instance.size);
-            instance_starting_offset += bucket_commands->len * first_command->instance.size;
+                bucket->len * first_command->instance.size);
+            instance_starting_offset += bucket->len * first_command->instance.size;
 
             if (binded_shader_id)
                 glshader_upload_uniforms(shader, first_command->material.shader.uniforms);
@@ -333,13 +317,13 @@ void renderqueue_dispatch(renderqueue_t *const self)
             GL_CHECK(glDrawElementsInstanced(
                 GL_TRIANGLES, 
                 first_command->vtx.data.mesh->index_count, 
-                GL_UNSIGNED_INT, 
+                first_command->vtx.data.mesh->index_type, 
                 0,
-                bucket_commands->len));
+                bucket->len));
 
         } else {
 
-            renderqueue__internal_render_all_meshes_in_bucket(&self->buckets[idx]);
+            renderqueue__internal_render_all_meshes_in_bucket(bucket);
 
         }
         GL_CHECK(glBindVertexArray(0));
@@ -349,7 +333,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
 
 void renderqueue_flush(renderqueue_t *const self)
 {
-    memset(self->buckets, 0, sizeof(self->buckets));
+    memset(&self->buckets, 0, sizeof(self->buckets));
     arena_clear(self->internal.frame_arena);
 }
 

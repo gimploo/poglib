@@ -28,12 +28,19 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
 
             JPH_BodyInterface_SetPositionAndRotation(
                 global_joltphysics_instance->bodyinterface,
-                collider->internal.body_id, 
+                collider->internal.body_ids[0], 
                 (JPH_Vec3 *)&transform->position,
                 (JPH_Quat *)&transform->orientation,
                 JPH_Activation_DontActivate
             );
             continue;
+        }
+
+        //NOTE: when loading the level, theres a chance the player collider is not created yet, so having this 
+        //logic fixes the issue since we start in workbench mode before going to play mode
+        if (global_workbench->is_active && collider->motion_type == JPH_MotionType_Kinematic) {
+            JPH_CharacterVirtual_SetPosition(collider->internal.kinematicbody, (JPH_Vec3 *)&transform->position);
+            JPH_CharacterVirtual_SetRotation(collider->internal.kinematicbody, (JPH_Quat *)&transform->orientation);
         }
 
         if (global_workbench->is_active) continue;
@@ -81,10 +88,10 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
             } break;
 
             case JPH_MotionType_Dynamic:
-                ASSERT(collider->internal.body_id);
+                ASSERT(collider->internal.body_ids[0]);
                 JPH_BodyInterface_GetPositionAndRotation(
                     global_joltphysics_instance->bodyinterface, 
-                    collider->internal.body_id, 
+                    collider->internal.body_ids[0], 
                     (JPH_Vec3 *)&collider->internal.position, 
                     (JPH_Quat *)&collider->internal.orientation
                 );

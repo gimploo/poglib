@@ -10,6 +10,7 @@ struct runtimectx_t {
     arena_t *stringpool;
     stackarena_t *stackarena;
     buffer_t scrap_buffer;
+    arena_t *temporary;
 };
 
 extern runtimectx_t *global_runtimectx;
@@ -35,7 +36,8 @@ runtimectx_t * runtimectx_init(void)
             .raw_data = calloc(4 * MB, 1),
             .size = 4 * MB
         },
-        .stackarena = stackarena_init(0.5 * GB)
+        .stackarena = stackarena_init(0.5 * GB),
+        .temporary = arena_init(NULL, 1 * MB)
     };
 
     global_runtimectx = o;
@@ -52,6 +54,7 @@ void runtimectx_destroy(void)
 {
     ASSERT(global_runtimectx);
     arena_destroy(global_runtimectx->stringpool);
+    arena_destroy(global_runtimectx->temporary);
     stackarena_destroy(global_runtimectx->stackarena);
     free(global_runtimectx->scrap_buffer.raw_data);
     free(global_runtimectx);

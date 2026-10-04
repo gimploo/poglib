@@ -1,4 +1,9 @@
+#pragma once
+#ifndef CGLTF_IMPLEMENTATION
+#define CGLTF_IMPLEMENTATION
+#endif
 /**
+ *
  * cgltf - a single-file glTF 2.0 parser written in C99.
  *
  * Version: 1.13
@@ -115,7 +120,7 @@ typedef enum cgltf_file_type
 
 typedef enum cgltf_result
 {
-	cgltf_result_success,
+	cgltf_result_success 		= 0,
 	cgltf_result_data_too_short,
 	cgltf_result_unknown_format,
 	cgltf_result_invalid_json,
@@ -127,6 +132,21 @@ typedef enum cgltf_result
 	cgltf_result_legacy_gltf,
     cgltf_result_max_enum
 } cgltf_result;
+
+const char *CGLTF_RESULT_CSTR_LOOKUP[] = 
+{
+	[cgltf_result_success] 			= "CGLTF_RESULT_SUCCESS",
+	[cgltf_result_data_too_short] 	= "CGLTF_RESULT_DATA_TOO_SHORT",
+	[cgltf_result_unknown_format] 	= "CGLTF_RESULT_UNKNOWN_FORMAT",
+	[cgltf_result_invalid_json] 	= "CGLTF_RESULT_INVALID_JSON",
+	[cgltf_result_invalid_gltf] 	= "CGLTF_RESULT_INVALID_GLTF",
+	[cgltf_result_invalid_options] 	= "CGLTF_RESULT_INVALID_OPTIONs",
+	[cgltf_result_file_not_found] 	= "CGLTF_RESULT_FILE_NOT_FOUND",
+	[cgltf_result_io_error] 		= "CGLTF_RESULT_IO_ERROR",
+	[cgltf_result_out_of_memory] 	= "CGLTF_RESULT_OUT_OF_MEMORY",
+	[cgltf_result_legacy_gltf] 		= "CGLTF_RESULT_LEGACY_GLTF",
+    [cgltf_result_max_enum] 		= "CGLTF_RESULT_MAX_ENUM"
+};
 
 typedef struct cgltf_memory_options
 {

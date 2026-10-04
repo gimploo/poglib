@@ -147,7 +147,7 @@ void glrenderer2d_draw_quad(const glrenderer2d_t *renderer, const glquad_t quad)
     vao_bind(&vao);
 
         vbo = vbo_static_init(quad.vertex, sizeof(quad.vertex), sizeof(quad.vertex) / sizeof(glvertex2d_t ));
-        ebo_t ebo = ebo_init(&vbo, DEFAULT_QUAD_INDICES, MAX_QUAD_INDICES_CAPACITY);
+        ebo_t ebo = ebo_init(&vbo, (u8 *)DEFAULT_QUAD_INDICES, MAX_QUAD_INDICES_CAPACITY, sizeof(u32));
 
         vao_set_attributes(&vao, &vbo, 3, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, position), 0, VBO_STREAM_TYPE_GEOMETRY);
         vao_set_attributes(&vao, &vbo, 4, GL_FLOAT, false, sizeof(glvertex2d_t), offsetof(glvertex2d_t, color), 0, VBO_STREAM_TYPE_GEOMETRY);
@@ -202,7 +202,7 @@ void glrenderer2d_draw_from_batch(const glrenderer2d_t *renderer, const glbatch_
 
                 memset(GLOBAL_BATCH_POLY_INDICIES_BUFFER, 0, sizeof(GLOBAL_BATCH_POLY_INDICIES_BUFFER));
                 __gen_quad_indices(GLOBAL_BATCH_POLY_INDICIES_BUFFER, batch->globjs.len);
-                ebo = ebo_init(&vbo, GLOBAL_BATCH_POLY_INDICIES_BUFFER, vertices_count);
+                ebo = ebo_init(&vbo, (u8 *)GLOBAL_BATCH_POLY_INDICIES_BUFFER, vertices_count, sizeof(u32));
 
             break;
 

@@ -9,6 +9,7 @@
 // free and calloc for stb image to circumvent them from using sys calls
 
 #include "common.h"
+#include "poglib/external/cgltf/cgltf.h"
 #include <poglib/image.h>
 
 typedef struct gltexture2d_t {
@@ -29,11 +30,14 @@ typedef struct gltexture2d_t {
 
 
 gltexture2d_t        gltexture2d_init(const char * filepath);
-gltexture2d_t        gltexture2d_embedded_init(u8 *buffer, u32 buffer_size);
+gltexture2d_t       gltexture2d_embedded_init(
+                        const buffer_t buffer, 
+                        const str_t label, 
+                        const cgltf_sampler *const sampler,
+                        const bool is_srgb);
 gltexture2d_t        gltexture2d_empty_init(u32 width, u32 height);
 void                 gltexture2d_upload_to_gpu(gltexture2d_t *texture);
 gltexture2d_t        gltexture2d_load_from_file(const char *filepath);
-gltexture2d_t        gltexture2d_load_from_memory(const u8 *const buffer, const u32 buffer_size, const str_t path);
 void                 gltexture2d_destroy(const gltexture2d_t *texture);
 bool                 gltexture2d_is_same(const gltexture2d_t *const texture1, const gltexture2d_t *const texture2);
 //NOTE:(macro)       gltexture2d_bind(gltexture2d_t *, u32 slot) --> void
@@ -111,22 +115,6 @@ gltexture2d_t gltexture2d_load_from_file(const char *filepath)
         .width = width,
         .height = height,
         .bpp = 4,
-    };
-}
-
-gltexture2d_t gltexture2d_load_from_memory(const u8 *const buffer, const u32 buffer_size, const str_t path)
-{
-    i32 width, height, bpp;
-    u8 *pixels = (u8 *)stbi_load_from_memory(buffer, buffer_size, &width, &height, &bpp, STBI_default);
-    if (!pixels) eprint("Failed to load pixels from memory");
-
-    return (gltexture2d_t) {
-        .id = 0,
-        .filepath = path,
-        .buf = pixels,
-        .width = width,
-        .height = height,
-        .bpp = bpp,
     };
 }
 
@@ -217,29 +205,35 @@ void gltexture2d_dump(const gltexture2d_t *texture)
             texture->bpp);
 }
 
-gltexture2d_t gltexture2d_embedded_init(u8 *buffer, u32 buffer_size)
-{
+
+gltexture2d_t gltexture2d_embedded_init(
+    const buffer_t buffer, 
+    const str_t label, 
+    const cgltf_sampler *const sampler,
+    const bool is_srgb
+) {
     GLuint id;
     i32 width, height, bpp;
     stbi_set_flip_vertically_on_load(true);
     u8 *pixels = (u8 *)stbi_load_from_memory(
-        buffer, buffer_size, &width, &height, &bpp, STBI_default
+        buffer.raw_data, buffer.size, &width, &height, &bpp, STBI_rgb_alpha
     );
-    if (!pixels) {
-        eprint("Failed to load pixels from memory");
-    }
 
-    GLenum format;
-    if (bpp == 1)       format = GL_RED;
-    else if (bpp == 3)  format = GL_RGB;
-    else if (bpp == 4)  format = GL_RGBA;
+    if (!pixels) eprint("Failed to load pixels from memory");
 
     GL_CHECK(glGenTextures(1, &id));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, id));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));	
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+    if (!sampler) {
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));	
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+    } else {
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, sampler->min_filter));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, sampler->mag_filter));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, sampler->wrap_s));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, sampler->wrap_t));
+    }
 
     f32 max_anisotropy = 0.0f;
     GL_CHECK(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &max_anisotropy));
@@ -248,11 +242,11 @@ gltexture2d_t gltexture2d_embedded_init(u8 *buffer, u32 buffer_size)
     GL_CHECK(glTexImage2D(
         GL_TEXTURE_2D, 
         0, 
-        format,
+        is_srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8,
         width,
         height,
         0,
-        format, // The format the buf variable is in
+        GL_RGBA,
         GL_UNSIGNED_BYTE,
         pixels
      ));
@@ -260,10 +254,12 @@ gltexture2d_t gltexture2d_embedded_init(u8 *buffer, u32 buffer_size)
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
     GL_LOG("Texture `%i` successfully created", id);
 
-    gltexture2d_t o = {
+    stbi_image_free(pixels);
+
+    const gltexture2d_t o = {
         .id         = id,
-        .filepath   = NULL,
-        .buf        = pixels,
+        .filepath   = label,
+        .buf        = NULL,
         .width      = width,
         .height     = height,
         .bpp        = bpp,

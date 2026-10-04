@@ -106,7 +106,7 @@ void bgtask_manager_pass_task(bgtask_manager_t * const self, const taskrequest_t
 }
 
 
-i32 bgtask__internal_thread_wrapper(void *thread_payload_data)
+INTERNAL i32 bgtask__internal__thread_wrapper(void *thread_payload_data)
 {
     taskrequest_t *const payload = thread_payload_data;
     ASSERT(payload->response);
@@ -140,7 +140,7 @@ void bgtask_manager_run_all_tasks(bgtask_manager_t *const self)
             .raw_data = (void *)task, 
             .size = sizeof(*task) 
         });
-        if (thrd_create(&task->response->thrd_id, bgtask__internal_thread_wrapper, task) != thrd_success) {
+        if (thrd_create(&task->response->thrd_id, bgtask__internal__thread_wrapper, task) != thrd_success) {
             eprint("Failed to generate thread");
         }
     }

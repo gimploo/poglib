@@ -15,15 +15,21 @@ typedef struct free_block_t free_block_t;
 struct arena_mem_block_t {
     u8  *memory;
     u64 size;
+    //TODO: add chaining, when memory in a block runs out.
 };
 
 struct arena_t {
     arena_mem_block_t memblock;
     u64 capacity;
+
+    //TODO: having freeblocks seems unnecessary here, maybe keep 
+    //a plugin type system for it, since i dont think we need this
+    //for all use cases
     struct {
         free_block_t *head;
         u32 count;
     } freeblocks;
+
     struct {
         atomic_flag lock;
         struct arena_t *lifetime_owner;
@@ -228,9 +234,10 @@ void arena_clear(arena_t *self)
 {
     while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
     {
-        self->memblock.size = sizeof(arena_t);
         memset(&self->freeblocks, 0, sizeof(self->freeblocks));
-    }
+        memset((u8 *)self->memblock.memory + sizeof(arena_t), 0, self->memblock.size - sizeof(arena_t));
+        self->memblock.size = sizeof(arena_t);
+    } 
     atomic_flag_clear(&self->meta.lock);
 #ifdef ARENA_ENABLE_MEMORY_LOGGER
     arena_logger_clear_log(self);

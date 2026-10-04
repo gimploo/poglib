@@ -50,7 +50,9 @@ void stackarena_pop(stackarena_t *const self)
 
     const u32 last_requested_size = *(u32 *)stack_peek(&self->requestedsizes);
     stack_pop(&self->requestedsizes);
+
     self->top = self->top - last_requested_size;
+    memset((u8 *)self->top, 0, last_requested_size);
 }
 
 void stackarena_destroy(stackarena_t *const self)

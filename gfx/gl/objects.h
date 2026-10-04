@@ -29,7 +29,7 @@ typedef struct {
     u32  id; 
     struct {
         vbo_config_t config;
-        i32  attribute_index; //TODO: rename this
+        u32  attribute_count;
         void *mapped_ptr;
     } internals;
 } vbo_t ;
@@ -39,6 +39,7 @@ typedef struct ebo_t {
     u32  id;
     u32  indices_count;
     vbo_t *vbo;
+    u32 index_type;
 
 } ebo_t ;
 
@@ -53,7 +54,7 @@ vbo_t           vbo_static_init(const void *vertices, const size_t vsize, const 
 void            vbo_destroy(const vbo_t *);
 
 
-ebo_t           ebo_init(vbo_t *vbo, const u32 *array, const u32 nmemb);
+ebo_t           ebo_init(vbo_t *vbo, const u8 *buffer, const u32 count, const u8 elem_size);
 #define         ebo_bind(PEBO)  GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, (PEBO)->id))
 void            ebo_destroy(const ebo_t *ebo);
 
@@ -109,7 +110,7 @@ vbo_t vbo_static_init(
     vbo_t VBO = {
         .internals = {
             .config = config,
-            .attribute_index = -1,
+            .attribute_count = 0,
         }
     };
 
@@ -188,7 +189,7 @@ vbo_t vbo_init(const vbo_config_t config)
     return (vbo_t) {
         .id = vbo_id,
         .internals = {
-            .attribute_index = -1,
+            .attribute_count = 0,
             .config = config,
             .mapped_ptr = mapped_ptr,
         }
@@ -197,21 +198,31 @@ vbo_t vbo_init(const vbo_config_t config)
 
 //ebo
 
-ebo_t ebo_init(vbo_t *vbo, const u32 *indices, const u32 nindices)
+ebo_t ebo_init(vbo_t *vbo, const u8 *buffer, const u32 count, const u8 elem_size)
 {
-    if (indices == NULL) eprint("ebo_init: indices argument is null");
-    if (nindices <= 0) eprint("ebo_init: isize is not greater than 0");
+    if (buffer == NULL) eprint("ebo_init: indices argument is null");
+    if (count <= 0) eprint("ebo_init: isize is not greater than 0");
+    ASSERT(elem_size);
 
     ASSERT(vbo);
 
+    u32 index_type;
+    if (elem_size == sizeof(u8))
+        index_type = GL_UNSIGNED_BYTE;
+    else if (elem_size == sizeof(u16))
+        index_type = GL_UNSIGNED_SHORT;
+    else
+        index_type = GL_UNSIGNED_INT;
+
     ebo_t ebo = {
         .vbo = vbo,
-        .indices_count = nindices,
+        .indices_count = count,
+        .index_type = index_type
     };
 
     GL_CHECK(glGenBuffers(1, &ebo.id));
     GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo.id));
-    GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, nindices * sizeof(u32), indices, GL_STATIC_DRAW));
+    GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * elem_size, buffer, GL_STATIC_DRAW));
 
 
     GL_LOG("EBO `%i` created", ebo.id);
@@ -254,7 +265,7 @@ void vao_set_attributes(
     if (vbo == NULL) eprint("vbo argument is null");
 
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo->id));
-    GL_CHECK(glEnableVertexAttribArray(++vbo->internals.attribute_index));
+    GL_CHECK(glEnableVertexAttribArray(vbo->internals.attribute_count));
 
     const u64 geometry_chunk_size = vbo->internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].buffer.size;
     const u64 buffer_offset = chunk_type == VBO_STREAM_TYPE_INSTANCE ? geometry_chunk_size + offset : offset;
@@ -263,7 +274,7 @@ void vao_set_attributes(
     {
         case GL_INT:
             GL_CHECK(glVertexAttribIPointer(
-                        vbo->internals.attribute_index,
+                        vbo->internals.attribute_count,
                         component_count, 
                         GL_INT,
                         stride,
@@ -271,7 +282,7 @@ void vao_set_attributes(
         break;
         case GL_FLOAT:
             GL_CHECK(glVertexAttribPointer(
-                        vbo->internals.attribute_index,
+                        vbo->internals.attribute_count,
                         component_count, 
                         GL_FLOAT, 
                         normalized == false ? GL_FALSE : GL_TRUE, 
@@ -280,7 +291,9 @@ void vao_set_attributes(
         break;
         default: eprint("Not implemented");
     }
-    GL_CHECK(glVertexAttribDivisor(vbo->internals.attribute_index, instance_divisor));
+    GL_CHECK(glVertexAttribDivisor(vbo->internals.attribute_count, instance_divisor));
+
+    ++vbo->internals.attribute_count;
 }
 
 void vao_draw_with_vbo_in_mode_instanced(const vao_t *vao, const vbo_t *vbo, u64 gldraw_mode)

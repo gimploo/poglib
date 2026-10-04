@@ -28,9 +28,11 @@ const str_t ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SUPPORTED_COUNT] = {
     [ECS_UNIFORM_CAMERA_PROJECTION]         = str_lit("projection"),
     [ECS_UNIFORM_CAMERA_VIEW]               = str_lit("view"),
     [ECS_UNIFORM_CAMERA_POSITION]           = str_lit("camerapos"),
-    [ECS_UNIFORM_MODEL_TEXTURE]             = str_lit("u_texture"),
     [ECS_UNIFORM_TRANSFORM]                 = str_lit("transform"),
+
     [ECS_UNIFORM_MODEL_BONES]               = str_lit("uBones"),
+    [ECS_UNIFORM_MODEL_TEXTURE]             = str_lit("texture1"),
+
     [ECS_UNIFORM_MATERIAL_COLOR]            = str_lit("material.color"),
     [ECS_UNIFORM_TEXTURE_AVAILABILITY]      = str_lit("has_texture"),
     [ECS_UNIFORM_LIGHT_POSITION]            = str_lit("lightPos"),
@@ -91,9 +93,6 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
             case ECS_UNIFORM_CAMERA_VIEW:
                 value.mat4 = camera_view;
             break;
-            case ECS_UNIFORM_MODEL_TEXTURE:
-                value.i32 = 0;
-            break;
             case ECS_UNIFORM_TRANSFORM:
                 value.mat4 = model_transform;
             break;
@@ -103,6 +102,7 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
 
             //NOTE: these are handled in model's resolver
             case ECS_UNIFORM_MODEL_BONES:
+            case ECS_UNIFORM_MODEL_TEXTURE:
             case ECS_UNIFORM_MATERIAL_COLOR:
                 continue;
             break;
@@ -128,6 +128,12 @@ INTERNAL void ecs_material_resolve_per_mesh_uniforms(
 
     const glmodel_t *const model = model_cmp->internal.model;
     ASSERT(mesh_idx < model->meshes.len);
+
+    if (glshader_uniform_is_support(shader, ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_MODEL_TEXTURE])) {
+        out_uniforms->data[out_uniforms->count].name        = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_MODEL_TEXTURE];
+        out_uniforms->data[out_uniforms->count].value.u32   = ((glmodel_texture_t *)list_get_value(&model->textures, 0))->texture.id;
+        out_uniforms->count++;
+    }
 
     if (glshader_uniform_is_support(shader, ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_MATERIAL_COLOR])) {
         out_uniforms->data[out_uniforms->count].name       = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_MATERIAL_COLOR];

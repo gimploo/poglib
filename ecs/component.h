@@ -355,8 +355,8 @@ void ecs_componentmanager__internal_update_cmpdata(const ecs_cmp_patch_payload_t
     {
         case ECS_CMP_COLLIDER: {
             const ecs_component_collider_t *const collider = (ecs_component_collider_t *)entry->entity_cmpdata;
-            if (!request.is_active)     JPH_BodyInterface_RemoveBody(global_joltphysics_instance->bodyinterface, collider->internal.body_id);
-            else                        JPH_BodyInterface_AddBody(global_joltphysics_instance->bodyinterface, collider->internal.body_id, JPH_Activation_Activate);
+            if (!request.is_active)     JPH_BodyInterface_RemoveBody(global_joltphysics_instance->bodyinterface, collider->internal.body_ids[0]);
+            else                        JPH_BodyInterface_AddBody(global_joltphysics_instance->bodyinterface, collider->internal.body_ids[0], JPH_Activation_Activate);
         } break;
 
         default: return;
@@ -408,7 +408,7 @@ INTERNAL void ecs_componentmanager__internal__cmp_cleanup(const ecs_component_ty
     {
         case ECS_CMP_COLLIDER: {
             const ecs_component_collider_t *collider = (ecs_component_collider_t *)poolentry->entity_cmpdata;
-            if (collider->internal.body_id)                 JPH_BodyInterface_RemoveAndDestroyBody(global_joltphysics_instance->bodyinterface, collider->internal.body_id);
+            if (collider->internal.body_ids[0])                 JPH_BodyInterface_RemoveAndDestroyBody(global_joltphysics_instance->bodyinterface, collider->internal.body_ids[0]);
             else if (collider->internal.kinematicbody)     JPH_CharacterBase_Destroy((JPH_CharacterBase *)collider->internal.kinematicbody);
         } break;
 

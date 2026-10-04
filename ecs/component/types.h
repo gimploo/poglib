@@ -7,7 +7,7 @@
 #include <poglib/util/glcamera.h>
 #include <poglib/gfx/gl/shader.h>
 #include <poglib/gfx/gl/texture_types.h>
-#include <poglib/gfx/model/assimp.h>
+#include <poglib/gfx/model/glmodel.h>
 
 #define ECS_CMP_INVALID_IDX -1
 
@@ -62,6 +62,7 @@ struct ecs_component_transform_t {
 typedef struct ecs_component_model_t ecs_component_model_t;
 struct ecs_component_model_t {
     u32 asset_id;
+    bool is_scene_instanced;
     struct {
         glmodel_t *model;
     } internal;
@@ -146,6 +147,8 @@ typedef struct ecs_component_camera_t {
 
 /* =========================== COLLIDERS ================================== */
 
+#define ECS_COLLIDER_MAX_MESH_PER_MODEL 3
+
 typedef struct ecs_component_collider_t ecs_component_collider_t;
 typedef struct ecs_collider_jolt_userdata_t ecs_collider_jolt_userdata_t;
 
@@ -157,6 +160,7 @@ typedef enum {
     COLLIDER_SHAPE_TYPE_CYLINDER            = 4,
     COLLIDER_SHAPE_TYPE_MESH                = 5,
     COLLIDER_SHAPE_TYPE_SOFTBODY            = 6,
+    COLLIDER_SHAPE_TYPE_MODEL               = 7,
     COLLIDER_SHAPE_TYPE_COUNT,
 } collider_shape_type;
 
@@ -189,6 +193,11 @@ typedef union {
         } idx;
     } mesh;
     struct {
+        u8 count;
+        cgltf_accessor *vtx_list[ECS_COLLIDER_MAX_MESH_PER_MODEL];
+        cgltf_accessor *idx_list[ECS_COLLIDER_MAX_MESH_PER_MODEL];
+    } model;
+    struct {
         struct {
             u32 count;
             vec3f_t *data;
@@ -200,13 +209,14 @@ typedef union {
     } softbody;
 } collider_shape_dimension_t;
 
+
 struct ecs_component_collider_t {
     collider_shape_type             shape_type;
     JPH_MotionType                  motion_type;
     JPH_ObjectLayer                 object_layer_type;
     collider_shape_dimension_t      dim;
     struct {
-        JPH_BodyID                  body_id;
+        JPH_BodyID                  body_ids[ECS_COLLIDER_MAX_MESH_PER_MODEL];
         JPH_GroundState             kinematicbody_groundstate;
         JPH_CharacterVirtual        *kinematicbody;
         vec3f_t                     position;
@@ -214,7 +224,7 @@ struct ecs_component_collider_t {
         u32                         entity_id;
         vec3f_t                     scale;
 #ifdef DEBUG
-        JPH_Shape                   *shape;
+        JPH_Shape                   *shapes[ECS_COLLIDER_MAX_MESH_PER_MODEL];
 #endif
     } internal;
 };

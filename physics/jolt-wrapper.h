@@ -358,6 +358,7 @@ void joltphysics_start_simulation(joltphysics_t *self)
             .penetrationSlop        = 0.005f,
             .maxPenetrationDistance = 1.0f,
             .useLargeIslandSplitter = true,
+            .speculativeContactDistance = 0.05f,
         }
     );
 

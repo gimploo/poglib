@@ -22,6 +22,7 @@ typedef struct slot_t {
 
 
 slot_t              slot_init(const u64 array_capacity, const u64 elem_size, arena_t * const arena);
+bool                slot_is_init(const slot_t *const self);
 void *              slot_insert(slot_t *, const u64 index, const void *value, const u64 value_size);
 void *              slot_update(slot_t *, const u64 index, const void *value, const u64 value_size);
 void                slot_insert_multiple(slot_t *self, const u8 *arraybuffer, const u32 arraylen, const u32 elem_size);
@@ -286,6 +287,11 @@ void slot_fill_empty(slot_t * const self)
 {
     self->len = self->internal.capacity;
     memset(self->data, 0, self->len * self->internal.elem_size);
+}
+
+bool slot_is_init(const slot_t *const self)
+{
+    return self->internal.capacity == 0 || self->data == NULL;
 }
 
 #endif

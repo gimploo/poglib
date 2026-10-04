@@ -33,7 +33,7 @@ void ecs_system_simulation(ecs_componentmanager_t *const cmp_manager, const ecs_
         ASSERT(transform);
         ASSERT(collider);
 
-        const JPH_Body* body = JPH_PhysicsSystem_GetBodyPtr(global_joltphysics_instance->physics_system, collider->internal.body_id);
+        const JPH_Body* body = JPH_PhysicsSystem_GetBodyPtr(global_joltphysics_instance->physics_system, collider->internal.body_ids[0]);
         if (!body) {
             logging("unable to get body ptr, skipping this frame");
             continue;

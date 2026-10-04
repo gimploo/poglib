@@ -3,12 +3,15 @@
 #include "./asset.h"
 #include <poglib/sound.h>
 #include "poglib/basic/concurrency.h"
+#include "poglib/basic/stack_arena.h"
+#include "poglib/external/cglm/struct/affine2d.h"
 #include "poglib/gfx/gl/objects.h"
 #include "poglib/gfx/gl/renderconfig.h"
 #include "poglib/gfx/gl/shader.h"
 #include "poglib/gfx/gl/types.h"
 #include "poglib/gfx/gl/vbo_stream_types.h"
 #include "poglib/gfx/model/assimp.h"
+#include "poglib/gfx/model/glmodel.h"
 #include "poglib/util/spriteatlas.h"
 #include "poglib/util/workbench/workbench-constants.h"
 
@@ -39,6 +42,7 @@ void                assetmanager_load_all_primitives(assetmanager_t * const self
 u32                 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepath, const bool is_simulated);
 u32                 assetmanager_load_spriteatlas(assetmanager_t *const self, const str_t filepath, const u32 tile_count_width, const u32 tile_count_height);
 u32                 assetmanager_load_texture(assetmanager_t *self, const str_t filepath);
+u32                 assetmanager_load_texture_from_memory(assetmanager_t *self, const buffer_t buffer, const str_t label, const cgltf_sampler *sampler, const bool is_srgb);
 u32                 assetmanager_load_glsl_shader(assetmanager_t *self, const str_t vtx_filepath, const str_t frag_filepath, const gluniform_registry_t registry);
 wwise_audio_t       assetmanager_load_audios_from_wwise(assetmanager_t *const self);
 u32                 assetmanager_load_audio_music_async(assetmanager_t *const self, const audio_musiclayer_t musiclayers[AUDIO_MUSIC_LAYERS_MAX_COUNT], const u8 layer_count);
@@ -79,20 +83,20 @@ INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *cons
 assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
 {
     ASSERT(taskmanager);
-    arena_t *arena = arena_init(NULL, 3 * MB);
+    arena_t *arena = arena_init(NULL, 50 * MB);
     assetmanager_t result = {
         .arena = arena,
         .assetmaps = {
             [ASSET_TYPE_MODEL]                  = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(async(glmodel_t)),  .type = HT_STORAGE_BY_REFERENCE }, arena),
             [ASSET_TYPE_GLSL_SHADER]            = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(glshader_t),        .type = HT_STORAGE_BY_REFERENCE }, arena),
-            [ASSET_TYPE_TEXTURE]                = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gltexture2d_t),     .type = HT_STORAGE_BY_REFERENCE }, arena),
+            [ASSET_TYPE_TEXTURE]                = hashtable_init(50, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gltexture2d_t),     .type = HT_STORAGE_BY_VALUE }, arena),
             [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = hashtable_init(3, HT_KEY_TYPE_U32,    (ht_value_type) { .size = sizeof(spriteatlas_t),        .type = HT_STORAGE_BY_VALUE     }, arena),
             [ASSET_TYPE_MUSIC_SFX]              = hashtable_init(10, HT_KEY_TYPE_U32,   (ht_value_type) { .size = sizeof(async(audio_sfx_t)),   .type = HT_STORAGE_BY_REFERENCE }, arena),
             [ASSET_TYPE_MUSIC_THEME]            = hashtable_init(5, HT_KEY_TYPE_U32,    (ht_value_type) { .size = sizeof(async(audio_music_t)), .type = HT_STORAGE_BY_REFERENCE }, arena),
         },
         .bgtask_manager         = taskmanager,
         .assetmeta_lookup       = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT, HT_KEY_TYPE_U32, (ht_value_type){ .size = sizeof(asset_meta_t), .type = HT_STORAGE_BY_VALUE } , arena),
-        .gpu_uploaded_assets    = hashtable_init(ASSET_TYPE_COUNT * MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gpu_asset_t), .type = HT_STORAGE_BY_REFERENCE }, arena),
+        .gpu_uploaded_assets    = hashtable_init(KB, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gpu_asset_t), .type = HT_STORAGE_BY_REFERENCE }, arena),
         .internal = {
             .asset_idx_generator        = GL_MESH_PRIMITIVE_TYPE_COUNT,
             .asset_staging_queue        = mpsc_queue(arena, MAX_ASSETS_ALLOWED_PER_TYPE * 10 * ASSET_TYPE_COUNT),
@@ -320,7 +324,7 @@ void assetmanager__internal__upload_model_to_gpu(
             }
         });
 
-        ebo_init(&vbo, (u32 *)cpu_mesh->idx.data, cpu_mesh->idx.len);
+        ebo_t ebo = ebo_init(&vbo, (u8 *)cpu_mesh->idx.data, cpu_mesh->idx.len, sizeof(u32));
 
         const glvtx_attributelist_t attrlist = glmodel_get_attirbutelist();
         for(u16 attr_idx = 0; attr_idx < attrlist.count; attr_idx++)
@@ -341,7 +345,8 @@ void assetmanager__internal__upload_model_to_gpu(
         gpu_asset->meshes.data[(u64)list_iterator_index] = (gpu_mesh_t){
             .vao_id = vao.id,
             .index_count = cpu_mesh->idx.len,
-            .attribute_count = vbo.internals.attribute_index + 1,
+            .index_type = ebo.index_type,
+            .attribute_count = vbo.internals.attribute_count,
             .vbo = {
                 .gpu_read = (buffer_t){
                     .raw_data = arena_store(self->arena, cpu_mesh->vtx.data, cpu_fullvtx_size), 
@@ -452,7 +457,7 @@ void assetmanager__internal__upload_sphere_to_gpu(assetmanager_t *const self)
         }
     });
 
-    const ebo_t ebo = ebo_init(&vbo, MESH_SPHERE_EBO_BUFFER, ARRAY_LEN(MESH_SPHERE_EBO_BUFFER));
+    const ebo_t ebo = ebo_init(&vbo, (u8 *)MESH_SPHERE_EBO_BUFFER, ARRAY_LEN(MESH_SPHERE_EBO_BUFFER), sizeof(u32));
 
     //Pos
     vao_set_attributes(
@@ -500,7 +505,8 @@ void assetmanager__internal__upload_sphere_to_gpu(assetmanager_t *const self)
         &(gpu_mesh_t) {
             .vao_id = vao.id,
             .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_index + 1,
+            .attribute_count = vbo.internals.attribute_count,
+            .index_type = ebo.index_type
         },
         sizeof(gpu_mesh_t)
     );
@@ -540,7 +546,7 @@ void assetmanager__internal__upload_cube_to_gpu(assetmanager_t *const self)
         }
     });
 
-    const ebo_t ebo = ebo_init(&vbo, DEFAULT_CUBE_INDICES_24, ARRAY_LEN(DEFAULT_CUBE_INDICES_24));
+    const ebo_t ebo = ebo_init(&vbo, (u8 *)DEFAULT_CUBE_INDICES_24, ARRAY_LEN(DEFAULT_CUBE_INDICES_24), sizeof(u32));
 
     //Pos
     vao_set_attributes(
@@ -588,7 +594,8 @@ void assetmanager__internal__upload_cube_to_gpu(assetmanager_t *const self)
         &(gpu_mesh_t) {
             .vao_id = vao.id,
             .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_index + 1
+            .attribute_count = vbo.internals.attribute_count,
+            .index_type = ebo.index_type
         },
         sizeof(gpu_mesh_t)
     );
@@ -630,7 +637,7 @@ void assetmanager__internal__upload_cylinder_to_gpu(assetmanager_t *const self)
         }
     });
 
-    const ebo_t ebo = ebo_init(&vbo, DEFAULT_CYLINDER_INDICES, ARRAY_LEN(DEFAULT_CYLINDER_INDICES));
+    const ebo_t ebo = ebo_init(&vbo, (u8 *)DEFAULT_CYLINDER_INDICES, ARRAY_LEN(DEFAULT_CYLINDER_INDICES), sizeof(u32));
 
     vao_set_attributes(
         &vao,
@@ -674,7 +681,8 @@ void assetmanager__internal__upload_cylinder_to_gpu(assetmanager_t *const self)
         &(gpu_mesh_t) {
             .vao_id = vao.id,
             .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_index + 1
+            .attribute_count = vbo.internals.attribute_count,
+            .index_type = ebo.index_type
         },
         sizeof(gpu_mesh_t)
     );
@@ -715,7 +723,7 @@ void assetmanager__internal__upload_camera_model(assetmanager_t *const self)
         }
     });
 
-    const ebo_t ebo = ebo_init(&vbo, CAMERA_INDICES, ARRAY_LEN(CAMERA_INDICES));
+    const ebo_t ebo = ebo_init(&vbo, (u8 *)CAMERA_INDICES, ARRAY_LEN(CAMERA_INDICES), sizeof(u32));
 
     //Pos
     vao_set_attributes(
@@ -738,7 +746,8 @@ void assetmanager__internal__upload_camera_model(assetmanager_t *const self)
         &(gpu_mesh_t) {
             .vao_id = vao.id,
             .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_index + 1
+            .attribute_count = vbo.internals.attribute_count,
+            .index_type = ebo.index_type
         },
         sizeof(gpu_mesh_t));
 
@@ -823,6 +832,20 @@ INTERNAL void assetmanager__internal_add_asset_meta_data(
 u32 assetmanager_load_texture(assetmanager_t *self, const str_t filepath)
 {
     eprint("not implemented");
+}
+
+u32 assetmanager_load_texture_from_memory(assetmanager_t *self, const buffer_t buffer, const str_t label, const cgltf_sampler *sampler, const bool is_srgb)
+{
+    const u32 asset_id          = ++self->internal.asset_idx_generator;
+    const gltexture2d_t texture = gltexture2d_embedded_init(buffer, label, sampler, is_srgb);
+
+    hashtable_insert_by_value(
+        &self->assetmaps[ASSET_TYPE_TEXTURE], 
+        (hashtable_key_t){ .u32 = asset_id }, 
+        &texture
+    );
+
+    return asset_id;
 }
 
 
@@ -1001,7 +1024,7 @@ INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *cons
         }
     });
 
-    const ebo_t ebo = ebo_init(&vbo, MESH_CAPSULE_EBO_BUFFER, ARRAY_LEN(MESH_CAPSULE_EBO_BUFFER));
+    const ebo_t ebo = ebo_init(&vbo, (u8 *)MESH_CAPSULE_EBO_BUFFER, ARRAY_LEN(MESH_CAPSULE_EBO_BUFFER), sizeof(u32));
 
     //Pos
     vao_set_attributes(
@@ -1049,7 +1072,8 @@ INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *cons
         &(gpu_mesh_t) {
             .vao_id = vao.id,
             .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_index + 1
+            .attribute_count = vbo.internals.attribute_count,
+            .index_type = ebo.index_type
         },
         sizeof(gpu_mesh_t)
     );
@@ -1066,6 +1090,203 @@ INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *cons
         sizeof(gpu_asset_t));
 
     hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
+}
+
+u32 assetmanager_upload_mesh_to_gpu(assetmanager_t *const self, const cgltf_mesh *mesh)
+{
+    const u32 asset_id = ++self->internal.asset_idx_generator;
+
+    gpu_asset_t *const gpu_asset = arena_store(
+        self->arena, 
+        &(gpu_asset_t) {
+            .asset_id = asset_id,
+            .meshes = {
+                .count = mesh->primitives_count, 
+                .data = arena_reserve(self->arena, sizeof(gpu_mesh_t) * mesh->primitives_count),
+            },
+        },
+        sizeof(gpu_asset_t)
+    );
+
+    for (u8 mesh_idx = 0; mesh_idx < mesh->primitives_count; mesh_idx++)
+    {
+        const u32 vtx_stride = sizeof(vec3s) + sizeof(vec3s) + sizeof(vec2s);
+
+        const u32 buffer_size = (u32)(
+            cgltf_primitive_find_attribute(&mesh->primitives[mesh_idx], cgltf_attribute_type_position)->count * vtx_stride
+        );
+
+        vao_t vao = vao_init();
+        vao_bind(&vao);
+
+        //TODO: after a pipeline is set for UV baking and also understood, remove this part of the code
+        mat3s uv_transform = glms_mat3_identity();
+        if (mesh->primitives[mesh_idx].material 
+            && mesh->primitives[mesh_idx].material->has_pbr_metallic_roughness 
+            && mesh->primitives[mesh_idx].material->pbr_metallic_roughness.base_color_texture.texture
+            && mesh->primitives[mesh_idx].material->pbr_metallic_roughness.base_color_texture.has_transform
+        ) {
+#if 1
+            const cgltf_texture_view basecolor_texture = mesh->primitives[mesh_idx].material->pbr_metallic_roughness.base_color_texture;
+            if(basecolor_texture.texcoord) {
+                eprint("TODO: this mesh includes a second UV map, so far we have only accomadated for a single UV map use case");
+            }
+
+            const cgltf_texture_transform texturetransform = basecolor_texture.transform;
+            const vec2s offset  = *(vec2s *)texturetransform.offset;
+            const f32 rotation  = texturetransform.rotation;
+            const vec2s scale   = *(vec2s *)texturetransform.scale;
+
+            uv_transform = glms_translate2d(uv_transform, offset);
+            uv_transform = glms_rotate2d(uv_transform, rotation);
+            uv_transform = glms_scale2d(uv_transform, scale);
+#else
+            eprint("The model includes uv transforms, bake the UV on to the mesh directly before exporting i.e alternate approach to removing the `Mapping node` for the mesh in blender");
+#endif
+        }
+
+        cgltf_attribute position = {0}, normal = {0}, texcoord = {0};
+        for (u8 attr_idx = 0; attr_idx < mesh->primitives[mesh_idx].attributes_count; attr_idx++)
+        {
+            switch(mesh->primitives[mesh_idx].attributes[attr_idx].type) 
+            {
+                case cgltf_attribute_type_position:
+                    position = mesh->primitives[mesh_idx].attributes[attr_idx];
+                break;
+                case cgltf_attribute_type_normal:
+                    normal = mesh->primitives[mesh_idx].attributes[attr_idx];
+                break;
+                case cgltf_attribute_type_texcoord:
+                    if(mesh->primitives[mesh_idx].attributes[attr_idx].index) eprint("TODO: additional texcoord not accounted yet");
+                    texcoord = mesh->primitives[mesh_idx].attributes[attr_idx];
+                break;
+            }
+        }
+
+        assert(position.data && normal.data && texcoord.data && "Missing required mesh attributes (position, normal, texcoord)");
+
+        const cgltf_accessor *pos_accessor = position.data;
+        const cgltf_accessor *norm_accessor = normal.data;
+        const cgltf_accessor *uv_accessor = texcoord.data;
+
+        assert(pos_accessor->type == cgltf_type_vec3);
+        assert(norm_accessor->type == cgltf_type_vec3);
+        assert(uv_accessor->type == cgltf_type_vec2);
+
+        const u32 vtx_count = (u32)pos_accessor->count;
+
+        const uint8_t *pos_data = cgltf_buffer_view_data(pos_accessor->buffer_view) + pos_accessor->offset;
+        const uint8_t *norm_data = cgltf_buffer_view_data(norm_accessor->buffer_view) + norm_accessor->offset;
+        const uint8_t *uv_data = cgltf_buffer_view_data(uv_accessor->buffer_view) + uv_accessor->offset;
+
+        assert(pos_data && norm_data && uv_data && "Attribute buffer data not loaded");
+        assert(!pos_accessor->is_sparse && !norm_accessor->is_sparse && !uv_accessor->is_sparse && "Sparse accessors not supported");
+
+        const cgltf_size pos_stride     = pos_accessor->stride ? pos_accessor->stride : 3 * sizeof(float);
+        const cgltf_size norm_stride    = norm_accessor->stride ? norm_accessor->stride : 3 * sizeof(float);
+        const cgltf_size uv_stride      = uv_accessor->stride ? uv_accessor->stride : 2 * sizeof(float);
+
+        struct {
+            vec3s pos;
+            vec3s norm;
+            vec2s uv;
+        } *dst = (void *)stackarena_push(global_runtimectx->stackarena, buffer_size);
+
+        for (u32 i = 0; i < vtx_count; i++)
+        {
+            dst[i].pos = *(vec3s *)pos_data;
+            dst[i].norm = *(vec3s *)norm_data;
+
+            dst[i].uv = *(vec2s *)uv_data;
+
+            //TODO: required in cases where you dont bake uv transforms directly in the geometry,
+            //have a pipeline in place where baking is required, remove this after the above TODO is done
+            {
+                dst[i].uv = glms_vec2(glms_mat3_mulv(uv_transform, (vec3s) { dst[i].uv.x , dst[i].uv.y, 1.0f }));
+                dst[i].uv.y = 1.0f - dst[i].uv.y;
+            }
+
+            pos_data    += pos_stride;
+            norm_data   += norm_stride;
+            uv_data     += uv_stride;
+        }
+
+        vbo_t vbo = vbo_init((vbo_config_t) {
+            .usage = GL_STATIC_DRAW,
+            .chunks = {
+                [VBO_STREAM_TYPE_GEOMETRY] = { 
+                    .buffer = {
+                        .raw_data = dst,
+                        .size = buffer_size,
+                    }, 
+                    .index_count = mesh->primitives[mesh_idx].indices->count
+                },
+                [VBO_STREAM_TYPE_INSTANCE] = {0},
+            }
+        });
+
+        const cgltf_accessor *idx_accessor = mesh->primitives[mesh_idx].indices;
+        assert(idx_accessor->buffer_view->buffer->data && !idx_accessor->is_sparse && "Index buffer not loaded or sparse");
+
+        const ebo_t ebo = ebo_init(
+            &vbo, 
+            cgltf_buffer_view_data(idx_accessor->buffer_view) + idx_accessor->offset, 
+            idx_accessor->count, 
+            cgltf_component_size(idx_accessor->component_type)
+        );
+
+        //Pos
+        vao_set_attributes(
+            &vao,
+            &vbo, 
+            3, 
+            GL_FLOAT, 
+            false, 
+            vtx_stride,
+            0, 
+            false,
+            VBO_STREAM_TYPE_GEOMETRY
+        );
+
+        //Norm
+        vao_set_attributes(
+            &vao,
+            &vbo, 
+            3, 
+            GL_FLOAT, 
+            false, 
+            vtx_stride,
+            sizeof(vec3s), 
+            false,
+            VBO_STREAM_TYPE_GEOMETRY
+        );
+
+        //UV
+        vao_set_attributes(
+            &vao,
+            &vbo, 
+            2, 
+            GL_FLOAT, 
+            false, 
+            vtx_stride,
+            sizeof(vec3s) * 2, 
+            false,
+            VBO_STREAM_TYPE_GEOMETRY
+        );
+        vao_unbind();
+
+        gpu_asset->meshes.data[mesh_idx] = (gpu_mesh_t){
+            .vao_id = vao.id,
+            .index_count = ebo.indices_count,
+            .attribute_count = vbo.internals.attribute_count,
+            .index_type = ebo.index_type
+        };
+
+        stackarena_pop(global_runtimectx->stackarena);
+    }
+
+    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
+    return asset_id;
 }
 
 #endif

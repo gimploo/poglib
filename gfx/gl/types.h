@@ -109,7 +109,7 @@ typedef struct glmesh_t {
 
     slot_t vtx;
     slot_t idx;
-    u8 material_index;
+    u8 material_idx;
 
 } glmesh_t;
 

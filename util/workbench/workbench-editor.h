@@ -10,7 +10,6 @@
 #include "poglib/util/asset.h"
 #include "poglib/util/assetmanager.h"
 #include <poglib/ecs.h>
-#include <poglib/util/glb_export.h>
 #include "./ui/workbench-ui.h"
 #include "poglib/util/workbench/common.h"
 
@@ -106,17 +105,25 @@ INTERNAL void workbench_editor__internal__scale_mesh_collider(ecs_component_coll
     JPH_IndexedTriangle *tris = (JPH_IndexedTriangle *)stackarena_push(global_runtimectx->stackarena, tri_count * sizeof(JPH_IndexedTriangle));
     for (u32 i = 0; i < tri_count; i++)
     {
+        const uint32_t i1 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 0] : i * 3 + 0;
+        const uint32_t i2 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 1] : i * 3 + 1;
+        const uint32_t i3 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 2] : i * 3 + 2;
+
+        ASSERT(i1 < vtx_count && i2 < vtx_count && i3 < vtx_count && "Mesh index out of bounds");
+
         tris[i] = (JPH_IndexedTriangle){
-            .i1 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 0] : i * 3 + 0,
-            .i2 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 1] : i * 3 + 1,
-            .i3 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 2] : i * 3 + 2,
+            .i1 = i1,
+            .i2 = i2,
+            .i3 = i3,
+            .materialIndex = 0,
+            .userData = 0,
         };
     }
 
     JPH_MeshShapeSettings *settings = JPH_MeshShapeSettings_Create2((const JPH_Vec3 *)scaled_vtx, vtx_count, tris, tri_count);
     JPH_MeshShapeSettings_Sanitize(settings);
     JPH_Shape *newShape = (JPH_Shape *)JPH_MeshShapeSettings_CreateShape(settings);
-    JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_id, newShape, false, JPH_Activation_DontActivate);
+    JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_ids[0], newShape, false, JPH_Activation_DontActivate);
     JPH_Shape_Destroy(newShape);
     JPH_ShapeSettings_Destroy((JPH_ShapeSettings *)settings);
 
@@ -141,13 +148,13 @@ INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(v
             collider->dim.cylinder.radius       = transform->scale.x;
             collider->dim.cylinder.half_height  = transform->scale.y;
             JPH_Shape *newShape = (JPH_Shape *)JPH_CylinderShape_Create(collider->dim.cylinder.half_height, collider->dim.cylinder.radius);
-            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
+            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_ids[0], (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
             JPH_Shape_Destroy((JPH_Shape *)newShape);
         } break;
         case COLLIDER_SHAPE_TYPE_SPHERE:
         case COLLIDER_SHAPE_TYPE_CAPSULE: {
-            JPH_Shape *scaled = JPH_Shape_ScaleShape(collider->internal.shape, (JPH_Vec3 *)&transform->scale);
-            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)scaled, false, JPH_Activation_DontActivate);
+            JPH_Shape *scaled = JPH_Shape_ScaleShape(collider->internal.shapes[0], (JPH_Vec3 *)&transform->scale);
+            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_ids[0], (JPH_Shape *)scaled, false, JPH_Activation_DontActivate);
             JPH_Shape_Destroy(scaled);
        } break;
         case COLLIDER_SHAPE_TYPE_CUBE: {
@@ -155,7 +162,7 @@ INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(v
             collider->dim.cube.half_height = transform->scale.y;
             collider->dim.cube.half_depth  = transform->scale.z;
             JPH_BoxShape *newShape = JPH_BoxShape_Create((JPH_Vec3 *)&collider->dim.cube, JPH_DEFAULT_CONVEX_RADIUS);
-            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_id, (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
+            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_ids[0], (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
             JPH_Shape_Destroy((JPH_Shape *)newShape);
        } break;
         case COLLIDER_SHAPE_TYPE_MESH: 
@@ -450,7 +457,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
         }
 
         //NOTE: == Apply scale to collider ===========================================
-        const bool show_apply_collider_button = collider && collider->internal.body_id;
+        const bool show_apply_collider_button = collider && collider->internal.body_ids[0];
         const u32 apply_collider_button_id = gui_ui_compose_begin(gui, (ui_config_t){
             .composition = {
                 .traits = show_apply_collider_button ? (UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE) : UI_BEHAVIOR_NONE,
@@ -646,7 +653,7 @@ INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collide
         if (!collider->internal.kinematicbody) {
             JPH_BodyInterface_SetPositionAndRotation(
                 global_joltphysics_instance->bodyinterface, 
-                collider->internal.body_id, 
+                collider->internal.body_ids[0], 
                 (JPH_Vec3 *)&transform->position, 
                 &(JPH_Quat) {
                     .x = transform->orientation.x,
@@ -920,7 +927,7 @@ void workbench_editor_export_glb(ecs_t *const ecs)
         char export_buf[512];
         snprintf(export_buf, sizeof(export_buf), "%.*s_exported.glb", stem.len, stem.data);
         str_t export_path = { .data = export_buf, .len = (u32)strlen(export_buf) };
-        glb_export_scene(scratch, ecs, mesh->asset_id, export_path);
+        //glb_export_scene(scratch, ecs, mesh->asset_id, export_path);
         arena_clear(scratch);
     }
 

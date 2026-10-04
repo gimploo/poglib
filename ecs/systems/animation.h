@@ -11,6 +11,7 @@ void ecs_system_animation(ecs_componentmanager_t *const cmp_manager, const ecs_s
     {
         const ecs_component_poolentry_t * const entry = ITER;
         ecs_component_model_t *cmp_model = (ecs_component_model_t *)entry->entity_cmpdata;
+        if (cmp_model->is_scene_instanced) continue;
 
         if (!cmp_model->internal.model) {
             cmp_model->internal.model = (glmodel_t *)assetmanager_get_assetresource(
