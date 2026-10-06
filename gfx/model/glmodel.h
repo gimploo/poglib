@@ -26,6 +26,7 @@ model_t model_load_level_from_file_init(const str_t filepath, arena_t *const are
                 eprint("unable to load "STR_FMT" | ERROR: %s", STR_ARG(filepath), CGLTF_RESULT_CSTR_LOOKUP[result]);
             }
 
+            //TODO: cgltf_memory_options update this to have it use the arena instead of malloc
             const cgltf_result load_result = cgltf_load_buffers(&options, data_buffer, filepath.data);
             if (load_result != cgltf_result_success) {
                 eprint("failed to load buffers for "STR_FMT" | ERROR: %s", STR_ARG(filepath), CGLTF_RESULT_CSTR_LOOKUP[load_result]);
@@ -45,4 +46,7 @@ void model_destroy(model_t *const self)
 {
     cgltf_free(self->data);
 }
+
+
+
 

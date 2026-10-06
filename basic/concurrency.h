@@ -42,7 +42,6 @@ struct taskparams_t {
 typedef union taskstorage_t taskstorage_t;
 union taskstorage_t {
     buffer_t buffer;
-    arena_t *transient_arena;
 };
 
 typedef struct taskpayload_t taskrequest_t;

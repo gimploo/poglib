@@ -2,6 +2,7 @@
 #include <poglib/poggen.h>
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
+#include "poglib/ecs/component/material_texture_resolver.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/math/la.h"
 #include "poglib/pipeline/render/render_queue.h"
@@ -48,7 +49,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
         const ecs_component_light_t *light = view.entity_cmp_data[ECS_CMP_LIGHT_IDX];
         if (light && !global_workbench->is_active) continue;
 
-        gltexturelist_t textures = {0};
+        gltexturelist_t textures = ecs_material_get_texturelist_for_mesh(material, 0);
 
         //NOTE: resolve texture & uv
         const ecs_component_sprite_t *sprite_cmp = view.entity_cmp_data[ECS_CMP_SPRITE_IDX];
@@ -62,33 +63,14 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             );
             uv = spriteatlas_get_sprite(atlas, sprite_cmp->sprite_idx);
             textures.items[textures.count++] = (gltextureitem_t){
-                .type = GL_TEXTURE_TYPE_NORMAL,
+                .type = GL_TEXTURE_TYPE_DEFAULT,
                 .source.normal_texture = &atlas->texture
             };
         }
 
-        //NOTE: resolve textures
-        for (u32 texidx = 0; texidx < (material && material->textures.count); texidx++)
-        {
-            gltexture2d_t *const texture = (gltexture2d_t *)assetmanager_get_assetresource(
-                &global_engine->systems.assets, 
-                ASSET_TYPE_TEXTURE,
-                material->textures.asset_ids[texidx] 
-            );
-            textures.items[textures.count++] = (gltextureitem_t){
-                .type = GL_TEXTURE_TYPE_NORMAL,
-                .source.normal_texture = texture
-            };
-        }
-
-        //NOTE: adding shadow maps
         if (((slot_t *)slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_LIGHT_IDX))->len != 0)
         {
-        }
-
-        //NOTE: backwards compatabitlity for color in material
-        {
-            material->color = material->color.a == 0.f ? COLOR_WHITE : material->color;
+            //TODO: Add shadow maps
         }
 
         const rendercommand_t command = {
@@ -101,7 +83,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                     .translation = (vec4f_t) { transform->position.x, transform->position.y, transform->position.z, 0.f },
                     .scale = (vec4f_t) { transform->scale.x, transform->scale.y,  transform->scale.z,  0.f },
                     .orientation = *(vec4f_t *)&transform->orientation,
-                    .color = is_editor_selected ? COLOR_RED : material->color,
+                    .color = is_editor_selected ? COLOR_RED : ecs_material_get_basecolor_for_mesh(material, 0),
                     .uv = uv,
                 },
                 .size = sizeof(rendercommand_instance_primitive_mesh_t)

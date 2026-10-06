@@ -2,6 +2,7 @@
 #include <poglib/poggen.h>
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
+#include "poglib/ecs/component/material_texture_resolver.h"
 #include "poglib/ecs/component/material_uniform_resolver.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/gfx/model/assimp.h"
@@ -27,26 +28,25 @@ INTERNAL void ecs_system_render__internal__scene_instanced_models(
 
     const bool is_editor_selected = global_workbench->editor.current_selected_entity_id == entity_id;
 
-    for (u8 idx = 0; idx < gpu_loaded_asset->meshes.count; idx++)
+    for (u8 mesh_idx = 0; mesh_idx < gpu_loaded_asset->meshes.count; mesh_idx++)
     {
         rendercommand_t cmd = {
-            .vtx.data.mesh = &gpu_loaded_asset->meshes.data[idx],
+            .vtx.data.mesh = &gpu_loaded_asset->meshes.data[mesh_idx],
             .instance = {
                 .size = sizeof(rendercommand_instance_primitive_mesh_t),
                 .raw_data = &(rendercommand_instance_primitive_mesh_t) {
                     .translation = (vec4f_t) { transform->position.x, transform->position.y, transform->position.z, 0.f },
                     .scale = (vec4f_t) { transform->scale.x, transform->scale.y,  transform->scale.z,  0.f },
                     .orientation = *(vec4f_t *)&transform->orientation,
-                    .color = is_editor_selected ? COLOR_RED : material->color,
-                    .uv = {0},
+                    .color = is_editor_selected ? COLOR_RED : ecs_material_get_basecolor_for_mesh(material, mesh_idx),
                 },
             },
             .enable_wireframe = false,
             .material = {
-                .texture = {0},
+                .texture = ecs_material_get_texturelist_for_mesh(material, mesh_idx),
                 .shader = {
                     .data = (glshader_t *)shader,
-                    .uniforms = material->internal.uniform_values,
+                    .uniforms = ecs_material_resolve_per_mesh_uniforms(NULL, material, shader, mesh_idx),
                 }
             }
         };
@@ -109,9 +109,6 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
 
         for (u8 idx = 0; idx < model->meshes.len; idx++)
         {
-            gluniforms_t mesh_uniforms = material->internal.uniform_values;
-            ecs_material_resolve_per_mesh_uniforms(cmp_model, shader, idx, &mesh_uniforms);
-
             rendercommand_t cmd = {
                 .vtx.data.mesh = &gpu_loaded_asset->meshes.data[idx],
                 .enable_wireframe = false,
@@ -120,7 +117,7 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                     .texture = textures,
                     .shader = {
                         .data = (glshader_t *)shader,
-                        .uniforms = mesh_uniforms,
+                        .uniforms =  ecs_material_resolve_per_mesh_uniforms(cmp_model, material, shader, idx),
                     }
                 }
             };

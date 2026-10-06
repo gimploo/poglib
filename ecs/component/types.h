@@ -8,6 +8,7 @@
 #include <poglib/gfx/gl/shader.h>
 #include <poglib/gfx/gl/texture_types.h>
 #include <poglib/gfx/model/glmodel.h>
+#include <poglib/gfx/model/assimp.h>
 
 #define ECS_CMP_INVALID_IDX -1
 
@@ -23,6 +24,7 @@ typedef enum {
     ECS_CMP_SPRITE_IDX          = 7,
     ECS_CMP_LIGHT_IDX           = 8, 
     ECS_CMP_SIMULATION_IDX      = 9, 
+    ECS_CMP_ANIMATION_IDX       = 10, 
     ECS_CMP_COUNT
 
 } ecs_component_storage_index;
@@ -38,6 +40,7 @@ typedef enum {
     ECS_CMP_MESH                = 1 << ECS_CMP_MESH_IDX,
     ECS_CMP_SPRITE              = 1 << ECS_CMP_SPRITE_IDX,
     ECS_CMP_LIGHT               = 1 << ECS_CMP_LIGHT_IDX,
+    ECS_CMP_ANIMATION           = 1 << ECS_CMP_ANIMATION_IDX,
     ECS_CMP_SIMULATION          = 1 << ECS_CMP_SIMULATION_IDX,
 
 } ecs_component_type;
@@ -70,6 +73,7 @@ struct ecs_component_model_t {
 
 /*========================= MESH ====================================== */
 
+#define ECS_MODEL_MAX_MESH_COUNT 4
 typedef struct ecs_component_mesh_t ecs_component_mesh_t;
 struct ecs_component_mesh_t {
     u32 asset_id;
@@ -104,17 +108,12 @@ struct ecs_component_input_t {
 
 /* =========================== MATERIAL ================================== */
 
-#define ECS_COMPONENT_MATERIAL_TEXTURE_MAX_COUNT 10
-
 typedef struct ecs_component_material_t ecs_component_material_t;
 struct ecs_component_material_t {
 
+    mesh2texture_lookup_t meshidx_to_texture_lookup;
     u32 shader_asset_id;
-    vec4s color;
-    struct {
-        u32 count;
-        u32 asset_ids[ECS_COMPONENT_MATERIAL_TEXTURE_MAX_COUNT];
-    } textures;
+
     struct {
         gluniforms_t uniform_values;
     } internal;
@@ -260,6 +259,16 @@ struct ecs_component_simulation_t {
     } internal;
 };
 
+/* ========================== ANIMATION ============================= */
+
+typedef struct ecs_component_animation_t ecs_component_animation_t;
+struct ecs_component_animation_t {
+
+    struct {
+        gpu_asset_t *gpu_loaded_asset;
+    } internal;
+};
+
 /* =========================== MISC ==========================================*/
 
 typedef struct ecs_component_poolentry_t    ecs_component_poolentry_t;  //NOTE: used to iterate over a component pool
@@ -290,6 +299,7 @@ struct ecs_componentbundle_t {
             ecs_component_sprite_t      sprite;
             ecs_component_light_t       light;
             ecs_component_simulation_t  simulation;
+            ecs_component_animation_t   animation;
         };
     } component[ECS_CMP_COUNT];
 

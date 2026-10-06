@@ -203,57 +203,12 @@ INTERNAL u64 ecs_input_deserializer(const str_views_t lines, const u64 line_idx,
 
 INTERNAL void ecs_material_serializer(file_t *const file, const void *const cmp_data)
 {
-    const ecs_component_material_t *mat = cmp_data;
-    u8 buf[512] = {0};
-    SERIALIZE_KV(file, buf, "\t", "%i material 2", ECS_CMP_MATERIAL_IDX);
-    SERIALIZE_KV(file, buf, "\t\t", "shader_asset_id:%u", mat->shader_asset_id);
-
-    u64 offset = snprintf(buf, sizeof(buf), "\t\ttextures:(%i)[ ", mat->textures.count);
-    for (u64 idx = 0; idx < mat->textures.count; idx++)
-    {
-        offset += snprintf(buf + offset, sizeof(buf) - offset, "%u ", mat->textures.asset_ids[idx]);
-    }
-    snprintf(buf + offset, sizeof(buf) - offset, "]\n");
-    file_writebytes(file, buf, strlen((char *)buf));
+    
 }
 
 INTERNAL u64 ecs_material_deserializer(const str_views_t lines, const u64 line_idx, void *const cmp_data, arena_t *const arena, const hashtable_t *const assetid_remap)
 {
-    ecs_component_material_t *const mat = cmp_data;
-
-    u64 cmp_idx, member_count;
-    sscanf(str_lstrip(lines.views[line_idx], '\t').data, "%"SCNu64" material ""%"SCNu64, &cmp_idx, &member_count);
-
-    for (u8 idx = 0; idx < member_count; idx++) 
-    {
-        const str_t trimmed_line    = str_lstrip(lines.views[line_idx + (idx + 1)], '\t');
-        const str_pair_t pair       = str_partition(trimmed_line, ':');
-
-        if (str_cmp(pair.pair[0], str("shader_asset_id"))) {
-
-            sscanf(pair.pair[1].data, "%u", &mat->shader_asset_id);
-            const u64 remapped_asset_id = (u64)hashtable_get_value_or_null(assetid_remap, (hashtable_key_t){ .u32 = mat->shader_asset_id });
-            mat->shader_asset_id = !remapped_asset_id ? mat->shader_asset_id : remapped_asset_id;
-
-        } else if (str_cmp(pair.pair[0], str("textures"))) {
-
-            const str_pair_t texture_array = str_partition(pair.pair[1], '[');
-            sscanf(texture_array.pair[0].data, "(%i)", &mat->textures.count);
-            if (mat->textures.count >= ECS_COMPONENT_MATERIAL_TEXTURE_MAX_COUNT)
-                return member_count;
-
-            const char *buffer = texture_array.pair[1].data;
-            char *endptr = NULL;
-            for (u32 tex_idx = 0; tex_idx < mat->textures.count; tex_idx++)
-            {
-                if (buffer == endptr) break; 
-
-                mat->textures.asset_ids[tex_idx] = strtol(buffer, &endptr, 10);
-                buffer = endptr;
-            }
-        }
-    }
-    return member_count + mat->textures.count;
+    
 }
 
 /* ======================================================================

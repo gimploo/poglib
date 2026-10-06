@@ -38,6 +38,7 @@ u16 ecs_component__internal_get_componenttype_size(const ecs_component_type type
         case ECS_CMP_COLLIDER:          return sizeof(ecs_component_collider_t);
         case ECS_CMP_SPRITE:            return sizeof(ecs_component_sprite_t);
         case ECS_CMP_LIGHT:             return sizeof(ecs_component_light_t);
+        case ECS_CMP_ANIMATION:         return sizeof(ecs_component_animation_t);
         case ECS_CMP_SIMULATION:        return sizeof(ecs_component_simulation_t);
         default: eprint("missing component type - not implemented");
     }

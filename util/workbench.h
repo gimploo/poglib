@@ -232,7 +232,7 @@ workbench_t * workbench_init(arena_t *const arena)
                         },
                         [2] = {
                             .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_TEXTURE_AVAILABILITY],
-                            .type = GL_UNIFORM_TYPE_BOOL
+                            .type = GL_UNIFORM_TYPE_F32
                         },
                         [3] = {
                             .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
@@ -625,7 +625,7 @@ void workbench_render_camera(
                        },
                        [2] = {
                            .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_TEXTURE_AVAILABILITY],
-                           .value.boolean = false,
+                           .value.f32 = 0.f,
                        },
                        [3] = {
                            .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
@@ -684,7 +684,7 @@ void workbench_render_marker(
                 .count = 1,
                 .items = {
                     [0] = (gltextureitem_t){
-                        .type = GL_TEXTURE_TYPE_NORMAL,
+                        .type = GL_TEXTURE_TYPE_DEFAULT,
                         .source = { .normal_texture = &atlas->texture }
                     }
                 }
@@ -704,7 +704,7 @@ void workbench_render_marker(
                        },
                        [2] = {
                            .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_TEXTURE_AVAILABILITY],
-                           .value.boolean = true,
+                           .value.f32 = 1.0f,
                        },
                        [3] = {
                            .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
@@ -852,7 +852,7 @@ void workbench_draw_sphere(const vec3s position, const f32 radius, const vec4s c
                        },
                        [2] = {
                            .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_TEXTURE_AVAILABILITY],
-                           .value.boolean = false,
+                           .value.f32 = 0.f,
                        },
                        [3] = {
                            .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
@@ -921,7 +921,7 @@ void workbench_draw_capsule(const vec3s position, const versors orientation, con
                            },
                            [2] = {
                                .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_TEXTURE_AVAILABILITY],
-                               .value.boolean = false,
+                               .value.f32 = 0.f,
                            },
                            [3] = {
                                .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],

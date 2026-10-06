@@ -124,6 +124,27 @@ typedef union ivec3s {
 #endif
 } ivec3s;
 
+typedef union uvec4s {
+  unsigned int raw[4];
+#if CGLM_USE_ANONYMOUS_STRUCT
+  struct {
+    unsigned int x;
+    unsigned int y;
+    unsigned int z;
+    unsigned int w;
+  };
+  struct {
+    unsigned int left, top, bottom, right;
+  };
+  struct {
+    unsigned int r;
+    unsigned int g;
+    unsigned int b;
+    unsigned int a;
+  };
+#endif
+} uvec4s;
+
 typedef union ivec4s {
   ivec4 raw;
 #if CGLM_USE_ANONYMOUS_STRUCT

@@ -386,7 +386,7 @@ glrendercall_t glfreetypefont_get_renderconfig(glfreetypefont_t *self, buffer_t 
             .count = 1,
             .items = {
                 [0] = {
-                    .type = GL_TEXTURE_TYPE_NORMAL,
+                    .type = GL_TEXTURE_TYPE_DEFAULT,
                     .source.normal_texture = &self->texture 
                 },
             }

@@ -272,6 +272,14 @@ void vao_set_attributes(
 
     switch(type)
     {
+        case GL_UNSIGNED_INT:
+            GL_CHECK(glVertexAttribIPointer(
+                        vbo->internals.attribute_count,
+                        component_count, 
+                        GL_UNSIGNED_INT,
+                        stride,
+                        (const void *)buffer_offset));
+        break;
         case GL_INT:
             GL_CHECK(glVertexAttribIPointer(
                         vbo->internals.attribute_count,

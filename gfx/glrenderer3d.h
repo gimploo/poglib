@@ -1,6 +1,5 @@
 #pragma once
 #include "gl/types.h"
-#include "model/assimp.h"
 #include "poglib/basic/ds/list.h"
 #include "poglib/gfx/gl/common.h"
 #include "poglib/gfx/gl/shader.h"
@@ -78,7 +77,6 @@ typedef struct {
 
 
 void                glrenderer3d_draw_cube(const glrenderer3d_t *renderer);
-void                glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t config, bool in_wireframe);
 void                glrenderer3d_drawcall(const glrendercall_t call);
 void                glrenderer3d_draw(const glrendererconfig_t config);
 
@@ -159,113 +157,6 @@ void glrenderer3d_draw_cube(const glrenderer3d_t *self)
 
     GL_CHECK(glDeleteVertexArrays(1, &VAO));
     GL_CHECK(glDeleteBuffers(1, &VBO));
-}
-
-void glrenderer3d_draw_model(const glmodel_t *model, const glshaderconfiglist_t config, bool in_wireframe)
-{
-    ASSERT(model->meshes.len > 0);
-    if(model->meshes.len > MAX_DRAW_CALLS_PER_FRAME_COUNT) 
-        eprint("FIXME: Kept a hard limit on how many meshes (100) can be rendered per model");
-
-    bool common_shader = false;
-    if (config.count == 1) {
-        common_shader = true;
-    } else {
-        ASSERT(config.count == model->meshes.len);
-    }
-
-    glrendererconfig_t renderconfig = {
-        .calls = {
-            .count = model->meshes.len,
-            .call = {0}
-        }
-    };
-
-    const gltexturelist_t textures = glmodel_get_texuturelist(model);
-
-    list_iterator(&model->meshes, iter) 
-    {
-        glmesh_t *mesh = iter;
-        renderconfig.calls.call[(u64)list_iterator_index] = (glrendercall_t ){
-            .is_wireframe = in_wireframe,
-            .textures = textures,
-            .attrs = {
-                .count = 7,
-                .attr = {
-                    [0] = {
-                        .ncmp = 3,
-                        .type = GL_FLOAT,
-                        .interleaved = {
-                            .offset = 0,
-                            .stride = sizeof(glvertex3d_t) ,
-                        }
-                    },
-                    [1] = {
-                        .ncmp = 3,
-                        .type = GL_FLOAT,
-                        .interleaved = {
-                            .offset = offsetof(glvertex3d_t, norm),
-                            .stride = sizeof(glvertex3d_t),
-                        }
-                    },
-
-                    [2] = {
-                        .ncmp = 2,
-                        .type = GL_FLOAT,
-                        .interleaved = {
-                            .offset = offsetof(glvertex3d_t, uv),
-                            .stride = sizeof(glvertex3d_t)
-                        }
-                    },
-                    [3] = {
-                        .ncmp = 3,
-                        .type = GL_FLOAT,
-                        .interleaved = {
-                            .offset = offsetof(glvertex3d_t, tangents),
-                            .stride = sizeof(glvertex3d_t)
-                        }
-                    },
-                    [4] = {
-                        .ncmp = 3,
-                        .type = GL_FLOAT,
-                        .interleaved = {
-                            .offset = offsetof(glvertex3d_t, bitangents),
-                            .stride = sizeof(glvertex3d_t)
-                        }
-                    },
-                    [5] = {
-                        .ncmp = 4,
-                        .type = GL_INT,
-                        .interleaved = {
-                            .offset = offsetof(glvertex3d_t, bone_ids),
-                            .stride = sizeof(glvertex3d_t)
-                        }
-                    },
-                    [6] = {
-                        .ncmp = 4,
-                        .type = GL_FLOAT,
-                        .interleaved = {
-                            .offset = offsetof(glvertex3d_t, bone_weights),
-                            .stride = sizeof(glvertex3d_t)
-                        }
-                    }
-                }
-            },
-            .shader_config = common_shader ? config.configs[0] : config.configs[(u64)list_iterator_index],
-            .vtx = {
-                [VBO_STREAM_TYPE_GEOMETRY] = {
-                    .raw_data = slot_get_buffer(&mesh->vtx),
-                    .size = slot_get_size(&mesh->vtx)
-                }
-            },
-            .idx = {
-                .data = slot_get_buffer(&mesh->idx),
-                .nmemb = mesh->idx.len
-            },
-        };
-    }
-
-    glrenderer3d_draw(renderconfig);
 }
 
 void glrenderer3d_drawcall(const glrendercall_t call)
@@ -388,24 +279,7 @@ void glrenderer3d_draw(const glrendererconfig_t config)
         {
             switch(config.calls.call[call_idx].textures.items[txt_idx].type)
             {
-                case GL_TEXTURE_TYPE_NORMAL:
-                case GL_TEXTURE_TYPE_DIFFUSE:
-                case GL_TEXTURE_TYPE_SPECULAR:
-                case GL_TEXTURE_TYPE_AMBIENT:
-                case GL_TEXTURE_TYPE_EMISSIVE:
-                case GL_TEXTURE_TYPE_HEIGHT:
-                case GL_TEXTURE_TYPE_NORMALS:
-                case GL_TEXTURE_TYPE_SHININESS:
-                case GL_TEXTURE_TYPE_OPACITY:
-                case GL_TEXTURE_TYPE_DISPLACEMENT:
-                case GL_TEXTURE_TYPE_LIGHTMAP:
-                case GL_TEXTURE_TYPE_REFLECTION:
-                case GL_TEXTURE_TYPE_BASE_COLOR:
-                case GL_TEXTURE_TYPE_NORMAL_CAMERA:
-                case GL_TEXTURE_TYPE_EMISSION_COLOR:
-                case GL_TEXTURE_TYPE_METALNESS:
-                case GL_TEXTURE_TYPE_DIFFUSE_ROUGHNESS:
-                case GL_TEXTURE_TYPE_AMBIENT_OCCLUSION:
+                case GL_TEXTURE_TYPE_DEFAULT:
                     gltexture2d_bind(
                         config.calls.call[call_idx].textures.items[txt_idx].source.normal_texture,
                         txt_idx

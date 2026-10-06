@@ -103,7 +103,7 @@ void renderqueue__internal_validate_command(renderqueue_t *const queue, const re
         //NOTE: Shader + uniform validation
         ASSERT(command.material.shader.data);
         if (command.material.shader.data && (command.material.shader.uniforms.count != glshader_get_uniform_count(command.material.shader.data)))
-            eprint("Render command is missing uniform value, check shader `%.*s` or `%.*s` to find missing uniforms - (shader expects %u uniforms but only provided %u uniforms", 
+            eprint("Render command is missing uniform value, check shader `%.*s` or `%.*s` to find missing uniforms - (shader expects %u uniforms but provided %u uniforms", 
                 command.material.shader.data->vs.len, command.material.shader.data->vs.data, 
                 command.material.shader.data->fg.len, command.material.shader.data->fg.data,
                 glshader_get_uniform_count(command.material.shader.data),
@@ -327,6 +327,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
 
         }
         GL_CHECK(glBindVertexArray(0));
+        gltexture2d_unbind();
     }
     glinstancebuffer_unbind(&self->internal.instancebuffer);
 }

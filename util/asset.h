@@ -2,6 +2,18 @@
 #include <poglib/basic.h>
 #include <poglib/gfx/glrenderer3d.h>
 
+#define ASSET_MAX_TEXTURES_PER_MESH_COUNT 5 
+
+typedef struct mesh2texture_lookup_t mesh2texture_lookup_t;
+struct mesh2texture_lookup_t {
+    u8 count;
+    struct {
+        vec4s   basecolor;
+        u32     basecolor_texture_id;
+        //TODO: expand this to accomadate other types of textures as needed
+    } data[ASSET_MAX_TEXTURES_PER_MESH_COUNT];
+};
+
 typedef enum asset_type {
 
     ASSET_TYPE_MODEL                = 0,
