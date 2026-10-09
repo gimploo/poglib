@@ -2,26 +2,23 @@
 #include <poglib/math.h>
 #include <poglib/external/extensions/cgltf.h>
 
-//TODO: the animation is heavily AI assited, breaking down the animation interface cgltf would
-//be a good start to bringing the ASSIMP functionality back working.
-//First would be to get rid of the deprecated functions that were brought in to support the
-//existing parkour system - possibly there could be a better alternative to the old system using 
-//loop count maybe keeping the 
-//
-//so much of this is just slop, improve later
-
-
-//TODO: the animation has started to loop now, but doesnt switch to other one although the 
-//state is switched - need to investigate.
+//NOTE: the animation system restores the old Assimp contract that the parkour
+//state machine was written against:
+//  - glmodel_set_animation is idempotent and safe to call every frame
+//  - blendspeed >= 1.0f performs an instant cut
+//  - glmodel_get_playing_animation reports the incoming clip immediately
+//  - glmodel_get_playing_animation_loop_count runs 0 -> 1 over one playthrough
+//so much of this is still slop, improve later
 
 typedef struct {
-    u16 current_anim_idx;
-    u16 target_anim_idx;
-    float current_time;
-    float target_time;
-    float transition_time;     // Time elapsed in transition
-    float transition_duration; // Total transition length (e.g., 0.25s)
+    u16 current_anim_idx;      // Active clip (outgoing while transitioning)
+    u16 target_anim_idx;       // Incoming clip (only valid while transitioning)
+    float current_time;        // Playback time (seconds) into the active clip
+    float target_time;         // Playback time (seconds) into the target clip
+    float blend_elapsed;       // Time elapsed in the current blend
+    float blend_duration;      // Total blend length (e.g., 0.25s)
     bool is_transitioning;
+    bool has_active;           // False until the first animation has been set
 } anim_state_machine_t;
 
 typedef struct {
@@ -35,12 +32,13 @@ typedef struct {
     anim_state_machine_t anim_state_machine;
     mat4s *world_matrices;
     mat4s *uJoints_palette;
+    glmodel_TRS_state_t *rest_pose; // Untouched bind/rest TRS snapshot per node
 } glmodel_t;
 
 glmodel_t   glmodel_load_model_init(const str_t filepath, arena_t *const arena);
 glmodel_t   glmodel_load_level_from_file_init(const str_t filepath, arena_t *const arena);
 void        glmodel_update(glmodel_t *self, f32 dt);
-void        glmodel_play_animation(glmodel_t *self, const u16 new_anim_idx);
+void        glmodel_play_animation(glmodel_t *self, const u16 new_anim_idx, const f32 blendspeed);
 void        glmodel_destroy(glmodel_t *const self);
 
 typedef struct {
@@ -79,18 +77,30 @@ f32 glmodel_get_animation_duration(const glmodel_t *const self, const u16 idx)
 }
 
 // -----------------------------------------------------------------------------
+// The "playing" clip is the incoming target while blending, otherwise the
+// active clip. Reporting the target immediately (as Assimp did) is what the
+// parkour state machine's strcmp(...) gates rely on.
+// -----------------------------------------------------------------------------
+INTERNAL u16 glmodel__internal__playing_anim_idx(const glmodel_t *const self)
+{
+    return self->anim_state_machine.is_transitioning
+        ? self->anim_state_machine.target_anim_idx
+        : self->anim_state_machine.current_anim_idx;
+}
+
+// -----------------------------------------------------------------------------
 // Restored Function: glmodel_get_playing_animation
 // -----------------------------------------------------------------------------
 animation_t glmodel_get_playing_animation(glmodel_t *self)
 {
     ASSERT(self && self->data);
 
-    u16 current_idx = self->anim_state_machine.current_anim_idx;
-    cgltf_animation *anim = &self->data->animations[current_idx];
+    const u16 playing_idx = glmodel__internal__playing_anim_idx(self);
+    cgltf_animation *anim = &self->data->animations[playing_idx];
 
     return (animation_t) {
         .name = anim->name ? anim->name : "Unnamed",
-        .duration = glmodel_get_animation_duration(self, current_idx),
+        .duration = glmodel_get_animation_duration(self, playing_idx),
         .ticks_per_second = 1.0f // cgltf timestamps are natively normalized in seconds
     };
 }
@@ -103,14 +113,14 @@ animation_t glmodel_set_animation(glmodel_t *self, const str_t animation_label, 
     ASSERT(self && self->data);
 
     bool found = false;
+    u16 new_anim_idx = 0;
 
-    const char *current_anim = self->data->animations[self->anim_state_machine.current_anim_idx].name;
-    char *target_anim = "";
+    const u16 playing_idx = glmodel__internal__playing_anim_idx(self);
+    const char *current_anim = self->data->animations[playing_idx].name;
 
     // Search for animation index by name matching
-    u16 new_anim_idx = 0;
     for (u16 anim_idx = 0; anim_idx < self->data->animations_count; anim_idx++) {
-        target_anim = self->data->animations[anim_idx].name;
+        const char *target_anim = self->data->animations[anim_idx].name;
         if (target_anim && str_cmp(animation_label, str_from_cstr((char *)target_anim, strlen(target_anim)))) {
             new_anim_idx = anim_idx;
             found = true;
@@ -118,21 +128,14 @@ animation_t glmodel_set_animation(glmodel_t *self, const str_t animation_label, 
         }
     }
 
-    ASSERT(new_anim_idx != 0);
-
-    logging("Animation transition %s -> "STR_FMT, current_anim, STR_ARG(animation_label));
-
     if (!found) {
-        logging("Warning: Animation '%.*s' not found. Defaulting to index 0.", (int)animation_label.len, animation_label.data);
+        logging("Warning: Animation '%.*s' not found. Keeping current animation.", (int)animation_label.len, animation_label.data);
+        return glmodel_get_playing_animation(self);
     }
 
-    if (blendspeed > 0.0f) {
-        self->anim_state_machine.transition_duration = blendspeed;
-    } else {
-        self->anim_state_machine.transition_duration = 1.0f;
-    }
+    logging("Animation transition %s -> "STR_FMT, current_anim ? current_anim : "None", STR_ARG(animation_label));
 
-    glmodel_play_animation(self, new_anim_idx);
+    glmodel_play_animation(self, new_anim_idx, blendspeed);
 
     return glmodel_get_playing_animation(self);
 }
@@ -144,11 +147,16 @@ f32 glmodel_get_playing_animation_loop_count(glmodel_t *self, const f32 dt)
 {
     ASSERT(self && self->data);
 
-    f32 duration = glmodel_get_animation_duration(self, self->anim_state_machine.current_anim_idx);
+    anim_state_machine_t *anim_sm = &self->anim_state_machine;
+    const u16 playing_idx = glmodel__internal__playing_anim_idx(self);
+
+    f32 duration = glmodel_get_animation_duration(self, playing_idx);
     if (duration <= 0.001f) return 0.0f;
 
-    // Calculates fractional loop count (e.g. 2.5 loops elapsed)
-    return self->anim_state_machine.current_time / duration;
+    const f32 playing_time = anim_sm->is_transitioning ? anim_sm->target_time : anim_sm->current_time;
+
+    // Fractional loop count (e.g. 2.5 loops elapsed); ticks_per_second is 1.0 for cgltf seconds.
+    return (playing_time + dt) / duration;
 }
 
 glmodel_t glmodel_load_model_init(const str_t filepath, arena_t *const arena)
@@ -178,6 +186,24 @@ glmodel_t glmodel_load_model_init(const str_t filepath, arena_t *const arena)
     cgltf_skin* skin        = (data_buffer->skins_count > 0) ? &data_buffer->skins[0] : NULL;
     mat4s* world_matrices   = skin ? (mat4s*)arena_reserve(arena, data_buffer->nodes_count * sizeof(mat4s)) : NULL;
     mat4s* uJoints_palette  = skin ? (mat4s*)arena_reserve(arena, skin->joints_count * sizeof(mat4s)) : NULL;
+    glmodel_TRS_state_t* rest_pose = (glmodel_TRS_state_t*)arena_reserve(arena, data_buffer->nodes_count * sizeof(glmodel_TRS_state_t));
+
+    // Snapshot the untouched bind/rest pose so animation sampling never drifts
+    for (size_t i = 0; i < data_buffer->nodes_count; ++i) {
+        const cgltf_node* node = &data_buffer->nodes[i];
+
+        rest_pose[i].translation = node->has_translation
+            ? (vec3s){node->translation[0], node->translation[1], node->translation[2]}
+            : glms_vec3_zero();
+
+        rest_pose[i].rotation = node->has_rotation
+            ? (versors){node->rotation[0], node->rotation[1], node->rotation[2], node->rotation[3]}
+            : glms_quat_identity();
+
+        rest_pose[i].scale = node->has_scale
+            ? (vec3s){node->scale[0], node->scale[1], node->scale[2]}
+            : glms_vec3_one();
+    }
 
     logging("Loaded model file `"STR_FMT"`", STR_ARG(filepath));
 
@@ -186,10 +212,12 @@ glmodel_t glmodel_load_model_init(const str_t filepath, arena_t *const arena)
         .anim_state_machine = (anim_state_machine_t){
             .current_anim_idx = 0,
             .target_anim_idx = 0,
-            .transition_duration = 1.0f // 250ms blend
+            .blend_duration = 1.0f,
+            .has_active = false
         },
         .world_matrices = world_matrices,
-        .uJoints_palette = uJoints_palette
+        .uJoints_palette = uJoints_palette,
+        .rest_pose = rest_pose
     };
 }
 
@@ -324,10 +352,16 @@ INTERNAL void glmodel__internal__sample_animation_pose(
     const cgltf_animation* anim, 
     float time, 
     const cgltf_data* data,
+    const glmodel_TRS_state_t *rest_pose,
     glmodel_TRS_state_t *out_pose
 ) {
     for (size_t i = 0; i < data->nodes_count; ++i)
     {
+        if (rest_pose) {
+            out_pose[i] = rest_pose[i];
+            continue;
+        }
+
         cgltf_node* node = &data->nodes[i];
         out_pose[i].translation = node->has_translation 
             ? (vec3s){node->translation[0], node->translation[1], node->translation[2]} 
@@ -403,19 +437,48 @@ INTERNAL void glmodel__internal__blend_poses(
     }
 }
 
-void glmodel_play_animation(glmodel_t *self, const u16 new_anim_idx)
+void glmodel_play_animation(glmodel_t *self, const u16 new_anim_idx, const f32 blendspeed)
 {
     ASSERT(self && self->data);
     if (new_anim_idx >= self->data->animations_count) return;
 
     anim_state_machine_t *anim_sm = &self->anim_state_machine;
 
-    if (anim_sm->current_anim_idx == new_anim_idx && !anim_sm->is_transitioning) return;
+    // Idempotent: ignore requests for the clip we are already heading to. This
+    // is what lets states call glmodel_set_animation every frame without
+    // restarting (and therefore never finishing) the blend.
+    if (anim_sm->is_transitioning) {
+        if (new_anim_idx == anim_sm->target_anim_idx) return;
+    } else if (anim_sm->has_active && new_anim_idx == anim_sm->current_anim_idx) {
+        return;
+    }
 
-    anim_sm->target_anim_idx = new_anim_idx;
-    anim_sm->target_time = 0.0f;
-    anim_sm->transition_time = 0.0f;
+    // Match the old Assimp contract: blendspeed >= 1.0f is an instant cut.
+    const bool instant = !anim_sm->has_active || blendspeed >= 1.0f;
+
+    if (instant) {
+        anim_sm->current_anim_idx = new_anim_idx;
+        anim_sm->target_anim_idx  = new_anim_idx;
+        anim_sm->current_time     = 0.0f;
+        anim_sm->target_time      = 0.0f;
+        anim_sm->is_transitioning = false;
+        anim_sm->has_active       = true;
+        return;
+    }
+
+    // If a blend is already in progress, promote the previous target to active
+    // so the newest request blends from the most recent intent.
+    if (anim_sm->is_transitioning) {
+        anim_sm->current_anim_idx = anim_sm->target_anim_idx;
+        anim_sm->current_time     = anim_sm->target_time;
+    }
+
+    anim_sm->target_anim_idx  = new_anim_idx;
+    anim_sm->target_time      = 0.0f;
+    anim_sm->blend_elapsed    = 0.0f;
+    anim_sm->blend_duration   = (blendspeed > 0.0f && blendspeed < 1.0f) ? blendspeed : 1.0f;
     anim_sm->is_transitioning = true;
+    anim_sm->has_active       = true;
 }
 
 void glmodel_update(glmodel_t *self, f32 dt)
@@ -426,15 +489,6 @@ void glmodel_update(glmodel_t *self, f32 dt)
 
     cgltf_data* data = self->data;
     if (data->animations_count == 0) return;
-
-    anim_sm->current_time += dt;
-
-    // Wrap time to loop seamlessly if duration is valid
-    const f32 duration_a = glmodel_get_animation_duration(self, anim_sm->current_anim_idx);
-    f32 sampled_time_a = anim_sm->current_time;
-    if (duration_a > 0.0f) {
-        sampled_time_a = fmodf(anim_sm->current_time, duration_a);
-    }
 
     cgltf_skin* skin = (data->skins_count > 0) ? &data->skins[0] : NULL;
 
@@ -453,32 +507,37 @@ void glmodel_update(glmodel_t *self, f32 dt)
     glmodel_TRS_state_t *pose_a = (glmodel_TRS_state_t *)stackarena_push(global_runtimectx->stackarena, sizeof(glmodel_TRS_state_t) * data->nodes_count);
     glmodel_TRS_state_t *pose_b = (glmodel_TRS_state_t *)stackarena_push(global_runtimectx->stackarena, sizeof(glmodel_TRS_state_t) * data->nodes_count);
 
+    anim_sm->current_time += dt;
+
     const cgltf_animation* anim_a = &data->animations[anim_sm->current_anim_idx];
-    glmodel__internal__sample_animation_pose(anim_a, sampled_time_a, data, pose_a);
+    const f32 duration_a = glmodel_get_animation_duration(self, anim_sm->current_anim_idx);
+    const f32 sampled_time_a = (duration_a > 0.0f) ? fmodf(anim_sm->current_time, duration_a) : anim_sm->current_time;
+    glmodel__internal__sample_animation_pose(anim_a, sampled_time_a, data, self->rest_pose, pose_a);
 
     if (anim_sm->is_transitioning) {
 
         anim_sm->target_time += dt;
-        anim_sm->transition_time += dt;
+        anim_sm->blend_elapsed += dt;
 
         const f32 duration_b = glmodel_get_animation_duration(self, anim_sm->target_anim_idx);
-        f32 sampled_time_b = anim_sm->target_time;
-        if (duration_b > 0.0f) {
-            sampled_time_b = fmodf(anim_sm->target_time, duration_b);
-        }
+        const f32 sampled_time_b = (duration_b > 0.0f) ? fmodf(anim_sm->target_time, duration_b) : anim_sm->target_time;
 
-        const f32 alpha = anim_sm->transition_time / anim_sm->transition_duration;
+        const f32 alpha = (anim_sm->blend_duration > 0.0f)
+            ? (anim_sm->blend_elapsed / anim_sm->blend_duration)
+            : 1.0f;
 
         const cgltf_animation* anim_b = &data->animations[anim_sm->target_anim_idx];
-        glmodel__internal__sample_animation_pose(anim_b, sampled_time_b, data, pose_b);
+        glmodel__internal__sample_animation_pose(anim_b, sampled_time_b, data, self->rest_pose, pose_b);
 
         // Blend pose_b into pose_a
         glmodel__internal__blend_poses(pose_a, pose_b, alpha, data->nodes_count);
 
         if (alpha >= 1.0f) {
-            anim_sm->current_anim_idx       = anim_sm->target_anim_idx;
-            anim_sm->current_time           = anim_sm->target_time;
-            anim_sm->is_transitioning       = false;
+            anim_sm->current_anim_idx = anim_sm->target_anim_idx;
+            anim_sm->current_time     = anim_sm->target_time;
+            anim_sm->target_time      = 0.0f;
+            anim_sm->blend_elapsed    = 0.0f;
+            anim_sm->is_transitioning = false;
         }
     }
 
