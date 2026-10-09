@@ -51,7 +51,7 @@ void queue_destroy(queue_t *queue)
 {
     assert(queue);
     if (queue->internal.arena) {
-        arena_giveback(queue->internal.arena, queue->__data, queue->__elem_size * queue->__capacity);
+        arena_destroy(queue->internal.arena);
     } else {
         free(queue->__data);
     }

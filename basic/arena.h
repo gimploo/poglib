@@ -6,273 +6,167 @@
  *                      -- ARENA MEMORY ALLOCATOR --
  ================================================================================*/
 
-//NOTE: supports only 16 byte alignment
+//TODO: use virtual memory primitves to commit inital arena sizes over stdlib provided syscalls,
+//this requires you to write custom impl for all platforms - couldnt find a lib that does it :(
+
+//TODO: since we removed the atomic locks in this arena, we would need an assert to check for 
+//accidental arena growth on other threads, and crash if found to avoid mem corruption
+
+#define ARENA_STARTING_BLOCK_SIZE (64 * 1024)
+
+typedef struct arena_mem_block_t arena_mem_block_t;
+struct arena_mem_block_t {
+    u8 *memory;
+    u32 capacity;
+    u32 size_used;
+    arena_mem_block_t *next_block;
+};
 
 typedef struct arena_t arena_t;
-typedef struct arena_mem_block_t arena_mem_block_t;
-typedef struct free_block_t free_block_t;
-
-struct arena_mem_block_t {
-    u8  *memory;
-    u64 size;
-    //TODO: add chaining, when memory in a block runs out.
-};
-
 struct arena_t {
-    arena_mem_block_t memblock;
-    u64 capacity;
-
-    //TODO: having freeblocks seems unnecessary here, maybe keep 
-    //a plugin type system for it, since i dont think we need this
-    //for all use cases
+    arena_mem_block_t *current_block;
+    arena_mem_block_t first_block;
     struct {
-        free_block_t *head;
-        u32 count;
-    } freeblocks;
-
-    struct {
-        atomic_flag lock;
-        struct arena_t *lifetime_owner;
-    } meta;
+        arena_t *lifetime_owner;
+    } internal;
 };
 
-struct free_block_t {
-    arena_mem_block_t   block;
-    free_block_t        *next;
-};
-
-arena_t *   arena_init(arena_t *const, const u64 capacity);
-
-#define arena_reserve(self, memory_size) \
-    arena__internal__reserve_tracked((self), (memory_size), __FILE__, __LINE__, __func__)
-
-void *      arena_store(arena_t *const self, const void *const mem, const u64 mem_size);
-bool        arena_is_init(const arena_t *const self);
-void        arena_giveback(arena_t *const self, void *const ptr, const u64 size);
-void        arena_clear(arena_t *const self);
-void        arena_destroy(arena_t *const self);
+arena_t         *arena_init(arena_t *parent);
+bool             arena_is_init(const arena_t *self);
+void*            arena_reserve(arena_t *self, u32 size);
+void*            arena_store(arena_t *self, const void *mem, u64 size);
+void             arena_clear(arena_t *self);
+void             arena_destroy(arena_t *self);
 
 #ifndef IGNORE_ARENA_IMPLEMENTATION
 
-void *      arena__internal__reserve_memory_16byte_aligned(arena_t * const self, const u64 memory_size);
-void *      arena__internal__reserve_tracked(arena_t *const self, const u64 memory_size, const char *file, int line, const char *func);
+INTERNAL u64 align_forward_16(u64 ptr) {
+    return (ptr + 15) & ~((u64)15);
+}
 
-void * arena__internal_check_in_freelist(arena_t *const self, const u64 memory_size)
+arena_t *arena_init(arena_t *parent) 
 {
-    if (!self->freeblocks.count) {
-        return NULL;
+    u8 *raw_mem = NULL;
+    if (parent) {
+        raw_mem = (u8*)arena_reserve(parent, ARENA_STARTING_BLOCK_SIZE);
+    } else {
+        raw_mem = (u8*)calloc(1, ARENA_STARTING_BLOCK_SIZE);
     }
+    ASSERT(raw_mem);
 
-    free_block_t *chunk        = self->freeblocks.head;
-    free_block_t *prev_chunk   = NULL;
-    void *memory               = NULL;
+    arena_t *arena = (arena_t *)raw_mem;
+    arena->first_block.memory    = raw_mem;
+    arena->first_block.capacity  = ARENA_STARTING_BLOCK_SIZE;
+    arena->first_block.size_used = align_forward_16(sizeof(arena_t));
+    arena->first_block.next_block = NULL;
 
-    for(u32 i = 0; i < self->freeblocks.count; i++) 
+    arena->current_block = &arena->first_block;
+    arena->internal.lifetime_owner = parent;
+
+    return arena;
+}
+
+INTERNAL arena_mem_block_t * arena__internal__get_available_block(arena_t *const arena, const u32 memory_size)
+{
+    arena_mem_block_t *curr = &arena->first_block;
+    while(curr->next_block) {
+        const u32 mem_left = curr->capacity - curr->size_used;
+        if (mem_left <= memory_size) 
+            return curr;
+        curr = curr->next_block;
+    }
+    return curr;
+}
+
+void *arena_reserve(arena_t *self, u32 memory_size)
+{
+    if (!self || memory_size == 0) return NULL;
+
+    arena_mem_block_t *memblock = arena__internal__get_available_block(self, memory_size);
+
+    u64 current_ptr = (u64)memblock->memory + memblock->size_used;
+    u64 aligned_ptr = align_forward_16(current_ptr);
+    u32 padding     = (u32)(aligned_ptr - current_ptr);
+
+    if (memblock->size_used + padding + memory_size > memblock->capacity) 
     {
-        ASSERT(self->freeblocks.head);
-        ASSERT(chunk);
-
-        if (memory_size > chunk->block.size) {
-            prev_chunk = chunk;
-            chunk = chunk->next;
-            continue;
+        if (self->internal.lifetime_owner) {
+            return arena_reserve(self->internal.lifetime_owner, memory_size);
         }
 
-        memory = chunk->block.memory;
+        const u32 required_size = memory_size + sizeof(arena_mem_block_t) + 16;
+        const u32 block_size = required_size < ARENA_STARTING_BLOCK_SIZE 
+            ? ARENA_STARTING_BLOCK_SIZE 
+            : (required_size + ARENA_STARTING_BLOCK_SIZE - 1) & ~(ARENA_STARTING_BLOCK_SIZE - 1);
 
-        if (prev_chunk) {
-            prev_chunk->next = chunk->next;
-        } else {
-            self->freeblocks.head = chunk->next;
-        }
+        u8 *new_mem = (u8 *)calloc(1, block_size);
+        ASSERT(new_mem);
 
-        self->freeblocks.count--;
-        if (self->meta.lifetime_owner) {
-            arena_giveback(self->meta.lifetime_owner, chunk, sizeof(free_block_t));
-        } else {
-            free(chunk);
-        }
-        return memory;
-    }
-    return memory;
-}
+        arena_mem_block_t *new_block = (arena_mem_block_t *)new_mem;
+        new_block->memory    = new_mem;
+        new_block->capacity  = block_size;
+        new_block->size_used = align_forward_16(sizeof(arena_mem_block_t));
+        new_block->next_block = NULL;
 
-INTERNAL void * arena__internal__reserve_memory_16byte_aligned(arena_t *const self, const u64 memory_size)
-{
-    const bool ran_out_of_memory_and_freelist_empty = !self->freeblocks.count && (self->capacity - self->memblock.size) < memory_size;
-    if (ran_out_of_memory_and_freelist_empty) {
-       logging("Ran out of memory, asking for `%li`bytes but `%li`bytes only available\n\tcapacity = %li | size = %li", memory_size, (self->capacity - self->memblock.size), self->capacity, self->memblock.size);
+        memblock->next_block = new_block;
+        self->current_block = new_block;
+        memblock = new_block;
+
+        current_ptr = (uintptr_t)memblock->memory + memblock->size_used;
+        aligned_ptr = align_forward_16(current_ptr);
+        padding     = (u32)(aligned_ptr - current_ptr);
     }
 
-    const u64 align = 16;
-    void *mem = NULL;
+    void *result = (void *)aligned_ptr;
+    memblock->size_used += padding + memory_size;
 
-    while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
-    {
-        const u64 current_ptr   = (u64)self->memblock.memory + self->memblock.size;
-        const u64 aligned_ptr   = (current_ptr + (align - 1)) & ~(align - 1);
-        const u64 padding       = (u64)(aligned_ptr - current_ptr);
-        const u64 offset        = self->memblock.size + padding;
+    return result;
+}
 
-        if ((offset + memory_size) > self->capacity)
-        {
-            eprint("Arena is full");
-            atomic_flag_clear(&self->meta.lock);
-            return NULL;
-        }
+void *arena_store(arena_t *self, const void *mem, u64 mem_size) 
+{
+    ASSERT(mem && mem_size > 0);
+    void *dst = arena_reserve(self, (u32)mem_size);
+    memcpy(dst, mem, mem_size);
+    return dst;
+}
 
-        void *const res_memory = arena__internal_check_in_freelist(self, memory_size);
-        if (res_memory) {
-            memset(res_memory, 0, memory_size);
-            atomic_flag_clear(&self->meta.lock);
-            return res_memory;
-        }
+void arena_clear(arena_t *self) 
+{
+    if (!self) return;
 
-        mem = (void *)aligned_ptr;
-        memset(mem, 0, memory_size);
+    arena_mem_block_t *curr = &self->first_block;
+    while (curr) {
+        u32 header_offset = (curr == &self->first_block) ? sizeof(arena_t) : sizeof(arena_mem_block_t);
+        u32 reset_offset  = (u32)align_forward_16(header_offset);
 
-        self->memblock.size = offset + memory_size;
+        memset(curr->memory + reset_offset, 0, curr->size_used - reset_offset);
+        curr->size_used = reset_offset;
+        curr = curr->next_block;
     }
-    atomic_flag_clear(&self->meta.lock);
-
-    ASSERT(mem);
-    if(((u64)(mem) & (16 - 1)) != 0) eprint("Memory is not 16 byte aligned");
-    return mem;
+    self->current_block = &self->first_block;
 }
 
-void * arena__internal__reserve_tracked(arena_t *const self, const u64 memory_size, const char *file, int line, const char *func)
+void arena_destroy(arena_t *self)
 {
-#ifdef ARENA_ENABLE_MEMORY_LOGGER
-    if (!self->meta.lifetime_owner) arena_logger_init(self, self->capacity, file, line);
-#endif
+    if (!self) return;
 
-    void *const mem = arena__internal__reserve_memory_16byte_aligned(self, memory_size);
-
-#ifdef ARENA_ENABLE_MEMORY_LOGGER
-    if (mem) 
-        arena_logger_log_alloc(self, memory_size, file, line, func);
-#endif
-
-    return mem;
-}
-
-void * arena_store(arena_t * const self, const void * const mem, const u64 mem_size)
-{
-    ASSERT(mem_size > 0);
-    ASSERT(mem);
-    void *raw_mem = arena_reserve(self, mem_size);
-    memcpy(raw_mem, mem, mem_size);
-    return raw_mem;
-}
-
-arena_t * arena_init(arena_t *const arena, const u64 capacity)
-{
-    const u64 final_capacity = capacity + sizeof(arena_t);
-    arena_t output = {
-        .capacity = final_capacity,
-        .memblock = {
-            .size = 0,
-            .memory = arena ? arena__internal__reserve_memory_16byte_aligned(arena, final_capacity) : calloc(final_capacity, sizeof(u8)),
-        },
-        .freeblocks = {0},
-        .meta = {
-            .lifetime_owner = arena,
-        },
-    };
-    atomic_flag_clear(&output.meta.lock);
-
-    return arena_store(&output, &output, sizeof(arena_t));
-}
-
-void arena_giveback(arena_t *const self, void *const ptr, const u64 size)
-{
-    ASSERT(self);
-    ASSERT(ptr);
-    ASSERT(size > 0);
-    ASSERT(arena_is_init(self));
-
-    while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
-    {
-        free_block_t *chunk = self->freeblocks.head;
-        while(chunk != NULL && chunk->next != NULL) {
-            chunk = chunk->next;
+    arena_mem_block_t *curr = self->first_block.next_block;
+    while (curr) {
+        arena_mem_block_t *next = curr->next_block;
+        if (!self->internal.lifetime_owner) {
+            free(curr->memory);
         }
-
-        //NOTE: using raw allocator directly instead of arena_store to avoid
-        //tracking internal freelist metadata as user allocations in the arena dump
-        free_block_t *new_chunk;
-        if (self->meta.lifetime_owner) {
-            new_chunk = (free_block_t *)arena__internal__reserve_memory_16byte_aligned(
-                self->meta.lifetime_owner, sizeof(free_block_t)
-            );
-            if (new_chunk) {
-                new_chunk->block.memory = ptr;
-                new_chunk->block.size = size;
-                new_chunk->next = NULL;
-            }
-        } else {
-            new_chunk = calloc(1, sizeof(free_block_t));
-            if (new_chunk) {
-                new_chunk->block.memory = ptr;
-                new_chunk->block.size = size;
-                new_chunk->next = NULL;
-            }
-        }
-        ASSERT(new_chunk);
-
-        if (chunk) {
-            chunk->next = new_chunk;
-        } else {
-            self->freeblocks.head = new_chunk;
-        }
-        self->freeblocks.count++;
-    }
-    atomic_flag_clear(&self->meta.lock);
-}
-
-void arena_clear(arena_t *self)
-{
-    while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
-    {
-        memset(&self->freeblocks, 0, sizeof(self->freeblocks));
-        memset((u8 *)self->memblock.memory + sizeof(arena_t), 0, self->memblock.size - sizeof(arena_t));
-        self->memblock.size = sizeof(arena_t);
-    } 
-    atomic_flag_clear(&self->meta.lock);
-#ifdef ARENA_ENABLE_MEMORY_LOGGER
-    arena_logger_clear_log(self);
-#endif
-}
-
-void arena_destroy(arena_t *const self)
-{
-
-#ifdef ARENA_ENABLE_MEMORY_LOGGER
-    arena_logger_destroy(self);
-#endif
-
-    if (self->meta.lifetime_owner) {
-        arena_giveback(self->meta.lifetime_owner, self->memblock.memory, self->capacity);
-        return;
+        curr = next;
     }
 
-    while (atomic_flag_test_and_set(&self->meta.lock)) { thrd_yield(); }
-    {
-        free_block_t *cur = self->freeblocks.head;
-        while(cur != NULL) {
-            free_block_t *chunk = cur;
-            cur = cur->next;
-            free(chunk);
-        }
+    if (!self->internal.lifetime_owner) {
+        free(self->first_block.memory);
     }
-    atomic_flag_clear(&self->meta.lock);
-    free(self->memblock.memory);
 }
 
-
-bool arena_is_init(const arena_t *const self)
-{
-    return self && (self->memblock.memory != NULL || self->capacity > 0);
+bool arena_is_init(const arena_t *self) {
+    return self && self->first_block.memory != NULL;
 }
 
 #endif

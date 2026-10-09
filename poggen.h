@@ -53,7 +53,6 @@ void                                poggen_change_scene(poggen_t *self, str_t sc
 void                                poggen_register_physics_rules(poggen_t * const self, const joltphysics_rules_config_t config);
 void *                              poggen_get_scene_content(const poggen_t *const self); 
 window_t *                          poggen_get_window(const poggen_t *self);
-joltphysics_event_queue_t *         poggen_get_physics_collision_events(const poggen_t * const self);
 
 void                                poggen_update_commandqueue_registry(poggen_t *const self, const commandregistry_t registry);
 void                                poggen_ecs_generate_entities_from_meshes(poggen_t *const self, const str_t filepath);
@@ -82,7 +81,7 @@ poggen_t * poggen_init(application_t *const app, const poggen_config_t config)
     if (!global_window)     eprint("A window is required to run poggen\n");
     if (global_engine)      eprint("Trying to initialize a second `poggen` in the same instance");
 
-    arena_t *arena = arena_init(NULL, 5 * MB);
+    arena_t *arena = arena_init(NULL);
     global_engine = arena_store(
         arena,
         &(poggen_t ){
@@ -218,16 +217,6 @@ void poggen_register_physics_rules(poggen_t *const self, const joltphysics_rules
 
     joltphysics_set_interaction_rules(self->systems.physics.instance, config);
     joltphysics_start_simulation(self->systems.physics.instance);
-}
-
-joltphysics_event_queue_t * poggen_get_physics_collision_events(const poggen_t *const self)
-{
-    if (!self->config.enable_physics) {
-        eprint("Enable physics first, to use this");
-    }
-
-    ASSERT(self->systems.physics.instance);
-    return joltphysics_get_collision_eventqueue(self->systems.physics.instance);
 }
 
 void poggen_update_commandqueue_registry(poggen_t *const self, const commandregistry_t registry)

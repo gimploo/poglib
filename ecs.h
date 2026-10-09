@@ -46,7 +46,7 @@ ecs_t * ecs_init(void)
 {
     ASSERT(!global_ecs);
 
-    arena_t *const arena    = arena_init(NULL, 30 * MB);
+    arena_t *const arena    = arena_init(NULL);
     global_ecs              = arena_reserve(arena, sizeof(ecs_t));
 
     *global_ecs = (ecs_t){
@@ -268,7 +268,7 @@ bool ecs_load_savefile(ecs_t *const self, const str_t filepath)
     ASSERT(global_engine);
     logging("ECS save file `"STR_FMT"` exist, loading it.", STR_ARG(filepath));
 
-    arena_t *const scratch = arena_init(NULL, 50 * MB);
+    arena_t *const scratch = arena_init(NULL);
     str_t buffer = str_read_file_to_str(scratch, filepath);
     {
         const str_views_t lines     = str_split(buffer, '\n', scratch);

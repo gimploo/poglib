@@ -6,11 +6,9 @@
 #include "poglib/basic/stack_arena.h"
 #include "poglib/external/cglm/struct/affine2d.h"
 #include "poglib/gfx/gl/objects.h"
-#include "poglib/gfx/gl/renderconfig.h"
 #include "poglib/gfx/gl/shader.h"
 #include "poglib/gfx/gl/types.h"
 #include "poglib/gfx/gl/vbo_stream_types.h"
-#include "poglib/gfx/model/assimp.h"
 #include "poglib/gfx/model/glmodel.h"
 #include "poglib/util/spriteatlas.h"
 #include "poglib/util/workbench/workbench-constants.h"
@@ -38,7 +36,11 @@ assetmanager_t      assetmanager_init(bgtask_manager_t *const taskmanager);
 void                assetmanager_update(assetmanager_t *const self);
 
 void                assetmanager_load_all_primitives(assetmanager_t * const self);
-u32                 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepath, const bool is_simulated);
+
+u32                 assetmanager_load_model(assetmanager_t *const self, const str_t filepath);
+u32                 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepath);
+u32                 assetmanager_load_mesh_to_gpu(assetmanager_t *const self, const cgltf_mesh *mesh);
+
 u32                 assetmanager_load_spriteatlas(assetmanager_t *const self, const str_t filepath, const u32 tile_count_width, const u32 tile_count_height);
 u32                 assetmanager_load_texture(assetmanager_t *self, const str_t filepath);
 u32                 assetmanager_load_texture_from_memory(assetmanager_t *self, const buffer_t buffer, const str_t label, const cgltf_sampler *sampler, const bool is_srgb);
@@ -46,8 +48,6 @@ u32                 assetmanager_load_glsl_shader(assetmanager_t *self, const st
 wwise_audio_t       assetmanager_load_audios_from_wwise(assetmanager_t *const self);
 u32                 assetmanager_load_audio_music_async(assetmanager_t *const self, const audio_musiclayer_t musiclayers[AUDIO_MUSIC_LAYERS_MAX_COUNT], const u8 layer_count);
 u32                 assetmanager_load_audio_sfx_async(assetmanager_t *const self, const str_t filepath);
-wwise_audio_t       assetmanager_load_audios_from_wwise(assetmanager_t *const self);
-void                assetmanager_update_mesh_data(assetmanager_t *const self, const u32 asset_id, const u8 mesh_idx, const buffer_t vtx_buffer);
 
 queue_t *           assetmanager_get_notificationqueue(assetmanager_t *const self);
 const void *        assetmanager_get_assetresource(const assetmanager_t *const self, const asset_type assettype, const u32 assetId);
@@ -78,11 +78,12 @@ INTERNAL void assetmanager__internal_add_asset_meta_data(assetmanager_t *const s
 INTERNAL void assetmanager__internal_write_uniformlocs_to_file(const hashtable_entry_t *const entry, buffer_t *const buffer);
 INTERNAL void assetmanager__internal__notify(const taskparams_t params);
 INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *const self);
+INTERNAL u32 assetmanager__internal__upload_mesh_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_mesh *mesh);
 
 assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
 {
     ASSERT(taskmanager);
-    arena_t *arena = arena_init(NULL, 50 * MB);
+    arena_t *arena = arena_init(NULL);
     assetmanager_t result = {
         .arena = arena,
         .assetmaps = {
@@ -111,7 +112,7 @@ void assetmanager__internal_assetmaps_destroy(assetmanager_t *const self)
     {
         hashtable_iterator(&self->assetmaps[type], iter)
         {
-            hashtable_entry_t *const entry = iter;
+            hashtable_entry_t *const entry = (hashtable_entry_t *)iter;
             switch(type)
             {
                 case ASSET_TYPE_MUSIC_SFX:
@@ -146,14 +147,14 @@ void assetmanager__internal_thread_callback_load_glmodel(const taskparams_t para
     ASSERT(storage.buffer.size >= sizeof(asset_staging_event_t));
 
     const str_t filepath = params.arg[0].str;
-    *(glmodel_t *)response->resource = glmodel_init(filepath);
+    glmodel_t model = glmodel_load_model_init(filepath, params.arg[3].arena);
+    *(glmodel_t *)response->resource  = model;
 
     memcpy(
         storage.buffer.raw_data, 
         &(asset_staging_event_t){
             .asset_id       = params.arg[2].u64,
             .type           = ASSET_TYPE_MODEL,
-            .is_simulated   = params.arg[3].boolean,
             .processed_data = response->resource,
         }, 
         sizeof(asset_staging_event_t)
@@ -163,7 +164,29 @@ void assetmanager__internal_thread_callback_load_glmodel(const taskparams_t para
     mpsc_queue_put(queue, storage.buffer.raw_data);
 }
 
-u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepath, const bool is_simulated)
+u32 assetmanager_load_model(assetmanager_t *const self, const str_t filepath)
+{
+    const u32 asset_id = ++self->internal.asset_idx_generator;
+
+    taskresponse_t *response = taskresponse(self->arena, sizeof(glmodel_t));
+    hashtable_insert(
+        &self->assetmaps[ASSET_TYPE_MODEL], 
+        (hashtable_key_t){ .u32 = asset_id }, 
+        response
+    );
+    assetmanager__internal_add_asset_meta_data(self, ASSET_TYPE_MODEL, asset_id, filepath, STR_EMPTY, NULL);
+
+    response->is_done = true;
+    glmodel_t model = glmodel_load_model_init(filepath, arena_init(self->arena));
+
+    *((glmodel_t *)response->resource) = model;
+
+    assetmanager__internal__upload_mesh_to_gpu(self, asset_id, &model.data->meshes[0]);
+
+    return asset_id;
+}
+
+u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepath)
 {
     const u32 asset_id = ++self->internal.asset_idx_generator;
 
@@ -185,7 +208,7 @@ u32 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepa
                         [0].str = filepath,
                         [1].any = &self->internal.asset_staging_queue,
                         [2].u64 = asset_id,
-                        [3].boolean = is_simulated
+                        [3].arena   = arena_init(NULL)
                     }
             },
             .storage = {
@@ -269,7 +292,7 @@ u32 assetmanager_load_glsl_shader(assetmanager_t *const self, const str_t vtx_fi
 #endif
     hashtable_iterator(&self->assetmaps[ASSET_TYPE_GLSL_SHADER], iter)
     {
-        const hashtable_entry_t *const table_entry = iter;
+        const hashtable_entry_t *const table_entry = (hashtable_entry_t *)iter;
         glshader_t *const shader = table_entry->value;
 
         if (str_cmp(shader->fg, frag_filepath) && str_cmp(shader->vs, resolved_vtx) && registry.count == shader->internal.uniformlocs.entries.len) 
@@ -288,90 +311,6 @@ u32 assetmanager_load_glsl_shader(assetmanager_t *const self, const str_t vtx_fi
     return asset_id;
 }
 
-void assetmanager__internal__upload_model_to_gpu(
-    assetmanager_t *const self,
-    const glmodel_t *const model,
-    const u32 asset_id,
-    const bool is_simulated
-) {
-    gpu_asset_t * const gpu_asset           = arena_reserve(self->arena, sizeof(gpu_asset_t));
-    gpu_asset->asset_id                     = asset_id;
-    gpu_asset->meshes.count                 = model->meshes.len;
-    gpu_asset->meshes.data                  = arena_reserve(self->arena, sizeof(gpu_mesh_t) * gpu_asset->meshes.count);
-
-    list_iterator(&model->meshes, iter) 
-    {
-        const glmesh_t *const cpu_mesh = iter;
-
-        vao_t vao = vao_init();
-        vao_bind(&vao);
-
-        const u64 cpu_fullvtx_size      = slot_get_size(&cpu_mesh->vtx);
-        const u64 cpu_posvtx_only_size  = cpu_mesh->vtx.len * sizeof(vec3s);
-
-        vbo_t vbo = vbo_init((vbo_config_t) {
-            .usage = is_simulated ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW,
-            .chunks = {
-                [VBO_STREAM_TYPE_GEOMETRY] = { 
-                    .buffer = {
-                        .raw_data = cpu_mesh->vtx.data,
-                        .size = cpu_fullvtx_size,
-                    }, 
-                    .index_count = cpu_mesh->idx.len
-                },
-                [VBO_STREAM_TYPE_INSTANCE] = {0},
-            }
-        });
-
-        ebo_t ebo = ebo_init(&vbo, (u8 *)cpu_mesh->idx.data, cpu_mesh->idx.len, sizeof(u32));
-
-        const glvtx_attributelist_t attrlist = glmodel_get_attirbutelist();
-        for(u16 attr_idx = 0; attr_idx < attrlist.count; attr_idx++)
-        {
-            vao_set_attributes(
-                &vao,
-                &vbo, 
-                attrlist.attr[attr_idx].ncmp, 
-                attrlist.attr[attr_idx].type, 
-                false, 
-                attrlist.attr[attr_idx].interleaved.stride, 
-                attrlist.attr[attr_idx].interleaved.offset, 
-                false,
-                VBO_STREAM_TYPE_GEOMETRY
-            );
-        }
-
-        gpu_asset->meshes.data[(u64)list_iterator_index] = (gpu_mesh_t){
-            .vao_id = vao.id,
-            .index_count = cpu_mesh->idx.len,
-            .index_type = ebo.index_type,
-            .attribute_count = vbo.internals.attribute_count,
-            .vbo = {
-                .gpu_read = (buffer_t){
-                    .raw_data = arena_store(self->arena, cpu_mesh->vtx.data, cpu_fullvtx_size), 
-                    .size = cpu_fullvtx_size
-                },
-                .cpu_write = (buffer_t){
-                    .raw_data = arena_reserve(self->arena, cpu_posvtx_only_size), 
-                    .size = cpu_posvtx_only_size
-                },
-                .gpu_mem = vbo.internals.mapped_ptr
-            }
-        };
-
-        vao_unbind();
-    }
-
-    list_iterator(&model->textures, iter) {
-        glmodel_texture_t *mt = (glmodel_texture_t *)iter;
-        gltexture2d_upload_to_gpu(&mt->texture);
-    }
-
-    logging("Model "STR_FMT" loaded to GPU", STR_ARG(model->filepath));
-
-    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
-}
-
 INTERNAL void assetmanager__internal__process_loaded_assets(assetmanager_t *const self)
 {
     mpsc_queue_t *const queue = &self->internal.asset_staging_queue;
@@ -384,11 +323,11 @@ INTERNAL void assetmanager__internal__process_loaded_assets(assetmanager_t *cons
 
         if (!ASSET_ASYNC_LOADING_SUPPORT[task->type]) continue;
 
-        //logging("processing asset type '%i' ...", task->type);
         switch(task->type)
         {
             case ASSET_TYPE_MODEL:
-                assetmanager__internal__upload_model_to_gpu(self, (glmodel_t *)task->processed_data, task->asset_id, task->is_simulated);
+                ASSERT(((glmodel_t *)task->processed_data)->data->meshes_count == 1);
+                assetmanager__internal__upload_mesh_to_gpu(self, task->asset_id, &((glmodel_t *)task->processed_data)->data->meshes[0]);
                 queue_put(
                     &self->internal.notification_queue, 
                     &(asset_loaded_event_t) { 
@@ -784,7 +723,7 @@ u32 assetmanager_load_spriteatlas(assetmanager_t *const self, const str_t filepa
 {
     hashtable_iterator(&self->assetmaps[ASSET_TYPE_TEXTURE_SPRITE_ATLAS], iter)
     {
-        const hashtable_entry_t *const table_entry = iter;
+        const hashtable_entry_t *const table_entry = (void *)iter;
         spriteatlas_t *const atlas = table_entry->value;
 
         if (str_cmp(atlas->texture.filepath, filepath)) 
@@ -912,7 +851,7 @@ u32 assetmanager_load_audio_music_async(assetmanager_t *const self, const audio_
                         [1].u64 = asset_id,
                         [2].any = (void *)musiclayers,
                         [3].u64 = layer_count,
-                        [4].arena = arena_init(self->arena, layer_count * 1.5 * KB)
+                        [4].arena = arena_init(NULL)
                     }
             },
             .storage = {0},
@@ -977,7 +916,7 @@ u32 assetmanager_load_audio_sfx_async(assetmanager_t *const self, const str_t fi
                     [0].u64 = assettype,
                     [1].u64 = asset_id,
                     [2].str = filepath,
-                    [3].arena = arena_init(self->arena, 1.5 * KB),
+                    [3].arena = arena_init(NULL),
                 }
             },
             .storage = {0},
@@ -1091,10 +1030,11 @@ INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *cons
     hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
 }
 
-u32 assetmanager_upload_model_to_gpu(assetmanager_t *const self, const cgltf_mesh *mesh)
+//TODO: check whether its possible to have the model support multiple meshes i.e meshes_count > 1
+//what are the implications of it and understand any gotchas glb might give us for it. This is required
+//i think for cloth to render with merging with main manequin mesh
+INTERNAL u32 assetmanager__internal__upload_mesh_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_mesh *mesh)
 {
-    const u32 asset_id = ++self->internal.asset_idx_generator;
-
     gpu_asset_t *const gpu_asset = arena_store(
         self->arena, 
         &(gpu_asset_t) {
@@ -1162,7 +1102,6 @@ u32 assetmanager_upload_model_to_gpu(assetmanager_t *const self, const cgltf_mes
                 case cgltf_attribute_type_weights:
                     weights = mesh->primitives[mesh_idx].attributes[attr_idx];
                 break;
-                default: eprint("cgltf attribute type not accoutned for");
             }
         }
 
@@ -1352,6 +1291,13 @@ u32 assetmanager_upload_model_to_gpu(assetmanager_t *const self, const cgltf_mes
     }
 
     hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
+    return asset_id;
+}
+
+u32 assetmanager_load_mesh_to_gpu(assetmanager_t *const self, const cgltf_mesh *mesh)
+{
+    const u32 asset_id = ++self->internal.asset_idx_generator;
+    assetmanager__internal__upload_mesh_to_gpu(self, asset_id, mesh);
     return asset_id;
 }
 

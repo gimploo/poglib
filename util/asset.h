@@ -60,7 +60,6 @@ typedef struct asset_staging_event_t asset_staging_event_t;
 struct asset_staging_event_t {
     u32         asset_id;
     asset_type  type;
-    bool        is_simulated;
     void        *processed_data;
 };
 

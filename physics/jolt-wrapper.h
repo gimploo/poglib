@@ -61,13 +61,6 @@ typedef struct {
     JPH_TempAllocator* temp_allocator;
     struct {
         bool rules_configured;
-        struct {
-            joltphysics_event_queue_t buffer1;
-            joltphysics_event_queue_t buffer2;
-            joltphysics_event_queue_t *write_queue;
-            joltphysics_event_queue_t *read_queue;
-            mtx_t swap_mutex;
-        } double_buffer_event_queue;
 #ifdef DEBUG
         jolt_debugrenderer_t *debugrenderer;
 #endif
@@ -105,7 +98,6 @@ void                                joltphysics_set_interaction_rules(
 void                                joltphysics_start_simulation(joltphysics_t *self);
 
 void                                joltphysics_update(joltphysics_t *self, const f32 dt);
-joltphysics_event_queue_t *         joltphysics_get_collision_eventqueue(const joltphysics_t * const self);
 
 joltraycast_result_t                joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir);
 joltraycast_results_t               joltphysics_raycastall(const vec3f_t ray_pos, const vec3f_t dir);
@@ -142,28 +134,12 @@ joltphysics_t * joltphysics_init(arena_t * const arena)
     ASSERT(arena);
     joltphysics_t output = {
         .internal = {
-            .double_buffer_event_queue = {
-                .buffer1 = {
-                    .capacity = 4000,
-                    .events = arena_reserve(arena, sizeof(joltphysics_collision_event_t) * 4000),
-                    .count = 0,
-                },
-                .buffer2 = {
-                    .capacity = 4000,
-                    .events = arena_reserve(arena, sizeof(joltphysics_collision_event_t) * 4000),
-                    .count = 0,
-                },
-            },
             .rules_configured = false
         },
     };
 
     if (!JPH_Init()) {
         eprint("jolt failed to initalize");
-    }
-
-    if (mtx_init(&output.internal.double_buffer_event_queue.swap_mutex, mtx_plain) != thrd_success) {
-        eprint("Failed to initialize C11 mutex for physics queue");
     }
 
     JPH_SetTraceHandler(joltphysics__internal__tracefunc);
@@ -183,11 +159,6 @@ joltphysics_t * joltphysics_init(arena_t * const arena)
 
     global_joltphysics_instance = mem_init(&output, sizeof(joltphysics_t));
 
-    global_joltphysics_instance->internal.double_buffer_event_queue.read_queue = 
-        &global_joltphysics_instance->internal.double_buffer_event_queue.buffer2;
-
-    global_joltphysics_instance->internal.double_buffer_event_queue.write_queue = 
-        &global_joltphysics_instance->internal.double_buffer_event_queue.buffer1;
 
     return global_joltphysics_instance;
 }
@@ -300,7 +271,6 @@ void joltphysics_destroy(joltphysics_t *self)
     mem_free(global_joltphysics_instance, sizeof(joltphysics_t));
     global_joltphysics_instance = NULL;
 
-    mtx_destroy(&self->internal.double_buffer_event_queue.swap_mutex);
 }
 
 void joltphysics__internal_register_contact_listener(joltphysics_t * const self, const JPH_ContactListener_Procs listeners)
@@ -313,21 +283,6 @@ void joltphysics__internal_register_contact_listener(joltphysics_t * const self,
 void joltphysics__internal_on_contact_added(void* userData, const JPH_Body* b1, const JPH_Body* b2, const JPH_ContactManifold* m, JPH_ContactSettings* s) 
 {
     joltphysics_t* sys = (joltphysics_t*)userData;
-
-    mtx_lock(&sys->internal.double_buffer_event_queue.swap_mutex);
-    {
-        if ((sys->internal.double_buffer_event_queue.write_queue->count + 1) == sys->internal.double_buffer_event_queue.write_queue->capacity) {
-            logging("Collision Event Queue failed to add an event due to size constraint");
-        } else {
-            joltphysics_collision_event_t* ev = &sys->internal.double_buffer_event_queue.write_queue->events[sys->internal.double_buffer_event_queue.write_queue->count++];
-            ev->entity_a = (void *)JPH_Body_GetUserData((JPH_Body *)b1);
-            ev->entity_b = (void *)JPH_Body_GetUserData((JPH_Body *)b2);
-            ev->id_a = JPH_Body_GetID(b1);
-            ev->id_b = JPH_Body_GetID(b2);
-            //TODO: Extract manifold point if needed...
-        } 
-    }
-    mtx_unlock(&sys->internal.double_buffer_event_queue.swap_mutex);
 }
 
 void joltphysics_start_simulation(joltphysics_t *self)
@@ -378,20 +333,6 @@ void joltphysics_start_simulation(joltphysics_t *self)
 void joltphysics_update(joltphysics_t *self, const f32 dt) {
 
     JPH_PhysicsSystem_Update2(self->physics_system, dt, 1, self->temp_allocator, self->jobsystem);
-
-    //NOTE: no need to lock to swap the buffer as per gemini since no contention 
-    //happens here as its post `JPH_PhysicsSystem_Update` call
-#if 0
-    joltphysics_event_queue_t *const temp = self->internal.double_buffer_event_queue.read_queue;
-    self->internal.double_buffer_event_queue.read_queue = self->internal.double_buffer_event_queue.write_queue;
-    self->internal.double_buffer_event_queue.write_queue = temp;
-    self->internal.double_buffer_event_queue.write_queue->count = 0;
-#endif
-}
-
-joltphysics_event_queue_t * joltphysics_get_collision_eventqueue(const joltphysics_t *const self)
-{
-    return self->internal.double_buffer_event_queue.read_queue;
 }
 
 void joltphysics_character_destroy(JPH_CharacterVirtual *const character)

@@ -37,8 +37,7 @@ void ecs_system_light(ecs_componentmanager_t *const cmp_manager, const ecs_syste
     };
     slot_iterator(pool, iter)
     {
-        const u64 slot_index = (u64)slot_iterator_index;
-        ecs_component_poolentry_t *const entry = iter;
+        ecs_component_poolentry_t *const entry = (void *)iter;
         ecs_component_light_t *light = (ecs_component_light_t *)entry->entity_cmpdata;
 
         ecs_component_transform_t *transform = ecs_componentmanager__internal__query_components(

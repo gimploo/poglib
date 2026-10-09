@@ -8,7 +8,6 @@
 #include <poglib/gfx/gl/shader.h>
 #include <poglib/gfx/gl/texture_types.h>
 #include <poglib/gfx/model/glmodel.h>
-#include <poglib/gfx/model/assimp.h>
 
 #define ECS_CMP_INVALID_IDX -1
 
@@ -65,7 +64,6 @@ struct ecs_component_transform_t {
 typedef struct ecs_component_model_t ecs_component_model_t;
 struct ecs_component_model_t {
     u32 asset_id;
-    bool is_scene_instanced;
     struct {
         glmodel_t *model;
     } internal;
@@ -264,8 +262,9 @@ struct ecs_component_simulation_t {
 typedef struct ecs_component_animation_t ecs_component_animation_t;
 struct ecs_component_animation_t {
 
+    u32 asset_id;
     struct {
-        gpu_asset_t *gpu_loaded_asset;
+        glmodel_t *model;
     } internal;
 };
 

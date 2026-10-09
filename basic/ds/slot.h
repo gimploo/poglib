@@ -52,13 +52,13 @@ void                slot_fill_empty(slot_t * const);
 ------------------------------------------------------------------------------*/
 
 
-void * __slot_iter_get_value(const slot_t *slot, u32 *hits, u32 *index)
+u64 __slot_iter_get_value(const slot_t *slot, u64 *hits, u64 *index)
 {
     while(*index < slot->internal.capacity && *hits < slot->len) {
 
         if (slot->internal.index_table[*index]) {
             *hits = *hits + 1;
-            return slot_get_value(slot, *index);
+            return (u64)slot_get_value(slot, *index);
         }
 
         *index = *index + 1;
@@ -70,10 +70,10 @@ void * __slot_iter_get_value(const slot_t *slot, u32 *hits, u32 *index)
 #define __impl_slot_for_loop_iterator(PSLOTARRAY, ITER)\
             ASSERT(PSLOTARRAY);\
             if ((PSLOTARRAY)->len != 0)\
-                for (void **slot_iterator_index = 0, **SLT__hits = 0, *(ITER) = (void *)__slot_iter_get_value((PSLOTARRAY),(u32 *)&SLT__hits, (u32 *)&slot_iterator_index);\
-                    (ITER) != NULL;\
-                    slot_iterator_index = (void **)((u64)slot_iterator_index + 1),\
-                    (ITER) = (void *)__slot_iter_get_value(PSLOTARRAY, (u32 *)&SLT__hits, (u32 *)&slot_iterator_index))
+                for (u64 slot_index = 0, SLT__hits = 0, (ITER) = (u64)__slot_iter_get_value((PSLOTARRAY),&SLT__hits, &slot_index);\
+                    (ITER) != (u64)NULL;\
+                    slot_index = (u64)slot_index + 1,\
+                    (ITER) = (u64)__slot_iter_get_value((PSLOTARRAY), &SLT__hits, &slot_index))
 
 
 
@@ -177,8 +177,8 @@ void __impl_slot_destroy(slot_t *table)
     if (table == NULL) eprint("table arguemnt is null");
 
     if (table->internal.arena) {
-        arena_giveback(table->internal.arena, table->data, table->internal.elem_size * table->internal.capacity);
-        arena_giveback(table->internal.arena, table->internal.index_table, table->internal.capacity);
+        arena_destroy(table->internal.arena);
+        arena_destroy(table->internal.arena);
     } else {
         free(table->data);
         free(table->internal.index_table);
@@ -255,7 +255,7 @@ slot_t slot_clone(const slot_t *slot)
     slot_iterator(slot, iter) {
         slot_insert(&output,
             output.len, 
-            iter, 
+            (u8 *)iter, 
             slot->internal.elem_size);
     }
 

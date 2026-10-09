@@ -172,7 +172,7 @@ void list_dump(const list_t *list)
 
 void list_destroy(list_t *const list)
 {
-    arena_giveback(list->arena, list->data, list->internal.capacity * list->internal.elem_size);
+    arena_destroy(list->arena);
     list->data = NULL;
     list->internal.capacity = 0;
     list->internal.top = -1;

@@ -39,7 +39,7 @@ void                stack_destroy(ds_stack_t *);
                                 IMPLEMENTATION
 -----------------------------------------------------------------------------*/
 
-ds_stack_t stack__internal_init(const u64 capacity, const char *elem_type, const u32 elem_size, arena_t * const arena, const u32 mem_alignment)
+ds_stack_t stack__internal_init(const u64 capacity, const char *elem_type, const u32 elem_size, arena_t *const arena, const u32 mem_alignment)
 {
     assert(elem_type);
     assert(elem_size > 0);
@@ -113,13 +113,8 @@ void stack_destroy(ds_stack_t *stack)
 {
     assert(stack);
 
-    if (stack->internal.arena)
-        arena_giveback(
-            stack->internal.arena, 
-            stack->__data, 
-            stack->__elem_size * stack->__capacity);
-    else 
-        free(stack->__data);
+    if (stack->internal.arena)  arena_destroy(stack->internal.arena);
+    else                        free(stack->__data);
 
     stack->__data = NULL;
     stack->__top = -1;

@@ -127,7 +127,7 @@ hashtable_t hashtable_init(const u32 capacity, const ht_key_type keytype, const 
         .entries = slot_init(capacity, sizeof(hashtable_entry_t), arena),
         .internal = {
             .valuepool = valuetype.type == HT_STORAGE_BY_VALUE 
-                ? arena_init(arena, capacity * valuetype.size) 
+                ? arena_init(arena) 
                 : NULL,
             .valuetype = valuetype,
             .keytype = keytype,
@@ -260,7 +260,8 @@ void hashtable__internal_remove_value(hashtable_t *const table, hashtable_entry_
         || table->internal.valuetype.type == HT_STORAGE_BY_REFERENCE) 
         return;
 
-    arena_giveback(table->internal.valuepool, entry->value, table->internal.valuetype.size);
+    //arena_giveback(table->internal.valuepool, entry->value, table->internal.valuetype.size);
+    //TODO: figure out a better strategy to clear unused spaces without having fragmentation in the arena
 }
 
 

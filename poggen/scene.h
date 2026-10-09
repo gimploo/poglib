@@ -61,7 +61,7 @@ void scene__internal_update(scene_t *const scene, const f32 dt)
 #define scene__internal_init(SCENE_NAME)\
     (scene_t ){\
         .label          = str(#SCENE_NAME),\
-        .arena          = arena_init(NULL, 5 * MB),\
+        .arena          = arena_init(global_engine->arena),\
         .content        = NULL,\
         .__is_paused    = false,\
         .__is_over      = false,\

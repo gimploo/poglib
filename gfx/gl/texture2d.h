@@ -20,6 +20,7 @@ typedef struct gltexture2d_t {
     u32             width;
     u32             height;
     u32             bpp;        //BytesPerPixel
+    bool            is_srgb;
 
 } gltexture2d_t;
 
@@ -41,7 +42,7 @@ gltexture2d_t        gltexture2d_load_from_file(const char *filepath);
 void                 gltexture2d_destroy(const gltexture2d_t *texture);
 bool                 gltexture2d_is_same(const gltexture2d_t *const texture1, const gltexture2d_t *const texture2);
 //NOTE:(macro)       gltexture2d_bind(gltexture2d_t *, u32 slot) --> void
-//NOTE:(macro)       gltexture2d_unbind(void) --> void
+void                 gltexture2d_unbind(void);
 void                 gltexture2d_dump(const gltexture2d_t *texture);
 
 
@@ -51,12 +52,17 @@ void                 gltexture2d_dump(const gltexture2d_t *texture);
 
 #define gltexture2d_bind(ptex, slot) do {\
 \
+    if ((ptex)->is_srgb) GL_CHECK(glEnable(GL_FRAMEBUFFER_SRGB));\
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + (slot)));\
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, (ptex)->id));\
 \
 } while(0)
 
-#define gltexture2d_unbind()    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0))
+void gltexture2d_unbind(void)
+{
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+    GL_CHECK(glDisable(GL_FRAMEBUFFER_SRGB));
+}
 
 
 //NOTE: this function was created for framebuffers since they use color textures also the data is stored in RGB not RGBA8
@@ -263,6 +269,7 @@ gltexture2d_t gltexture2d_embedded_init(
         .width      = width,
         .height     = height,
         .bpp        = bpp,
+        .is_srgb    = is_srgb
     };
 
     return o;

@@ -14,6 +14,7 @@ typedef struct {
     } array_buffer;
 
     arena_t *arena;
+    stackarena_t *scratch_arena;
 
 } colliderbatchqueue_t;
 
@@ -39,7 +40,7 @@ INTERNAL void colliderbatchqueue__internal__update_jolts_user_data(const ecs_com
     );
 }
 
-INTERNAL void colliderbatchqueue__internal__add_model_shape(ecs_component_collider_t *const collider, arena_t *const arena)
+INTERNAL void colliderbatchqueue__internal__add_model_shape(ecs_component_collider_t *const collider, stackarena_t *const scratch_arena, arena_t *const persistent_arena)
 {
     ASSERT(collider->motion_type == JPH_MotionType_Static);
     ASSERT(collider->dim.model.count <= ECS_COLLIDER_MAX_MESH_PER_MODEL);
@@ -57,7 +58,7 @@ INTERNAL void colliderbatchqueue__internal__add_model_shape(ecs_component_collid
         const u32 idx_count = (u32)idx_accessor->count;
         const u32 tri_count = idx_count / 3;
 
-        vec3f_t *const scaled_vtx = arena_reserve(arena, vtx_count * sizeof(vec3f_t));
+        vec3f_t *const scaled_vtx = (vec3s *)stackarena_push(scratch_arena, vtx_count * sizeof(vec3f_t));
         for (u32 i = 0; i < vtx_count; i++)
         {
             f32 pos[3];
@@ -68,7 +69,7 @@ INTERNAL void colliderbatchqueue__internal__add_model_shape(ecs_component_collid
             scaled_vtx[i].z = pos[2] * collider->internal.scale.z;
         }
 
-        JPH_IndexedTriangle *const tris = arena_reserve(arena, tri_count * sizeof(JPH_IndexedTriangle));
+        JPH_IndexedTriangle *const tris = (JPH_IndexedTriangle *)stackarena_push(scratch_arena, tri_count * sizeof(JPH_IndexedTriangle));
 
         for (u32 i = 0; i < tri_count; i++) 
         {
@@ -104,8 +105,8 @@ INTERNAL void colliderbatchqueue__internal__add_model_shape(ecs_component_collid
         ASSERT(shape);
         JPH_ShapeSettings_Destroy((JPH_ShapeSettings *)settings);
 
-        arena_giveback(arena, scaled_vtx, vtx_count * sizeof(vec3f_t));
-        arena_giveback(arena, tris, tri_count * sizeof(JPH_IndexedTriangle));
+        stackarena_pop(scratch_arena);
+        stackarena_pop(scratch_arena);
 
 
         JPH_BodyCreationSettings *const body_settings = JPH_BodyCreationSettings_Create3(
@@ -123,7 +124,7 @@ INTERNAL void colliderbatchqueue__internal__add_model_shape(ecs_component_collid
             collider->motion_type == JPH_MotionType_Static ? JPH_Activation_DontActivate : JPH_Activation_Activate
         );
 
-        colliderbatchqueue__internal__update_jolts_user_data(collider, mesh_idx, arena);
+        colliderbatchqueue__internal__update_jolts_user_data(collider, mesh_idx, persistent_arena);
 
         JPH_BodyCreationSettings_Destroy(body_settings);
     }
@@ -195,7 +196,8 @@ colliderbatchqueue_t colliderbatchqueue(arena_t *const arena)
             .raw_data   = (u8 *)arena_reserve(arena, buffersize)
         },
         .array_buffer.top = -1,
-        .arena = arena_init(arena, 1 * MB),
+        .arena = arena_init(arena),
+        .scratch_arena = stackarena_init(ARENA_STARTING_BLOCK_SIZE * 10000),
     };
 }
 
@@ -273,7 +275,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     ? collider->dim.mesh.idx.count / 3 
                     : vtx_count / 3;
 
-                vec3f_t *const scaled_vtx = arena_reserve(self->arena, vtx_count * sizeof(vec3f_t));
+                vec3f_t *const scaled_vtx = (vec3s *)stackarena_push(self->scratch_arena, vtx_count * sizeof(vec3f_t));
                 for (u32 i = 0; i < vtx_count; i++)
                 {
                     scaled_vtx[i].x = collider->dim.mesh.vtx.data[i].x * collider->internal.scale.x;
@@ -281,7 +283,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     scaled_vtx[i].z = collider->dim.mesh.vtx.data[i].z * collider->internal.scale.z;
                 }
 
-                JPH_IndexedTriangle *const tris = arena_reserve(self->arena, tri_count * sizeof(JPH_IndexedTriangle));
+                JPH_IndexedTriangle *const tris = (JPH_IndexedTriangle *)stackarena_push(self->scratch_arena, tri_count * sizeof(JPH_IndexedTriangle));
                 for (u32 i = 0; i < tri_count; i++) 
                 {
                     const uint32_t i1 = collider->dim.mesh.idx.data ? collider->dim.mesh.idx.data[i * 3 + 0] : i * 3 + 0;
@@ -310,12 +312,12 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                 shape = (JPH_Shape *)JPH_MeshShapeSettings_CreateShape(mesh_settings);
                 JPH_ShapeSettings_Destroy((JPH_ShapeSettings *)mesh_settings);
 
-                arena_giveback(self->arena, scaled_vtx, vtx_count * sizeof(vec3f_t));
-                arena_giveback(self->arena, tris, tri_count * sizeof(JPH_IndexedTriangle));
+                stackarena_pop(self->scratch_arena);
+                stackarena_pop(self->scratch_arena);
             } break;
 
             case COLLIDER_SHAPE_TYPE_MODEL:
-                colliderbatchqueue__internal__add_model_shape(collider, self->arena);
+                colliderbatchqueue__internal__add_model_shape(collider, self->scratch_arena, self->arena);
                 prev_motion_type  = collider->motion_type;
                 continue;
             break;

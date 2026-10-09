@@ -31,13 +31,13 @@ runtimectx_t * runtimectx_init(void)
     runtimectx_t * o = calloc(1, sizeof(runtimectx_t));
 
    *o = (runtimectx_t ){
-        .stringpool = arena_init(NULL, 1 * MB),
+        .stringpool = arena_init(NULL),
         .scrap_buffer = (buffer_t) {
             .raw_data = calloc(4 * MB, 1),
             .size = 4 * MB
         },
         .stackarena = stackarena_init(0.5 * GB),
-        .temporary = arena_init(NULL, 1 * MB)
+        .temporary = arena_init(NULL)
     };
 
     global_runtimectx = o;
@@ -47,7 +47,7 @@ runtimectx_t * runtimectx_init(void)
 arena_t * runtimectx_reserve_mem_from_stringpool(const u32 size)
 {
     ASSERT(global_runtimectx);
-    return arena_init(global_runtimectx->stringpool, size);
+    return arena_init(global_runtimectx->stringpool);
 }
 
 void runtimectx_destroy(void)

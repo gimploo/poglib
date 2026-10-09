@@ -15,7 +15,6 @@ typedef enum ecs_uniform_supported_types {
     ECS_UNIFORM_CAMERA_VIEW,
     ECS_UNIFORM_CAMERA_POSITION,
     ECS_UNIFORM_TRANSFORM,
-    ECS_UNIFORM_MODEL_BONES,
     ECS_UNIFORM_MODEL_JOINTS,
     ECS_UNIFORM_TEXTURE_AVAILABILITY,
     ECS_UNIFORM_LIGHT_POSITION,
@@ -28,7 +27,6 @@ const str_t ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SUPPORTED_COUNT] = {
     [ECS_UNIFORM_CAMERA_VIEW]               = str_lit("view"),
     [ECS_UNIFORM_CAMERA_POSITION]           = str_lit("camerapos"),
     [ECS_UNIFORM_TRANSFORM]                 = str_lit("transform"),
-    [ECS_UNIFORM_MODEL_BONES]               = str_lit("uBones"),
     [ECS_UNIFORM_MODEL_JOINTS]              = str_lit("uJoints"),
     [ECS_UNIFORM_TEXTURE_AVAILABILITY]      = str_lit("has_texture"),
     [ECS_UNIFORM_LIGHT_POSITION]            = str_lit("lightPos"),
@@ -47,10 +45,11 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
     const matrix4f_t projection  = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
     const matrix4f_t camera_view = glcamera_getview(active_camera);
 
-    const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(cmp_manager, entity_id, ECS_CMP_TRANSFORM | ECS_CMP_SPRITE | ECS_CMP_SIMULATION | ECS_CMP_MODEL);
+    const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(cmp_manager, entity_id, ECS_CMP_TRANSFORM | ECS_CMP_SPRITE | ECS_CMP_SIMULATION | ECS_CMP_MODEL | ECS_CMP_ANIMATION);
     const ecs_component_transform_t *const transform    = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
     ASSERT(transform);
     const ecs_component_sprite_t *const sprite          = view.entity_cmp_data[ECS_CMP_SPRITE_IDX];
+    const ecs_component_animation_t *const animation    = view.entity_cmp_data[ECS_CMP_ANIMATION_IDX];
 
     const bool is_entity_simulated = view.entity_cmp_data[ECS_CMP_SIMULATION_IDX] != NULL;
 
@@ -89,12 +88,14 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
                 value.f32 = (f32)(material->meshidx_to_texture_lookup.count > 0 || (sprite && sprite->spritesheet_asset_id != INVALID_ASSET_ID));
             break;
 
-            //FIXME: fix this after animations are loaded and understood
-            //NOTE: these are handled in model's resolver
             case ECS_UNIFORM_MODEL_JOINTS:
-            break;
-            case ECS_UNIFORM_MODEL_BONES:
-                continue;
+                ASSERT(animation);
+                if (!animation->internal.model) {
+                    value.mat4s.count = 0;
+                } else { 
+                    value.mat4s.data = animation->internal.model->uJoints_palette;
+                    value.mat4s.count = animation->internal.model->data->skins[0].joints_count;
+                }
             break;
 
             default: eprint("ecs doesnt suppport given uniform");
@@ -109,7 +110,6 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
 }
 
 INTERNAL gluniforms_t ecs_material_resolve_per_mesh_uniforms(
-    const ecs_component_model_t *const model_cmp,
     ecs_component_material_t *const material_cmp,
     const glshader_t *const shader,
     const u64 mesh_idx
@@ -122,27 +122,6 @@ INTERNAL gluniforms_t ecs_material_resolve_per_mesh_uniforms(
             out_uniforms.data[out_uniforms.count].value.f32  = material_cmp->meshidx_to_texture_lookup.data[mesh_idx].basecolor_texture_id != INVALID_ASSET_ID;
             out_uniforms.count++;
         }
-    }
-
-    //FIXME: everything below once cgltf integration for animaiton is complete
-    if (!model_cmp || !model_cmp->internal.model) return out_uniforms;
-
-    const glmodel_t *const model = model_cmp->internal.model;
-    ASSERT(mesh_idx < model->meshes.len);
-
-#if 0
-    if (glshader_uniform_is_support(shader, ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_MATERIAL_COLOR])) {
-        out_uniforms->data[out_uniforms->count].name       = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_MATERIAL_COLOR];
-        out_uniforms->data[out_uniforms->count].value.vec4 = *(vec4f_t *)list_get_value(&model->colors, mesh_idx);
-        out_uniforms->count++;
-    }
-#endif
-
-    if (glshader_uniform_is_support(shader, ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_MODEL_BONES])) {
-        out_uniforms.data[out_uniforms.count].name              = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_MODEL_BONES];
-        out_uniforms.data[out_uniforms.count].value.mat4s.count = (u32)model->transforms.data[mesh_idx].len;
-        out_uniforms.data[out_uniforms.count].value.mat4s.data  = (matrix4f_t *)model->transforms.data[mesh_idx].data;
-        out_uniforms.count++;
     }
 
     return out_uniforms;

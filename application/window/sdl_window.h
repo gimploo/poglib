@@ -467,6 +467,9 @@ window_t * window_init(const char *title, u64 width, u64 height, const u32 flags
     if (SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24))
         eprint("SDL GL Error: %s\n", SDL_GetError());
 
+    if (SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, 1))
+        eprint("SDL GL Error: %s\n", SDL_GetError());
+
 #endif 
 
 
