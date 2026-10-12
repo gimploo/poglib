@@ -71,7 +71,7 @@ INTERNAL arena_mem_block_t * arena__internal__get_available_block(arena_t *const
     arena_mem_block_t *curr = &arena->first_block;
     while(curr->next_block) {
         const u32 mem_left = curr->capacity - curr->size_used;
-        if (mem_left <= memory_size) 
+        if (mem_left >= memory_size) 
             return curr;
         curr = curr->next_block;
     }
