@@ -598,7 +598,7 @@ void workbench_render_camera(
 
     rendercommand_t rendercommand = {
         .enable_wireframe = true,
-        .vtx.data.mesh = asset->meshes.data,
+        .vtx.data.primitive = asset->meshes.data[0]->primitives[0],
         .instance = {
             .raw_data = &(rendercommand_instance_primitive_mesh_t) {
                 .translation = { position.x, position.y, position.z, 0.f },
@@ -668,7 +668,7 @@ void workbench_render_marker(
 
     rendercommand_t rendercommand = {
         .enable_wireframe = self->render_config.wireframe_mode,
-        .vtx.data.mesh = asset->meshes.data,
+        .vtx.data.primitive = asset->meshes.data[0]->primitives[0],
         .instance = {
             .raw_data = &(rendercommand_instance_primitive_mesh_t) {
                 .translation = { translation.x, translation.y, translation.z, 0.f },
@@ -833,7 +833,7 @@ void workbench_draw_sphere(const vec3s position, const f32 radius, const vec4s c
         },
         .vtx = {
             .type = RENDERCOMMAND_VTX_TYPE_MESH,
-            .data.mesh = asset->meshes.data,
+            .data.primitive = asset->meshes.data[0]->primitives[0],
         },
         .material = {
             .texture = {0},
@@ -902,7 +902,7 @@ void workbench_draw_capsule(const vec3s position, const versors orientation, con
             },
             .vtx = {
                 .type = RENDERCOMMAND_VTX_TYPE_MESH,
-                .data.mesh = asset->meshes.data,
+                .data.primitive = asset->meshes.data[0]->primitives[0],
             },
             .material = {
                 .texture = {0},

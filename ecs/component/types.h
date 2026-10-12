@@ -75,7 +75,7 @@ typedef struct ecs_component_mesh_t ecs_component_mesh_t;
 struct ecs_component_mesh_t {
     u32 asset_id;
     u16 mesh_idx;
-    u8 primtive_idx;
+    u8 primitive_idx;
     bool is_scene_instanced;
 };
 

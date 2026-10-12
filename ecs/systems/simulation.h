@@ -8,6 +8,7 @@ void ecs_collider__internal__softbody_update(gpu_mesh_primitive_t *gpu_mesh_prim
     ASSERT(global_engine);
     ASSERT(transform);
     ASSERT(collider);
+    ASSERT(gpu_mesh_primitive);
 
     const JPH_Body* body = JPH_PhysicsSystem_GetBodyPtr(global_joltphysics_instance->physics_system, collider->body.soft.bodyid);
     if (!body) {

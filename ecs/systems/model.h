@@ -42,12 +42,12 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
 
         const bool is_editor_selected = global_workbench->editor.current_selected_entity_id == entry->entity_id;
 
-        for (u32 mesh_idx = 0; mesh_idx < gpu_loaded_asset->meshes.count; mesh_idx++)
+        for (u32 primitive_idx = 0; primitive_idx < gpu_loaded_asset->meshes.data[cmp_model->mesh_idx]->count; primitive_idx++)
         {
             renderqueue_pass_command(&global_engine->systems.renderqueue,
                 (rendercommand_t ){
                     .vtx.data = {
-                        .mesh = &gpu_loaded_asset->meshes.data[mesh_idx],
+                        .primitive = gpu_loaded_asset->meshes.data[cmp_model->mesh_idx]->primitives[primitive_idx],
                     },
                     .instance = {
                         .size = sizeof(rendercommand_instance_primitive_mesh_t),
@@ -55,15 +55,15 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                             .translation = (vec4f_t) { transform->position.x, transform->position.y, transform->position.z, 0.f },
                             .scale = (vec4f_t) { transform->scale.x, transform->scale.y,  transform->scale.z,  0.f },
                             .orientation = *(vec4f_t *)&transform->orientation,
-                            .color = is_editor_selected ? COLOR_RED : ecs_material_get_basecolor_for_mesh(material, mesh_idx),
+                            .color = is_editor_selected ? COLOR_RED : ecs_material_get_basecolor_for_mesh(material, cmp_model->mesh_idx),
                         },
                     },
                     .enable_wireframe = false,
                     .material = {
-                        .texture = ecs_material_get_texturelist_for_mesh(material, mesh_idx),
+                        .texture = ecs_material_get_texturelist_for_mesh(material, cmp_model->mesh_idx),
                         .shader = {
                             .data = (glshader_t *)shader,
-                            .uniforms = ecs_material_resolve_per_mesh_uniforms(material, shader, mesh_idx),
+                            .uniforms = ecs_material_resolve_per_mesh_uniforms(material, shader, cmp_model->mesh_idx),
                         }
                     }
                 }

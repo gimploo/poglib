@@ -40,6 +40,7 @@ void                assetmanager_load_all_primitives(assetmanager_t * const self
 
 u32                 assetmanager_load_model(assetmanager_t *const self, const str_t filepath);
 u32                 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepath);
+gpu_mesh_primitive_t * assetmanager_reupload_primitive_mesh_to_gpu(assetmanager_t *self, cgltf_primitive *primitive, const bool is_dynamic);
 
 u32                 assetmanager_load_spriteatlas(assetmanager_t *const self, const str_t filepath, const u32 tile_count_width, const u32 tile_count_height);
 u32                 assetmanager_load_texture(assetmanager_t *self, const str_t filepath);
@@ -69,7 +70,7 @@ typedef struct {
     struct {
         u32             id;
         asset_meta_t    meta;
-        u8              *processed_data;
+        void            *processed_data;
     } asset;
 } asset_loaded_event_t;
 
@@ -942,261 +943,270 @@ INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *cons
     hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, asset);
 }
 
-INTERNAL gpu_mesh_t * assetmanager__internal__upload_mesh_primitives_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_mesh *mesh);
+
+INTERNAL gpu_mesh_t *           assetmanager__internal__upload_mesh_to_gpu(assetmanager_t *const self, const cgltf_mesh *mesh, const bool is_dynamic);
+INTERNAL gpu_mesh_primitive_t * assetmanager__internal__upload_mesh_primitive_to_gpu(const cgltf_primitive *primitive, const bool is_dynamic, arena_t *arena);
 
 INTERNAL void assetmanager__internal__upload_model_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_data *model)
 {
     gpu_asset_t *gpuasset = gpu_asset(asset_id, NULL, model->meshes_count, self->arena);
     for (u16 mesh_idx = 0; mesh_idx < model->meshes_count; mesh_idx++) 
     {
-        gpuasset->meshes.data[mesh_idx] = assetmanager__internal__upload_mesh_primitives_to_gpu(self, asset_id, &model->meshes[mesh_idx]);
+        gpuasset->meshes.data[mesh_idx] = assetmanager__internal__upload_mesh_to_gpu(self, &model->meshes[mesh_idx], false);
     }
 
     hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpuasset);
 }
 
-INTERNAL gpu_mesh_t * assetmanager__internal__upload_mesh_primitives_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_mesh *mesh)
+INTERNAL gpu_mesh_primitive_t * assetmanager__internal__upload_mesh_primitive_to_gpu(const cgltf_primitive *primitive, const bool is_dynamic, arena_t *arena)
 {
-    gpu_mesh_t * gpumesh = gpu_mesh(NULL, mesh->primitives_count, self->arena);
+    vao_t vao = vao_init();
+    vao_bind(&vao);
 
-    for (u8 mesh_idx = 0; mesh_idx < mesh->primitives_count; mesh_idx++)
-    {
-        vao_t vao = vao_init();
-        vao_bind(&vao);
-
-        //TODO: after a pipeline is set for UV baking and also understood, remove this part of the code
-        mat3s uv_transform = glms_mat3_identity();
-        if (mesh->primitives[mesh_idx].material 
-            && mesh->primitives[mesh_idx].material->has_pbr_metallic_roughness 
-            && mesh->primitives[mesh_idx].material->pbr_metallic_roughness.base_color_texture.texture
-            && mesh->primitives[mesh_idx].material->pbr_metallic_roughness.base_color_texture.has_transform
-        ) {
+    //TODO: after a pipeline is set for UV baking and also understood, remove this part of the code
+    mat3s uv_transform = glms_mat3_identity();
+    if (primitive->material 
+            && primitive->material->has_pbr_metallic_roughness 
+            && primitive->material->pbr_metallic_roughness.base_color_texture.texture
+            && primitive->material->pbr_metallic_roughness.base_color_texture.has_transform
+       ) {
 #if 1
-            const cgltf_texture_view basecolor_texture = mesh->primitives[mesh_idx].material->pbr_metallic_roughness.base_color_texture;
-            if(basecolor_texture.texcoord) {
-                eprint("TODO: this mesh includes a second UV map, so far we have only accomadated for a single UV map use case");
-            }
+        const cgltf_texture_view basecolor_texture = primitive->material->pbr_metallic_roughness.base_color_texture;
+        if(basecolor_texture.texcoord) {
+            eprint("TODO: this mesh includes a second UV map, so far we have only accomadated for a single UV map use case");
+        }
 
-            const cgltf_texture_transform texturetransform = basecolor_texture.transform;
-            const vec2s offset  = *(vec2s *)texturetransform.offset;
-            const f32 rotation  = texturetransform.rotation;
-            const vec2s scale   = *(vec2s *)texturetransform.scale;
+        const cgltf_texture_transform texturetransform = basecolor_texture.transform;
+        const vec2s offset  = *(vec2s *)texturetransform.offset;
+        const f32 rotation  = texturetransform.rotation;
+        const vec2s scale   = *(vec2s *)texturetransform.scale;
 
-            uv_transform = glms_translate2d(uv_transform, offset);
-            uv_transform = glms_rotate2d(uv_transform, rotation);
-            uv_transform = glms_scale2d(uv_transform, scale);
+        uv_transform = glms_translate2d(uv_transform, offset);
+        uv_transform = glms_rotate2d(uv_transform, rotation);
+        uv_transform = glms_scale2d(uv_transform, scale);
 #else
-            eprint("The model includes uv transforms, bake the UV on to the mesh directly before exporting i.e alternate approach to removing the `Mapping node` for the mesh in blender");
+        eprint("The model includes uv transforms, bake the UV on to the mesh directly before exporting i.e alternate approach to removing the `Mapping node` for the mesh in blender");
 #endif
-        }
+    }
 
-        cgltf_attribute position = {0}, normal = {0}, texcoord = {0}, joints = {0}, weights = {0};
-        for (u8 attr_idx = 0; attr_idx < mesh->primitives[mesh_idx].attributes_count; attr_idx++)
+    cgltf_attribute position = {0}, normal = {0}, texcoord = {0}, joints = {0}, weights = {0};
+    for (u8 attr_idx = 0; attr_idx < primitive->attributes_count; attr_idx++)
+    {
+        switch(primitive->attributes[attr_idx].type) 
         {
-            switch(mesh->primitives[mesh_idx].attributes[attr_idx].type) 
-            {
-                case cgltf_attribute_type_position:
-                    position = mesh->primitives[mesh_idx].attributes[attr_idx];
+            case cgltf_attribute_type_position:
+                position = primitive->attributes[attr_idx];
                 break;
-                case cgltf_attribute_type_normal:
-                    normal = mesh->primitives[mesh_idx].attributes[attr_idx];
+            case cgltf_attribute_type_normal:
+                normal = primitive->attributes[attr_idx];
                 break;
-                case cgltf_attribute_type_texcoord:
-                    if(mesh->primitives[mesh_idx].attributes[attr_idx].index) {
-                        //TODO: additional texcoord not accounted yet"
-                        continue;
-                    }
-                    texcoord = mesh->primitives[mesh_idx].attributes[attr_idx];
+            case cgltf_attribute_type_texcoord:
+                if(primitive->attributes[attr_idx].index) {
+                    //TODO: additional texcoord not accounted yet"
+                    continue;
+                }
+                texcoord = primitive->attributes[attr_idx];
                 break;
-                case cgltf_attribute_type_joints:
-                    joints = mesh->primitives[mesh_idx].attributes[attr_idx];
+            case cgltf_attribute_type_joints:
+                joints = primitive->attributes[attr_idx];
                 break;
-                case cgltf_attribute_type_weights:
-                    weights = mesh->primitives[mesh_idx].attributes[attr_idx];
+            case cgltf_attribute_type_weights:
+                weights = primitive->attributes[attr_idx];
                 break;
-            }
         }
+    }
 
-        assert(position.data && normal.data && texcoord.data && "Missing required mesh attributes (position, normal, texcoord)");
+    assert(position.data && normal.data && texcoord.data && "Missing required mesh attributes (position, normal, texcoord)");
 
-        const cgltf_accessor *pos_accessor      = position.data;
-        const cgltf_accessor *norm_accessor     = normal.data;
-        const cgltf_accessor *uv_accessor       = texcoord.data;
-        const cgltf_accessor *weights_accessor  = weights.data;
-        const cgltf_accessor *joints_accessor   = joints.data;
+    const cgltf_accessor *pos_accessor      = position.data;
+    const cgltf_accessor *norm_accessor     = normal.data;
+    const cgltf_accessor *uv_accessor       = texcoord.data;
+    const cgltf_accessor *weights_accessor  = weights.data;
+    const cgltf_accessor *joints_accessor   = joints.data;
 
-        const u8 *pos_data      = cgltf_buffer_view_data(pos_accessor->buffer_view) + pos_accessor->offset;
-        const u8 *norm_data     = cgltf_buffer_view_data(norm_accessor->buffer_view) + norm_accessor->offset;
-        const u8 *uv_data       = cgltf_buffer_view_data(uv_accessor->buffer_view) + uv_accessor->offset;
-        ASSERT(pos_data && norm_data && uv_data);
+    const u8 *pos_data      = cgltf_buffer_view_data(pos_accessor->buffer_view) + pos_accessor->offset;
+    const u8 *norm_data     = cgltf_buffer_view_data(norm_accessor->buffer_view) + norm_accessor->offset;
+    const u8 *uv_data       = cgltf_buffer_view_data(uv_accessor->buffer_view) + uv_accessor->offset;
+    ASSERT(pos_data && norm_data && uv_data);
 
-        const u8 *weights_data  = weights_accessor ? cgltf_buffer_view_data(weights_accessor->buffer_view) + weights_accessor->offset : NULL;
-        const u8 *joints_data   = joints_accessor ? cgltf_buffer_view_data(joints_accessor->buffer_view) + joints_accessor->offset : NULL;
+    const u8 *weights_data  = weights_accessor ? cgltf_buffer_view_data(weights_accessor->buffer_view) + weights_accessor->offset : NULL;
+    const u8 *joints_data   = joints_accessor ? cgltf_buffer_view_data(joints_accessor->buffer_view) + joints_accessor->offset : NULL;
 
-        assert(!pos_accessor->is_sparse && !norm_accessor->is_sparse && !uv_accessor->is_sparse && "Sparse accessors not supported");
+    assert(!pos_accessor->is_sparse && !norm_accessor->is_sparse && !uv_accessor->is_sparse && "Sparse accessors not supported");
 
-        const u32 vtx_stride = 
-            pos_accessor->stride
-            + norm_accessor->stride
-            + uv_accessor->stride
-            + (weights_accessor  ? weights_accessor->stride  : 0)
-            + (joints_accessor   ? sizeof(u32[4]) : 0);
+    const u32 vtx_stride = 
+        pos_accessor->stride
+        + norm_accessor->stride
+        + uv_accessor->stride
+        + (weights_accessor  ? weights_accessor->stride  : 0)
+        + (joints_accessor   ? sizeof(u32[4]) : 0);
 
-        const u32 buffer_size = (u32)(
-            cgltf_primitive_find_attribute(&mesh->primitives[mesh_idx], cgltf_attribute_type_position, 0)->count * vtx_stride
-        );
+    const u32 buffer_size = (u32)(cgltf_primitive_find_attribute(primitive, cgltf_attribute_type_position, 0)->count * vtx_stride);
 
-        u8 *const buffer = (void *)stackarena_push(global_runtimectx->stackarena, buffer_size);
-        u8 *buff_cursor = buffer;
-        for (u32 i = 0; i < (u32)pos_accessor->count; i++)
+    u8 *const buffer = (void *)stackarena_push(global_runtimectx->stackarena, buffer_size);
+    u8 *buff_cursor = buffer;
+    for (u32 i = 0; i < (u32)pos_accessor->count; i++)
+    {
+        *(vec3s *)buff_cursor = *(vec3s *)pos_data;
+        buff_cursor += sizeof(vec3s);
+
+        *(vec3s *)buff_cursor = *(vec3s *)norm_data;
+        buff_cursor += sizeof(vec3s);
+
+        *(vec2s *)(buff_cursor) = *(vec2s *)uv_data;
+        //TODO: required in cases where you dont bake uv transforms directly in the geometry,
+        //have a pipeline in place where baking is required, remove this after the above TODO is done
         {
-           *(vec3s *)buff_cursor = *(vec3s *)pos_data;
-           buff_cursor += sizeof(vec3s);
+            vec2s uv = *(vec2s *)buff_cursor;
 
-           *(vec3s *)buff_cursor = *(vec3s *)norm_data;
-           buff_cursor += sizeof(vec3s);
+            uv   = glms_vec2(glms_mat3_mulv(uv_transform, (vec3s) { uv.x , uv.y, 1.0f }));
+            uv.y = 1.0f - uv.y;
 
-           *(vec2s *)(buff_cursor) = *(vec2s *)uv_data;
-            //TODO: required in cases where you dont bake uv transforms directly in the geometry,
-            //have a pipeline in place where baking is required, remove this after the above TODO is done
-            {
-                vec2s uv = *(vec2s *)buff_cursor;
-
-                uv   = glms_vec2(glms_mat3_mulv(uv_transform, (vec3s) { uv.x , uv.y, 1.0f }));
-                uv.y = 1.0f - uv.y;
-
-                *(vec2s *)buff_cursor = uv;
-            }
-            buff_cursor += sizeof(vec2s);
-
-           if (weights_accessor) {
-               *(vec4s *)(buff_cursor) = *(vec4s *)weights_data;
-               buff_cursor += sizeof(vec4s);
-           }
-
-           if (joints_accessor) {
-               uvec4s joint = {0};
-               if (joints_accessor->component_type == cgltf_component_type_r_8u) {
-                   const u8 *u8_joints = (const u8 *)joints_data;
-                   joint = (uvec4s){ u8_joints[0], u8_joints[1], u8_joints[2], u8_joints[3] };
-               } else if (joints_accessor->component_type == cgltf_component_type_r_16u) {
-                   const u16 *u16_joints = (const u16 *)joints_data;
-                   joint = (uvec4s){ u16_joints[0], u16_joints[1], u16_joints[2], u16_joints[3] };
-               } else if (joints_accessor->component_type == cgltf_component_type_r_32u) {
-                   joint = *(const uvec4s *)joints_data;
-               }
-               *(uvec4s *)(buff_cursor) = joint;
-               buff_cursor += sizeof(uvec4s);
-           }
-
-
-            pos_data    += pos_accessor->stride;
-            norm_data   += norm_accessor->stride;
-            uv_data     += uv_accessor->stride;
-
-            if (weights_accessor)   weights_data    += weights_accessor->stride; 
-            if (joints_accessor)    joints_data     += joints_accessor->stride; 
+            *(vec2s *)buff_cursor = uv;
         }
-
-        vbo_t vbo = vbo_init((vbo_config_t) {
-            .usage = GL_STATIC_DRAW,
-            .chunks = {
-                [VBO_STREAM_TYPE_GEOMETRY] = { 
-                    .buffer = {
-                        .raw_data = buffer,
-                        .size = buffer_size,
-                    }, 
-                    .index_count = mesh->primitives[mesh_idx].indices->count
-                },
-                [VBO_STREAM_TYPE_INSTANCE] = {0},
-            }
-        });
-
-        const cgltf_accessor *idx_accessor = mesh->primitives[mesh_idx].indices;
-        assert(idx_accessor->buffer_view->buffer->data && !idx_accessor->is_sparse && "Index buffer not loaded or sparse");
-
-        const ebo_t ebo = ebo_init(
-            &vbo, 
-            cgltf_buffer_view_data(idx_accessor->buffer_view) + idx_accessor->offset, 
-            idx_accessor->count, 
-            cgltf_component_size(idx_accessor->component_type)
-        );
-
-        //Pos
-        vao_set_attributes(
-            &vao,
-            &vbo, 
-            3, 
-            GL_FLOAT, 
-            false, 
-            vtx_stride,
-            0, 
-            false,
-            VBO_STREAM_TYPE_GEOMETRY
-        );
-
-        //Norm
-        vao_set_attributes(
-            &vao,
-            &vbo, 
-            3, 
-            GL_FLOAT, 
-            false, 
-            vtx_stride,
-            sizeof(vec3s), 
-            false,
-            VBO_STREAM_TYPE_GEOMETRY
-        );
-
-        //UV
-        vao_set_attributes(
-            &vao,
-            &vbo, 
-            2, 
-            GL_FLOAT, 
-            false, 
-            vtx_stride,
-            sizeof(vec3s) * 2, 
-            false,
-            VBO_STREAM_TYPE_GEOMETRY
-        );
+        buff_cursor += sizeof(vec2s);
 
         if (weights_accessor) {
-            vao_set_attributes(
-                &vao,
-                &vbo, 
-                4, 
-                GL_FLOAT, 
-                false, 
-                vtx_stride,
-                (sizeof(vec3s) * 2) + sizeof(vec2s), 
-                false,
-                VBO_STREAM_TYPE_GEOMETRY
-            );
+            *(vec4s *)(buff_cursor) = *(vec4s *)weights_data;
+            buff_cursor += sizeof(vec4s);
         }
 
         if (joints_accessor) {
-            vao_set_attributes(
-                &vao,
-                &vbo, 
-                4, 
-                GL_UNSIGNED_INT, 
-                false, 
-                vtx_stride,
-                (sizeof(vec3s) * 2) + sizeof(vec2s) + sizeof(vec4s), 
-                false,
-                VBO_STREAM_TYPE_GEOMETRY
-            );
+            uvec4s joint = {0};
+            if (joints_accessor->component_type == cgltf_component_type_r_8u) {
+                const u8 *u8_joints = (const u8 *)joints_data;
+                joint = (uvec4s){ u8_joints[0], u8_joints[1], u8_joints[2], u8_joints[3] };
+            } else if (joints_accessor->component_type == cgltf_component_type_r_16u) {
+                const u16 *u16_joints = (const u16 *)joints_data;
+                joint = (uvec4s){ u16_joints[0], u16_joints[1], u16_joints[2], u16_joints[3] };
+            } else if (joints_accessor->component_type == cgltf_component_type_r_32u) {
+                joint = *(const uvec4s *)joints_data;
+            }
+            *(uvec4s *)(buff_cursor) = joint;
+            buff_cursor += sizeof(uvec4s);
         }
 
 
-        vao_unbind();
+        pos_data    += pos_accessor->stride;
+        norm_data   += norm_accessor->stride;
+        uv_data     += uv_accessor->stride;
 
-        gpumesh->primitives[mesh_idx] = gpu_mesh_primtive(vao, vbo, ebo, vtx_stride, self->arena);
-        stackarena_pop(global_runtimectx->stackarena);
+        if (weights_accessor)   weights_data    += weights_accessor->stride; 
+        if (joints_accessor)    joints_data     += joints_accessor->stride; 
+    }
+
+    vbo_t vbo = vbo_init((vbo_config_t) {
+        .usage = is_dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW,
+        .chunks = {
+            [VBO_STREAM_TYPE_GEOMETRY] = { 
+                .buffer = {
+                    .raw_data = buffer,
+                    .size = buffer_size,
+                }, 
+                .index_count = primitive->indices->count
+            },
+            [VBO_STREAM_TYPE_INSTANCE] = {0},
+        }
+    });
+
+    const cgltf_accessor *idx_accessor = primitive->indices;
+    assert(idx_accessor->buffer_view->buffer->data && !idx_accessor->is_sparse && "Index buffer not loaded or sparse");
+
+    const ebo_t ebo = ebo_init(
+        &vbo, 
+        cgltf_buffer_view_data(idx_accessor->buffer_view) + idx_accessor->offset, 
+        idx_accessor->count, 
+        cgltf_component_size(idx_accessor->component_type)
+    );
+
+    //Pos
+    vao_set_attributes(
+        &vao,
+        &vbo, 
+        3, 
+        GL_FLOAT, 
+        false, 
+        vtx_stride,
+        0, 
+        false,
+        VBO_STREAM_TYPE_GEOMETRY
+    );
+
+    //Norm
+    vao_set_attributes(
+        &vao,
+        &vbo, 
+        3, 
+        GL_FLOAT, 
+        false, 
+        vtx_stride,
+        sizeof(vec3s), 
+        false,
+        VBO_STREAM_TYPE_GEOMETRY
+    );
+
+    //UV
+    vao_set_attributes(
+        &vao,
+        &vbo, 
+        2, 
+        GL_FLOAT, 
+        false, 
+        vtx_stride,
+        sizeof(vec3s) * 2, 
+        false,
+        VBO_STREAM_TYPE_GEOMETRY
+    );
+
+    if (weights_accessor) {
+        vao_set_attributes(
+            &vao,
+            &vbo, 
+            4, 
+            GL_FLOAT, 
+            false, 
+            vtx_stride,
+            (sizeof(vec3s) * 2) + sizeof(vec2s), 
+            false,
+            VBO_STREAM_TYPE_GEOMETRY
+        );
+    }
+
+    if (joints_accessor) {
+        vao_set_attributes(
+            &vao,
+            &vbo, 
+            4, 
+            GL_UNSIGNED_INT, 
+            false, 
+            vtx_stride,
+            (sizeof(vec3s) * 2) + sizeof(vec2s) + sizeof(vec4s), 
+            false,
+            VBO_STREAM_TYPE_GEOMETRY
+        );
+    }
+
+    vao_unbind();
+
+    stackarena_pop(global_runtimectx->stackarena);
+    return gpu_mesh_primtive(vao, vbo, ebo, vtx_stride, arena);
+}
+
+INTERNAL gpu_mesh_t * assetmanager__internal__upload_mesh_to_gpu(assetmanager_t *const self, const cgltf_mesh *mesh, const bool is_dynamic)
+{
+    gpu_mesh_t * gpumesh = gpu_mesh(NULL, mesh->primitives_count, self->arena);
+    for (u8 prim_idx = 0; prim_idx < mesh->primitives_count; prim_idx++)
+    {
+        gpumesh->primitives[prim_idx] = assetmanager__internal__upload_mesh_primitive_to_gpu(&mesh->primitives[prim_idx], is_dynamic, self->arena);
     }
 
     return gpumesh;
 }
+
+gpu_mesh_primitive_t * assetmanager_reupload_primitive_mesh_to_gpu(assetmanager_t *self, cgltf_primitive *primitive, const bool is_dynamic)
+{
+    return assetmanager__internal__upload_mesh_primitive_to_gpu(primitive, is_dynamic, self->arena);
+}
+
 
 #endif

@@ -3,6 +3,7 @@
 #include "glconfig.h"
 #include "poglib/basic/arena.h"
 #include "poglib/basic/ds/hashtable.h"
+#include "poglib/basic/runtime-ctx.h"
 #include "poglib/basic/str.h"
 #include <string.h>
 
@@ -349,8 +350,18 @@ void glshader_upload_uniforms(const glshader_t * const shader, const gluniforms_
             case GL_UNIFORM_TYPE_U32:
             case GL_UNIFORM_TYPE_BOOL:              GL_CHECK(glUniform1ui(loc_idx, value->u32));
             break;
-            case GL_UNIFORM_TYPE_MATRIX4F_ARRAY:    GL_CHECK(glUniformMatrix4fv(loc_idx, value->mat4s.count, GL_FALSE, (f32 *)value->mat4s.data));
-            break;
+            case GL_UNIFORM_TYPE_MATRIX4F_ARRAY: {
+                if (!value->mat4s.count) continue;
+                if (!value->mat4s.data) {
+                    mat4s *buffer = (mat4s *)stackarena_push(runtime_stackarena(), value->mat4s.count * sizeof(mat4s));
+                    for (u32 buff_idx = 0; buff_idx < value->mat4s.count; buff_idx++)
+                        buffer[buff_idx] = MATRIX4F_IDENTITY;
+                    GL_CHECK(glUniformMatrix4fv(loc_idx, value->mat4s.count, GL_FALSE, (f32 *)buffer));
+                    stackarena_pop(runtime_stackarena());
+                } else {
+                    GL_CHECK(glUniformMatrix4fv(loc_idx, value->mat4s.count, GL_FALSE, (f32 *)value->mat4s.data));
+                }
+            } break;
                 eprint("unknown uniform type");
         }
     }

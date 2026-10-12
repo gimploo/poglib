@@ -42,7 +42,8 @@ gpu_mesh_primitive_t * gpu_mesh_primtive(
             .index_count = ebo.indices_count,
             .attribute_count = vbo.internals.attribute_count,
             .index_type = ebo.index_type,
-            .vtx_stride = vtx_stride
+            .vtx_stride = vtx_stride,
+            .vbo.gpu_mem = vbo.internals.mapped_ptr
         },
         sizeof(gpu_mesh_primitive_t)
     );

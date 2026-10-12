@@ -18,6 +18,7 @@ typedef enum ecs_uniform_supported_types {
     ECS_UNIFORM_MODEL_JOINTS,
     ECS_UNIFORM_TEXTURE_AVAILABILITY,
     ECS_UNIFORM_LIGHT_POSITION,
+    ECS_UNIFORM_COLLIDER_IS_SOFTBODY,
     ECS_UNIFORM_SUPPORTED_COUNT,
 
 } ecs_uniform_supported_types;
@@ -30,6 +31,7 @@ const str_t ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SUPPORTED_COUNT] = {
     [ECS_UNIFORM_MODEL_JOINTS]              = str_lit("uJoints"),
     [ECS_UNIFORM_TEXTURE_AVAILABILITY]      = str_lit("has_texture"),
     [ECS_UNIFORM_LIGHT_POSITION]            = str_lit("lightPos"),
+    [ECS_UNIFORM_COLLIDER_IS_SOFTBODY]      = str_lit("is_softbody")
 };
 
 
@@ -45,15 +47,17 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
     const matrix4f_t projection  = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
     const matrix4f_t camera_view = glcamera_getview(active_camera);
 
-    const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(cmp_manager, entity_id, ECS_CMP_TRANSFORM | ECS_CMP_SPRITE | ECS_CMP_SIMULATION | ECS_CMP_MODEL | ECS_CMP_ANIMATION);
+    const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(cmp_manager, entity_id, ECS_CMP_TRANSFORM | ECS_CMP_SPRITE | ECS_CMP_MODEL | ECS_CMP_ANIMATION | ECS_CMP_COLLIDER);
     const ecs_component_transform_t *const transform    = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
     ASSERT(transform);
     const ecs_component_sprite_t *const sprite          = view.entity_cmp_data[ECS_CMP_SPRITE_IDX];
     const ecs_component_animation_t *const animation    = view.entity_cmp_data[ECS_CMP_ANIMATION_IDX];
+    const ecs_component_collider_t *const collider      = view.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
+    const ecs_component_model_t *const model_cmp        = view.entity_cmp_data[ECS_CMP_MODEL_IDX];
 
-    const bool is_entity_simulated = view.entity_cmp_data[ECS_CMP_SIMULATION_IDX] != NULL;
+    const bool is_softbody = collider ? collider->type == ECS_COLLIDER_SOFTBODY : false;
 
-    const matrix4f_t model_transform = !is_entity_simulated ? glms_mat4_mul(
+    const matrix4f_t model_transform = !is_softbody ? glms_mat4_mul(
         glms_translate_make(transform->position), 
         glms_mat4_mul(
             glms_quat_mat4(transform->orientation), 
@@ -84,17 +88,24 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
                 value.mat4 = model_transform;
             break;
             case ECS_UNIFORM_TEXTURE_AVAILABILITY:
-                if(view.entity_cmp_data[ECS_CMP_MODEL_IDX]) continue;
+                if(model_cmp) continue;
                 value.f32 = (f32)(material->meshidx_to_texture_lookup.count > 0 || (sprite && sprite->spritesheet_asset_id != INVALID_ASSET_ID));
             break;
 
+            case ECS_UNIFORM_COLLIDER_IS_SOFTBODY:
+                value.boolean = is_softbody;
+            break;
+
             case ECS_UNIFORM_MODEL_JOINTS:
-                ASSERT(animation);
-                if (!animation->internal.model) {
-                    value.mat4s.count = 0;
-                } else { 
-                    value.mat4s.data = animation->internal.model->uJoints_palette;
-                    value.mat4s.count = animation->internal.model->data->skins[0].joints_count;
+                if (animation) {
+                    if (animation->internal.model) {
+                        value.mat4s.count = animation->internal.model->data->skins[0].joints_count;
+                        value.mat4s.data = animation->internal.model->uJoints_palette;
+                    }
+                } else {
+                    if (model_cmp && model_cmp->internal.model && model_cmp->internal.model->uJoints_palette) {
+                        value.mat4s.count = model_cmp->internal.model->data->skins[0].joints_count;
+                    }
                 }
             break;
 

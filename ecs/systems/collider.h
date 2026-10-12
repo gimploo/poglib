@@ -19,19 +19,20 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
         if (!entry->is_active) continue;
 
         ecs_component_collider_t *const collider    = (ecs_component_collider_t *)entry->entity_cmpdata;
-        ecs_entity_query_t query                    = ecs_componentmanager__internal__query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM | ECS_CMP_MODEL);
+        ecs_entity_query_t query                    = ecs_componentmanager__internal__query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM | ECS_CMP_MESH);
         ecs_component_transform_t *transform        = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX]; ASSERT(transform);
-        ecs_component_model_t *model                = query.entity_cmp_data[ECS_CMP_MODEL_IDX]; ASSERT(model);
 
         if (collider->type == ECS_COLLIDER_SOFTBODY) {
             //TODO: Optimize|Thought - this could be cached, also we are enforcing that only a single meshes can be 
             //confiured as softbody during load, which at the moment i dont how i feel about it. I do feel this approach
             //can be improved later.
-            gpu_asset_t *gpuasset = assetmanager_get_gpu_loaded_asset_async(&global_engine->systems.assets, model->asset_id);
-            ASSERT(gpuasset->meshes.count == 1);
-            ASSERT(gpuasset->meshes.data[0]->count == 1);
-            gpu_mesh_primitive_t *gpumesh = gpuasset->meshes.data[0]->primitives[0];
+            ecs_component_mesh_t *mesh = query.entity_cmp_data[ECS_CMP_MESH_IDX]; ASSERT(mesh);
+            gpu_asset_t *gpuasset = assetmanager_get_gpu_loaded_asset_async(&global_engine->systems.assets, mesh->asset_id);
+            if (!gpuasset) continue;
+
+            gpu_mesh_primitive_t *gpumesh = gpuasset->meshes.data[mesh->mesh_idx]->primitives[mesh->primitive_idx];
             ecs_collider__internal__softbody_update(gpumesh, collider, transform);
+
             continue;
         }
 

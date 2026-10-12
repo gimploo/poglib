@@ -254,6 +254,8 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
             || ((idx == self->array_buffer.top) && prev_motion_type == JPH_MotionType_Static);
 
         if (collider->type == ECS_COLLIDER_SOFTBODY) {
+            //TODO: it be nice to have all shape types accounted for a softbody, so essentially
+            ASSERT(collider->shape_type == COLLIDER_SHAPE_TYPE_MESH);
             colliderbatchqueue__internal__add_softbody_shape(collider, self->arena);
             prev_motion_type  = collider->motion_type;
             continue;

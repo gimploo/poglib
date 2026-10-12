@@ -68,6 +68,13 @@ stackarena_t * runtime_stackarena(void)
     return global_runtimectx->stackarena;
 }
 
+arena_t * runtime_scratcharena(void)
+{
+    ASSERT(global_runtimectx);
+    arena_clear(global_runtimectx->temporary);
+    return global_runtimectx->temporary;
+}
+
 buffer_t runtime_scratchbuffer(void)
 {
     ASSERT(global_runtimectx);

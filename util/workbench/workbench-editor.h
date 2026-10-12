@@ -123,7 +123,7 @@ INTERNAL void workbench_editor__internal__scale_mesh_collider(ecs_component_coll
     JPH_MeshShapeSettings *settings = JPH_MeshShapeSettings_Create2((const JPH_Vec3 *)scaled_vtx, vtx_count, tris, tri_count);
     JPH_MeshShapeSettings_Sanitize(settings);
     JPH_Shape *newShape = (JPH_Shape *)JPH_MeshShapeSettings_CreateShape(settings);
-    JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_ids[0], newShape, false, JPH_Activation_DontActivate);
+    JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->body.rigid.body_ids[0], newShape, false, JPH_Activation_DontActivate);
     JPH_Shape_Destroy(newShape);
     JPH_ShapeSettings_Destroy((JPH_ShapeSettings *)settings);
 
@@ -140,7 +140,7 @@ INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(v
 
     //FIXME: For kinematic bodies theres no direct API to do this, it was suggested to use  
     // to destroy and recreate the CharacterVirtual with a new scaled shape.
-    if (collider->internal.kinematicbody) return;
+    if (collider->body.rigid.kinematicbody) return;
 
     switch(collider->shape_type)
     {
@@ -148,13 +148,13 @@ INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(v
             collider->dim.cylinder.radius       = transform->scale.x;
             collider->dim.cylinder.half_height  = transform->scale.y;
             JPH_Shape *newShape = (JPH_Shape *)JPH_CylinderShape_Create(collider->dim.cylinder.half_height, collider->dim.cylinder.radius);
-            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_ids[0], (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
+            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->body.rigid.body_ids[0], (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
             JPH_Shape_Destroy((JPH_Shape *)newShape);
         } break;
         case COLLIDER_SHAPE_TYPE_SPHERE:
         case COLLIDER_SHAPE_TYPE_CAPSULE: {
-            JPH_Shape *scaled = JPH_Shape_ScaleShape(collider->internal.shapes[0], (JPH_Vec3 *)&transform->scale);
-            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_ids[0], (JPH_Shape *)scaled, false, JPH_Activation_DontActivate);
+            JPH_Shape *scaled = JPH_Shape_ScaleShape(collider->body.rigid.shapes[0], (JPH_Vec3 *)&transform->scale);
+            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->body.rigid.body_ids[0], (JPH_Shape *)scaled, false, JPH_Activation_DontActivate);
             JPH_Shape_Destroy(scaled);
        } break;
         case COLLIDER_SHAPE_TYPE_CUBE: {
@@ -162,7 +162,7 @@ INTERNAL void workbench_editor__internal_apply_transform_scale_to_phy_collider(v
             collider->dim.cube.half_height = transform->scale.y;
             collider->dim.cube.half_depth  = transform->scale.z;
             JPH_BoxShape *newShape = JPH_BoxShape_Create((JPH_Vec3 *)&collider->dim.cube, JPH_DEFAULT_CONVEX_RADIUS);
-            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->internal.body_ids[0], (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
+            JPH_BodyInterface_SetShape(global_joltphysics_instance->bodyinterface, collider->body.rigid.body_ids[0], (JPH_Shape *)newShape, false, JPH_Activation_DontActivate);
             JPH_Shape_Destroy((JPH_Shape *)newShape);
        } break;
         case COLLIDER_SHAPE_TYPE_MESH: 
@@ -457,7 +457,7 @@ INTERNAL void workbench_editor__internal_show_entity_info_for_selected_entity(vo
         }
 
         //NOTE: == Apply scale to collider ===========================================
-        const bool show_apply_collider_button = collider && collider->internal.body_ids[0];
+        const bool show_apply_collider_button = collider && collider->body.rigid.body_ids[0];
         const u32 apply_collider_button_id = gui_ui_compose_begin(gui, (ui_config_t){
             .composition = {
                 .traits = show_apply_collider_button ? (UI_BEHAVIOR_HOVERABLE | UI_BEHAVIOR_CLICKABLE) : UI_BEHAVIOR_NONE,
@@ -650,10 +650,10 @@ INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collide
         ecs_component_transform_t *const transform = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
         ASSERT(transform);
 
-        if (!collider->internal.kinematicbody) {
+        if (!collider->body.rigid.kinematicbody) {
             JPH_BodyInterface_SetPositionAndRotation(
                 global_joltphysics_instance->bodyinterface, 
-                collider->internal.body_ids[0], 
+                collider->body.rigid.body_ids[0], 
                 (JPH_Vec3 *)&transform->position, 
                 &(JPH_Quat) {
                     .x = transform->orientation.x,
@@ -664,8 +664,8 @@ INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collide
                 JPH_Activation_DontActivate
             );
         } else {
-            JPH_CharacterVirtual_SetPosition(collider->internal.kinematicbody, (JPH_Vec3 *)&transform->position);
-            JPH_CharacterVirtual_SetRotation(collider->internal.kinematicbody, (JPH_Quat *)&transform->orientation);
+            JPH_CharacterVirtual_SetPosition(collider->body.rigid.kinematicbody, (JPH_Vec3 *)&transform->position);
+            JPH_CharacterVirtual_SetRotation(collider->body.rigid.kinematicbody, (JPH_Quat *)&transform->orientation);
         }
 
         collider->internal.position     = transform->position;

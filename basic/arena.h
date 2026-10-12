@@ -125,7 +125,7 @@ void *arena_reserve(arena_t *self, u32 memory_size)
 
 void *arena_store(arena_t *self, const void *mem, u64 mem_size) 
 {
-    ASSERT(mem && mem_size > 0);
+    ASSERT(mem_size > 0);
     void *dst = arena_reserve(self, (u32)mem_size);
     if (mem) memcpy(dst, mem, mem_size);
     return dst;

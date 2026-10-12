@@ -75,7 +75,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
 
         const rendercommand_t command = {
             .vtx = {
-                .data.primitive = gpu_loaded_asset->meshes.data[mesh->mesh_idx]->primitives[mesh->primtive_idx],
+                .data.primitive = gpu_loaded_asset->meshes.data[mesh->mesh_idx]->primitives[mesh->primitive_idx],
             },
             .enable_wireframe = false,
             .instance = {
