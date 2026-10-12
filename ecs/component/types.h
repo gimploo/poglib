@@ -22,8 +22,7 @@ typedef enum {
     ECS_CMP_MESH_IDX            = 6,
     ECS_CMP_SPRITE_IDX          = 7,
     ECS_CMP_LIGHT_IDX           = 8, 
-    ECS_CMP_SIMULATION_IDX      = 9, 
-    ECS_CMP_ANIMATION_IDX       = 10, 
+    ECS_CMP_ANIMATION_IDX       = 9, 
     ECS_CMP_COUNT
 
 } ecs_component_storage_index;
@@ -40,7 +39,6 @@ typedef enum {
     ECS_CMP_SPRITE              = 1 << ECS_CMP_SPRITE_IDX,
     ECS_CMP_LIGHT               = 1 << ECS_CMP_LIGHT_IDX,
     ECS_CMP_ANIMATION           = 1 << ECS_CMP_ANIMATION_IDX,
-    ECS_CMP_SIMULATION          = 1 << ECS_CMP_SIMULATION_IDX,
 
 } ecs_component_type;
 
@@ -64,6 +62,7 @@ struct ecs_component_transform_t {
 typedef struct ecs_component_model_t ecs_component_model_t;
 struct ecs_component_model_t {
     u32 asset_id;
+    u16 mesh_idx;
     struct {
         glmodel_t *model;
     } internal;
@@ -75,7 +74,8 @@ struct ecs_component_model_t {
 typedef struct ecs_component_mesh_t ecs_component_mesh_t;
 struct ecs_component_mesh_t {
     u32 asset_id;
-    u32 mesh_idx;
+    u16 mesh_idx;
+    u8 primtive_idx;
     bool is_scene_instanced;
 };
 
@@ -156,8 +156,7 @@ typedef enum {
     COLLIDER_SHAPE_TYPE_CUBE                = 3,
     COLLIDER_SHAPE_TYPE_CYLINDER            = 4,
     COLLIDER_SHAPE_TYPE_MESH                = 5,
-    COLLIDER_SHAPE_TYPE_SOFTBODY            = 6,
-    COLLIDER_SHAPE_TYPE_MODEL               = 7,
+    COLLIDER_SHAPE_TYPE_MODEL               = 6,
     COLLIDER_SHAPE_TYPE_COUNT,
 } collider_shape_type;
 
@@ -182,7 +181,7 @@ typedef union {
     struct {
         struct {
             u32 count;
-            vec3f_t *data;
+            vec4s *data;
         } vtx;
         struct {
             u32 count;
@@ -194,35 +193,40 @@ typedef union {
         cgltf_accessor *vtx_list[ECS_COLLIDER_MAX_MESH_PER_MODEL];
         cgltf_accessor *idx_list[ECS_COLLIDER_MAX_MESH_PER_MODEL];
     } model;
-    struct {
-        struct {
-            u32 count;
-            vec3f_t *data;
-        } vtx;
-        struct {
-            u32 count;
-            u32 *data;
-        } idx;
-    } softbody;
 } collider_shape_dimension_t;
+
+typedef struct {
+    JPH_BodyID bodyid;
+} ecs_component_collider_softbody_t;
+
+typedef struct {
+    JPH_BodyID              body_ids[ECS_COLLIDER_MAX_MESH_PER_MODEL];
+    JPH_GroundState         groundstate;
+    JPH_CharacterVirtual    *kinematicbody;
+#ifdef DEBUG
+        JPH_Shape           *shapes[ECS_COLLIDER_MAX_MESH_PER_MODEL];
+#endif
+} ecs_component_collider_rigidbody_t;
 
 
 struct ecs_component_collider_t {
+    enum {
+        ECS_COLLIDER_RIGIDBODY = 0,
+        ECS_COLLIDER_SOFTBODY = 1,
+    } type;
+    union {
+        ecs_component_collider_rigidbody_t  rigid;
+        ecs_component_collider_softbody_t   soft;
+    } body;
     collider_shape_type             shape_type;
     JPH_MotionType                  motion_type;
     JPH_ObjectLayer                 object_layer_type;
     collider_shape_dimension_t      dim;
     struct {
-        JPH_BodyID                  body_ids[ECS_COLLIDER_MAX_MESH_PER_MODEL];
-        JPH_GroundState             kinematicbody_groundstate;
-        JPH_CharacterVirtual        *kinematicbody;
         vec3f_t                     position;
         versors                     orientation;
         u32                         entity_id;
         vec3f_t                     scale;
-#ifdef DEBUG
-        JPH_Shape                   *shapes[ECS_COLLIDER_MAX_MESH_PER_MODEL];
-#endif
     } internal;
 };
 
@@ -245,19 +249,7 @@ struct ecs_component_light_t {
     f32 radius;
 };
 
-/* ========================== SIMULATION ============================= */
-
-typedef struct ecs_component_simulation_t ecs_component_simulation_t;
-struct ecs_component_simulation_t {
-
-    bool is_cloth;
-
-    struct {
-        gpu_asset_t *gpu_loaded_asset;
-    } internal;
-};
-
-/* ========================== ANIMATION ============================= */
+/* ========================== ANIMATION ============================ */
 
 typedef struct ecs_component_animation_t ecs_component_animation_t;
 struct ecs_component_animation_t {
@@ -297,7 +289,6 @@ struct ecs_componentbundle_t {
             ecs_component_collider_t    collider;
             ecs_component_sprite_t      sprite;
             ecs_component_light_t       light;
-            ecs_component_simulation_t  simulation;
             ecs_component_animation_t   animation;
         };
     } component[ECS_CMP_COUNT];

@@ -16,7 +16,9 @@ struct runtimectx_t {
 extern runtimectx_t *global_runtimectx;
 
 runtimectx_t *  runtimectx_init(void);
-arena_t        *runtimectx_reserve_mem_from_stringpool(const u32 size);
+stackarena_t *  runtime_stackarena(void);
+buffer_t        runtime_scratchbuffer(void);
+arena_t *       runtimectx_reserve_mem_from_stringpool(const u32 size);
 void            runtimectx_destroy(void);
 
 
@@ -58,6 +60,20 @@ void runtimectx_destroy(void)
     stackarena_destroy(global_runtimectx->stackarena);
     free(global_runtimectx->scrap_buffer.raw_data);
     free(global_runtimectx);
+}
+
+stackarena_t * runtime_stackarena(void)
+{
+    ASSERT(global_runtimectx);
+    return global_runtimectx->stackarena;
+}
+
+buffer_t runtime_scratchbuffer(void)
+{
+    ASSERT(global_runtimectx);
+    ASSERT(global_runtimectx->scrap_buffer.size);
+    memset(global_runtimectx->scrap_buffer.raw_data, 0, global_runtimectx->scrap_buffer.size);
+    return global_runtimectx->scrap_buffer;
 }
 
 #endif

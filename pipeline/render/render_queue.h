@@ -87,10 +87,10 @@ void renderqueue__internal_validate_command(renderqueue_t *const queue, const re
     if (command.vtx.type == RENDERCOMMAND_VTX_TYPE_MESH)
     {
         //NOTE: Mesh validation
-        ASSERT(command.vtx.data.mesh);
-        ASSERT(command.vtx.data.mesh->vao_id > 0);
-        ASSERT(command.vtx.data.mesh->attribute_count > 0);
-        ASSERT(command.vtx.data.mesh->index_count > 0);
+        ASSERT(command.vtx.data.primitive);
+        ASSERT(command.vtx.data.primitive->vao_id > 0);
+        ASSERT(command.vtx.data.primitive->attribute_count > 0);
+        ASSERT(command.vtx.data.primitive->index_count > 0);
     }
 
     if (command.vtx.type == RENDERCOMMAND_VTX_TYPE_TRIANGLES || command.vtx.type == RENDERCOMMAND_VTX_TYPE_LINE) 
@@ -145,7 +145,7 @@ INTERNAL bool renderqueue__internal__check_for_batchable_commands(renderqueue_t 
         {
             if (command.vtx.type == RENDERCOMMAND_VTX_TYPE_MESH) {
 
-                if (command.vtx.data.mesh->vao_id != first_render_command->vtx.data.mesh->vao_id)   continue;
+                if (command.vtx.data.primitive->vao_id != first_render_command->vtx.data.primitive->vao_id)   continue;
                 if (command.enable_wireframe != first_render_command->enable_wireframe)             continue;
 
             } else if (command.vtx.type == RENDERCOMMAND_VTX_TYPE_TRIANGLES) {
@@ -213,14 +213,14 @@ void renderqueue__internal_render_all_meshes_in_bucket(const list_t * const buck
         const glshader_t * const shader = command->material.shader.data;
         ASSERT(shader);
 
-        GL_CHECK(glBindVertexArray(command->vtx.data.mesh->vao_id));
+        GL_CHECK(glBindVertexArray(command->vtx.data.primitive->vao_id));
 
         glshader_upload_uniforms(shader, command->material.shader.uniforms);
 
         GL_CHECK(glDrawElements(
             GL_TRIANGLES, 
-            command->vtx.data.mesh->index_count, 
-            command->vtx.data.mesh->index_type, 
+            command->vtx.data.primitive->index_count, 
+            command->vtx.data.primitive->index_type, 
             0
         ));
     }
@@ -271,7 +271,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
             continue;
         }
 
-        ASSERT(first_command->vtx.data.mesh->vao_id);
+        ASSERT(first_command->vtx.data.primitive->vao_id);
 
         if (first_command->enable_wireframe)    GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
         else                                    GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
@@ -303,7 +303,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
         const bool is_instanced = first_command->instance.size > 0;
         if (is_instanced) {
             //NOTE: instance data was already staged and uploaded in the pre-pass above
-            GL_CHECK(glBindVertexArray(first_command->vtx.data.mesh->vao_id));
+            GL_CHECK(glBindVertexArray(first_command->vtx.data.primitive->vao_id));
 
             glinstancebuffer_bind(
                 &self->internal.instancebuffer, 
@@ -316,8 +316,8 @@ void renderqueue_dispatch(renderqueue_t *const self)
 
             GL_CHECK(glDrawElementsInstanced(
                 GL_TRIANGLES, 
-                first_command->vtx.data.mesh->index_count, 
-                first_command->vtx.data.mesh->index_type, 
+                first_command->vtx.data.primitive->index_count, 
+                first_command->vtx.data.primitive->index_type, 
                 0,
                 bucket->len));
 

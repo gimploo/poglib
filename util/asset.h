@@ -36,25 +36,6 @@ typedef struct {
     str_t filepath2;
 } asset_meta_t;
 
-typedef struct {
-    u32 vao_id;
-    u32 index_count;
-    u32 index_type;
-    u32 attribute_count;
-    struct {
-        buffer_t cpu_write;
-        buffer_t gpu_read;
-        u8 *gpu_mem;
-    } vbo;
-} gpu_mesh_t;
-
-typedef struct {
-    u32 asset_id;
-    struct {
-        u32 count;
-        gpu_mesh_t *data; 
-    } meshes;
-} gpu_asset_t;
 
 typedef struct asset_staging_event_t asset_staging_event_t;
 struct asset_staging_event_t {
@@ -69,7 +50,7 @@ const bool ASSET_ASYNC_LOADING_SUPPORT[ASSET_TYPE_COUNT] = {
     [ASSET_TYPE_MODEL]                  = true,
     [ASSET_TYPE_MUSIC_SFX]              = true,
     [ASSET_TYPE_MUSIC_THEME]            = true,
-    [ASSET_TYPE_GLSL_SHADER]            = false, //Requires opengl to compile shaders
+    [ASSET_TYPE_GLSL_SHADER]            = false, //NOTE: Requires opengl to compile shaders
     [ASSET_TYPE_TEXTURE]                = false,
     [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = false,
 };

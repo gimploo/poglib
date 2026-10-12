@@ -31,12 +31,12 @@ struct arena_t {
     } internal;
 };
 
-arena_t         *arena_init(arena_t *parent);
-bool             arena_is_init(const arena_t *self);
-void*            arena_reserve(arena_t *self, u32 size);
-void*            arena_store(arena_t *self, const void *mem, u64 size);
-void             arena_clear(arena_t *self);
-void             arena_destroy(arena_t *self);
+arena_t *       arena_init(arena_t *parent);
+bool            arena_is_init(const arena_t *self);
+void *          arena_reserve(arena_t *self, u32 size);
+void *          arena_store(arena_t *self, const void *mem, u64 size);
+void            arena_clear(arena_t *self);
+void            arena_destroy(arena_t *self);
 
 #ifndef IGNORE_ARENA_IMPLEMENTATION
 
@@ -127,7 +127,7 @@ void *arena_store(arena_t *self, const void *mem, u64 mem_size)
 {
     ASSERT(mem && mem_size > 0);
     void *dst = arena_reserve(self, (u32)mem_size);
-    memcpy(dst, mem, mem_size);
+    if (mem) memcpy(dst, mem, mem_size);
     return dst;
 }
 

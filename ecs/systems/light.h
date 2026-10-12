@@ -68,7 +68,7 @@ void ecs_system_light(ecs_componentmanager_t *const cmp_manager, const ecs_syste
         ctx.ubo, 
         (buffer_t){
             .size = sizeof(bufferData),
-            .raw_data = &bufferData,
+            .raw_data = (u8 *)&bufferData,
         }
     );
 }

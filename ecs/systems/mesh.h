@@ -20,7 +20,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
 
     slot_iterator(primary_pool, ITER)
     {
-        const ecs_component_poolentry_t * const entry = ITER;
+        const ecs_component_poolentry_t * const entry = (ecs_component_poolentry_t *)ITER;
         const ecs_component_mesh_t *const mesh = (ecs_component_mesh_t *)entry->entity_cmpdata;
         const gpu_asset_t *gpu_loaded_asset = (gpu_asset_t *)assetmanager_get_gpu_loaded_asset_async(
             &global_engine->systems.assets, 
@@ -75,7 +75,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
 
         const rendercommand_t command = {
             .vtx = {
-                .data.mesh = &gpu_loaded_asset->meshes.data[mesh->mesh_idx],
+                .data.primitive = gpu_loaded_asset->meshes.data[mesh->mesh_idx]->primitives[mesh->primtive_idx],
             },
             .enable_wireframe = false,
             .instance = {

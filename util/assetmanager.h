@@ -1,6 +1,7 @@
 #pragma once
 #include <poglib/basic.h>
 #include "./asset.h"
+#include "./assetmanager/gpu.h"
 #include <poglib/sound.h>
 #include "poglib/basic/concurrency.h"
 #include "poglib/basic/stack_arena.h"
@@ -39,7 +40,6 @@ void                assetmanager_load_all_primitives(assetmanager_t * const self
 
 u32                 assetmanager_load_model(assetmanager_t *const self, const str_t filepath);
 u32                 assetmanager_load_model_async(assetmanager_t *const self, const str_t filepath);
-u32                 assetmanager_load_mesh_to_gpu(assetmanager_t *const self, const cgltf_mesh *mesh);
 
 u32                 assetmanager_load_spriteatlas(assetmanager_t *const self, const str_t filepath, const u32 tile_count_width, const u32 tile_count_height);
 u32                 assetmanager_load_texture(assetmanager_t *self, const str_t filepath);
@@ -69,6 +69,7 @@ typedef struct {
     struct {
         u32             id;
         asset_meta_t    meta;
+        u8              *processed_data;
     } asset;
 } asset_loaded_event_t;
 
@@ -78,7 +79,7 @@ INTERNAL void assetmanager__internal_add_asset_meta_data(assetmanager_t *const s
 INTERNAL void assetmanager__internal_write_uniformlocs_to_file(const hashtable_entry_t *const entry, buffer_t *const buffer);
 INTERNAL void assetmanager__internal__notify(const taskparams_t params);
 INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *const self);
-INTERNAL u32 assetmanager__internal__upload_mesh_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_mesh *mesh);
+INTERNAL void assetmanager__internal__upload_model_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_data *model);
 
 assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
 {
@@ -181,7 +182,7 @@ u32 assetmanager_load_model(assetmanager_t *const self, const str_t filepath)
 
     *((glmodel_t *)response->resource) = model;
 
-    assetmanager__internal__upload_mesh_to_gpu(self, asset_id, &model.data->meshes[0]);
+    assetmanager__internal__upload_model_to_gpu(self, asset_id, model.data);
 
     return asset_id;
 }
@@ -250,9 +251,11 @@ void assetmanager_destroy(assetmanager_t *const self)
     hashtable_iterator(&self->gpu_uploaded_assets, entry)
     {
         gpu_asset_t *const asset = ((hashtable_entry_t * )entry)->value;
-        for (u16 idx = 0; idx < asset->meshes.count; idx++) {
-            const gpu_mesh_t gpu_mesh = asset->meshes.data[idx];
-            vao_destroy(&(vao_t){.id  = gpu_mesh.vao_id});
+        for (u16 mesh_idx = 0; mesh_idx < asset->meshes.count; mesh_idx++) {
+            for (u16 prim_idx = 0; prim_idx < asset->meshes.data[mesh_idx]->count; prim_idx++) {
+                const gpu_mesh_primitive_t *gpu_mesh = asset->meshes.data[mesh_idx]->primitives[prim_idx];
+                vao_destroy(&(vao_t){.id  = gpu_mesh->vao_id});
+            }
         }
 
     }
@@ -326,15 +329,15 @@ INTERNAL void assetmanager__internal__process_loaded_assets(assetmanager_t *cons
         switch(task->type)
         {
             case ASSET_TYPE_MODEL:
-                ASSERT(((glmodel_t *)task->processed_data)->data->meshes_count == 1);
-                assetmanager__internal__upload_mesh_to_gpu(self, task->asset_id, &((glmodel_t *)task->processed_data)->data->meshes[0]);
+                assetmanager__internal__upload_model_to_gpu(self, task->asset_id, ((glmodel_t *)task->processed_data)->data);
                 queue_put(
                     &self->internal.notification_queue, 
                     &(asset_loaded_event_t) { 
                         .type = ASSET_EVENT_MODEL_LOADED_TO_GPU,
                         .asset = {
-                            .id     = task->asset_id,
-                            .meta   = *(asset_meta_t *)hashtable_get_value(&self->assetmeta_lookup, (hashtable_key_t){ .u32 = task->asset_id }),
+                            .id             = task->asset_id,
+                            .meta           = *(asset_meta_t *)hashtable_get_value(&self->assetmeta_lookup, (hashtable_key_t){ .u32 = task->asset_id }),
+                            .processed_data = task->processed_data
                         }
                     }, 
                     sizeof(asset_loaded_event_t)
@@ -438,29 +441,11 @@ void assetmanager__internal__upload_sphere_to_gpu(assetmanager_t *const self)
     vao_unbind();
 
 
-    gpu_mesh_t * const gpu_mesh = arena_store(
-        self->arena, 
-        &(gpu_mesh_t) {
-            .vao_id = vao.id,
-            .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_count,
-            .index_type = ebo.index_type
-        },
-        sizeof(gpu_mesh_t)
-    );
+    gpu_mesh_primitive_t *primitve  = gpu_mesh_primtive(vao, vbo, ebo, sizeof(f32) * 8, self->arena);
+    gpu_mesh_t *mesh                = gpu_mesh((gpu_mesh_primitive_t *[]){primitve}, 1, self->arena);
+    gpu_asset_t *asset              = gpu_asset(asset_id, (gpu_mesh_t *[]){ mesh }, 1, self->arena);
 
-    gpu_asset_t * const gpu_asset = arena_store(
-        self->arena, 
-        &(gpu_asset_t) {
-            .asset_id = asset_id,
-            .meshes = {
-            .count = 1,
-                .data = gpu_mesh
-            }
-        },
-        sizeof(gpu_asset_t));
-
-    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
+    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, asset);
 }
 
 void assetmanager__internal__upload_cube_to_gpu(assetmanager_t *const self)
@@ -527,29 +512,11 @@ void assetmanager__internal__upload_cube_to_gpu(assetmanager_t *const self)
     vao_unbind();
 
 
-    gpu_mesh_t * const gpu_mesh = arena_store(
-        self->arena, 
-        &(gpu_mesh_t) {
-            .vao_id = vao.id,
-            .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_count,
-            .index_type = ebo.index_type
-        },
-        sizeof(gpu_mesh_t)
-    );
+    gpu_mesh_primitive_t *primitve  = gpu_mesh_primtive(vao, vbo, ebo, sizeof(f32) * 8, self->arena);
+    gpu_mesh_t *mesh                = gpu_mesh((gpu_mesh_primitive_t *[]){primitve}, 1, self->arena);
+    gpu_asset_t *asset              = gpu_asset(asset_id, (gpu_mesh_t *[]){ mesh }, 1, self->arena);
 
-    gpu_asset_t * const gpu_asset = arena_store(
-        self->arena, 
-        &(gpu_asset_t) {
-            .asset_id = asset_id,
-            .meshes = {
-            .count = 1,
-                .data = gpu_mesh
-            }
-        },
-        sizeof(gpu_asset_t));
-
-    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
+    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, asset);
 }
 
 
@@ -614,29 +581,11 @@ void assetmanager__internal__upload_cylinder_to_gpu(assetmanager_t *const self)
     );
     vao_unbind();
 
-    gpu_mesh_t * const gpu_mesh = arena_store(
-        self->arena, 
-        &(gpu_mesh_t) {
-            .vao_id = vao.id,
-            .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_count,
-            .index_type = ebo.index_type
-        },
-        sizeof(gpu_mesh_t)
-    );
+    gpu_mesh_primitive_t *primitve  = gpu_mesh_primtive(vao, vbo, ebo, sizeof(f32) * 8, self->arena);
+    gpu_mesh_t *mesh                = gpu_mesh((gpu_mesh_primitive_t *[]){primitve}, 1, self->arena);
+    gpu_asset_t *asset              = gpu_asset(asset_id, (gpu_mesh_t *[]){ mesh }, 1, self->arena);
 
-    gpu_asset_t * const gpu_asset = arena_store(
-        self->arena, 
-        &(gpu_asset_t) {
-            .asset_id = asset_id,
-            .meshes = {
-            .count = 1,
-                .data = gpu_mesh
-            }
-        },
-        sizeof(gpu_asset_t));
-
-    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
+    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, asset);
 }
 
 
@@ -678,29 +627,11 @@ void assetmanager__internal__upload_camera_model(assetmanager_t *const self)
 
     vao_unbind();
 
+    gpu_mesh_primitive_t *primitve  = gpu_mesh_primtive(vao, vbo, ebo, sizeof(f32) * 3, self->arena);
+    gpu_mesh_t *mesh                = gpu_mesh((gpu_mesh_primitive_t *[]){primitve}, 1, self->arena);
+    gpu_asset_t *asset              = gpu_asset(asset_id, (gpu_mesh_t *[]){ mesh }, 1, self->arena);
 
-    gpu_mesh_t *const gpu_mesh = arena_store(
-        self->arena, 
-        &(gpu_mesh_t) {
-            .vao_id = vao.id,
-            .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_count,
-            .index_type = ebo.index_type
-        },
-        sizeof(gpu_mesh_t));
-
-    const gpu_asset_t *const gpu_asset = arena_store(
-        self->arena, 
-        &(gpu_asset_t) {
-            .asset_id = asset_id,
-            .meshes = {
-            .count = 1,
-                .data = gpu_mesh
-            }
-        },
-        sizeof(gpu_asset_t));
-
-    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
+    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, asset);
 }
 
 void assetmanager_load_all_primitives(assetmanager_t *const self)
@@ -1004,48 +935,29 @@ INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *cons
     );
     vao_unbind();
 
+    gpu_mesh_primitive_t *primitve  = gpu_mesh_primtive(vao, vbo, ebo, sizeof(f32) * 8, self->arena);
+    gpu_mesh_t *mesh                = gpu_mesh((gpu_mesh_primitive_t *[]) { primitve }, 1, self->arena);
+    gpu_asset_t *asset              = gpu_asset(asset_id, (gpu_mesh_t *[]){ mesh }, 1, self->arena);
 
-    gpu_mesh_t *const gpu_mesh = arena_store(
-        self->arena, 
-        &(gpu_mesh_t) {
-            .vao_id = vao.id,
-            .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_count,
-            .index_type = ebo.index_type
-        },
-        sizeof(gpu_mesh_t)
-    );
-
-    gpu_asset_t *const gpu_asset = arena_store(
-        self->arena, 
-        &(gpu_asset_t) {
-            .asset_id = asset_id,
-            .meshes = {
-            .count = 1,
-                .data = gpu_mesh
-            }
-        },
-        sizeof(gpu_asset_t));
-
-    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
+    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, asset);
 }
 
-//TODO: check whether its possible to have the model support multiple meshes i.e meshes_count > 1
-//what are the implications of it and understand any gotchas glb might give us for it. This is required
-//i think for cloth to render with merging with main manequin mesh
-INTERNAL u32 assetmanager__internal__upload_mesh_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_mesh *mesh)
+INTERNAL gpu_mesh_t * assetmanager__internal__upload_mesh_primitives_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_mesh *mesh);
+
+INTERNAL void assetmanager__internal__upload_model_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_data *model)
 {
-    gpu_asset_t *const gpu_asset = arena_store(
-        self->arena, 
-        &(gpu_asset_t) {
-            .asset_id = asset_id,
-            .meshes = {
-                .count = mesh->primitives_count, 
-                .data = arena_reserve(self->arena, sizeof(gpu_mesh_t) * mesh->primitives_count),
-            },
-        },
-        sizeof(gpu_asset_t)
-    );
+    gpu_asset_t *gpuasset = gpu_asset(asset_id, NULL, model->meshes_count, self->arena);
+    for (u16 mesh_idx = 0; mesh_idx < model->meshes_count; mesh_idx++) 
+    {
+        gpuasset->meshes.data[mesh_idx] = assetmanager__internal__upload_mesh_primitives_to_gpu(self, asset_id, &model->meshes[mesh_idx]);
+    }
+
+    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpuasset);
+}
+
+INTERNAL gpu_mesh_t * assetmanager__internal__upload_mesh_primitives_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_mesh *mesh)
+{
+    gpu_mesh_t * gpumesh = gpu_mesh(NULL, mesh->primitives_count, self->arena);
 
     for (u8 mesh_idx = 0; mesh_idx < mesh->primitives_count; mesh_idx++)
     {
@@ -1131,7 +1043,7 @@ INTERNAL u32 assetmanager__internal__upload_mesh_to_gpu(assetmanager_t *const se
             + (joints_accessor   ? sizeof(u32[4]) : 0);
 
         const u32 buffer_size = (u32)(
-            cgltf_primitive_find_attribute(&mesh->primitives[mesh_idx], cgltf_attribute_type_position)->count * vtx_stride
+            cgltf_primitive_find_attribute(&mesh->primitives[mesh_idx], cgltf_attribute_type_position, 0)->count * vtx_stride
         );
 
         u8 *const buffer = (void *)stackarena_push(global_runtimectx->stackarena, buffer_size);
@@ -1280,25 +1192,11 @@ INTERNAL u32 assetmanager__internal__upload_mesh_to_gpu(assetmanager_t *const se
 
         vao_unbind();
 
-        gpu_asset->meshes.data[mesh_idx] = (gpu_mesh_t){
-            .vao_id = vao.id,
-            .index_count = ebo.indices_count,
-            .attribute_count = vbo.internals.attribute_count,
-            .index_type = ebo.index_type,
-        };
-
+        gpumesh->primitives[mesh_idx] = gpu_mesh_primtive(vao, vbo, ebo, vtx_stride, self->arena);
         stackarena_pop(global_runtimectx->stackarena);
     }
 
-    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpu_asset);
-    return asset_id;
-}
-
-u32 assetmanager_load_mesh_to_gpu(assetmanager_t *const self, const cgltf_mesh *mesh)
-{
-    const u32 asset_id = ++self->internal.asset_idx_generator;
-    assetmanager__internal__upload_mesh_to_gpu(self, asset_id, mesh);
-    return asset_id;
+    return gpumesh;
 }
 
 #endif

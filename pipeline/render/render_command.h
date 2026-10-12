@@ -1,5 +1,6 @@
 #pragma once
 #include "poglib/util/asset.h"
+#include "poglib/util/assetmanager/gpu.h"
 #include <poglib/gfx/glrenderer3d.h>
 
 //NOTE: instance types are to be aligned to 16 bytes for vec3 and vec4 - so better to use vec4
@@ -41,7 +42,7 @@ struct rendercommand_t {
         union {
             rendercommand_primitive_triangle_t  triangle;
             rendercommand_primitive_line_t      line;
-            gpu_mesh_t                          *mesh;
+            gpu_mesh_primitive_t                *primitive;
         } data;
     } vtx;
 

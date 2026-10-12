@@ -35,7 +35,7 @@ INTERNAL void colliderbatchqueue__internal__update_jolts_user_data(const ecs_com
 
     JPH_BodyInterface_SetUserData(
         global_joltphysics_instance->bodyinterface,
-        collider->internal.body_ids[mesh_idx],
+        collider->type == ECS_COLLIDER_RIGIDBODY ? collider->body.rigid.body_ids[mesh_idx] : collider->body.soft.bodyid,
         (u64)arena_store(arena, &userdata, sizeof(userdata))
     );
 }
@@ -118,7 +118,7 @@ INTERNAL void colliderbatchqueue__internal__add_model_shape(ecs_component_collid
         );
         JPH_BodyCreationSettings_SetIsSensor(body_settings, collider->object_layer_type == POGGEN_RESERVED_OBJECT_LAYER_TYPE);
 
-        collider->internal.body_ids[mesh_idx] = JPH_BodyInterface_CreateAndAddBody(
+        collider->body.rigid.body_ids[mesh_idx] = JPH_BodyInterface_CreateAndAddBody(
             global_joltphysics_instance->bodyinterface, 
             body_settings, 
             collider->motion_type == JPH_MotionType_Static ? JPH_Activation_DontActivate : JPH_Activation_Activate
@@ -133,19 +133,19 @@ INTERNAL void colliderbatchqueue__internal__add_model_shape(ecs_component_collid
 INTERNAL void colliderbatchqueue__internal__add_softbody_shape(ecs_component_collider_t *const collider, arena_t *const arena)
 {
     JPH_SoftBodySharedSettings* shared_settings = JPH_SoftBodySharedSettings_Create();
-    const u32 vertex_count      = collider->dim.softbody.vtx.count;
-    const u32 triangle_count    = collider->dim.softbody.idx.count / 3;
-    const f32 *positions        = (f32 *)collider->dim.softbody.vtx.data;
-    const u32 *indices          = collider->dim.softbody.idx.data;
+    const u32 vertex_count      = collider->dim.mesh.vtx.count;
+    const u32 triangle_count    = collider->dim.mesh.idx.count / 3;
+    const vec4s *positions      = (vec4s *)collider->dim.mesh.vtx.data;
+    const u32 *indices          = collider->dim.mesh.idx.data;
 
     for (u32 index = 0; index < vertex_count; ++index) 
     {
         JPH_SoftVertex v;
-        v.position.x = positions[index * 3 + 0] * collider->internal.scale.x;
-        v.position.y = positions[index * 3 + 1] * collider->internal.scale.y;
-        v.position.z = positions[index * 3 + 2] * collider->internal.scale.z;
-        v.velocity = (JPH_Vec3){0, 0, 0};
-        v.invMass = 1.0f;
+        v.position.x = positions[index].x * collider->internal.scale.x;
+        v.position.y = positions[index].y * collider->internal.scale.y;
+        v.position.z = positions[index].z * collider->internal.scale.z;
+        v.invMass    = positions[index].w;
+        v.velocity   = (JPH_Vec3){0, 0, 0};
 
         JPH_SoftBodySharedSettings_AddVertex(shared_settings, &v);
     }
@@ -160,7 +160,7 @@ INTERNAL void colliderbatchqueue__internal__add_softbody_shape(ecs_component_col
         JPH_SoftBodySharedSettings_AddFace(shared_settings, &face);
     }
 
-    JPH_SoftBodySharedSettings_CreateConstraints(shared_settings, 0.01f, JPH_SoftBodyBendType_Distance);
+    JPH_SoftBodySharedSettings_CreateConstraints(shared_settings, 0.0f, JPH_SoftBodyBendType_Dihedral);
     JPH_SoftBodySharedSettings_Optimize(shared_settings);
 
     JPH_Vec3 pos = {collider->internal.position.x, collider->internal.position.y, collider->internal.position.z};
@@ -174,7 +174,7 @@ INTERNAL void colliderbatchqueue__internal__add_softbody_shape(ecs_component_col
     JPH_SoftBodyCreationSettings_SetVertexRadius(creation_settings, 0.01f);
     JPH_SoftBodyCreationSettings_SetPressure(creation_settings, 0.0f);
 
-    collider->internal.body_ids[0] = JPH_BodyInterface_CreateAndAddSoftBody(
+    collider->body.soft.bodyid = JPH_BodyInterface_CreateAndAddSoftBody(
         global_joltphysics_instance->bodyinterface,
         creation_settings,
         JPH_Activation_Activate
@@ -253,6 +253,12 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
         const bool optimize_broadphase = (diff_motion_type && prev_motion_type == JPH_MotionType_Static) 
             || ((idx == self->array_buffer.top) && prev_motion_type == JPH_MotionType_Static);
 
+        if (collider->type == ECS_COLLIDER_SOFTBODY) {
+            colliderbatchqueue__internal__add_softbody_shape(collider, self->arena);
+            prev_motion_type  = collider->motion_type;
+            continue;
+        }
+
         switch(collider->shape_type)
         {
             case COLLIDER_SHAPE_TYPE_CUBE:
@@ -321,19 +327,13 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                 prev_motion_type  = collider->motion_type;
                 continue;
             break;
-            case COLLIDER_SHAPE_TYPE_SOFTBODY:
-                colliderbatchqueue__internal__add_softbody_shape(collider, self->arena);
-                prev_motion_type  = collider->motion_type;
-                continue;
-            break;
-
             default: eprint("Collider shape type not accounted for here");
         }
 
 #ifdef DEBUG
         //NOTE: having this is very confusing, if scales are changed for CUBES during edit - new shape is generated but for 
         //CAPSULE and SPHERE is scaled up so for those alone we only need the original shape
-        collider->internal.shapes[0] = shape;
+        collider->body.rigid.shapes[0] = shape;
 #endif
 
         switch(collider->motion_type) {
@@ -363,7 +363,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
             case JPH_MotionType_Dynamic:
                 ASSERT(body_settings);
 
-                collider->internal.body_ids[0] = JPH_BodyInterface_CreateAndAddBody(
+                collider->body.rigid.body_ids[0] = JPH_BodyInterface_CreateAndAddBody(
                     global_joltphysics_instance->bodyinterface, 
                     body_settings, 
                     collider->motion_type == JPH_MotionType_Static ? JPH_Activation_DontActivate : JPH_Activation_Activate
@@ -372,7 +372,7 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                 JPH_BodyCreationSettings_Destroy(body_settings);
             break;
             case JPH_MotionType_Kinematic:
-                collider->internal.kinematicbody = JPH_CharacterVirtual_Create(
+                collider->body.rigid.kinematicbody = JPH_CharacterVirtual_Create(
                     &settings,
                     (JPH_RVec3 *)&collider->internal.position,
                     (JPH_Quat *) &collider->internal.orientation,
