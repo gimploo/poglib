@@ -47,6 +47,7 @@ typedef struct {
     f32 duration;
 } animation_t;
 
+
 // -----------------------------------------------------------------------------
 // Helper: Fetch total animation duration by checking keyframe timestamps
 // -----------------------------------------------------------------------------
@@ -245,13 +246,15 @@ glmodel_t glmodel_load_level_from_file_init(const str_t filepath, arena_t *const
     }
     file_destroy(&file);
 
+    
+
     logging("Loaded model file `"STR_FMT"`", STR_ARG(filepath));
 
     return (glmodel_t) {
         .data = data_buffer,
         .anim_state_machine = {0},
         .world_matrices = NULL,
-        .uJoints_palette = NULL
+        .uJoints_palette = NULL,
     };
 }
 
@@ -564,3 +567,4 @@ void glmodel_update(glmodel_t *self, f32 dt)
         glmodel__internal__compute_joint_matrices_s(data, skin, self->world_matrices, self->uJoints_palette);
     }
 }
+

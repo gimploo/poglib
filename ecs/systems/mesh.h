@@ -49,7 +49,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
         const ecs_component_light_t *light = view.entity_cmp_data[ECS_CMP_LIGHT_IDX];
         if (light && !global_workbench->is_active) continue;
 
-        gltexturelist_t textures = ecs_material_get_texturelist_for_mesh(material, 0);
+        gltexturelist_t textures = ecs_material_get_texturelist_for_mesh(material, mesh->primitive_idx);
 
         //NOTE: resolve texture & uv
         const ecs_component_sprite_t *sprite_cmp = view.entity_cmp_data[ECS_CMP_SPRITE_IDX];
@@ -83,7 +83,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                     .translation = (vec4f_t) { transform->position.x, transform->position.y, transform->position.z, 0.f },
                     .scale = (vec4f_t) { transform->scale.x, transform->scale.y,  transform->scale.z,  0.f },
                     .orientation = *(vec4f_t *)&transform->orientation,
-                    .color = is_editor_selected ? COLOR_RED : ecs_material_get_basecolor_for_mesh(material, 0),
+                    .color = is_editor_selected ? COLOR_RED : ecs_material_get_basecolor_for_mesh(material, mesh->primitive_idx),
                     .uv = uv,
                 },
                 .size = sizeof(rendercommand_instance_primitive_mesh_t)

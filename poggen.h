@@ -194,7 +194,7 @@ void poggen_destroy(poggen_t *const self)
     ASSERT(self);
 
     hashtable_iterator(&self->scenes, tableentry) {
-        hashtable_entry_t *entry = tableentry;
+        hashtable_entry_t *entry = (hashtable_entry_t *)tableentry;
         scene__internal_destroy(entry->value);
         mem_free(entry->value, sizeof(scene_t));
     }

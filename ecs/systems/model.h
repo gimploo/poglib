@@ -55,15 +55,15 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                             .translation = (vec4f_t) { transform->position.x, transform->position.y, transform->position.z, 0.f },
                             .scale = (vec4f_t) { transform->scale.x, transform->scale.y,  transform->scale.z,  0.f },
                             .orientation = *(vec4f_t *)&transform->orientation,
-                            .color = is_editor_selected ? COLOR_RED : ecs_material_get_basecolor_for_mesh(material, cmp_model->mesh_idx),
+                            .color = is_editor_selected ? COLOR_RED : ecs_material_get_basecolor_for_mesh(material, primitive_idx),
                         },
                     },
                     .enable_wireframe = false,
                     .material = {
-                        .texture = ecs_material_get_texturelist_for_mesh(material, cmp_model->mesh_idx),
+                        .texture = ecs_material_get_texturelist_for_mesh(material, primitive_idx),
                         .shader = {
                             .data = (glshader_t *)shader,
-                            .uniforms = ecs_material_resolve_per_mesh_uniforms(material, shader, cmp_model->mesh_idx),
+                            .uniforms = ecs_material_resolve_per_mesh_uniforms(material, shader, primitive_idx),
                         }
                     }
                 }

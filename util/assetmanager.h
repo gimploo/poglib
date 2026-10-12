@@ -80,7 +80,7 @@ INTERNAL void assetmanager__internal_add_asset_meta_data(assetmanager_t *const s
 INTERNAL void assetmanager__internal_write_uniformlocs_to_file(const hashtable_entry_t *const entry, buffer_t *const buffer);
 INTERNAL void assetmanager__internal__notify(const taskparams_t params);
 INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *const self);
-INTERNAL void assetmanager__internal__upload_model_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_data *model);
+INTERNAL gpu_asset_t * assetmanager__internal__upload_model_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_data *model);
 
 assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
 {
@@ -166,6 +166,30 @@ void assetmanager__internal_thread_callback_load_glmodel(const taskparams_t para
     mpsc_queue_put(queue, storage.buffer.raw_data);
 }
 
+INTERNAL slot_t assetmanager__internal__glmodel_load_materials(assetmanager_t *self, cgltf_data *data)
+{
+    slot_t material_assetid_lookup = slot_init(data->materials_count, sizeof(u32), self->arena);
+    for (u32 material_idx = 0; material_idx < data->materials_count; material_idx++)
+    {
+        cgltf_texture_view base_color_texture = data->materials[material_idx].pbr_metallic_roughness.base_color_texture;
+        if (base_color_texture.texture)
+        {
+            const str_t label = str_from_cstr(
+                base_color_texture.texture->image->name,
+                strlen(base_color_texture.texture->image->name)
+            );
+            const buffer_t raw_data = {
+                .raw_data = (u8 *)cgltf_buffer_view_data(base_color_texture.texture->image->buffer_view),
+                .size = base_color_texture.texture->image->buffer_view->size,
+            };
+            //NOTE: is_srgb is TRUE for base_color_texture, specular and emmisive
+            const u32 asset_id = assetmanager_load_texture_from_memory(self, raw_data, label, base_color_texture.texture->sampler, true);
+            slot_insert(&material_assetid_lookup, material_idx, &asset_id, sizeof(asset_id));
+        }
+    }
+    return material_assetid_lookup;
+}
+
 u32 assetmanager_load_model(assetmanager_t *const self, const str_t filepath)
 {
     const u32 asset_id = ++self->internal.asset_idx_generator;
@@ -183,8 +207,8 @@ u32 assetmanager_load_model(assetmanager_t *const self, const str_t filepath)
 
     *((glmodel_t *)response->resource) = model;
 
-    assetmanager__internal__upload_model_to_gpu(self, asset_id, model.data);
-
+    gpu_asset_t *gpu_asset = assetmanager__internal__upload_model_to_gpu(self, asset_id, model.data);
+    gpu_asset->material_assetid_lookup = assetmanager__internal__glmodel_load_materials(self, model.data);
     return asset_id;
 }
 
@@ -329,8 +353,11 @@ INTERNAL void assetmanager__internal__process_loaded_assets(assetmanager_t *cons
 
         switch(task->type)
         {
-            case ASSET_TYPE_MODEL:
-                assetmanager__internal__upload_model_to_gpu(self, task->asset_id, ((glmodel_t *)task->processed_data)->data);
+            case ASSET_TYPE_MODEL: {
+
+                gpu_asset_t *const gpu_asset        = assetmanager__internal__upload_model_to_gpu(self, task->asset_id, ((glmodel_t *)task->processed_data)->data);
+                gpu_asset->material_assetid_lookup  = assetmanager__internal__glmodel_load_materials(self, ((glmodel_t *)task->processed_data)->data);
+
                 queue_put(
                     &self->internal.notification_queue, 
                     &(asset_loaded_event_t) { 
@@ -343,7 +370,7 @@ INTERNAL void assetmanager__internal__process_loaded_assets(assetmanager_t *cons
                     }, 
                     sizeof(asset_loaded_event_t)
                 );
-            break;
+                                   } break;
             case ASSET_TYPE_MUSIC_SFX:
                 queue_put(
                     &self->internal.notification_queue, 
@@ -947,7 +974,7 @@ INTERNAL void assetmanager__internal__upload_capsule_to_gpu(assetmanager_t *cons
 INTERNAL gpu_mesh_t *           assetmanager__internal__upload_mesh_to_gpu(assetmanager_t *const self, const cgltf_mesh *mesh, const bool is_dynamic);
 INTERNAL gpu_mesh_primitive_t * assetmanager__internal__upload_mesh_primitive_to_gpu(const cgltf_primitive *primitive, const bool is_dynamic, arena_t *arena);
 
-INTERNAL void assetmanager__internal__upload_model_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_data *model)
+INTERNAL gpu_asset_t * assetmanager__internal__upload_model_to_gpu(assetmanager_t *const self, const u32 asset_id, const cgltf_data *model)
 {
     gpu_asset_t *gpuasset = gpu_asset(asset_id, NULL, model->meshes_count, self->arena);
     for (u16 mesh_idx = 0; mesh_idx < model->meshes_count; mesh_idx++) 
@@ -955,7 +982,7 @@ INTERNAL void assetmanager__internal__upload_model_to_gpu(assetmanager_t *const 
         gpuasset->meshes.data[mesh_idx] = assetmanager__internal__upload_mesh_to_gpu(self, &model->meshes[mesh_idx], false);
     }
 
-    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpuasset);
+    return hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, gpuasset)->value;
 }
 
 INTERNAL gpu_mesh_primitive_t * assetmanager__internal__upload_mesh_primitive_to_gpu(const cgltf_primitive *primitive, const bool is_dynamic, arena_t *arena)

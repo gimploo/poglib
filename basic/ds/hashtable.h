@@ -69,7 +69,7 @@ hashtable_t     hashtable_init_with_data(
                     const u32 count
                 );
 
-void *          hashtable_insert_by_value(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr);
+hashtable_entry_t * hashtable_insert_by_value(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr);
 
 #define         hashtable_iterator(TABLE, ENTRY)\
                 slot_iterator(&(TABLE)->entries, (ENTRY))
@@ -159,7 +159,7 @@ const void * hashtable__internal_get_value_based_on_storage(hashtable_t * const 
         : arena_store(table->internal.valuepool, value_addr, table->internal.valuetype.size);
 }
 
-void * hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr)
+hashtable_entry_t * hashtable__internal_insert(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr)
 {
     if (table->entries.len == slot_get_capacity(&table->entries)) {
         eprint("Exceeded limit");
@@ -345,7 +345,7 @@ bool hashtable_has_key(const hashtable_t *table, const hashtable_key_t key)
     }
 }
 
-void * hashtable_insert_by_value(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr)
+hashtable_entry_t * hashtable_insert_by_value(hashtable_t * const table, const hashtable_key_t key, const void *const value_addr)
 {
     ASSERT(table->internal.valuetype.type == HT_STORAGE_BY_VALUE);
     return hashtable__internal_insert(table, key, value_addr);

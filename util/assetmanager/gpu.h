@@ -25,6 +25,7 @@ typedef struct {
         u32 count;
         gpu_mesh_t **data; 
     } meshes;
+    slot_t material_assetid_lookup;
 } gpu_asset_t;
 
 
