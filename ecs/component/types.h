@@ -7,6 +7,7 @@
 #include <poglib/gfx/gl/shader.h>
 #include <poglib/gfx/gl/texture_types.h>
 #include <poglib/gfx/model/glmodel.h>
+#include "joltc.h"
 
 #define ECS_CMP_INVALID_IDX -1
 
