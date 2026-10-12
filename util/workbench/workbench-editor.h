@@ -2,7 +2,6 @@
 #include <poglib/ecs.h>
 #include "poglib/basic/runtime-ctx.h"
 #include "poglib/ecs/component/types.h"
-#include "poglib/external/joltc/include/joltc.h"
 #include "poglib/gui.h"
 #include "poglib/math/shapes.h"
 #include "poglib/physics/jolt-wrapper.h"

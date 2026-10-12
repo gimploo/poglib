@@ -1,7 +1,6 @@
 #pragma once
 #include "poglib/pipeline/render/render_queue.h"
 #include "poglib/util/glcamera.h"
-#include <poglib/external/joltc/include/joltc.h>
 #include <poglib/util/workbench/common.h>
 
 INTERNAL vec4s jph_color_to_vec4s(const JPH_Color c)

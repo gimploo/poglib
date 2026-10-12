@@ -3,7 +3,6 @@
 #include "../component/types.h"
 #include "poglib/application.h"
 #include "poglib/ecs/systems/simulation.h"
-#include "poglib/external/joltc/include/joltc.h"
 #include "poglib/physics/jolt-wrapper.h"
 #include "../component.h"
 #include "poglib/poggen.h"

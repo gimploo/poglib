@@ -3,7 +3,6 @@
 #include "poglib/util/asset.h"
 #include <poglib/basic.h>
 #include <poglib/math.h>
-#include <poglib/external/joltc/include/joltc.h>
 #include <poglib/util/glcamera.h>
 #include <poglib/gfx/gl/shader.h>
 #include <poglib/gfx/gl/texture_types.h>

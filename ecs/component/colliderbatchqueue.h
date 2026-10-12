@@ -145,7 +145,7 @@ INTERNAL void colliderbatchqueue__internal__add_softbody_shape(ecs_component_col
         v.position.y = positions[index].y * collider->internal.scale.y;
         v.position.z = positions[index].z * collider->internal.scale.z;
         v.invMass    = positions[index].w;
-        v.velocity   = (JPH_Vec3){0, 0, 0};
+        v.velocity   = (JPH_Vec3){0.0, 0.0, 0.0};
 
         JPH_SoftBodySharedSettings_AddVertex(shared_settings, &v);
     }

@@ -1,7 +1,7 @@
 #pragma once
 #include <poglib/basic.h>
 #include <poglib/math.h>
-#include <poglib/external/joltc/include/joltc.h>
+#include "joltc.h"
 #include "poglib/math/la.h"
 #include "poglib/util/workbench/common.h"
 

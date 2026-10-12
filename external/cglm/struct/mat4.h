@@ -456,4 +456,29 @@ glms_mat4_rmc(vec4s r, mat4s m, vec4s c) {
   return glm_mat4_rmc(r.raw, m.raw, c.raw);
 }
 
+CGLM_INLINE mat4s glms_mat4_add(mat4s a, mat4s b) 
+{
+    mat4s r;
+    r.raw[0][0] = a.raw[0][0] + b.raw[0][0];
+    r.raw[0][1] = a.raw[0][1] + b.raw[0][1];
+    r.raw[0][2] = a.raw[0][2] + b.raw[0][2];
+    r.raw[0][3] = a.raw[0][3] + b.raw[0][3];
+
+    r.raw[1][0] = a.raw[1][0] + b.raw[1][0];
+    r.raw[1][1] = a.raw[1][1] + b.raw[1][1];
+    r.raw[1][2] = a.raw[1][2] + b.raw[1][2];
+    r.raw[1][3] = a.raw[1][3] + b.raw[1][3];
+
+    r.raw[2][0] = a.raw[2][0] + b.raw[2][0];
+    r.raw[2][1] = a.raw[2][1] + b.raw[2][1];
+    r.raw[2][2] = a.raw[2][2] + b.raw[2][2];
+    r.raw[2][3] = a.raw[2][3] + b.raw[2][3];
+
+    r.raw[3][0] = a.raw[3][0] + b.raw[3][0];
+    r.raw[3][1] = a.raw[3][1] + b.raw[3][1];
+    r.raw[3][2] = a.raw[3][2] + b.raw[3][2];
+    r.raw[3][3] = a.raw[3][3] + b.raw[3][3];
+    return r;
+}
+
 #endif /* cglms_mat4s_h */
