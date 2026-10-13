@@ -183,10 +183,10 @@ void poggen_update(poggen_t *const self)
 
     current_scene->__input(current_scene, dt);
 
+    scene__internal_update(current_scene, dt);
+
     if (self->systems.physics.phy_simulation_started)
         joltphysics_update(self->systems.physics.instance, dt);
-
-    scene__internal_update(current_scene, dt);
 }
 
 void poggen_destroy(poggen_t *const self)

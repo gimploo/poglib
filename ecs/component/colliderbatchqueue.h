@@ -163,8 +163,10 @@ INTERNAL void colliderbatchqueue__internal__add_softbody_shape(ecs_component_col
     JPH_SoftBodySharedSettings_CreateConstraints(shared_settings, 0.0f, JPH_SoftBodyBendType_Dihedral);
     JPH_SoftBodySharedSettings_Optimize(shared_settings);
 
-    JPH_Vec3 pos = {collider->internal.position.x, collider->internal.position.y, collider->internal.position.z};
-    JPH_Quat rot = *(JPH_Quat *)&collider->internal.orientation;
+    //JPH_Vec3 pos = {collider->internal.position.x, collider->internal.position.y, collider->internal.position.z};
+    //JPH_Quat rot = *(JPH_Quat *)&collider->internal.orientation;
+    JPH_Vec3 pos = {0};
+    JPH_Quat rot = GLM_QUAT_IDENTITY_INIT;
 
     JPH_SoftBodyCreationSettings *creation_settings = JPH_SoftBodyCreationSettings_Create2(
         shared_settings, &pos, &rot, collider->object_layer_type

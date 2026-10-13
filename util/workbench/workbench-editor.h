@@ -63,7 +63,7 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
     {
         const vec3f_t ray_dir = glms_vec3_scale(dir, 100000.0f);
         u32 picked = 0;
-        joltraycast_results_t hits = joltphysics_raycastall(cam->position, ray_dir);
+        joltraycast_results_t hits = joltphysics_raycastall(cam->position, ray_dir, NULL);
         if (hits.count == 0) return;
 
         for (i32 idx = (i32)(hits.count - 1); idx >= 0; idx--)

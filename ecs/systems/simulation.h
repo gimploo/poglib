@@ -1,6 +1,4 @@
 #pragma once
-#include "poglib/ecs/common.h"
-#include "poglib/ecs/component.h"
 #include <poglib/poggen.h>
 
 void ecs_collider__internal__softbody_update(gpu_mesh_primitive_t *gpu_mesh_primitive, ecs_component_collider_t *collider, ecs_component_transform_t *transform)

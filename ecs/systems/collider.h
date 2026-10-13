@@ -30,6 +30,7 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
             if (!gpuasset) continue;
 
             gpu_mesh_primitive_t *gpumesh = gpuasset->meshes.data[mesh->mesh_idx]->primitives[mesh->primitive_idx];
+            ASSERT(gpumesh);
             ecs_collider__internal__softbody_update(gpumesh, collider, transform);
 
             continue;

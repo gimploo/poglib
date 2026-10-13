@@ -99,10 +99,10 @@ void                                joltphysics_start_simulation(joltphysics_t *
 
 void                                joltphysics_update(joltphysics_t *self, const f32 dt);
 
-joltraycast_result_t                joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir);
-joltraycast_results_t               joltphysics_raycastall(const vec3f_t ray_pos, const vec3f_t dir);
-joltshapecast_result_t              joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius);
-joltshapecast_result_t              joltphysics_capsule_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius, const f32 halfheight);
+joltraycast_result_t                joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir, const JPH_ObjectLayerFilter *objectlayer_filer);
+joltraycast_results_t               joltphysics_raycastall(const vec3f_t ray_pos, const vec3f_t dir, const JPH_ObjectLayerFilter *objectlayer_filter);
+joltshapecast_result_t             joltphysics_capsule_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius, const f32 halfheight, const JPH_ObjectLayerFilter* objectlayer_filter);
+joltshapecast_result_t             joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius, const JPH_ObjectLayerFilter *objectlayer_filter);
 
 void                           joltphysics_destroy(joltphysics_t *self);
 
@@ -358,7 +358,7 @@ INTERNAL void jph_narrowphasequery_castray3__internal__callback(void* context, c
     list->count++;
 }
 
-joltraycast_results_t joltphysics_raycastall(const vec3f_t ray_pos, const vec3f_t dir)
+joltraycast_results_t joltphysics_raycastall(const vec3f_t ray_pos, const vec3f_t dir, const JPH_ObjectLayerFilter *objectlayer_filter)
 {
     ASSERT(global_joltphysics_instance);
     const JPH_NarrowPhaseQuery *const npq = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
@@ -373,19 +373,19 @@ joltraycast_results_t joltphysics_raycastall(const vec3f_t ray_pos, const vec3f_
         jph_narrowphasequery_castray3__internal__callback,
         &list,
         NULL,
-        NULL,
+        objectlayer_filter,
         NULL,
         NULL
     );
     return list;
 }
 
-joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir)
+joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t dir, const JPH_ObjectLayerFilter *objectlayer_filer)
 {
     ASSERT(global_joltphysics_instance);
     const JPH_NarrowPhaseQuery *const npq = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
     JPH_RayCastResult hit = {0};
-    if (JPH_NarrowPhaseQuery_CastRay(npq, (JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, &hit, NULL, NULL, NULL)) {
+    if (JPH_NarrowPhaseQuery_CastRay(npq, (JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, &hit, NULL, objectlayer_filer, NULL)) {
 
         JPH_Vec3 hit_position = {0};
         JPH_RayCast_GetPointOnRay((JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, hit.fraction, &hit_position);
@@ -403,7 +403,7 @@ void joltphysics_shapecast__internal__JPH_CastShapeCollectorCallback(void* conte
     *(JPH_ShapeCastResult *)context = *result;
 }
 
-joltshapecast_result_t joltphysics_capsule_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius, const f32 halfheight)
+joltshapecast_result_t joltphysics_capsule_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius, const f32 halfheight, const JPH_ObjectLayerFilter* objectlayer_filter)
 {
     ASSERT(global_joltphysics_instance);
     const JPH_NarrowPhaseQuery *const npq   = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
@@ -426,7 +426,7 @@ joltshapecast_result_t joltphysics_capsule_shapecast(const vec3f_t ray_pos, cons
         joltphysics_shapecast__internal__JPH_CastShapeCollectorCallback, 
         &result,
         NULL,//const JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
-        NULL,//const JPH_ObjectLayerFilter* objectLayerFilter,
+        objectlayer_filter,
         NULL,//const JPH_BodyFilter* bodyFilter,
         NULL //const JPH_ShapeFilter* shapeFilter);
     );
@@ -463,7 +463,8 @@ joltshapecast_result_t joltphysics_capsule_shapecast(const vec3f_t ray_pos, cons
     };
 }
 
-joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius)
+
+joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const vec3f_t dir, const f32 radius, const JPH_ObjectLayerFilter *objectlayer_filter)
 {
     ASSERT(global_joltphysics_instance);
     const JPH_NarrowPhaseQuery *const npq   = JPH_PhysicsSystem_GetNarrowPhaseQuery(global_joltphysics_instance->physics_system);
@@ -486,7 +487,7 @@ joltshapecast_result_t joltphysics_sphere_shapecast(const vec3f_t ray_pos, const
         joltphysics_shapecast__internal__JPH_CastShapeCollectorCallback, 
         &result,
         NULL,//const JPH_BroadPhaseLayerFilter* broadPhaseLayerFilter,
-        NULL,//const JPH_ObjectLayerFilter* objectLayerFilter,
+        objectlayer_filter,
         NULL,//const JPH_BodyFilter* bodyFilter,
         NULL //const JPH_ShapeFilter* shapeFilter);
     );
