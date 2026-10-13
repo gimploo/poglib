@@ -65,12 +65,17 @@ void ecs_add_all_core_systems(ecs_t *const self)
         }
     );
 
+    //FIXME: reason - is that cloth simulation needs to happen after
+    //animation and before which had been eariler. since ecs_update happen
+    //after scene_update
+#if 0
     ecs_add_system(
         self, 
         (ecs_system_t) {
             .callback = ecs_system_animation
         }
     );
+#endif
 
     ecs_add_system(
         self, 

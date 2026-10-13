@@ -161,18 +161,80 @@ INTERNAL void colliderbatchqueue__internal__add_softbody_shape(ecs_component_col
     }
 
     JPH_SoftBodySharedSettings_CreateConstraints(shared_settings, 0.0f, JPH_SoftBodyBendType_Dihedral);
+
+    // Skin the kinematic (invMass == 0) vertices onto the player's joints so the animation drives
+    // them. Jolt interpolates the bind -> current skin position across the substeps, which avoids
+    // the positional discontinuity that injecting positions per-frame caused.
+    const u8    *joints       = collider->dim.mesh.vtx.joints;
+    const vec4s *skin_weights = collider->dim.mesh.vtx.weights;
+    const u32   joints_count  = collider->body.soft.joints_count;
+
+    if (joints && skin_weights && joints_count > 0)
+    {
+        // Jolt computes skin_matrix = jointMatrices[jointIndex] * invBind. The application passes
+        // the model-space glTF skin palette (joint * inverseBind) as jointMatrices, so an identity
+        // inverse bind here reproduces the exact same skin matrix.
+        const JPH_Mat4 identity_inv_bind = { .column = {
+            {1.0f, 0.0f, 0.0f, 0.0f},
+            {0.0f, 1.0f, 0.0f, 0.0f},
+            {0.0f, 0.0f, 1.0f, 0.0f},
+            {0.0f, 0.0f, 0.0f, 1.0f},
+        }};
+
+        for (u32 joint = 0; joint < joints_count; ++joint)
+        {
+            JPH_SoftInvBind inv_bind;
+            inv_bind.jointIndex = joint;
+            inv_bind.invBind    = identity_inv_bind;
+            JPH_SoftBodySharedSettings_AddInvBind(shared_settings, &inv_bind);
+        }
+
+        for (u32 vtx_idx = 0; vtx_idx < vertex_count; ++vtx_idx)
+        {
+            if (positions[vtx_idx].w != 0.0f) continue;   // only hard-skin the pinned vertices
+
+            JPH_SoftSkinned skinned = {0};
+            skinned.vertex = vtx_idx;
+
+            float total_weight = 0.0f;
+            for (u32 k = 0; k < 4; ++k)
+            {
+                const float weight = ((const float *)&skin_weights[vtx_idx])[k];
+                skinned.weights[k].invBindIndex = joints[vtx_idx * 4 + k];
+                skinned.weights[k].weight       = weight;
+                total_weight += weight;
+            }
+
+            // Jolt stops reading at the first zero weight. Guarantee the vertex still skins to
+            // something rather than collapsing onto joint 0 / the origin.
+            //FIXME: this never hit during my run, so what is the point in having this here for?
+            if (total_weight <= 0.0f) {
+                skinned.weights[0].invBindIndex = 0;
+                skinned.weights[0].weight       = 1.0f;
+
+            }
+
+            skinned.maxDistance      = 0.0f;    // 0 => hard skin to the animated position
+            skinned.backStopDistance = 0.0f;    // >= maxDistance => backstop disabled
+            skinned.backStopRadius   = 0.0f;
+
+            JPH_SoftBodySharedSettings_AddSkinnedConstraint(shared_settings, &skinned);
+        }
+
+        JPH_SoftBodySharedSettings_CalculateSkinnedConstraintNormals(shared_settings);
+    }
+
+    JPH_SoftBodySharedSettings_CalculateBendConstraintConstants(shared_settings);
     JPH_SoftBodySharedSettings_Optimize(shared_settings);
 
-    //JPH_Vec3 pos = {collider->internal.position.x, collider->internal.position.y, collider->internal.position.z};
-    //JPH_Quat rot = *(JPH_Quat *)&collider->internal.orientation;
-    JPH_Vec3 pos = {0};
-    JPH_Quat rot = GLM_QUAT_IDENTITY_INIT;
+    const JPH_Vec3 pos = {0};
+    const JPH_Quat rot = GLM_QUAT_IDENTITY_INIT;
 
     JPH_SoftBodyCreationSettings *creation_settings = JPH_SoftBodyCreationSettings_Create2(
         shared_settings, &pos, &rot, collider->object_layer_type
     );
     JPH_SoftBodyCreationSettings_SetNumIterations(creation_settings, 20);
-    JPH_SoftBodyCreationSettings_SetUpdatePosition(creation_settings, true);
+    JPH_SoftBodyCreationSettings_SetUpdatePosition(creation_settings, false);
     JPH_SoftBodyCreationSettings_SetVertexRadius(creation_settings, 0.01f);
     JPH_SoftBodyCreationSettings_SetPressure(creation_settings, 0.0f);
 

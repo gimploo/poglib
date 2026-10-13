@@ -31,6 +31,36 @@ void ecs_system_collider(ecs_componentmanager_t *const cmp_manager, const ecs_sy
 
             gpu_mesh_primitive_t *gpumesh = gpuasset->meshes.data[mesh->mesh_idx]->primitives[mesh->primitive_idx];
             ASSERT(gpumesh);
+
+            //NOTE: a soft body is placed in the world (and collided) purely by its center of mass, so
+            //when it follows another entity we must re-assert that transform AFTER the follower has
+            //moved this frame. The entity pool processes the player before the cloth, so by the time we
+            //get here the player transform is the freshly simulated one - the readback below then uses
+            //the exact transform the model renders with, instead of lagging one character update.
+
+            //TODO: see whether this simulation step can rearranged to happen after the collider system,
+            //and maybe we could bring this behavior at the App level than keep it here. Since the req
+            //to bring it here was a P(n-1) mis step of the cloth position from the attached player position (Pn)
+            const u32 follow_entity_id = collider->body.soft.follow_entity_id;
+            if (follow_entity_id && follow_entity_id != entry->entity_id) {
+                const ecs_component_transform_t *follow_transform = ecs_componentmanager__internal__query_components(
+                    cmp_manager, follow_entity_id, ECS_CMP_TRANSFORM
+                ).entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
+
+                if (follow_transform) {
+                    JPH_BodyInterface_SetPositionAndRotation(
+                        global_joltphysics_instance->bodyinterface,
+                        collider->body.soft.bodyid,
+                        (JPH_RVec3 *)&follow_transform->position,
+                        (JPH_Quat *)&follow_transform->orientation,
+                        JPH_Activation_Activate
+                    );
+
+                    transform->position    = follow_transform->position;
+                    transform->orientation = follow_transform->orientation;
+                }
+            }
+
             ecs_collider__internal__softbody_update(gpumesh, collider, transform);
 
             continue;

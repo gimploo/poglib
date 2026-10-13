@@ -182,6 +182,8 @@ typedef union {
         struct {
             u32 count;
             vec4s *data;
+            u8    *joints;      // 4 joint indices per vertex (glTF JOINTS_0)
+            vec4s *weights;     // 4 skin weights per vertex (glTF WEIGHTS_0)
         } vtx;
         struct {
             u32 count;
@@ -197,6 +199,8 @@ typedef union {
 
 typedef struct {
     JPH_BodyID bodyid;
+    u32 joints_count;       // number of joints in the skin driving this soft body
+    u32 follow_entity_id;   // entity whose transform drives placement/collision (0 = follows itself)
 } ecs_component_collider_softbody_t;
 
 typedef struct {
@@ -255,9 +259,6 @@ typedef struct ecs_component_animation_t ecs_component_animation_t;
 struct ecs_component_animation_t {
 
     u32 asset_id;
-    struct {
-        glmodel_t *model;
-    } internal;
 };
 
 /* =========================== MISC ==========================================*/

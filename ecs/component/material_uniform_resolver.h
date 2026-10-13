@@ -98,9 +98,9 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
 
             case ECS_UNIFORM_MODEL_JOINTS:
                 if (animation) {
-                    if (animation->internal.model) {
-                        value.mat4s.count = animation->internal.model->data->skins[0].joints_count;
-                        value.mat4s.data = animation->internal.model->uJoints_palette;
+                    if (model_cmp->internal.model) {
+                        value.mat4s.count = model_cmp->internal.model->data->skins[0].joints_count;
+                        value.mat4s.data = model_cmp->internal.model->uJoints_palette;
                     }
                 } else {
                     if (model_cmp && model_cmp->internal.model && model_cmp->internal.model->uJoints_palette) {
