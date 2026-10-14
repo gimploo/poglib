@@ -23,6 +23,7 @@ void            workbench_destroy(void);
 #define WORKBENCH_CAMERA_DEFAULT_ROTATION (vec2f_t){0}
 
 INTERNAL void workbench__internal__show_colliders(workbench_t *const self);
+INTERNAL void workbench__internal__reload_shader(const u32 shader_asset_id);
 
 INTERNAL void workbench__internal__worldcamera_input_handler(ecs_component_input_state_t *const state, const u16 bitmask, const f32 dt)
 {
@@ -419,6 +420,13 @@ workbench_t * workbench_init(arena_t *const arena)
                         .modifier = SDL_SCANCODE_LALT,
                         .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
                     }
+                },
+                [WORKBENCH_ACTION_TYPE_RELOAD_SHADER] = {
+                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
+                    .sdl_keyboard_key = {
+                        .main = SDL_SCANCODE_R,
+                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
+                    }
                 }
             },
         },
@@ -752,6 +760,13 @@ void workbench_update(const f32 dt)
         list_clear(&global_workbench->persist_rendercommands);
     }
 
+    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_RELOAD_SHADER)) {
+        //FIXME: caching the shader for now - ideally its better to check which files were modified by comparing the 
+        //modified timestamp to load timestamp and recompiling only those that were changed.
+        const u32 test_shader_id = global_workbench->test.shader_id;
+        workbench__internal__reload_shader(test_shader_id);
+    }
+
 
     workbench_editor_update();
 }
@@ -972,6 +987,23 @@ void workbench_draw_line(const vec3s startpos, const vec3s endpos, const vec4s s
 
     if (persist) {
         list_append(&global_workbench->persist_rendercommands, command);
+    }
+}
+
+
+
+INTERNAL void workbench__internal__reload_shader(const u32 shader_asset_id)
+{
+    glshader_t *shader = (glshader_t *)assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, shader_asset_id);
+
+    const str_t fg_filepath = shader->fg;
+    const str_t vtx_filepath = shader->vs;
+
+    const bool result = glshader_recompile_from_filepaths(shader, vtx_filepath, fg_filepath);
+    if(result) {
+        logging("Recompilation successfull\n");
+    } else {
+        logging("Recompilation failed\n");
     }
 }
 

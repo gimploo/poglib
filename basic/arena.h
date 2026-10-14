@@ -44,6 +44,9 @@ INTERNAL u64 align_forward_16(u64 ptr) {
     return (ptr + 15) & ~((u64)15);
 }
 
+//TODO: maybe it wasnt a good idea to remove the capcity param in init - 
+//for common use cases 64 KB is too small
+
 arena_t *arena_init(arena_t *parent) 
 {
     u8 *raw_mem = NULL;

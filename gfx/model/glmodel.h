@@ -134,7 +134,7 @@ animation_t glmodel_set_animation(glmodel_t *self, const str_t animation_label, 
         return glmodel_get_playing_animation(self);
     }
 
-    logging("Animation transition %s -> "STR_FMT, current_anim ? current_anim : "None", STR_ARG(animation_label));
+    //logging("Animation transition %s -> "STR_FMT, current_anim ? current_anim : "None", STR_ARG(animation_label));
 
     glmodel_play_animation(self, new_anim_idx, blendspeed);
 

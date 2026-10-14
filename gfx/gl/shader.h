@@ -126,8 +126,9 @@ const char * const DEFAULT_SIMPLE_SHAPES_VSHADER =
 
 glshader_t              glshader_init(const str_t vtxpath, const str_t fgpath, const gluniform_registry_t uniforms, arena_t *const arena);
 
-glshader_t              glshader_from_file_init(const char *file_vs, const char *file_fs);
+glshader_t              glshader_from_file_init(const str_t vs_filepath, const str_t fg_filepath, arena_t *const arena);
 glshader_t              glshader_from_cstr_init(const char *vs_code, const char *fs_code);
+bool                    glshader_recompile_from_filepaths(glshader_t *const shader, const str_t vs_filepath, const str_t fs_filepath);
 
 //========================= Uniforms ======================================
 
@@ -170,7 +171,9 @@ void glshader_bind(const glshader_t *shader)
     GL_SHADER_BIND(shader);
 }
 
-void glshader__internal_compile_shader(glshader_t *shader, const char *vs_code, const char *fs_code)
+
+//TODO: move it to using str_t over char *
+bool glshader_compile_shader_from_buffer(glshader_t *shader, const char *vs_code, const char *fs_code)
 {
     if (shader == NULL) eprint("shader argument is null");
 
@@ -179,23 +182,27 @@ void glshader__internal_compile_shader(glshader_t *shader, const char *vs_code, 
 
     GLuint vertexShader;
     GL_CHECK(vertexShader = glCreateShader(GL_VERTEX_SHADER));
+    //TODO: pass length of the str here rather than setting NULL
     GL_CHECK(glShaderSource(vertexShader, 1, &vs_code, NULL));
     GL_CHECK(glCompileShader(vertexShader));
     GL_CHECK(glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &status));
     if (!status) {
         GL_CHECK(glGetShaderInfoLog(vertexShader, KB, NULL, error_log));
-        eprint("FILE: %s\n\tVertex Error:\n\t%s\n", shader->vs.data, error_log);
+        fprintf(stderr, "FILE: %s\n\tVertex Error:\n\t%s\n", shader->vs.data, error_log);
+        return false;
     }
     GL_LOG("Vertex Shader successfully compiled");
 
     GLuint fragmentShader;
     GL_CHECK(fragmentShader = glCreateShader(GL_FRAGMENT_SHADER));
+    //TODO: pass length of the str here rather than setting NULL
     GL_CHECK(glShaderSource(fragmentShader, 1, &fs_code, NULL));
     GL_CHECK(glCompileShader(fragmentShader));
     GL_CHECK(glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &status));
     if (!status) {
         GL_CHECK(glGetShaderInfoLog(fragmentShader, KB, NULL, error_log));
-        eprint("FILE: %s\n\tFragment Error:\n\t%s\n", shader->fg.data, error_log);
+        fprintf(stderr, "FILE: %s\n\tFragment Error:\n\t%s\n", shader->fg.data, error_log);
+        return false;
     }
     GL_LOG("Fragment Shader successfully compiled");
 
@@ -207,7 +214,8 @@ void glshader__internal_compile_shader(glshader_t *shader, const char *vs_code, 
     GL_CHECK(glGetProgramiv(shaderProgram, GL_LINK_STATUS, &status));
     if(!status) {
         GL_CHECK(glGetProgramInfoLog(shaderProgram, KB, NULL, error_log));
-        eprint("Error: %s\n", error_log);
+        fprintf(stderr, "Error: %s\n", error_log);
+        return false;
     }
 
     GL_CHECK(glDeleteShader(vertexShader));
@@ -216,10 +224,45 @@ void glshader__internal_compile_shader(glshader_t *shader, const char *vs_code, 
     shader->id = shaderProgram;
 
     GL_LOG("Shader `%i` successfully linked", shader->id);
+    return true;
+}
+
+bool glshader_recompile_from_filepaths(glshader_t *const shader, const str_t vs_filepath, const str_t fs_filepath)
+{
+    arena_t *scratch = runtime_scratcharena();
+
+    file_t vs_file = file_init(vs_filepath.data, "r");
+        char *vs_code = arena_reserve(scratch, vs_file.size + 1);
+        file_readall(&vs_file, vs_code, vs_file.size);
+    file_destroy(&vs_file);
+
+    file_t fg_file = file_init(fs_filepath.data, "r");
+        char *fs_code = arena_reserve(scratch, fg_file.size + 1);
+        file_readall(&fg_file, fs_code, fg_file.size);
+    file_destroy(&fg_file);
+
+    if (!glshader_compile_shader_from_buffer(shader, vs_code, fs_code)) {
+        return false;
+    }
+
+    hashtable_t *uniforms = &shader->internal.uniformlocs;
+
+    hashtable_iterator(uniforms, kv)
+    {
+        hashtable_entry_t *kv_entry = (hashtable_entry_t *)kv;
+        const str_t uniform_name = kv_entry->key.str;
+        i32 location;
+        GL_CHECK(location = glGetUniformLocation(shader->id, uniform_name.data));
+        if (location == -1) {
+            fprintf(stderr, "[ERROR] `"STR_FMT"` uniform doesnt exist, check "STR_FMT" & "STR_FMT, STR_ARG(uniform_name), STR_ARG(vs_filepath), STR_ARG(fs_filepath));
+            return false;
+        }
+    }
+    return true;
 }
 
 
-static inline void glshader__internal_load_from_file(glshader_t *shader, const char *vertex_source_path, const char *fragment_source_path, arena_t * const arena)
+INTERNAL void glshader__internal__load_from_file(glshader_t *shader, const char *vertex_source_path, const char *fragment_source_path, arena_t * const arena)
 {
     if (shader == NULL) eprint("shader argument is null");
 
@@ -237,7 +280,7 @@ static inline void glshader__internal_load_from_file(glshader_t *shader, const c
         file_readall(&fg_file, fs_code, fg_file.size);
     file_destroy(&fg_file);
 
-    glshader__internal_compile_shader(shader, vs_code, fs_code);
+    ASSERT(glshader_compile_shader_from_buffer(shader, vs_code, fs_code));
 
     if (!arena) {
         free(vs_code);
@@ -245,16 +288,17 @@ static inline void glshader__internal_load_from_file(glshader_t *shader, const c
     }
 }
 
-glshader_t glshader_from_file_init(const char *file_vs, const char *file_fs)
+glshader_t glshader_from_file_init(const str_t vs_filepath, const str_t fg_filepath, arena_t *const arena)
 {
-    if (file_vs == NULL) eprint("file_vs argument is null");
-    if (file_fs == NULL) eprint("file_fs arguemnt is null");
+    ASSERT(fg_filepath.len);
+    ASSERT(vs_filepath.len);
 
     glshader_t shader = {
-        .vs = str_from_cstr(file_vs, strlen(file_vs)),
-        .fg = str_from_cstr(file_fs, strlen(file_vs)),
+        .vs = vs_filepath,
+        .fg = fg_filepath,
     };
-    glshader__internal_load_from_file(&shader, file_vs, file_fs, NULL);
+
+    glshader__internal__load_from_file(&shader, vs_filepath.data, fg_filepath.data, arena);
 
     return shader;
 }
@@ -269,7 +313,7 @@ glshader_t glshader_from_cstr_init(const char *vs_code, const char *fs_code)
         .fg = {0}
     };
 
-    glshader__internal_compile_shader(&shader, vs_code, fs_code);
+    ASSERT(glshader_compile_shader_from_buffer(&shader, vs_code, fs_code));
 
     return shader;
 }
@@ -466,7 +510,7 @@ glshader_t glshader_init(
         .vs = vtxpath,
     };
 
-    glshader__internal_load_from_file(
+    glshader__internal__load_from_file(
         &shader, 
         vtxpath.data, 
         fgpath.data, 

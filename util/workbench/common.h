@@ -45,6 +45,7 @@ typedef enum workbench_action_type {
     WORKBENCH_ACTION_TYPE_EXPORT_GLB,
     WORKBENCH_ACTION_TYPE_KEYBOARD_SELECT_PLAYER,
     WORKBENCH_ACTION_TYPE_TOGGLE_JOLT_RENDERER,
+    WORKBENCH_ACTION_TYPE_RELOAD_SHADER,
     WORKBENCH_ACTION_TYPE_CLEAR,
     WORKBENCH_ACTION_TYPE_COUNT
 } workbench_action_type;
@@ -116,6 +117,11 @@ typedef struct {
     } editor;
 
     jolt_debugrenderer_t *joltrenderer;
+
+    //TODO: remove this after recompiling shader feature on file change is done.
+    struct {
+        u32 shader_id;
+    } test;
 
 } workbench_t;
 
