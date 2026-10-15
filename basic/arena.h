@@ -12,7 +12,8 @@
 //TODO: since we removed the atomic locks in this arena, we would need an assert to check for 
 //accidental arena growth on other threads, and crash if found to avoid mem corruption
 
-#define ARENA_STARTING_BLOCK_SIZE (64 * 1024)
+//#define ARENA_STARTING_BLOCK_SIZE (64 * 1024)
+#define ARENA_STARTING_BLOCK_SIZE (1024)
 
 typedef struct arena_mem_block_t arena_mem_block_t;
 struct arena_mem_block_t {
