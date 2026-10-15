@@ -4,7 +4,8 @@
 #include "poglib/basic/arena.h"
 #include "poglib/physics/jolt-wrapper.h"
 
-//TODO: have the Editor object layer type be bulk inserted. explore the improvements for those
+//TODO: add support to also have the batching check for similar bodysettings as theres now support for batching 
+//together those kinds easily
 
 typedef struct {
 
@@ -300,28 +301,30 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
 
     qsort(self->array_buffer.data.raw_data, (u64)(self->array_buffer.top + 1), sizeof(ecs_component_collider_t *), colliderbatchqueue__internal_qsort_compare);
 
-    JPH_Shape *shape                        = NULL;
-    JPH_BodyCreationSettings *body_settings = NULL;
-    JPH_CharacterVirtualSettings settings   = {0};
-    JPH_MotionType prev_motion_type         = 0;
+    struct jolt_bulk_add_state_t {
+        u32 count;
+        u32 *body_ids;
+    } bulkadd_states_static = {
+        .count = 0,
+        .body_ids = (u32 *)arena_reserve(runtime_scratcharena(), sizeof(u32) * (self->array_buffer.top + 1))
+    }; 
+
+    struct jolt_bulk_add_state_t bulkadd_states_dynamic = {
+        .count = 0,
+        .body_ids = (u32 *)arena_reserve(runtime_scratcharena(), sizeof(u32) * (self->array_buffer.top + 1))
+    }; 
 
     for (i32 idx = 0; idx <= self->array_buffer.top; idx++)
     {
         ecs_component_collider_t *const collider    = ((ecs_component_collider_t **)self->array_buffer.data.raw_data)[idx];
-        const bool diff_motion_type                 = prev_motion_type != collider->motion_type;
-
-        //NOTE: we club all static motion types together before moving on to other motion types, this way we would
-        //know when to optimize the broadphase i.e. after all static types are completely done.
-        //  *   Added logic to run the optimize broadphase if the last remainig item is a static object and no other are left 
-        //      afterwards of a different motion type (edge case)
-        const bool optimize_broadphase = (diff_motion_type && prev_motion_type == JPH_MotionType_Static) 
-            || ((idx == self->array_buffer.top) && prev_motion_type == JPH_MotionType_Static);
+        JPH_Shape *shape                        = NULL;
+        JPH_BodyCreationSettings *body_settings = NULL;
+        JPH_CharacterVirtualSettings settings   = {0};
 
         if (collider->type == ECS_COLLIDER_SOFTBODY) {
             //TODO: it be nice to have all shape types accounted for a softbody, so essentially
             ASSERT(collider->shape_type == COLLIDER_SHAPE_TYPE_MESH);
             colliderbatchqueue__internal__add_softbody_shape(collider, self->arena);
-            prev_motion_type  = collider->motion_type;
             continue;
         }
 
@@ -390,19 +393,15 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
 
             case COLLIDER_SHAPE_TYPE_MODEL:
                 colliderbatchqueue__internal__add_model_shape(collider, self->scratch_arena, self->arena);
-                prev_motion_type  = collider->motion_type;
                 continue;
             break;
             default: eprint("Collider shape type not accounted for here");
         }
 
-#ifdef DEBUG
-        //NOTE: having this is very confusing, if scales are changed for CUBES during edit - new shape is generated but for 
-        //CAPSULE and SPHERE is scaled up so for those alone we only need the original shape
         collider->body.rigid.shapes[0] = shape;
-#endif
 
-        switch(collider->motion_type) {
+        switch(collider->motion_type) 
+        {
             case JPH_MotionType_Static:
             case JPH_MotionType_Dynamic:
                 body_settings = JPH_BodyCreationSettings_Create3(
@@ -412,32 +411,25 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     collider->motion_type, 
                     collider->object_layer_type
                 );
+                ASSERT(body_settings);
                 JPH_BodyCreationSettings_SetIsSensor(body_settings, collider->object_layer_type == POGGEN_RESERVED_OBJECT_LAYER_TYPE);
+                collider->body.rigid.body_ids[0] = JPH_Body_GetID(JPH_BodyInterface_CreateBody(
+                    global_joltphysics_instance->bodyinterface, 
+                    body_settings
+                ));
+                colliderbatchqueue__internal__update_jolts_user_data(collider, 0, self->arena);
+                JPH_BodyCreationSettings_Destroy(body_settings);
+                if (collider->motion_type == JPH_MotionType_Static) {
+                    bulkadd_states_static.body_ids[bulkadd_states_static.count++] = collider->body.rigid.body_ids[0];
+                } else {
+                    bulkadd_states_dynamic.body_ids[bulkadd_states_dynamic.count++] = collider->body.rigid.body_ids[0];
+                }
             break;
             case JPH_MotionType_Kinematic:
                 JPH_CharacterVirtualSettings_Init(&settings);
                 settings.base.shape = shape;
                 settings.shapeOffset = (JPH_Vec3){ 0, collider->dim.capsule.half_height + collider->dim.capsule.radius, 0 };
                 settings.characterPadding = 0.2f;
-            break;
-            default: eprint("Unknown motion type");
-        }
-
-        switch(collider->motion_type)
-        {
-            case JPH_MotionType_Static:
-            case JPH_MotionType_Dynamic:
-                ASSERT(body_settings);
-
-                collider->body.rigid.body_ids[0] = JPH_BodyInterface_CreateAndAddBody(
-                    global_joltphysics_instance->bodyinterface, 
-                    body_settings, 
-                    collider->motion_type == JPH_MotionType_Static ? JPH_Activation_DontActivate : JPH_Activation_Activate
-                );
-                colliderbatchqueue__internal__update_jolts_user_data(collider, 0, self->arena);
-                JPH_BodyCreationSettings_Destroy(body_settings);
-            break;
-            case JPH_MotionType_Kinematic:
                 collider->body.rigid.kinematicbody = JPH_CharacterVirtual_Create(
                     &settings,
                     (JPH_RVec3 *)&collider->internal.position,
@@ -446,21 +438,26 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
                     global_joltphysics_instance->physics_system
                 );
             break;
-            default: eprint("motion type not accounted for");
+            default: eprint("Unknown motion type");
         }
 
-        if (optimize_broadphase) {
-            JPH_PhysicsSystem_OptimizeBroadPhase(global_joltphysics_instance->physics_system);
-            logging("optimizied broadphase");
-        }
-
-#ifndef DEBUG
+        /*
         if (shape) {
             JPH_Shape_Destroy(shape);
             shape = NULL;
         }
-#endif
-        prev_motion_type  = collider->motion_type;
+        */
+    }
+
+    if (bulkadd_states_static.count)  {
+        JPH_BodyInterface_AddState state = JPH_BodyInterface_AddBodiesPrepare(global_joltphysics_instance->bodyinterface, bulkadd_states_static.body_ids, bulkadd_states_static.count);
+        JPH_BodyInterface_AddBodiesFinalize(global_joltphysics_instance->bodyinterface, bulkadd_states_static.body_ids, bulkadd_states_static.count, state, JPH_Activation_DontActivate);
+        JPH_PhysicsSystem_OptimizeBroadPhase(global_joltphysics_instance->physics_system);
+    }
+
+    if (bulkadd_states_dynamic.count) {
+        JPH_BodyInterface_AddState state = JPH_BodyInterface_AddBodiesPrepare(global_joltphysics_instance->bodyinterface, bulkadd_states_dynamic.body_ids, bulkadd_states_dynamic.count);
+        JPH_BodyInterface_AddBodiesFinalize(global_joltphysics_instance->bodyinterface, bulkadd_states_dynamic.body_ids, bulkadd_states_dynamic.count, state, JPH_Activation_Activate);
     }
 
     //NOTE: reseting array_buffer
