@@ -32,22 +32,27 @@ const str_t AVAILABLE_SKYBOXES[SKYBOX_TYPE_COUNT][TOTAL_CUBE_FACES] = {
 };
 
 typedef struct {
-    SKYBOX_TYPE type;
+    str_t filepaths[TOTAL_CUBE_FACES];
+} glcubemap_filepaths_t;
+
+typedef struct {
     glcubemap_t cubemap;
     glshader_t shader;
 } glskybox_t;
 
-glskybox_t      glskybox_init(const SKYBOX_TYPE type, arena_t * const arena);
+glskybox_t      glskybox_from_file_init(const str_t filepaths[TOTAL_CUBE_FACES], arena_t * const arena);
 glrendercall_t  glskybox_get_render_config(const glskybox_t *self, const matrix4f_t projection, const matrix4f_t view);
 void            glskybox_destroy(glskybox_t *self);
 
 #ifndef IGNORE_GL_SKYBOX_IMPLEMENTATION
 
-glskybox_t glskybox_init(const SKYBOX_TYPE type, arena_t * const arena)
+glskybox_t glskybox_from_file_init(const str_t filepaths[TOTAL_CUBE_FACES], arena_t *const arena)
 {
+    for (u8 idx = 0; idx < TOTAL_CUBE_FACES; idx++)
+        ASSERT(filepaths[idx].len);
+
     return (glskybox_t) {
-        .type = type,
-        .cubemap = glcubemap_init(AVAILABLE_SKYBOXES[type]),
+        .cubemap= glcubemap_init(filepaths),
         .shader = glshader_init(
             str(POGLIB_ROOT_DIR "/util/glskybox/glskybox-shader-vs.glsl"),
             str(POGLIB_ROOT_DIR "/util/glskybox/glskybox-shader-fg.glsl"),
