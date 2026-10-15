@@ -44,7 +44,7 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
     const glshader_t *const shader = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader_asset_id);
     if (!shader) return;
 
-    const matrix4f_t projection  = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000.0f);
+    const matrix4f_t projection  = glms_perspective(radians(45), global_engine->handle.app->window.aspect_ratio, 1.0f, 1000000.0f);
     const matrix4f_t camera_view = glcamera_getview(active_camera);
 
     const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(cmp_manager, entity_id, ECS_CMP_TRANSFORM | ECS_CMP_SPRITE | ECS_CMP_MODEL | ECS_CMP_ANIMATION | ECS_CMP_COLLIDER);

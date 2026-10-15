@@ -41,7 +41,7 @@ typedef struct {
 } glskybox_t;
 
 glskybox_t      glskybox_from_file_init(const str_t filepaths[TOTAL_CUBE_FACES], arena_t * const arena);
-glrendercall_t  glskybox_get_render_config(const glskybox_t *self, const matrix4f_t projection, const matrix4f_t view);
+glrendercall_t  glskybox_get_render_config(const glskybox_t *self, const matrix4f_t projection, const matrix4f_t view, const f32 scale);
 void            glskybox_destroy(glskybox_t *self);
 
 #ifndef IGNORE_GL_SKYBOX_IMPLEMENTATION
@@ -87,8 +87,9 @@ void glskybox_destroy(glskybox_t *self)
 glrendercall_t glskybox_get_render_config(
         const glskybox_t *self, 
         const matrix4f_t projection,
-        const matrix4f_t view)
-{
+        const matrix4f_t view,
+        const f32 scale
+) {
     return (glrendercall_t) {
         .draw_mode = GL_TRIANGLES,
         .vtx = (buffer_t ){
@@ -133,7 +134,7 @@ glrendercall_t glskybox_get_render_config(
                     },
                     [2] = {
                         .name = str_lit("transform"),
-                        .value.mat4 = glms_scale_make(vec3f(1000.0f))
+                        .value.mat4 = glms_scale_make(vec3f(scale))
                     }
                 }
             }
