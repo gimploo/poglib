@@ -30,11 +30,9 @@ glframebuffer_t glframebuffer_init(const u16 screen_width, const u16 screen_heig
     GL_CHECK(glGenFramebuffers(1, &fbo_id));
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, fbo_id));
 
-    // Color attachment (texture)
     gltexture2d_t texture2d = gltexture2d_empty_init(screen_width, screen_height);
     GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture2d.id, 0));
 
-    // Depth/Stencil attachment (RBO)
     GLuint rbo_id;
     GL_CHECK(glGenRenderbuffers(1, &rbo_id));
     GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, rbo_id));

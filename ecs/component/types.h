@@ -114,6 +114,7 @@ struct ecs_component_material_t {
 
     struct {
         gluniforms_t uniform_values;
+        bool has_any_textures; //NOTE: whether there are any actual textures in the lookup than just colors
     } internal;
 };
 

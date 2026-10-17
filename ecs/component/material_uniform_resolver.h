@@ -14,7 +14,6 @@ typedef enum ecs_uniform_supported_types {
     ECS_UNIFORM_CAMERA_PROJECTION       = 0,
     ECS_UNIFORM_CAMERA_VIEW,
     ECS_UNIFORM_CAMERA_POSITION,
-    ECS_UNIFORM_TRANSFORM,
     ECS_UNIFORM_MODEL_JOINTS,
     ECS_UNIFORM_TEXTURE_AVAILABILITY,
     ECS_UNIFORM_LIGHT_POSITION,
@@ -27,7 +26,6 @@ const str_t ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SUPPORTED_COUNT] = {
     [ECS_UNIFORM_CAMERA_PROJECTION]         = str_lit("projection"),
     [ECS_UNIFORM_CAMERA_VIEW]               = str_lit("view"),
     [ECS_UNIFORM_CAMERA_POSITION]           = str_lit("camerapos"),
-    [ECS_UNIFORM_TRANSFORM]                 = str_lit("transform"),
     [ECS_UNIFORM_MODEL_JOINTS]              = str_lit("uJoints"),
     [ECS_UNIFORM_TEXTURE_AVAILABILITY]      = str_lit("has_texture"),
     [ECS_UNIFORM_LIGHT_POSITION]            = str_lit("lightPos"),
@@ -83,9 +81,6 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
             break;
             case ECS_UNIFORM_CAMERA_VIEW:
                 value.mat4 = camera_view;
-            break;
-            case ECS_UNIFORM_TRANSFORM:
-                value.mat4 = model_transform;
             break;
             case ECS_UNIFORM_TEXTURE_AVAILABILITY:
                 if(model_cmp) continue;

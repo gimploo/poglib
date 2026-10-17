@@ -8,7 +8,6 @@
 #include "poglib/gfx/gl/shader.h"
 #include "poglib/pipeline/render/common.h"
 #include "poglib/pipeline/render/render_command.h"
-#include "poglib/util/asset.h"
 
 renderqueue_t       renderqueue_init(void);
 void                renderqueue_pass_command(renderqueue_t *const self, const rendercommand_t command);

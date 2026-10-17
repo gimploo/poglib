@@ -72,6 +72,7 @@ void ecs_system_material__internal__resolve_textures_from_model(ecs_component_ma
 
     const cgltf_mesh *single_mesh = &model->data->meshes[mesh_idx];
 
+    bool has_textures = false;
     mesh2texture_lookup_t primmesh2texture_lookup = {0};
     for(u32 prim_idx = 0; prim_idx < single_mesh->primitives_count; prim_idx++)
     {
@@ -85,6 +86,7 @@ void ecs_system_material__internal__resolve_textures_from_model(ecs_component_ma
                 const u64 material_index = material - model->data->materials;
                 const u64 basecolor_texture_id = *(u64 *)slot_get_value(&material_assetid_lookup, material_index);
                 primmesh2texture_lookup.data[prim_idx].basecolor_texture_id = basecolor_texture_id;
+                has_textures = true;
             }
         }
         primmesh2texture_lookup.count++;
@@ -92,6 +94,7 @@ void ecs_system_material__internal__resolve_textures_from_model(ecs_component_ma
     }
 
     material->meshidx_to_texture_lookup = primmesh2texture_lookup;
+    material->internal.has_any_textures = has_textures;
 }
 
 

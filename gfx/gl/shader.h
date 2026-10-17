@@ -54,11 +54,13 @@ typedef struct {
 } gluniform_registry_t;
 
 typedef struct {
+    str_t name;
+    gluniform_value_t value;
+} gluniform_t;
+
+typedef struct {
     u8 count;
-    struct {
-        str_t name;
-        gluniform_value_t value;
-    } data[MAX_UNIFORMS_ALLOWED_IN_SHADER];
+    gluniform_t data[MAX_UNIFORMS_ALLOWED_IN_SHADER];
 } gluniforms_t;
 
 typedef struct {
@@ -132,6 +134,7 @@ bool                    glshader_recompile_from_filepaths(glshader_t *const shad
 
 //========================= Uniforms ======================================
 
+void            glshader_upload_uniform(const glshader_t *const shader, const str_t name, const gluniform_value_t value);
 void            glshader_upload_uniforms(const glshader_t * const shader, const gluniforms_t uniforms);
 
 //                          (or)
@@ -359,6 +362,47 @@ INTERNAL hashtable_t glshader__internal__uniforms_cache_locs(const str_t filepat
         hashtable_insert(&result, (hashtable_key_t){ .str = uniforms_array[idx].name }, meta);
     }
     return result;
+}
+
+void glshader_upload_uniform(const glshader_t *const shader, const str_t name, const gluniform_value_t value)
+{
+    ASSERT(shader);
+    ASSERT(name.len);
+
+    const gluniform_meta_t *meta = (gluniform_meta_t *)hashtable_get_value_or_null(&shader->internal.uniformlocs, (hashtable_key_t){ .str = name });
+    const u32 loc_idx = meta->internal.loc_idx;
+
+    switch(meta->type)
+    {
+        case GL_UNIFORM_TYPE_MATRIX4F:          GL_CHECK(glUniformMatrix4fv(loc_idx, 1, GL_FALSE, (f32 *)value.mat4.raw));
+        break;
+        case GL_UNIFORM_TYPE_VEC4F:             GL_CHECK(glUniform4f(loc_idx, value.vec4.raw[0], value.vec4.raw[1], value.vec4.raw[2], value.vec4.raw[3]));
+        break;
+        case GL_UNIFORM_TYPE_VEC3F:             GL_CHECK(glUniform3f(loc_idx, value.vec3.raw[0], value.vec3.raw[1], value.vec3.raw[2]));
+        break;
+        case GL_UNIFORM_TYPE_VEC2F:             GL_CHECK(glUniform2f(loc_idx, value.vec2.raw[0], value.vec2.raw[1]));
+        break;
+        case GL_UNIFORM_TYPE_F32:               GL_CHECK(glUniform1f(loc_idx, value.f32));
+        break;
+        case GL_UNIFORM_TYPE_I32:               GL_CHECK(glUniform1i(loc_idx, value.i32));
+        break;
+        case GL_UNIFORM_TYPE_U32:
+        case GL_UNIFORM_TYPE_BOOL:              GL_CHECK(glUniform1ui(loc_idx, value.u32));
+        break;
+        case GL_UNIFORM_TYPE_MATRIX4F_ARRAY: {
+            ASSERT(value.mat4s.count);
+            if (!value.mat4s.data) {
+                mat4s *buffer = (mat4s *)stackarena_push(runtime_stackarena(), value.mat4s.count * sizeof(mat4s));
+                for (u32 buff_idx = 0; buff_idx < value.mat4s.count; buff_idx++)
+                    buffer[buff_idx] = MATRIX4F_IDENTITY;
+                GL_CHECK(glUniformMatrix4fv(loc_idx, value.mat4s.count, GL_FALSE, (f32 *)buffer));
+                stackarena_pop(runtime_stackarena());
+            } else {
+                GL_CHECK(glUniformMatrix4fv(loc_idx, value.mat4s.count, GL_FALSE, (f32 *)value.mat4s.data));
+            }
+        } break;
+            eprint("unknown uniform type");
+    }
 }
 
 void glshader_upload_uniforms(const glshader_t * const shader, const gluniforms_t uniforms)
