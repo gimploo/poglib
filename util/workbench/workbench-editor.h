@@ -592,6 +592,7 @@ INTERNAL void workbench_editor__internal__draw_gizmo_on_entity_selection(void)
 void workbench_editor_render(void)
 {
     //NOTE: Editor UI design goes here
+    if (global_workbench->gui.enable)
     {
         workbench_editor_render_header(
             &global_workbench->gui.handle,

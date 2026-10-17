@@ -76,6 +76,7 @@ struct ecs_component_mesh_t {
     u32 asset_id;
     u16 mesh_idx;
     u8 primitive_idx;
+    bool for_editor_only;
     bool is_scene_instanced;
 };
 

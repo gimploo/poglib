@@ -29,7 +29,7 @@ const str_t ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SUPPORTED_COUNT] = {
     [ECS_UNIFORM_MODEL_JOINTS]              = str_lit("uJoints"),
     [ECS_UNIFORM_TEXTURE_AVAILABILITY]      = str_lit("has_texture"),
     [ECS_UNIFORM_LIGHT_POSITION]            = str_lit("lightPos"),
-    [ECS_UNIFORM_COLLIDER_IS_SOFTBODY]      = str_lit("is_softbody")
+    [ECS_UNIFORM_COLLIDER_IS_SOFTBODY]      = str_lit("is_softbody"),
 };
 
 
@@ -84,7 +84,7 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
             break;
             case ECS_UNIFORM_TEXTURE_AVAILABILITY:
                 if(model_cmp) continue;
-                value.f32 = (f32)(material->meshidx_to_texture_lookup.count > 0 || (sprite && sprite->spritesheet_asset_id != INVALID_ASSET_ID));
+                value.f32 = (f32)(material->internal.has_any_textures || (sprite && sprite->spritesheet_asset_id != INVALID_ASSET_ID));
             break;
 
             case ECS_UNIFORM_COLLIDER_IS_SOFTBODY:

@@ -97,6 +97,9 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             }
         };
 
-        renderqueue_pass_command(&global_engine->systems.renderqueue, command);
+        renderqueue_pass_command(
+            mesh->for_editor_only ? &global_workbench->renderqueue : &global_engine->systems.renderqueue, 
+            command
+        );
     }
 }
