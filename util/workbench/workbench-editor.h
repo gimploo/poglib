@@ -698,10 +698,10 @@ void workbench_editor_update(void)
     workbench_editor__internal__draw_gizmo_on_entity_selection();
 }
 
-void workbench_editor_select_player(void)
+void workbench_editor_select_entity_id(const u32 entity_id)
 {
     workbench_editor__internal__select_entity_id(
-        global_workbench, global_ecs, WORKBENCH_RESERVED_ENTITY_ID_COUNT);
+        global_workbench, global_ecs, entity_id);
 }
 
 void workbench_editor_copy_entity(void)

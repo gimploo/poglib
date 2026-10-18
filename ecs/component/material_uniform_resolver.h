@@ -18,6 +18,7 @@ typedef enum ecs_uniform_supported_types {
     ECS_UNIFORM_TEXTURE_AVAILABILITY,
     ECS_UNIFORM_LIGHT_POSITION,
     ECS_UNIFORM_COLLIDER_IS_SOFTBODY,
+    ECS_UNIFORM_SHADOWMAP_MATRIX,
     ECS_UNIFORM_SUPPORTED_COUNT,
 
 } ecs_uniform_supported_types;
@@ -30,6 +31,7 @@ const str_t ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SUPPORTED_COUNT] = {
     [ECS_UNIFORM_TEXTURE_AVAILABILITY]      = str_lit("has_texture"),
     [ECS_UNIFORM_LIGHT_POSITION]            = str_lit("lightPos"),
     [ECS_UNIFORM_COLLIDER_IS_SOFTBODY]      = str_lit("is_softbody"),
+    [ECS_UNIFORM_SHADOWMAP_MATRIX]          = str_lit("shadowmap_matrix")
 };
 
 
@@ -104,6 +106,11 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
                 }
             break;
 
+            //NOTE: ignore handled elsewhere
+            case ECS_UNIFORM_SHADOWMAP_MATRIX: 
+                continue;
+            break;
+
             default: eprint("ecs doesnt suppport given uniform");
         }
 
@@ -115,7 +122,7 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
     material->internal.uniform_values = uniforms_resolved;
 }
 
-INTERNAL gluniforms_t ecs_material_resolve_per_mesh_uniforms(
+INTERNAL gluniforms_t ecs_material_resolve_mesh_per_model_uniforms(
     ecs_component_material_t *const material_cmp,
     const glshader_t *const shader,
     const u64 mesh_idx
@@ -131,5 +138,52 @@ INTERNAL gluniforms_t ecs_material_resolve_per_mesh_uniforms(
     }
 
     return out_uniforms;
+}
+
+INTERNAL void ecs_system_material__internal__resolve_lighting(
+    ecs_component_material_t *const material,
+    const slot_t *directional_lights
+) {
+    //TODO: the current system expects atleast one direcitona light to be initalized during init, due
+    //to the uniform registry requirement in the shader that expects it always
+    ASSERT(directional_lights->len);
+
+    if (!material->internal.lighting.recache_lighting) return;
+
+    const glshader_t *shader = (glshader_t *)assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader_asset_id);
+    if (!glshader_uniform_is_support(shader, ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SHADOWMAP_MATRIX])) {
+        material->internal.lighting.recache_lighting = false;
+        return;
+    }
+
+    const bool already_allocated = material->internal.lighting.count == directional_lights->len;
+    const u32 max_capacity = directional_lights->len;
+    struct {
+        mat4s *data;
+    } matrices = {
+        .data = !already_allocated 
+            ? (mat4s *)arena_reserve(global_engine->arena, sizeof(mat4s) * max_capacity) 
+            : material->internal.lighting.lightview_matrices,
+    };
+
+    struct {
+        u32 *data;
+    } tex_ids = {
+        .data = !already_allocated
+           ? (u32 *)arena_reserve(global_engine->arena, sizeof(u32) * max_capacity)
+           : material->internal.lighting.shadowmap_tex_ids,
+    };
+
+    slot_iterator(directional_lights, iter)
+    {
+        const ecs_component_directional_light_t *light = (void *)((ecs_component_poolentry_t *)iter)->entity_cmpdata;
+        matrices.data[slot_index]       = light->internal.shadowmap_matrix;
+        tex_ids.data[slot_index]        = light->internal.shadow_texid;
+    }
+
+    material->internal.lighting.count               = max_capacity;
+    material->internal.lighting.lightview_matrices  = matrices.data;
+    material->internal.lighting.shadowmap_tex_ids   = tex_ids.data;
+    material->internal.lighting.recache_lighting    = false;
 }
 

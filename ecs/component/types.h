@@ -21,8 +21,9 @@ typedef enum {
     ECS_CMP_COLLIDER_IDX        = 5,
     ECS_CMP_MESH_IDX            = 6,
     ECS_CMP_SPRITE_IDX          = 7,
-    ECS_CMP_LIGHT_IDX           = 8, 
+    ECS_CMP_POINT_LIGHT_IDX           = 8, 
     ECS_CMP_ANIMATION_IDX       = 9, 
+    ECS_CMP_DIRECTIONAL_LIGHT_IDX = 10,
     ECS_CMP_COUNT
 
 } ecs_component_storage_index;
@@ -37,8 +38,9 @@ typedef enum {
     ECS_CMP_COLLIDER            = 1 << ECS_CMP_COLLIDER_IDX,
     ECS_CMP_MESH                = 1 << ECS_CMP_MESH_IDX,
     ECS_CMP_SPRITE              = 1 << ECS_CMP_SPRITE_IDX,
-    ECS_CMP_LIGHT               = 1 << ECS_CMP_LIGHT_IDX,
+    ECS_CMP_POINT_LIGHT         = 1 << ECS_CMP_POINT_LIGHT_IDX,
     ECS_CMP_ANIMATION           = 1 << ECS_CMP_ANIMATION_IDX,
+    ECS_CMP_DIRECTIONAL_LIGHT   = 1 << ECS_CMP_DIRECTIONAL_LIGHT_IDX
 
 } ecs_component_type;
 
@@ -112,10 +114,17 @@ struct ecs_component_material_t {
 
     mesh2texture_lookup_t meshidx_to_texture_lookup;
     u32 shader_asset_id;
+    bool cast_shadow;
 
     struct {
         gluniforms_t uniform_values;
         bool has_any_textures; //NOTE: whether there are any actual textures in the lookup than just colors
+        struct {
+            bool    recache_lighting;
+            u8      count;
+            mat4s   *lightview_matrices;
+            u32     *shadowmap_tex_ids;
+        } lighting;
     } internal;
 };
 
@@ -245,14 +254,27 @@ struct ecs_collider_jolt_userdata_t {
 
 typedef struct ecs_component_light_t  ecs_component_light_t;
 struct ecs_component_light_t {
-    enum {
-        POINT_LIGHT = 0,
-    } type;
     vec4s color;
     f32 constant;
     f32 linear;
     f32 quadratic;
     f32 radius;
+};
+
+/* =========================== DIRECTIONAL LIGHT ================================== */
+
+const u32 SHADOW_WIDTH = 2048;
+const u32 SHADOW_HEIGHT = 2048;
+
+typedef struct ecs_component_directional_light_t  ecs_component_directional_light_t;
+struct ecs_component_directional_light_t {
+    vec4s color;
+    vec3s direction;
+    f32 radius;
+    struct {
+        u32 shadow_texid;
+        mat4s shadowmap_matrix;
+    } internal;
 };
 
 /* ========================== ANIMATION ============================ */
@@ -283,16 +305,17 @@ struct ecs_componentbundle_t {
     u32 signature; //NOTE: this holds the bitmask of all compnents configured for the entity
     struct {
         union {
-            ecs_component_transform_t   transform;
-            ecs_component_model_t       model;
-            ecs_component_mesh_t        mesh;
-            ecs_component_input_t       input;
-            ecs_component_material_t    material;
-            ecs_component_camera_t      camera;
-            ecs_component_collider_t    collider;
-            ecs_component_sprite_t      sprite;
-            ecs_component_light_t       light;
-            ecs_component_animation_t   animation;
+            ecs_component_transform_t           transform;
+            ecs_component_model_t               model;
+            ecs_component_mesh_t                mesh;
+            ecs_component_input_t               input;
+            ecs_component_material_t            material;
+            ecs_component_camera_t              camera;
+            ecs_component_collider_t            collider;
+            ecs_component_sprite_t              sprite;
+            ecs_component_light_t               light;
+            ecs_component_animation_t           animation;
+            ecs_component_directional_light_t   directional_light;
         };
     } component[ECS_CMP_COUNT];
 

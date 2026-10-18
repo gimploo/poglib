@@ -18,11 +18,13 @@ layout(std430, binding = 0) buffer InstanceBuffer {
 
 uniform mat4 projection;
 uniform mat4 view;
+uniform mat4 shadowmap_matrix;
 
 out vec4 color;
 out vec2 uv;
 out vec3 normal;
 out vec3 FragPos;
+out vec4 lightspace_position;
 
 void main()
 {
@@ -46,5 +48,6 @@ void main()
     vec3 transformed_pos = (rot * (v_vtx * data.scale.xyz)) + data.translation.xyz;
     FragPos = transformed_pos;
     normal = v_normal;
+    lightspace_position = shadowmap_matrix * vec4(v_vtx, 1.0);
     gl_Position = projection * view * vec4(transformed_pos, 1.0);
 }

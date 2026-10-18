@@ -47,7 +47,7 @@ gldepthbuffer_t gldepthbuffer_texturearray_init(const u8 capacity, const u16 map
     GL_CHECK(glTexImage3D(
         GL_TEXTURE_2D_ARRAY, 
         0, 
-        GL_DEPTH_COMPONENT32F, 
+        GL_DEPTH_COMPONENT24, 
         (i32)map_width, 
         (i32)map_height, 
         capacity,
@@ -101,7 +101,7 @@ gldepthbuffer_t gldepthbuffer_cubemap_init(const u16 map_width, const u16 map_he
         GL_CHECK(glTexImage2D(
             GL_TEXTURE_CUBE_MAP_POSITIVE_X + index, 
             0, 
-            GL_DEPTH_COMPONENT32F, 
+            GL_DEPTH_COMPONENT24, 
             map_width, map_height, 
             0, 
             GL_DEPTH_COMPONENT, 

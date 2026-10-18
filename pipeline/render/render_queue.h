@@ -204,7 +204,7 @@ i32 renderqueue__internal_qsort_compare(const void *x, const void *y)
     return 0;
 }
 
-void renderqueue__internal_render_all_meshes_in_bucket(const list_t * const bucket)
+void renderqueue__internal_render_all_meshes_in_bucket(const list_t * const bucket, const gluniforms_t add_uniforms)
 {
     list_iterator(bucket, iter)
     {
@@ -216,6 +216,11 @@ void renderqueue__internal_render_all_meshes_in_bucket(const list_t * const buck
 
         glshader_upload_uniforms(shader, command->material.shader.uniforms);
 
+        for (u16 addi_uniform_idx = 0; addi_uniform_idx < add_uniforms.count; addi_uniform_idx++)
+        {
+            glshader_upload_uniform(shader, add_uniforms.data[addi_uniform_idx].name, add_uniforms.data[addi_uniform_idx].value);
+        }
+
         GL_CHECK(glDrawElements(
             GL_TRIANGLES, 
             command->vtx.data.primitive->index_count, 
@@ -225,7 +230,19 @@ void renderqueue__internal_render_all_meshes_in_bucket(const list_t * const buck
     }
 }
 
+INTERNAL void renderqueue__internal__dispatch(renderqueue_t *const self, const bool is_depth_pass, const gluniforms_t add_uniforms);
+
 void renderqueue_dispatch(renderqueue_t *const self)
+{
+    renderqueue__internal__dispatch(self, false, (gluniforms_t){0});
+}
+
+void renderqueue_dispatch_depthpass(renderqueue_t *const self, const bool is_depth_pass, const gluniforms_t add_uniforms)
+{
+    renderqueue__internal__dispatch(self, is_depth_pass, add_uniforms);
+}
+
+INTERNAL void renderqueue__internal__dispatch(renderqueue_t *const self, const bool is_depth_pass, const gluniforms_t add_uniforms)
 {
     qsort(self->buckets.data, self->buckets.len, sizeof(list_t), renderqueue__internal_qsort_compare);
 
@@ -241,6 +258,7 @@ void renderqueue_dispatch(renderqueue_t *const self)
 
         const rendercommand_t *const first_command = list_get_value(bucket_commands, 0);
 
+        if (is_depth_pass && !first_command->include_in_depth_pass) continue;
         if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_LINE) continue;
         if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_TRIANGLES) continue;
         if (first_command->instance.size <= 0) continue;
@@ -259,13 +277,14 @@ void renderqueue_dispatch(renderqueue_t *const self)
         if (!bucket->len) continue;
 
         const rendercommand_t *const first_command = list_get_value(bucket, 0);
+        if (is_depth_pass && !first_command->include_in_depth_pass) continue;
 
-        if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_LINE) {
+        if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_LINE && !is_depth_pass) {
             renderqueue__internal__draw_lines(bucket);
             continue;
         }
 
-        if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_TRIANGLES) {
+        if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_TRIANGLES && !is_depth_pass) {
             renderqueue__internal__draw_triangles(bucket);
             continue;
         }
@@ -283,17 +302,19 @@ void renderqueue_dispatch(renderqueue_t *const self)
         }
 
         //NOTE: bind textures
-        for(u8 tex_idx = 0; tex_idx < first_command->material.texture.count; tex_idx++) 
+        for(u8 tex_idx = 0; !is_depth_pass && (tex_idx < first_command->material.texture.count); tex_idx++) 
         {
             const gltextureitem_t *item = &first_command->material.texture.items[tex_idx];
             switch (item->type) {
                 case GL_TEXTURE_TYPE_CUBEMAP:
                     GL_CHECK(glDepthMask(false));
                     GL_CHECK(glDepthFunc(GL_LEQUAL));
-                    glcubemap_bind(item->source.cubemap);
+                    GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, item->tex_id));
                 break;
                 default:
-                    gltexture2d_bind(item->source.normal_texture, tex_idx);
+                    if (item->is_srgb) GL_CHECK(glEnable(GL_FRAMEBUFFER_SRGB));
+                    GL_CHECK(glActiveTexture(GL_TEXTURE0 + (tex_idx)));
+                    GL_CHECK(glBindTexture(GL_TEXTURE_2D, item->tex_id));
                 break;
             }
         }
@@ -310,8 +331,15 @@ void renderqueue_dispatch(renderqueue_t *const self)
                 bucket->len * first_command->instance.size);
             instance_starting_offset += bucket->len * first_command->instance.size;
 
-            if (binded_shader_id)
+            if (binded_shader_id) {
+
                 glshader_upload_uniforms(shader, first_command->material.shader.uniforms);
+
+                for (u16 addi_uniform_idx = 0; addi_uniform_idx < add_uniforms.count; addi_uniform_idx++)
+                {
+                    glshader_upload_uniform(shader, add_uniforms.data[addi_uniform_idx].name, add_uniforms.data[addi_uniform_idx].value);
+                }
+            }
 
             GL_CHECK(glDrawElementsInstanced(
                 GL_TRIANGLES, 
@@ -322,11 +350,12 @@ void renderqueue_dispatch(renderqueue_t *const self)
 
         } else {
 
-            renderqueue__internal_render_all_meshes_in_bucket(bucket);
+            renderqueue__internal_render_all_meshes_in_bucket(bucket, add_uniforms);
 
         }
         GL_CHECK(glBindVertexArray(0));
-        gltexture2d_unbind();
+
+        if (!is_depth_pass) gltexture2d_unbind();
     }
     glinstancebuffer_unbind(&self->internal.instancebuffer);
 }

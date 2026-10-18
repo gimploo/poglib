@@ -254,8 +254,7 @@ bool glshader_recompile_from_filepaths(glshader_t *const shader, const str_t vs_
     {
         hashtable_entry_t *kv_entry = (hashtable_entry_t *)kv;
         const str_t uniform_name = kv_entry->key.str;
-        i32 location;
-        GL_CHECK(location = glGetUniformLocation(shader->id, uniform_name.data));
+        const i32 location = glGetUniformLocation(shader->id, uniform_name.data);
         if (location == -1) {
             fprintf(stderr, "[ERROR] `"STR_FMT"` uniform doesnt exist, check "STR_FMT" & "STR_FMT, STR_ARG(uniform_name), STR_ARG(vs_filepath), STR_ARG(fs_filepath));
             return false;

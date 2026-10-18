@@ -56,6 +56,7 @@ struct rendercommand_t {
 
     buffer_t    instance;
     bool        enable_wireframe;
+    bool        include_in_depth_pass;
 };
 
 #ifndef IGNORE_RENDER_COMMAND_IMPLEMENTATION
@@ -71,7 +72,7 @@ bool rendercommand__internal_compare_textures_ids(const rendercommand_t *const r
         const gltextureitem_t *a = &rc1->material.texture.items[tex_idx];
         const gltextureitem_t *b = &rc2->material.texture.items[tex_idx];
         if (a->type != b->type) return false;
-        if (a->source.normal_texture->id != b->source.normal_texture->id) return false;
+        if (a->tex_id != b->tex_id) return false;
     }
 
     return true;

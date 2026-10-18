@@ -19,6 +19,11 @@ void ecs_system_material(ecs_componentmanager_t *const cmp_manager, const ecs_sy
         //update values instead of checking the shader to know if the uniform exist in
         //it also
 
+        ecs_system_material__internal__resolve_lighting(
+            material,
+            slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_DIRECTIONAL_LIGHT_IDX)
+        );
+
         ecs_system_material__internal__resolve_textures_from_model(
             material,
             cmp_manager,
@@ -28,5 +33,6 @@ void ecs_system_material(ecs_componentmanager_t *const cmp_manager, const ecs_sy
         ecs_system_material__internal__resolve_uniforms(
             material, cmp_manager, entry->entity_id, ctx.active_camera
         );
+
     }
 }

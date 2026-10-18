@@ -10,7 +10,6 @@ gltexturelist_t     ecs_material_get_texturelist_for_mesh(const ecs_component_ma
 vec4s ecs_material_get_basecolor_for_mesh(const ecs_component_material_t *const material, const u8 mesh_idx)
 {
     if (!material->meshidx_to_texture_lookup.count) return COLOR_WHITE;
-
     return material->meshidx_to_texture_lookup.data[mesh_idx].basecolor;
 }
 
@@ -30,9 +29,7 @@ gltexturelist_t ecs_material_get_texturelist_for_mesh(const ecs_component_materi
             .count = 1,
             .items = {
                 [0] = (gltextureitem_t){
-                    .source = { 
-                        .normal_texture = texture 
-                    }
+                    .tex_id = texture->id,
                 }
             }
         };

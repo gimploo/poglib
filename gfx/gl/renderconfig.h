@@ -11,10 +11,8 @@
 #define MAX_ATTRIBUTES_COUNT_PER_CALL 16
 
 typedef struct {
-    union {
-        gltexture2d_t *normal_texture;
-        glcubemap_t *cubemap;
-    } source;
+    u32 tex_id;
+    bool is_srgb;
     gltexturetype type; 
 } gltextureitem_t;
 

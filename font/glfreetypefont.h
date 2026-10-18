@@ -61,7 +61,6 @@ void                glfreetypefont_add_text_to_batch(
                         const char *text, 
                         vec2f_t pos, 
                         vec4f_t color);
-void                glfreetypefont_draw_with_r2d(const glfreetypefont_t *self, const glbatch_t *batch);
 void                glfreetypefont_destroy(glfreetypefont_t *self);
 
 
@@ -334,15 +333,6 @@ void glfreetypefont_add_text_to_batch(const glfreetypefont_t *self, glbatch_t *b
 }
 
 
-void glfreetypefont_draw_with_r2d(const glfreetypefont_t *self, const glbatch_t *batch)
-{
-    glrenderer2d_t rd2d = {
-        .shader = &self->shader,
-        .texture = &self->texture
-    };
-    glrenderer2d_draw_from_batch(&rd2d, batch);
-}
-
 void glfreetypefont_destroy(glfreetypefont_t *self)
 {
     if (self->internals.shader_initialized) {
@@ -387,7 +377,8 @@ glrendercall_t glfreetypefont_get_renderconfig(glfreetypefont_t *self, buffer_t 
             .items = {
                 [0] = {
                     .type = GL_TEXTURE_TYPE_DEFAULT,
-                    .source.normal_texture = &self->texture 
+                    .tex_id = self->texture.id,
+                    .is_srgb = self->texture.is_srgb,
                 },
             }
         }, 

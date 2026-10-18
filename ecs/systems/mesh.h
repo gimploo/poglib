@@ -3,6 +3,7 @@
 #include "poglib/ecs/common.h"
 #include "poglib/ecs/component.h"
 #include "poglib/ecs/component/material_texture_resolver.h"
+#include "poglib/ecs/component/material_uniform_resolver.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/math/la.h"
 #include "poglib/pipeline/render/render_queue.h"
@@ -35,7 +36,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
         const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(
             cmp_manager, 
             entry->entity_id, 
-            ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM | ECS_CMP_SPRITE | ECS_CMP_LIGHT);
+            ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM | ECS_CMP_SPRITE | ECS_CMP_POINT_LIGHT);
 
         ecs_component_material_t *material = view.entity_cmp_data[ECS_CMP_MATERIAL_IDX];
         ASSERT(material);
@@ -46,10 +47,11 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
         const glshader_t *shader = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader_asset_id);
         ASSERT(shader);
 
-        const ecs_component_light_t *light = view.entity_cmp_data[ECS_CMP_LIGHT_IDX];
+        const ecs_component_light_t *light = view.entity_cmp_data[ECS_CMP_POINT_LIGHT_IDX];
         if (light && !global_workbench->is_active) continue;
 
-        gltexturelist_t textures = ecs_material_get_texturelist_for_mesh(material, mesh->primitive_idx);
+        gltexturelist_t texturelist = ecs_material_get_texturelist_for_mesh(material, mesh->primitive_idx);
+        gluniforms_t uniforms = material->internal.uniform_values;
 
         //NOTE: resolve texture & uv
         const ecs_component_sprite_t *sprite_cmp = view.entity_cmp_data[ECS_CMP_SPRITE_IDX];
@@ -62,18 +64,34 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 sprite_cmp->spritesheet_asset_id
             );
             uv = spriteatlas_get_sprite(atlas, sprite_cmp->sprite_idx);
-            textures.items[textures.count++] = (gltextureitem_t){
+            texturelist.items[texturelist.count++] = (gltextureitem_t){
                 .type = GL_TEXTURE_TYPE_DEFAULT,
-                .source.normal_texture = &atlas->texture
+                .tex_id = atlas->texture.id,
+                .is_srgb = atlas->texture.is_srgb
             };
         }
 
-        if (((slot_t *)slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_LIGHT_IDX))->len != 0)
+
+        //NOTE: resolve all lighting related textures and uniforms bindings
+        if (material->internal.lighting.count) 
         {
-            //TODO: Add shadow maps
+            uniforms.data[uniforms.count++] = (gluniform_t) {
+                .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SHADOWMAP_MATRIX],
+                .value.mat4s = {
+                    .count = material->internal.lighting.count,
+                    .data = material->internal.lighting.lightview_matrices,
+                }
+            };
+
+            for(u8 tex_idx = 0; tex_idx < material->internal.lighting.count; tex_idx++)
+                texturelist.items[texturelist.count++] = (gltextureitem_t){
+                    .tex_id = material->internal.lighting.shadowmap_tex_ids[tex_idx],
+                    .is_srgb = false
+                };
         }
 
         const rendercommand_t command = {
+            .include_in_depth_pass = material->cast_shadow,
             .vtx = {
                 .data.primitive = gpu_loaded_asset->meshes.data[mesh->mesh_idx]->primitives[mesh->primitive_idx],
             },
@@ -89,10 +107,10 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 .size = sizeof(rendercommand_instance_primitive_mesh_t)
             },
             .material = {
-                .texture = textures,
+                .texture = texturelist,
                 .shader = {
                     .data = (glshader_t *)shader,
-                    .uniforms = material->internal.uniform_values,
+                    .uniforms = uniforms,
                 }
             }
         };

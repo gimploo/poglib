@@ -601,7 +601,7 @@ void gui_render(gui_t *const self, const bool render_as_wireframe)
                         .items = {
                             [0] = {
                                 .type = GL_TEXTURE_TYPE_DEFAULT,
-                                .source = &self->freetypefont.texture
+                                .tex_id = self->freetypefont.texture.id
                             }
                         }
                     },

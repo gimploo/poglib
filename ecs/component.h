@@ -9,6 +9,7 @@
 #include "poglib/basic/ds/slot.h"
 #include "poglib/basic/util.h"
 #include "poglib/ecs/component/colliderbatchqueue.h"
+#include "poglib/ecs/component/init.h"
 
 
 ecs_componentmanager_t          ecs_componentmanager(arena_t *const arena);
@@ -37,8 +38,9 @@ u16 ecs_component__internal_get_componenttype_size(const ecs_component_type type
         case ECS_CMP_CAMERA:            return sizeof(ecs_component_camera_t);
         case ECS_CMP_COLLIDER:          return sizeof(ecs_component_collider_t);
         case ECS_CMP_SPRITE:            return sizeof(ecs_component_sprite_t);
-        case ECS_CMP_LIGHT:             return sizeof(ecs_component_light_t);
+        case ECS_CMP_POINT_LIGHT:       return sizeof(ecs_component_light_t);
         case ECS_CMP_ANIMATION:         return sizeof(ecs_component_animation_t);
+        case ECS_CMP_DIRECTIONAL_LIGHT: return sizeof(ecs_component_directional_light_t);
         default: eprint("missing component type - not implemented");
     }
 }
@@ -48,7 +50,8 @@ u32 ecs_componentmanager__internal_get_pool_capacity(const ecs_component_type ty
     switch(type)
     {
         case ECS_CMP_CAMERA:            return 10;
-        case ECS_CMP_LIGHT:             return ECS_LIGHT_MAX;
+        case ECS_CMP_POINT_LIGHT:       return ECS_LIGHT_MAX;
+        case ECS_CMP_DIRECTIONAL_LIGHT: return 2;
         default:                        return ECS_ENTITY_MAX_COUNT;
     }
 }
@@ -157,9 +160,15 @@ void ecs_component__internal_bundle_validate_and_initalize_internals(ecs_compone
             break;
             case ECS_CMP_MATERIAL:
                 ASSERT(config->signature & (ECS_CMP_TRANSFORM));
+                config->component[ECS_CMP_MATERIAL_IDX].material.internal.lighting.recache_lighting = true;
             break;
             case ECS_CMP_CAMERA :
                 ASSERT(config->signature & (ECS_CMP_TRANSFORM));
+            break;
+
+            case ECS_CMP_DIRECTIONAL_LIGHT:
+                ASSERT(!(config->signature & ECS_CMP_POINT_LIGHT));
+                 gl_directional_light_shadow_texture_init(&config->component[ECS_CMP_DIRECTIONAL_LIGHT_IDX].directional_light);
             break;
         }
     }

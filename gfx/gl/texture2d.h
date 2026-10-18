@@ -50,11 +50,11 @@ void                 gltexture2d_dump(const gltexture2d_t *texture);
  // Implementation
 ------------------------------------------------------*/
 
-#define gltexture2d_bind(ptex, slot) do {\
+#define gltexture2d_bind(TEX_ID, SLOT_IDX, IS_SRGB) do {\
 \
-    if ((ptex)->is_srgb) GL_CHECK(glEnable(GL_FRAMEBUFFER_SRGB));\
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + (slot)));\
-    GL_CHECK(glBindTexture(GL_TEXTURE_2D, (ptex)->id));\
+    if (IS_SRGB) GL_CHECK(glEnable(GL_FRAMEBUFFER_SRGB));\
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + (SLOT_IDX)));\
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, (TEX_ID)));\
 \
 } while(0)
 
@@ -248,7 +248,7 @@ gltexture2d_t gltexture2d_embedded_init(
     GL_CHECK(glTexImage2D(
         GL_TEXTURE_2D, 
         0, 
-        is_srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8,
+        is_srgb ? GL_SRGB8_ALPHA8 : GL_RGBA,
         width,
         height,
         0,

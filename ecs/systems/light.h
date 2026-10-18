@@ -4,7 +4,6 @@
 #include "poglib/ecs/component.h"
 #include "poglib/gfx/gl/ubo.h"
 
-// Explicitly aligned struct matching GLSL std140 layout
 typedef struct {
     f32 position[4]; // x, y, z, pad
     f32 color[4];    // r, g, b, intensity
@@ -28,7 +27,12 @@ void ecs_system_light(ecs_componentmanager_t *const cmp_manager, const ecs_syste
 {
     ASSERT(ctx.ubo);
 
-    slot_t *const pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_LIGHT_IDX);
+    const f32 extent = 35.0f;
+    const f32 near_z = 1.0f;
+    const f32 far_z  = 500.0f; 
+    const mat4s projection = glms_ortho(-extent, extent, -extent, extent, near_z, far_z);
+
+    slot_t *const pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_POINT_LIGHT_IDX);
     gllightbuffer_t bufferData = {
         .numLights = pool->len,
         .global_ambient = (vec3s){ 0.1f, 0.1f, 0.1f },

@@ -115,7 +115,7 @@ glrendercall_t glskybox_get_render_config(
             .items = {
                 [0] = {
                     .type = GL_TEXTURE_TYPE_CUBEMAP,
-                    .source.cubemap = (glcubemap_t *)&self->cubemap 
+                    .tex_id = self->cubemap.texture_id 
                 },
             }
         }, 

@@ -44,8 +44,30 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
 
         for (u32 primitive_idx = 0; primitive_idx < gpu_loaded_asset->meshes.data[cmp_model->mesh_idx]->count; primitive_idx++)
         {
+            gltexturelist_t texturelist = ecs_material_get_texturelist_for_mesh(material, primitive_idx);
+            gluniforms_t uniforms = ecs_material_resolve_mesh_per_model_uniforms(material, shader, primitive_idx);
+
+            //NOTE: resolve all lighting related textures and uniforms bindings
+            if (material->internal.lighting.count) 
+            {
+                uniforms.data[uniforms.count++] = (gluniform_t) {
+                    .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SHADOWMAP_MATRIX],
+                    .value.mat4s = {
+                        .count = material->internal.lighting.count,
+                        .data = material->internal.lighting.lightview_matrices,
+                    }
+                };
+
+                for(u8 tex_idx = 0; tex_idx < material->internal.lighting.count; tex_idx++)
+                    texturelist.items[texturelist.count++] = (gltextureitem_t){
+                        .tex_id = material->internal.lighting.shadowmap_tex_ids[tex_idx],
+                        .is_srgb = false
+                    };
+            }
+
             renderqueue_pass_command(&global_engine->systems.renderqueue,
                 (rendercommand_t ){
+                    .include_in_depth_pass = material->cast_shadow,
                     .vtx.data = {
                         .primitive = gpu_loaded_asset->meshes.data[cmp_model->mesh_idx]->primitives[primitive_idx],
                     },
@@ -60,10 +82,10 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                     },
                     .enable_wireframe = false,
                     .material = {
-                        .texture = ecs_material_get_texturelist_for_mesh(material, primitive_idx),
+                        .texture = texturelist,
                         .shader = {
                             .data = (glshader_t *)shader,
-                            .uniforms = ecs_material_resolve_per_mesh_uniforms(material, shader, primitive_idx),
+                            .uniforms = uniforms
                         }
                     }
                 }

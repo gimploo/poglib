@@ -87,78 +87,6 @@ void                glrenderer3d_draw(const glrendererconfig_t config);
 
 #ifndef IGNORE_GLRENDERER2D_IMPLEMENTATION
 
-void glrenderer3d_draw_cube(const glrenderer3d_t *self)
-{
-    const f32 vertices[] = {
-        // vertex             // uv        // normals
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,  0.0f, 0.0f, -1.0f,   
-         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,  0.0f, 0.0f, -1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,  0.0f, 0.0f, -1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,  0.0f, 0.0f, -1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,  0.0f, 0.0f, -1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,  0.0f, 0.0f, -1.0f,
-
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,  0.0f, 0.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,  0.0f, 0.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,  0.0f, 0.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,  0.0f, 0.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,  0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,  0.0f, 0.0f, 1.0f,
-
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,  -1.0f, 0.0f, 0.0f,   
-        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,  -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,  -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,  -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,  -1.0f, 0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,  -1.0f, 0.0f, 0.0f,
-
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f, 
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,  1.0f, 0.0f, 0.0f, 
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,  1.0f, 0.0f, 0.0f, 
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,  1.0f, 0.0f, 0.0f, 
-         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f, 
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f, 
-
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,  0.0f, -1.0f, 0.0f, 
-         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,  0.0f, -1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,  0.0f, -1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,  0.0f, -1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,  0.0f, -1.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,  0.0f, -1.0f, 0.0f,
-
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,  0.0f, 1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,  0.0f, 1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,  0.0f, 1.0f, 0.0f
-    };
-
-    unsigned int VBO, VAO;
-    GL_CHECK(glGenVertexArrays(1, &VAO));
-    GL_CHECK(glGenBuffers(1, &VBO));
-    GL_CHECK(glBindVertexArray(VAO));
-    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, VBO));
-    GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW));
-    GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0));
-    GL_CHECK(glEnableVertexAttribArray(0));
-    GL_CHECK(glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float))));
-    GL_CHECK(glEnableVertexAttribArray(1));
-    GL_CHECK(glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float))));
-    GL_CHECK(glEnableVertexAttribArray(2));
-
-    glshader_bind(self->shader);
-    if (self->textures.data && self->textures.top > 0)
-        for (int i = 0; i < self->textures.top; i++)
-            gltexture2d_bind(&self->textures.data[i], i);
-
-    GL_CHECK(glBindVertexArray(VAO));
-    GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 36));
-
-    GL_CHECK(glDeleteVertexArrays(1, &VAO));
-    GL_CHECK(glDeleteBuffers(1, &VBO));
-}
-
 void glrenderer3d_drawcall(const glrendercall_t call)
 {
     glrenderer3d_draw((glrendererconfig_t){
@@ -281,16 +209,18 @@ void glrenderer3d_draw(const glrendererconfig_t config)
             {
                 case GL_TEXTURE_TYPE_DEFAULT:
                     gltexture2d_bind(
-                        config.calls.call[call_idx].textures.items[txt_idx].source.normal_texture,
-                        txt_idx
+                        config.calls.call[call_idx].textures.items[txt_idx].tex_id, 
+                        txt_idx, 
+                        config.calls.call[call_idx].textures.items[txt_idx].is_srgb
                     );
                 break;
                 case GL_TEXTURE_TYPE_CUBEMAP:
                     GL_CHECK(glDepthMask(false));
                     GL_CHECK(glDepthFunc(GL_LEQUAL));
-                    glcubemap_bind(
-                        config.calls.call[call_idx].textures.items[txt_idx].source.cubemap
-                    );
+                    GL_CHECK(glBindTexture(
+                        GL_TEXTURE_CUBE_MAP, 
+                        config.calls.call[call_idx].textures.items[txt_idx].tex_id
+                    ));
                 break;
                 default: eprint("Not implemented");
             }

@@ -235,10 +235,6 @@ workbench_t * workbench_init(arena_t *const arena)
                             .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_TEXTURE_AVAILABILITY],
                             .type = GL_UNIFORM_TYPE_F32
                         },
-                        [3] = {
-                            .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_POSITION],
-                            .type = GL_UNIFORM_TYPE_VEC3F
-                        },
                     }
                 }
             ),
@@ -391,13 +387,6 @@ workbench_t * workbench_init(arena_t *const arena)
                         .trigger    = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
                     }
 
-                },
-                 [WORKBENCH_ACTION_TYPE_KEYBOARD_SELECT_PLAYER] = {
-                    .type = COMMANDINPUTKEY_TYPE_KEYBOARD,
-                    .sdl_keyboard_key = {
-                        .main = SDL_SCANCODE_P,
-                        .trigger = COMMANDINPUT_TRIGGER_TYPE_JUSTPRESSED
-                    }
                 },
                 [WORKBENCH_ACTION_TYPE_TOGGLE_JOLT_RENDERER] = {
                     .type = COMMANDINPUTKEY_TYPE_KEYBOARD | COMMANDINPUTKEY_TYPE_JOYSTICK,
@@ -693,7 +682,8 @@ void workbench_render_marker(
                 .items = {
                     [0] = (gltextureitem_t){
                         .type = GL_TEXTURE_TYPE_DEFAULT,
-                        .source = { .normal_texture = &atlas->texture }
+                        .tex_id = atlas->texture.id,
+                        .is_srgb = atlas->texture.is_srgb
                     }
                 }
             },
@@ -750,7 +740,6 @@ void workbench_update(const f32 dt)
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_UNDO))                            workbench_editor_action_history_pop(global_workbench, global_ecs);
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_SAVE))                            workbench_editor_save_to_file(global_workbench, global_ecs);
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_EXPORT_GLB))                      workbench_editor_export_glb(global_ecs);
-    if (bitmask & (1 << WORKBENCH_ACTION_TYPE_KEYBOARD_SELECT_PLAYER))          workbench_editor_select_player();
     if (bitmask & (1 << WORKBENCH_ACTION_TYPE_TOGGLE_JOLT_RENDERER)) {
         global_workbench->disable_joltrenderer = !global_workbench->disable_joltrenderer;
         logging("Joltrenderer `%s`", global_workbench->disable_joltrenderer ? "disabled" : "enabled");
