@@ -226,7 +226,7 @@ bool glshader_compile_shader_from_buffer(glshader_t *shader, const char *vs_code
 
     shader->id = shaderProgram;
 
-    GL_LOG("Shader `%i` successfully linked", shader->id);
+    logging("Shader `%i` successfully linked", shader->id);
     return true;
 }
 
@@ -244,9 +244,11 @@ bool glshader_recompile_from_filepaths(glshader_t *const shader, const str_t vs_
         file_readall(&fg_file, fs_code, fg_file.size);
     file_destroy(&fg_file);
 
+    const u32 old_shader_id = shader->id;
     if (!glshader_compile_shader_from_buffer(shader, vs_code, fs_code)) {
         return false;
     }
+    const u32 new_shader_id = shader->id;
 
     hashtable_t *uniforms = &shader->internal.uniformlocs;
 
@@ -254,12 +256,16 @@ bool glshader_recompile_from_filepaths(glshader_t *const shader, const str_t vs_
     {
         hashtable_entry_t *kv_entry = (hashtable_entry_t *)kv;
         const str_t uniform_name = kv_entry->key.str;
-        const i32 location = glGetUniformLocation(shader->id, uniform_name.data);
+        const i32 location = glGetUniformLocation(new_shader_id, uniform_name.data);
         if (location == -1) {
             fprintf(stderr, "[ERROR] `"STR_FMT"` uniform doesnt exist, check "STR_FMT" & "STR_FMT, STR_ARG(uniform_name), STR_ARG(vs_filepath), STR_ARG(fs_filepath));
+            shader->id = old_shader_id;
+            GL_CHECK(glDeleteProgram(new_shader_id));
             return false;
         }
     }
+
+    GL_CHECK(glDeleteProgram(old_shader_id));
     return true;
 }
 

@@ -4,6 +4,11 @@
 #include "poglib/ecs/component/material_uniform_resolver.h"
 #include "poglib/ecs/component/material_texture_resolver.h"
 
+//TODO: MATERIAL UNIFORM SHADER AUTO DETECT - have shader uniforms be auto detected during init, have the assetmanager load the file and pass the uniform setup
+//in within the ecs, such that all ecs uniform lookup types can be checked without the dev having to set it during 
+//load time, and only add on top of it with additional uniforms passed in manually
+
+
 void ecs_system_material(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
     slot_t *const primary_pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_MATERIAL_IDX);

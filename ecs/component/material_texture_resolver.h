@@ -30,6 +30,7 @@ gltexturelist_t ecs_material_get_texturelist_for_mesh(const ecs_component_materi
             .items = {
                 [0] = (gltextureitem_t){
                     .tex_id = texture->id,
+                    .is_srgb = texture->is_srgb
                 }
             }
         };
