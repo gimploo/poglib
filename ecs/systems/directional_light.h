@@ -23,17 +23,12 @@ void ecs_system_directional_light(ecs_componentmanager_t *const cmp_manager, con
         ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
         GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
 
-        const f32 extent = 100.0f;
-        const f32 near_z = 1.0f;
-        const f32 far_z  = 1000.0f; 
-        const mat4s projection = glms_ortho(-extent, extent, -extent, extent, near_z, far_z);
-
         //TODO: have the direcitonal light's position change, as the player moves around. such that the 
         //the shadow map does not go stale.
 
         const vec3s light_position      = glms_vec3_fill(directional_light->radius);
         const mat4s lightview           = glms_look(light_position, directional_light->direction, GL_CAMERA_DIRECTION_UP); 
-        const mat4s lightspace_matrix   = glms_mat4_mul(projection, lightview);
+        const mat4s lightspace_matrix   = glms_mat4_mul(directional_light->projection, lightview);
 
         //TODO: use depth variants for each binded shader for the pass - bot recommended to use #define macros 
         //for different variants and inject the defines into string buffer 
@@ -73,7 +68,7 @@ void ecs_system_directional_light(ecs_componentmanager_t *const cmp_manager, con
                 .data = {
                     [0] = {
                         .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_PROJECTION],
-                        .value.mat4 = projection
+                        .value.mat4 = directional_light->projection
                     },
                     [1] = {
                         .name = ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_CAMERA_VIEW],

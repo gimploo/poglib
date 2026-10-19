@@ -271,6 +271,7 @@ struct ecs_component_directional_light_t {
     vec4s color;
     vec3s direction;
     f32 radius;
+    mat4s projection;
     struct {
         u32 shadow_texid;
         mat4s shadowmap_matrix;
