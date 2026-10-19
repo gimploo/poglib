@@ -10,12 +10,18 @@ typedef struct {
     f32 params[4];   // constant, linear, quadratic, radius
 } gl_pointlight_t;
 
+typedef struct {
+    vec4s color;
+    vec3s direction;
+} gl_directionalight_t;
+
 // Maximum array size
 #define MAX_LIGHTS 16
 
 //NOTE: this needs to be 16 bytes alligned at all times
 typedef struct {
     gl_pointlight_t lights[MAX_LIGHTS];
+    gl_directionalight_t directional_lights[2];
     alignas(16) struct { 
         vec3s global_ambient;
         f32 global_specular_strength;
@@ -23,7 +29,7 @@ typedef struct {
     u32 numLights;
 } gllightbuffer_t ;
 
-void ecs_system_light(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
+void ecs_system_upload_light_data_to_gpu(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx)
 {
     ASSERT(ctx.ubo);
 
@@ -35,6 +41,7 @@ void ecs_system_light(ecs_componentmanager_t *const cmp_manager, const ecs_syste
     slot_t *const pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_POINT_LIGHT_IDX);
     gllightbuffer_t bufferData = {
         .numLights = pool->len,
+        .directional_lights = {0},
         .global_ambient = (vec3s){ 0.1f, 0.1f, 0.1f },
         .global_specular_strength = 0.5f,
         .lights = {0},
@@ -66,6 +73,16 @@ void ecs_system_light(ecs_componentmanager_t *const cmp_manager, const ecs_syste
         bufferData.lights[slot_index].params[1] = light->linear;
         bufferData.lights[slot_index].params[2] = light->quadratic;
         bufferData.lights[slot_index].params[3] = light->radius;
+    }
+
+    slot_t *const directional_lights = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_DIRECTIONAL_LIGHT_IDX);
+    slot_iterator(directional_lights, iter)
+    {
+        ecs_component_poolentry_t *const entry = (ecs_component_poolentry_t *)iter;
+        ecs_component_directional_light_t *const directional_light = (ecs_component_directional_light_t *)entry->entity_cmpdata;
+
+        bufferData.directional_lights[slot_index].color = directional_light->color;
+        bufferData.directional_lights[slot_index].direction = directional_light->direction;
     }
 
     glubo_upload(

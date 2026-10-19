@@ -343,7 +343,8 @@ INTERNAL void assetmanager__internal__process_loaded_assets(assetmanager_t *cons
 {
     mpsc_queue_t *const queue = &self->internal.asset_staging_queue;
 
-    while(true) {
+    while(true) 
+    {
         asset_staging_event_t *const task = (asset_staging_event_t *)mpsc_queue_get(queue);
         if (!task) {
             return;

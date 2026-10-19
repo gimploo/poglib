@@ -55,7 +55,7 @@ void ecs_add_all_core_systems(ecs_t *const self)
     ecs_add_system(
         self, 
         (ecs_system_t) {
-            .callback = ecs_system_light
+            .callback = ecs_system_upload_light_data_to_gpu
         }
     );
 
