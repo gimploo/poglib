@@ -285,7 +285,7 @@ void assetmanager_write_assetmeta_data_to_file(const assetmanager_t *const self,
     hashtable_iterator(&self->assetmeta_lookup, iter)
     {
         buffer(512) buffer = {0};
-        const hashtable_entry_t *entry          = iter;
+        const hashtable_entry_t *entry          = (hashtable_entry_t *)iter;
         const asset_meta_t *const assetmeta     = entry->value;
 
         if (assetmeta->filepath1.len && assetmeta->filepath2.len)

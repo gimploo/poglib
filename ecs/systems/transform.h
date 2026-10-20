@@ -26,7 +26,7 @@ void ecs_system_transform(ecs_componentmanager_t *const cmp_manager, const ecs_s
     slot_t *const pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_TRANSFORM_IDX);
     slot_iterator(pool, iter)
     {
-        ecs_component_poolentry_t *const entry = iter;
+        ecs_component_poolentry_t *const entry = (ecs_component_poolentry_t *)iter;
         ecs_component_transform_t *transform = (ecs_component_transform_t *)entry->entity_cmpdata;
 
         if (!entry->is_active) continue;

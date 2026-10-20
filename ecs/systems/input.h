@@ -10,7 +10,7 @@ void ecs_system_input(ecs_componentmanager_t *const cmp_manager, const ecs_syste
     slot_t *const pool = slot_get_value(&cmp_manager->componentpool_slots, ECS_CMP_INPUT_IDX);
     slot_iterator(pool, iter)
     {
-        const ecs_component_poolentry_t *const entry    = iter;
+        const ecs_component_poolentry_t *const entry    = (ecs_component_poolentry_t *)iter;
         ecs_component_input_t *const input_cmp          = (ecs_component_input_t *)entry->entity_cmpdata;
         input_cmp->internal.state                       = (ecs_component_input_state_t){0};
 

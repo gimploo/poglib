@@ -64,7 +64,7 @@ u64 __slot_iter_get_value(const slot_t *slot, u64 *hits, u64 *index)
         *index = *index + 1;
     }
 
-    return NULL;
+    return 0;
 }
 
 #define __impl_slot_for_loop_iterator(PSLOTARRAY, ITER)\
