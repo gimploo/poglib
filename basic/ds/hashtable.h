@@ -361,7 +361,7 @@ void hashtable_serialize_to_file(
     hashtable_iterator(table, iter)
     {
         u8 buffer[512] = {0};
-        const hashtable_entry_t *const entry = iter;
+        const hashtable_entry_t *const entry = (hashtable_entry_t *)iter;
         callback(entry, &(buffer_t ){
             .raw_data = buffer,
             .size = sizeof(buffer)

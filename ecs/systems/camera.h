@@ -50,7 +50,7 @@ void ecs_system_camera(ecs_componentmanager_t *const cmp_manager, const ecs_syst
 
     slot_iterator(pool, iter) 
     {
-        const ecs_component_poolentry_t *const entry = iter;
+        const ecs_component_poolentry_t *const entry = (ecs_component_poolentry_t *)iter;
         ecs_component_camera_t *const camera = (ecs_component_camera_t *)entry->entity_cmpdata;
 
         //NOTE: only updating active camera

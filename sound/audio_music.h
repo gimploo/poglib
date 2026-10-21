@@ -71,7 +71,7 @@ void audio_music_destroy(audio_music_t *const self)
 {
     slot_iterator(&self->layers, iter)
     {
-        audio_musiclayer_t *const layer = iter;
+        audio_musiclayer_t *const layer = (audio_musiclayer_t *)iter;
         ma_sound_uninit(layer->internal.sound);
     }
     slot_destroy(&self->layers);
@@ -81,7 +81,7 @@ void audio_music_update(audio_music_t *const self, const f32 dt)
 {
      slot_iterator(&self->layers, iter)
     {
-        audio_musiclayer_t *const layer = iter;
+        audio_musiclayer_t *const layer = (audio_musiclayer_t *)iter;
 
         const f32 diff = layer->internal.target_volume - layer->volume;
         if (fabsf(diff) > 0.001f)       layer->volume += diff * AUDIO_SMOOTHING_SPEED * dt;

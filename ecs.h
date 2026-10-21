@@ -338,7 +338,7 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
     {
         slot_iterator(&self->managers.entitymanager.entities, iter)
         {
-            const ecs_entity_t *const entity = iter;
+            const ecs_entity_t *const entity = (ecs_entity_t *)iter;
 
             if (entity->id < WORKBENCH_RESERVED_ENTITY_ID_COUNT) continue;
             if (!entity->component_signature) continue;
