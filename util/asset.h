@@ -42,6 +42,7 @@ struct asset_staging_event_t {
     u32         asset_id;
     asset_type  type;
     void        *processed_data;
+    taskparams_t params;
 };
 
 #define INVALID_ASSET_ID 0
@@ -50,7 +51,7 @@ const bool ASSET_ASYNC_LOADING_SUPPORT[ASSET_TYPE_COUNT] = {
     [ASSET_TYPE_MODEL]                  = true,
     [ASSET_TYPE_MUSIC_SFX]              = true,
     [ASSET_TYPE_MUSIC_THEME]            = true,
+    [ASSET_TYPE_TEXTURE]                = true,
     [ASSET_TYPE_GLSL_SHADER]            = false, //NOTE: Requires opengl to compile shaders
-    [ASSET_TYPE_TEXTURE]                = false,
     [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = false,
 };

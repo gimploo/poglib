@@ -6,8 +6,10 @@
 #include "poglib/basic/concurrency.h"
 #include "poglib/basic/stack_arena.h"
 #include "poglib/external/cglm/struct/affine2d.h"
+#include "poglib/external/stb_image.h"
 #include "poglib/gfx/gl/objects.h"
 #include "poglib/gfx/gl/shader.h"
+#include "poglib/gfx/gl/texture2d.h"
 #include "poglib/gfx/gl/types.h"
 #include "poglib/gfx/gl/vbo_stream_types.h"
 #include "poglib/gfx/model/glmodel.h"
@@ -43,8 +45,10 @@ u32                 assetmanager_load_model_async(assetmanager_t *const self, co
 gpu_mesh_primitive_t * assetmanager_reupload_primitive_mesh_to_gpu(assetmanager_t *self, cgltf_primitive *primitive, const bool is_dynamic);
 
 u32                 assetmanager_load_spriteatlas(assetmanager_t *const self, const str_t filepath, const u32 tile_count_width, const u32 tile_count_height);
-u32                 assetmanager_load_texture(assetmanager_t *self, const str_t filepath);
+
 u32                 assetmanager_load_texture_from_memory(assetmanager_t *self, const buffer_t buffer, const str_t label, const cgltf_sampler *sampler, const bool is_srgb);
+u32                 assetmanager_load_texture_from_memory_async(assetmanager_t *self, const buffer_t buffer, const str_t label, const cgltf_sampler *sampler, const bool is_srgb);
+
 u32                 assetmanager_load_glsl_shader(assetmanager_t *self, const str_t vtx_filepath, const str_t frag_filepath, const gluniform_registry_t registry);
 wwise_audio_t       assetmanager_load_audios_from_wwise(assetmanager_t *const self);
 u32                 assetmanager_load_audio_music_async(assetmanager_t *const self, const audio_musiclayer_t musiclayers[AUDIO_MUSIC_LAYERS_MAX_COUNT], const u8 layer_count);
@@ -91,7 +95,7 @@ assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
         .assetmaps = {
             [ASSET_TYPE_MODEL]                  = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(async(glmodel_t)),  .type = HT_STORAGE_BY_REFERENCE }, arena),
             [ASSET_TYPE_GLSL_SHADER]            = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(glshader_t),        .type = HT_STORAGE_BY_REFERENCE }, arena),
-            [ASSET_TYPE_TEXTURE]                = hashtable_init(50, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gltexture2d_t),     .type = HT_STORAGE_BY_VALUE }, arena),
+            [ASSET_TYPE_TEXTURE]                = hashtable_init(50, HT_KEY_TYPE_U32,   (ht_value_type) { .size = sizeof(async(gltexture2d_t)),     .type = HT_STORAGE_BY_REFERENCE }, arena),
             [ASSET_TYPE_TEXTURE_SPRITE_ATLAS]   = hashtable_init(3, HT_KEY_TYPE_U32,    (ht_value_type) { .size = sizeof(spriteatlas_t),        .type = HT_STORAGE_BY_VALUE     }, arena),
             [ASSET_TYPE_MUSIC_SFX]              = hashtable_init(10, HT_KEY_TYPE_U32,   (ht_value_type) { .size = sizeof(async(audio_sfx_t)),   .type = HT_STORAGE_BY_REFERENCE }, arena),
             [ASSET_TYPE_MUSIC_THEME]            = hashtable_init(5, HT_KEY_TYPE_U32,    (ht_value_type) { .size = sizeof(async(audio_music_t)), .type = HT_STORAGE_BY_REFERENCE }, arena),
@@ -130,7 +134,7 @@ void assetmanager__internal_assetmaps_destroy(assetmanager_t *const self)
                     glshader_destroy(entry->value);
                 break;
                 case ASSET_TYPE_TEXTURE:
-                    gltexture2d_destroy(entry->value);
+                    gltexture2d_destroy(((taskresponse_t *)entry->value)->resource);
                 break;
                 case ASSET_TYPE_TEXTURE_SPRITE_ATLAS:
                     spriteatlas_destroy(entry->value);
@@ -183,7 +187,7 @@ INTERNAL slot_t assetmanager__internal__glmodel_load_materials(assetmanager_t *s
                 .size = base_color_texture.texture->image->buffer_view->size,
             };
             //NOTE: is_srgb is TRUE for base_color_texture, specular and emmisive
-            const u32 asset_id = assetmanager_load_texture_from_memory(self, raw_data, label, base_color_texture.texture->sampler, true);
+            const u32 asset_id = assetmanager_load_texture_from_memory_async(self, raw_data, label, base_color_texture.texture->sampler, true);
             slot_insert(&material_assetid_lookup, material_idx, &asset_id, sizeof(asset_id));
         }
     }
@@ -392,6 +396,31 @@ INTERNAL void assetmanager__internal__process_loaded_assets(assetmanager_t *cons
                     sizeof(asset_loaded_event_t)
                 );
             break;
+
+            case ASSET_TYPE_TEXTURE: {
+
+               const u8 *pixels     = task->params.arg[0].any; 
+               const i32 width      = task->params.arg[1].u64; 
+               const i32 height     = task->params.arg[2].u64; 
+               const str_t label    = task->params.arg[3].str; 
+               const cgltf_sampler *sampler = task->params.arg[4].any; 
+               const bool is_srgb   = task->params.arg[5].boolean;
+
+               taskresponse_t *response = (taskresponse_t *)task->processed_data;
+               gltexture2d_t *texture = response->resource;
+               *texture = gltexture2d_load_from_pixels_init(
+                   width,
+                   height,
+                   pixels,
+                   label,
+                   sampler,
+                   is_srgb
+               );
+               logging("Texture "STR_FMT" loaded", STR_ARG(label));
+               response->is_done = true;
+               stbi_image_free((u8 *)pixels);
+
+            } break;
         }
 
         mem_free(task, sizeof(*task));
@@ -727,9 +756,78 @@ INTERNAL void assetmanager__internal_add_asset_meta_data(
     );
 }
 
-u32 assetmanager_load_texture(assetmanager_t *self, const str_t filepath)
+INTERNAL void assetmanager__internal__thread_callback_load_texture_from_memory(const taskparams_t params, taskstorage_t storage, taskresponse_t *const response)
 {
-    eprint("not implemented");
+    ASSERT(params.count == 6);
+    const u32 asset_id              = params.arg[0].u64;
+    const buffer_t buffer           = params.arg[1].buffer; 
+    const str_t label               = params.arg[2].str; 
+    const cgltf_sampler *sampler    = params.arg[3].any; 
+    const bool is_srgb              = params.arg[4].boolean;
+
+    stbi_set_flip_vertically_on_load(true);
+    i32 width, height, bpp;
+    u8 *pixels = (u8 *)stbi_load_from_memory(
+        buffer.raw_data, buffer.size, &width, &height, &bpp, STBI_rgb_alpha
+    );
+
+    mpsc_queue_t *const stagingqueue = params.arg[5].any;
+    mpsc_queue_put(
+        stagingqueue,
+        mem_init(
+            &(asset_staging_event_t){ 
+                .asset_id = asset_id, 
+                .type = ASSET_TYPE_TEXTURE, 
+                .params = (taskparams_t){
+                    .count = 6,
+                    .arg = {
+                        [0].any = pixels,
+                        [1].u64 = width,
+                        [2].u64 = height,
+                        [3].str = label,
+                        [4].any = (void *)sampler,
+                        [5].boolean = is_srgb
+                    }
+                },
+                .processed_data = response,
+            }, 
+            sizeof(asset_staging_event_t)
+        )
+    );
+}
+
+u32 assetmanager_load_texture_from_memory_async(assetmanager_t *self, const buffer_t buffer, const str_t label, const cgltf_sampler *sampler, const bool is_srgb)
+{
+    const u32 asset_id          = ++self->internal.asset_idx_generator;
+    taskresponse_t *response    = taskresponse(self->arena, sizeof(gltexture2d_t));
+
+    hashtable_insert(
+        &self->assetmaps[ASSET_TYPE_TEXTURE], 
+        (hashtable_key_t){ .u32 = asset_id }, 
+        response
+    );
+
+    bgtask_manager_pass_task(
+        self->bgtask_manager,
+        (taskrequest_t){
+            .response = response,
+            .params = {
+                    .count = 6,
+                    .arg = {
+                        [0].u64     = asset_id,
+                        [1].buffer  = buffer,
+                        [2].str     = label,
+                        [3].any     = (void *)sampler,
+                        [4].boolean = is_srgb,
+                        [5].any     = &self->internal.asset_staging_queue,
+                    }
+            },
+            .storage = {0},
+            .callback = assetmanager__internal__thread_callback_load_texture_from_memory,
+        }
+    );
+
+    return asset_id;
 }
 
 u32 assetmanager_load_texture_from_memory(assetmanager_t *self, const buffer_t buffer, const str_t label, const cgltf_sampler *sampler, const bool is_srgb)
@@ -737,10 +835,14 @@ u32 assetmanager_load_texture_from_memory(assetmanager_t *self, const buffer_t b
     const u32 asset_id          = ++self->internal.asset_idx_generator;
     const gltexture2d_t texture = gltexture2d_embedded_init(buffer, label, sampler, is_srgb);
 
-    hashtable_insert_by_value(
+    taskresponse_t *response = taskresponse(self->arena, sizeof(gltexture2d_t));
+    *(gltexture2d_t *)response->resource = texture;
+    response->is_done = true;
+
+    hashtable_insert(
         &self->assetmaps[ASSET_TYPE_TEXTURE], 
         (hashtable_key_t){ .u32 = asset_id }, 
-        &texture
+        response
     );
 
     return asset_id;

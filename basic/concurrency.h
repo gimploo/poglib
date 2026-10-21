@@ -36,6 +36,7 @@ struct taskparams_t {
         arena_t *arena;
         void    *any;
         bool    boolean;
+        buffer_t buffer;
     } arg[8];
 };
 

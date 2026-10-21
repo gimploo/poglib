@@ -190,7 +190,8 @@ glmodel_t glmodel_load_model_init(const str_t filepath, arena_t *const arena)
     glmodel_TRS_state_t* rest_pose = (glmodel_TRS_state_t*)arena_reserve(arena, data_buffer->nodes_count * sizeof(glmodel_TRS_state_t));
 
     // Snapshot the untouched bind/rest pose so animation sampling never drifts
-    for (size_t i = 0; i < data_buffer->nodes_count; ++i) {
+    for (size_t i = 0; i < data_buffer->nodes_count; ++i) 
+    {
         const cgltf_node* node = &data_buffer->nodes[i];
 
         rest_pose[i].translation = node->has_translation

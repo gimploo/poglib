@@ -245,10 +245,7 @@ hashtable_t ecs_serializer_load_all_assets(ecs_t *const self, arena_t *arena, ar
             break;
 
             case ASSET_TYPE_TEXTURE:
-                new_asset_id = assetmanager_load_texture(
-                    &global_engine->systems.assets,
-                    asstpath01
-                );
+                eprint("TODO: not implemented");
             break;
 
             case ASSET_TYPE_TEXTURE_SPRITE_ATLAS:
@@ -285,7 +282,7 @@ void assetmanager_write_assetmeta_data_to_file(const assetmanager_t *const self,
     hashtable_iterator(&self->assetmeta_lookup, iter)
     {
         buffer(512) buffer = {0};
-        const hashtable_entry_t *entry          = iter;
+        const hashtable_entry_t *entry          = (hashtable_entry_t *)iter;
         const asset_meta_t *const assetmeta     = entry->value;
 
         if (assetmeta->filepath1.len && assetmeta->filepath2.len)

@@ -19,7 +19,6 @@ typedef struct gltexture2d_t {
     const u8        *buf;
     u32             width;
     u32             height;
-    u32             bpp;        //BytesPerPixel
     bool            is_srgb;
 
 } gltexture2d_t;
@@ -37,7 +36,6 @@ gltexture2d_t       gltexture2d_embedded_init(
                         const cgltf_sampler *const sampler,
                         const bool is_srgb);
 gltexture2d_t        gltexture2d_empty_init(u32 width, u32 height);
-void                 gltexture2d_upload_to_gpu(gltexture2d_t *texture);
 gltexture2d_t        gltexture2d_load_from_file(const char *filepath);
 void                 gltexture2d_destroy(const gltexture2d_t *texture);
 bool                 gltexture2d_is_same(const gltexture2d_t *const texture1, const gltexture2d_t *const texture2);
@@ -100,7 +98,6 @@ gltexture2d_t gltexture2d_empty_init(u32 width, u32 height)
         .buf       = NULL,
         .width     = (int)width,
         .height    = (int)height,
-        .bpp       = 0,
     };
 
 }
@@ -120,7 +117,6 @@ gltexture2d_t gltexture2d_load_from_file(const char *filepath)
         .buf = buf,
         .width = width,
         .height = height,
-        .bpp = 4,
     };
 }
 
@@ -176,7 +172,6 @@ gltexture2d_t gltexture2d_init(const char *filepath)
         .buf        = buf,
         .width      = width,
         .height     = height,
-        .bpp        = bpp,
     };
 }
 
@@ -199,18 +194,72 @@ void gltexture2d_dump(const gltexture2d_t *texture)
         "filepath = %s\n"
         "buf = %s\n"
         "width = %i\n"
-        "height = %i\n"
-        "bpp = %i\n";
+        "height = %i\n";
 
     printf(FMT,
             texture->id, 
             texture->filepath, 
             texture->buf, 
             texture->width, 
-            texture->height, 
-            texture->bpp);
+            texture->height);
 }
 
+
+gltexture2d_t gltexture2d_load_from_pixels_init(
+    const i32 width, 
+    const i32 height, 
+    const u8 *pixels, 
+    const str_t label, 
+    const cgltf_sampler *const sampler,
+    const bool is_srgb
+) {
+    ASSERT(pixels);
+
+    GLuint id;
+    GL_CHECK(glGenTextures(1, &id));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, id));
+    if (!sampler) {
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));	
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+    } else {
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, sampler->min_filter));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, sampler->mag_filter));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, sampler->wrap_s));
+        GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, sampler->wrap_t));
+    }
+
+    f32 max_anisotropy = 0.0f;
+    GL_CHECK(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &max_anisotropy));
+    GL_CHECK(glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, max_anisotropy));
+
+    GL_CHECK(glTexImage2D(
+        GL_TEXTURE_2D, 
+        0, 
+        is_srgb ? GL_SRGB8_ALPHA8 : GL_RGBA,
+        width,
+        height,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        pixels
+     ));
+    GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+    GL_LOG("Texture `%i` successfully created", id);
+
+    const gltexture2d_t o = {
+        .id         = id,
+        .filepath   = label,
+        .buf        = NULL,
+        .width      = width,
+        .height     = height,
+        .is_srgb    = is_srgb
+    };
+
+    return o;
+}
 
 gltexture2d_t gltexture2d_embedded_init(
     const buffer_t buffer, 
@@ -268,35 +317,10 @@ gltexture2d_t gltexture2d_embedded_init(
         .buf        = NULL,
         .width      = width,
         .height     = height,
-        .bpp        = bpp,
         .is_srgb    = is_srgb
     };
 
     return o;
-}
-
-void gltexture2d_upload_to_gpu(gltexture2d_t *texture)
-{
-    if (texture->id || !texture->buf) return;
-
-    GLenum format;
-    if (texture->bpp == 1)       format = GL_RED;
-    else if (texture->bpp == 3)  format = GL_RGB;
-    else if (texture->bpp == 4)  format = GL_RGBA;
-
-    GL_CHECK(glGenTextures(1, &texture->id));
-    GL_CHECK(glBindTexture(GL_TEXTURE_2D, texture->id));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
-    GL_CHECK(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
-    GL_CHECK(glTexImage2D(
-        GL_TEXTURE_2D, 0, format,
-        texture->width, texture->height, 0,
-        format, GL_UNSIGNED_BYTE, (u8 *)texture->buf));
-    GL_CHECK(glGenerateMipmap(GL_TEXTURE_2D));
-    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
-    GL_LOG("Texture `%i` successfully created", texture->id);
 }
 
 bool gltexture2d_is_same(const gltexture2d_t *const texture1, const gltexture2d_t *const texture2)
