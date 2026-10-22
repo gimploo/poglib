@@ -28,17 +28,7 @@ gltexturelist_t ecs_material_get_texturelist_for_mesh(const ecs_component_materi
         u32 tex_id = 0;
         u32 is_srgb = true;
 
-        if (!texture) {
-
-            const spriteatlas_t *atlas = (spriteatlas_t *)assetmanager_get_assetresource(
-                &global_engine->systems.assets, 
-                ASSET_TYPE_TEXTURE_SPRITE_ATLAS, global_workbench->primitives.atlas_id
-            );
-
-            tex_id = atlas->texture.id;
-
-        } else {
-
+        if (texture) {
             tex_id = texture->id;
             is_srgb = texture->is_srgb;
         }

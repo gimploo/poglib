@@ -417,6 +417,10 @@ void str_print(const str_t str)
     printf(STR_FMT"\n", STR_ARG(str));
 }
 
+str_t str_lrstrip(const str_t buffer, const char strip_char)
+{
+    return str_rstrip(str_lstrip(buffer, strip_char), strip_char);
+}
 
 
 #endif
