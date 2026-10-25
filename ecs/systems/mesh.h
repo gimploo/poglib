@@ -23,20 +23,28 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
     {
         const ecs_component_poolentry_t * const entry = (ecs_component_poolentry_t *)ITER;
         const ecs_component_mesh_t *const mesh = (ecs_component_mesh_t *)entry->entity_cmpdata;
+
+        if (mesh->for_editor_only && !global_workbench->is_active) continue;
+
+        const u32 asset_id = mesh->asset_id;
+
         const gpu_asset_t *gpu_loaded_asset = (gpu_asset_t *)assetmanager_get_gpu_loaded_asset_async(
             &global_engine->systems.assets, 
-            mesh->asset_id
+            asset_id
         );
-        if (!gpu_loaded_asset) {
+        if (!gpu_loaded_asset)
             continue;
-        }
 
-        const bool is_editor_selected = global_workbench->editor.current_selected_entity_id == entry->entity_id;
+        gpu_mesh_primitive_t *mesh_primtive = gpu_loaded_asset->meshes.data[mesh->mesh_idx]->primitives[mesh->primitive_idx];
+        ASSERT(mesh_primtive);
+
+        const bool is_editor_selected = global_workbench->editor.current_selected_entity_id == entry->entity_id
+            || global_workbench->editor.mouse_closest_to_entity_id == entry->entity_id;
 
         const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(
             cmp_manager, 
             entry->entity_id, 
-            ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM | ECS_CMP_SPRITE | ECS_CMP_POINT_LIGHT);
+            ECS_CMP_MATERIAL | ECS_CMP_TRANSFORM | ECS_CMP_SPRITE);
 
         ecs_component_material_t *material = view.entity_cmp_data[ECS_CMP_MATERIAL_IDX];
         ASSERT(material);
@@ -47,8 +55,6 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
         const glshader_t *shader = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader_asset_id);
         ASSERT(shader);
 
-        const ecs_component_light_t *light = view.entity_cmp_data[ECS_CMP_POINT_LIGHT_IDX];
-        if (light && !global_workbench->is_active) continue;
 
         gltexturelist_t texturelist = ecs_material_get_texturelist_for_mesh(material, mesh->primitive_idx);
         gluniforms_t uniforms = material->internal.uniform_values;
@@ -90,10 +96,11 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 };
         }
 
+
         const rendercommand_t command = {
             .include_in_depth_pass = material->cast_shadow,
             .vtx = {
-                .data.primitive = gpu_loaded_asset->meshes.data[mesh->mesh_idx]->primitives[mesh->primitive_idx],
+                .data.primitive = mesh_primtive,
             },
             .enable_wireframe = false,
             .instance = {

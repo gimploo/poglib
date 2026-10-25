@@ -174,11 +174,45 @@ void ecs_component__internal_bundle_validate_and_initalize_internals(ecs_compone
     }
 }
 
+ecs_componentbundle_t ecs_componentmanager__internal__add_box_collider_for_editor_only(ecs_componentbundle_t config)
+{
+#ifdef DEBUG
+    if ((config.signature & (ECS_CMP_COLLIDER))) return config;
+
+    const vec3s position    = config.component[ECS_CMP_TRANSFORM_IDX].transform.position;
+    const vec3s scale       = config.component[ECS_CMP_TRANSFORM_IDX].transform.scale;
+
+    config.signature |= ECS_CMP_COLLIDER;
+    config.component[ECS_CMP_COLLIDER_IDX].collider = (ecs_component_collider_t) {
+        .type = ECS_COLLIDER_RIGIDBODY,
+        .shape_type = COLLIDER_SHAPE_TYPE_SCALABLE_CUBE,
+        .motion_type = JPH_MotionType_Static,
+        .object_layer_type = 0,
+        .dim.cube = {
+            .half_depth = scale.z,
+            .half_width = scale.x,
+            .half_height = scale.y,
+        },
+        .internal = {
+            .position = position,
+            .orientation = GLM_QUAT_IDENTITY,
+            .scale = scale
+        }
+    };
+    return config;
+#else
+    return config;
+#endif
+}
 
 void ecs_componentmanager_add(ecs_componentmanager_t *const self, const u32 entity_id, ecs_componentbundle_t config)
 {
     const u32 cmp_count = ecs_componentmanager__internal_get_component_count(config.signature);
     ASSERT(cmp_count > 0);
+
+    ecs_component__internal_bundle_validate_and_initalize_internals(&config);
+
+    config = ecs_componentmanager__internal__add_box_collider_for_editor_only(config);
 
     i16 *cmp_indexes = hashtable_has_key(&self->entity2components_lookup, (hashtable_key_t){ .u32 = entity_id }) 
         ? (i16 *)hashtable_get_value(&self->entity2components_lookup, (hashtable_key_t){ .u32 = entity_id })
@@ -189,8 +223,6 @@ void ecs_componentmanager_add(ecs_componentmanager_t *const self, const u32 enti
     else                ARRAY_FILL(cmp_idx_buffer, ECS_CMP_INVALID_IDX);
 
     i16 cmp_idx_count = ECS_CMP_INVALID_IDX;
-
-    ecs_component__internal_bundle_validate_and_initalize_internals(&config);
 
     while(true)
     {

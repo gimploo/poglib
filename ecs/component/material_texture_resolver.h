@@ -62,12 +62,17 @@ void ecs_system_material__internal__resolve_textures_from_model(ecs_component_ma
         mesh_idx = model_cmp->mesh_idx;
         asset_id = model_cmp->asset_id;
     }
+
     if (mesh_cmp) {
         mesh_idx = mesh_cmp->mesh_idx;
         asset_id = mesh_cmp->asset_id;
     }
 
-    ASSERT(asset_id);
+    //NOTE: keeping asset_id == 0 for workbench primitive meshes
+    if (asset_id == 0)
+    {
+        return;
+    }
 
     glmodel_t *model = (glmodel_t *)assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_MODEL, asset_id);
     gpu_asset_t *asset = (gpu_asset_t *)assetmanager_get_gpu_loaded_asset_async(&global_engine->systems.assets, asset_id);

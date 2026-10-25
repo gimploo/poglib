@@ -17,6 +17,10 @@ typedef struct {
     arena_t *arena;
     stackarena_t *scratch_arena;
 
+    //NOTE: this is used for scaling a box only, brought for the colliders used
+    //in editor mode alone
+    JPH_Shape *box_unit_shape;
+
 } colliderbatchqueue_t;
 
 
@@ -263,6 +267,7 @@ colliderbatchqueue_t colliderbatchqueue(arena_t *const arena)
         .array_buffer.top = -1,
         .arena = arena_init(arena),
         .scratch_arena = stackarena_init(ARENA_STARTING_BLOCK_SIZE * 10000),
+        .box_unit_shape = (JPH_Shape *)JPH_BoxShape_Create(&(JPH_Vec3){ 1.0f, 1.0f, 1.0f }, JPH_DEFAULT_CONVEX_RADIUS)
     };
 }
 
@@ -330,6 +335,9 @@ void colliderbatchqueue_upload_to_jolt(colliderbatchqueue_t *const self)
 
         switch(collider->shape_type)
         {
+            case COLLIDER_SHAPE_TYPE_SCALABLE_CUBE:
+                shape = (JPH_Shape *)JPH_ScaledShape_Create(self->box_unit_shape, (JPH_Vec3 *)&collider->internal.scale);
+            break;
             case COLLIDER_SHAPE_TYPE_CUBE:
                 shape = (JPH_Shape *)JPH_BoxShape_Create((JPH_Vec3 *)&collider->dim.cube, JPH_DEFAULT_CONVEX_RADIUS);
             break;

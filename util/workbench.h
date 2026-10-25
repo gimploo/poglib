@@ -435,6 +435,9 @@ workbench_t * workbench_init(arena_t *const arena)
         (glshader_t *)assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, global_workbench->primitives.line_shader_id)
     );
 
+    JPH_BodyFilter_SetProcs(&WORKBENCH_EDITOR__INTERNAL__EXCLUDE_ENTITIES_CONFIG);
+    workbench_editor_exclude_body_ids_filter = JPH_BodyFilter_Create(NULL);
+
     return global_workbench;
 }
 

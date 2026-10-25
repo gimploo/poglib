@@ -168,6 +168,7 @@ typedef enum {
     COLLIDER_SHAPE_TYPE_CYLINDER            = 4,
     COLLIDER_SHAPE_TYPE_MESH                = 5,
     COLLIDER_SHAPE_TYPE_MODEL               = 6,
+    COLLIDER_SHAPE_TYPE_SCALABLE_CUBE       = 7,
     COLLIDER_SHAPE_TYPE_COUNT,
 } collider_shape_type;
 

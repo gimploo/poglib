@@ -1,5 +1,6 @@
 #pragma once
 #include <poglib/ecs.h>
+#include "joltc.h"
 #include "poglib/basic/runtime-ctx.h"
 #include "poglib/ecs/component/types.h"
 #include "poglib/gui.h"
@@ -11,7 +12,6 @@
 #include <poglib/ecs.h>
 #include "./ui/workbench-ui.h"
 #include "poglib/util/workbench/common.h"
-
 
 void            workbench_editor_update(void);
 void                workbench_editor_copy_entity(void);
@@ -30,6 +30,29 @@ INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collide
 INTERNAL void workbench_editor__internal__slider_on_release(void);
 INTERNAL void workbench_editor__internal__check_to_lock_camera(const workbench_t *const self, ecs_t *const ecs);
 INTERNAL void workbench_editor__internal__select_entity_id(workbench_t *const self, ecs_t *const ecs, const u32 entity_id);
+
+INTERNAL bool workbench_editor__internal__exclude_entity_ids_filter(void *userData, JPH_BodyID bodyID)
+{
+    const ecs_collider_jolt_userdata_t *const userdata =
+        (ecs_collider_jolt_userdata_t *)JPH_BodyInterface_GetUserData(
+            global_joltphysics_instance->bodyinterface,
+            bodyID
+        );
+
+    if (userdata->entity_id == WORKBENCH_RESERVED_ENTITY_ID_WORLDCAMERA) 
+        return false;
+
+    return true;
+}
+const JPH_BodyFilter_Procs WORKBENCH_EDITOR__INTERNAL__EXCLUDE_ENTITIES_CONFIG = 
+{
+    .ShouldCollide = workbench_editor__internal__exclude_entity_ids_filter,
+};
+
+//TODO: figure out how to properly use this, since these are set as global in jolt physics, maybe
+//these needs to be scoped within the raycast instead of havingn it be global in engine
+JPH_BodyFilter * workbench_editor_exclude_body_ids_filter = NULL;
+
 
 INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
 {
@@ -63,26 +86,19 @@ INTERNAL void workbench_editor__internal__check_mouse_closest_entity(void)
     {
         const vec3f_t ray_dir = glms_vec3_scale(dir, 100000.0f);
         u32 picked = 0;
-        joltraycast_results_t hits = joltphysics_raycastall(cam->position, ray_dir, NULL);
-        if (hits.count == 0) return;
-
-        for (i32 idx = (i32)(hits.count - 1); idx >= 0; idx--)
+        ASSERT(workbench_editor_exclude_body_ids_filter);
+        joltraycast_result_t hits = joltphysics_raycast(cam->position, ray_dir, NULL, workbench_editor_exclude_body_ids_filter);
+        if (hits.result.bodyID) 
         {
-            const JPH_RayCastResult hit = hits.results[idx];
-            if (hit.bodyID) 
-            {
-                const ecs_collider_jolt_userdata_t *const userdata =
-                    (ecs_collider_jolt_userdata_t *)JPH_BodyInterface_GetUserData(
-                        global_joltphysics_instance->bodyinterface,
-                        hit.bodyID
-                    );
-                if (userdata->entity_id == WORKBENCH_RESERVED_ENTITY_ID_WORLDCAMERA
-                    || global_workbench->editor.mouse_closest_to_entity_id == userdata->entity_id)
-                    continue;
+            const ecs_collider_jolt_userdata_t *const userdata =
+                (ecs_collider_jolt_userdata_t *)JPH_BodyInterface_GetUserData(
+                    global_joltphysics_instance->bodyinterface,
+                    hits.result.bodyID
+                );
 
-                picked = userdata->entity_id;
-            }
+            picked = userdata->entity_id;
         }
+
         global_workbench->editor.mouse_closest_to_entity_id = picked;
     }
 }
