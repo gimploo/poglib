@@ -39,7 +39,8 @@ INTERNAL bool workbench_editor__internal__exclude_entity_ids_filter(void *userDa
             bodyID
         );
 
-    if (userdata->entity_id == WORKBENCH_RESERVED_ENTITY_ID_WORLDCAMERA) 
+    if (userdata->entity_id == WORKBENCH_RESERVED_ENTITY_ID_WORLDCAMERA 
+        || global_workbench->editor.current_selected_entity_id == userdata->entity_id)
         return false;
 
     return true;
