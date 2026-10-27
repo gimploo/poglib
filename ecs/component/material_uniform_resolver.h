@@ -95,6 +95,8 @@ INTERNAL void ecs_system_material__internal__resolve_uniforms(
 
             case ECS_UNIFORM_MODEL_JOINTS:
                 if (animation) {
+                    //TODO: this can be problematic, if model is never cached - it be better to have something that caches it early and not
+                    //need the user manually cache it.
                     if (model_cmp->internal.model) {
                         value.mat4s.count = model_cmp->internal.model->data->skins[0].joints_count;
                         value.mat4s.data = model_cmp->internal.model->uJoints_palette;

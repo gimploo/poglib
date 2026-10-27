@@ -492,7 +492,7 @@ void glmodel_update(glmodel_t *self, f32 dt)
     anim_state_machine_t *anim_sm = &self->anim_state_machine;
 
     cgltf_data* data = self->data;
-    if (data->animations_count == 0) return;
+    ASSERT(data->animations_count);
 
     cgltf_skin* skin = (data->skins_count > 0) ? &data->skins[0] : NULL;
 
