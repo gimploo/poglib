@@ -22,6 +22,8 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
     slot_iterator(primary_pool, ITER)
     {
         const ecs_component_poolentry_t * const entry = (ecs_component_poolentry_t *)ITER;
+        if (!entry->is_active) continue;
+
         const ecs_component_mesh_t *const mesh = (ecs_component_mesh_t *)entry->entity_cmpdata;
 
         if (mesh->for_editor_only && !global_workbench->is_active) continue;

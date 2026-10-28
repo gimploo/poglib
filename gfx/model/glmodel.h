@@ -546,16 +546,17 @@ void glmodel_update(glmodel_t *self, f32 dt)
     }
 
     // Write final blended TRS from pose_a back into cgltf_nodes
-    for (size_t i = 0; i < data->nodes_count; ++i) {
+    for (size_t i = 0; i < data->nodes_count; ++i) 
+    {
         cgltf_node* node = &data->nodes[i];
         node->has_matrix = 0; // Clear matrix flag so TRS components are used
         node->has_translation = 1;
         node->has_rotation = 1;
         node->has_scale = 1;
 
-        glm_vec3_copy(pose_a[i].translation.raw, node->translation);
-        glm_quat_copy(pose_a[i].rotation.raw, node->rotation);
-        glm_vec3_copy(pose_a[i].scale.raw, node->scale);
+        *(vec3s *)node->translation = pose_a[i].translation;
+        *(versors *)node->rotation  = pose_a[i].rotation; 
+        *(vec3s *)node->scale       = pose_a[i].scale;
     }
 
     // Free stack arena poses in LIFO order

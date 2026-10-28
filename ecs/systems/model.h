@@ -20,6 +20,8 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
     slot_iterator(primary_pool, ITER)
     {
         const ecs_component_poolentry_t *const entry = (void *)ITER;
+        if (!entry->is_active) continue;
+
         ecs_component_model_t *cmp_model = (ecs_component_model_t *)entry->entity_cmpdata;
 
         const ecs_entity_query_t view = ecs_componentmanager__internal__query_components(
