@@ -64,7 +64,7 @@ gpu_mesh_t * gpu_mesh(gpu_mesh_primitive_t **primitives, const u8 count, arena_t
 
 gpu_asset_t * gpu_asset(const u32 asset_id, gpu_mesh_t **gpu_mesh, const u16 count, arena_t *const arena)
 {
-    gpu_asset_t * const gpu_asset = arena_store(
+    gpu_asset_t *const gpu_asset = arena_store(
         arena, 
         &(gpu_asset_t) {
             .asset_id = asset_id,

@@ -7,7 +7,7 @@
 #include "poglib/util/workbench/common.h"
 #include <poglib/gui.h>
 
-void workbench_editor__internal__toggle_mute(void)
+void workbench_editor_toggle_mute(void)
 {
     global_workbench->audio.mute_sound = !global_workbench->audio.mute_sound;
     if (global_workbench->audio.mute_sound)     ma_engine_set_volume(&global_audio_engine, 0.f);
@@ -16,6 +16,7 @@ void workbench_editor__internal__toggle_mute(void)
     if (global_workbench->audio.mute_sound)     logging("Audio muted");
     else                                        logging("Audio unmuted");
 }
+
 
 void workbench_editor_render_header(
     gui_t *const gui, 
@@ -277,7 +278,7 @@ void workbench_editor_render_header(
             .styles = UI_STYLE_ROUNDED_CORNERS,
             .traits = UI_BEHAVIOR_CLICKABLE | UI_BEHAVIOR_HOVERABLE 
         },
-        .onclick = workbench_editor__internal__toggle_mute,
+        .onclick = workbench_editor_toggle_mute,
         .dim = {
             .min_height = 30,
             .min_width = !is_volume_mute ? 50 : 60,

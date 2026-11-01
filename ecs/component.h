@@ -386,6 +386,7 @@ ecs_entity_query_t ecs_componentmanager__internal__query_components(const ecs_co
 
 void ecs_componentmanager__internal_update_cmpdata(const ecs_cmp_patch_payload_t request, const ecs_component_type cmp_type, const ecs_component_poolentry_t *entry)
 {
+#if 0
     switch(cmp_type)
     {
         case ECS_CMP_COLLIDER: {
@@ -406,6 +407,7 @@ void ecs_componentmanager__internal_update_cmpdata(const ecs_cmp_patch_payload_t
 
         default: return;
     }
+#endif
 }
 
 void ecs_componentmanager_patch_entity_components(ecs_componentmanager_t *const self, const u32 entity_id, const ecs_cmp_patch_payload_t request)

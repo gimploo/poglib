@@ -14,6 +14,7 @@
 #include "poglib/util/workbench/common.h"
 
 void            workbench_editor_update(void);
+void                workbench_editor_toggle_mute(void);
 void                workbench_editor_copy_entity(void);
 void                workbench_editor_paste_entity(void);
 void                workbench_editor_delete_entity(void);

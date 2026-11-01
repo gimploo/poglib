@@ -280,9 +280,12 @@ void assetmanager_destroy(assetmanager_t *const self)
     hashtable_iterator(&self->gpu_uploaded_assets, entry)
     {
         gpu_asset_t *const asset = ((hashtable_entry_t * )entry)->value;
-        for (u16 mesh_idx = 0; mesh_idx < asset->meshes.count; mesh_idx++) {
-            for (u16 prim_idx = 0; prim_idx < asset->meshes.data[mesh_idx]->count; prim_idx++) {
-                const gpu_mesh_primitive_t *gpu_mesh = asset->meshes.data[mesh_idx]->primitives[prim_idx];
+        for (u16 mesh_idx = 0; mesh_idx < asset->meshes.count; mesh_idx++)
+        {
+            gpu_mesh_t *const mesh = asset->meshes.data[mesh_idx];
+            for (u16 prim_idx = 0; prim_idx < mesh->count; prim_idx++)
+            {
+                const gpu_mesh_primitive_t *gpu_mesh = mesh->primitives[prim_idx];
                 vao_destroy(&(vao_t){.id  = gpu_mesh->vao_id});
             }
         }
@@ -566,7 +569,7 @@ gpu_mesh_t * assetmanager__internal__upload_cube_to_gpu(assetmanager_t *const se
 
 
     gpu_mesh_primitive_t *primitve  = gpu_mesh_primtive(vao, vbo, ebo, sizeof(f32) * 8, self->arena);
-    gpu_mesh_t *mesh                = gpu_mesh((gpu_mesh_primitive_t *[]){primitve}, 1, self->arena);
+    gpu_mesh_t *mesh                = gpu_mesh((gpu_mesh_primitive_t *[]){ primitve }, 1, self->arena);
 
     return mesh;
 }

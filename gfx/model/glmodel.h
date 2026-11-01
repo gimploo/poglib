@@ -207,6 +207,11 @@ glmodel_t glmodel_load_model_init(const str_t filepath, arena_t *const arena)
             : glms_vec3_one();
     }
 
+    if (uJoints_palette) {
+        for (u32 idx = 0; idx < skin->joints_count; idx++) 
+            uJoints_palette[idx] = glms_mat4_identity();
+    }
+
     logging("Loaded model file `"STR_FMT"`", STR_ARG(filepath));
 
     return (glmodel_t) {

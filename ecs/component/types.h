@@ -211,8 +211,10 @@ typedef union {
 
 typedef struct {
     JPH_BodyID bodyid;
-    u32 joints_count;       // number of joints in the skin driving this soft body
-    u32 follow_entity_id;   // entity whose transform drives placement/collision (0 = follows itself)
+    u32 joints_count;               // number of joints in the skin driving this soft body
+    u32 follow_entity_id;           // entity whose transform drives placement/collision (0 = follows itself)
+    bool skin_state_initialized;    // true once the skin state has been hard-skinned for skin_state_bodyid
+    JPH_BodyID skin_state_bodyid;   // body id the skin state was hard-skinned for
 } ecs_component_collider_softbody_t;
 
 typedef struct {
