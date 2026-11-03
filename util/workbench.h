@@ -590,7 +590,7 @@ void workbench_render_camera(
     );
 
 
-    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAMERA);
+    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, 0);
     if(!asset) {
         return;
     }
@@ -598,7 +598,7 @@ void workbench_render_camera(
 
     rendercommand_t rendercommand = {
         .enable_wireframe = true,
-        .vtx.data.primitive = asset->meshes.data[0]->primitives[0],
+        .vtx.data.primitive = asset->meshes.data[0]->primitives[GL_MESH_PRIMITIVE_TYPE_CAMERA],
         .instance = {
             .raw_data = &(rendercommand_instance_primitive_mesh_t) {
                 .translation = { position.x, position.y, position.z, 0.f },
@@ -661,14 +661,14 @@ void workbench_render_marker(
         assetmanager, ASSET_TYPE_TEXTURE_SPRITE_ATLAS, self->primitives.atlas_id);
 
 
-    gpu_asset_t * const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CUBE);
+    gpu_asset_t * const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, 0);
     if(!asset) {
         return;
     }
 
     rendercommand_t rendercommand = {
         .enable_wireframe = self->render_config.wireframe_mode,
-        .vtx.data.primitive = asset->meshes.data[0]->primitives[0],
+        .vtx.data.primitive = asset->meshes.data[0]->primitives[GL_MESH_PRIMITIVE_TYPE_CUBE],
         .instance = {
             .raw_data = &(rendercommand_instance_primitive_mesh_t) {
                 .translation = { translation.x, translation.y, translation.z, 0.f },
@@ -821,7 +821,7 @@ void workbench_draw_sphere(const vec3s position, const f32 radius, const vec4s c
     );
     const assetmanager_t *const assetmanager = &global_engine->systems.assets;
 
-    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_SPHERE);
+    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, 0);
     if(!asset) {
         return;
     }
@@ -840,7 +840,7 @@ void workbench_draw_sphere(const vec3s position, const f32 radius, const vec4s c
         },
         .vtx = {
             .type = RENDERCOMMAND_VTX_TYPE_MESH,
-            .data.primitive = asset->meshes.data[0]->primitives[0],
+            .data.primitive = asset->meshes.data[0]->primitives[GL_MESH_PRIMITIVE_TYPE_SPHERE],
         },
         .material = {
             .texture = {0},
@@ -888,7 +888,7 @@ void workbench_draw_capsule(const vec3s position, const versors orientation, con
     );
     const assetmanager_t *const assetmanager = &global_engine->systems.assets;
 
-    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, GL_MESH_PRIMITIVE_TYPE_CAPSULE);
+    gpu_asset_t *const asset = assetmanager_get_gpu_loaded_asset_async(assetmanager, 0);
     if(!asset) {
         return;
     }
@@ -909,7 +909,7 @@ void workbench_draw_capsule(const vec3s position, const versors orientation, con
             },
             .vtx = {
                 .type = RENDERCOMMAND_VTX_TYPE_MESH,
-                .data.primitive = asset->meshes.data[0]->primitives[0],
+                .data.primitive = asset->meshes.data[0]->primitives[GL_MESH_PRIMITIVE_TYPE_CAPSULE],
             },
             .material = {
                 .texture = {0},

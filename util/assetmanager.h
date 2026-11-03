@@ -28,7 +28,7 @@ struct assetmanager_t {
     hashtable_t         gpu_uploaded_assets;
     hashtable_t         assetmeta_lookup;
     struct {
-        u32             asset_idx_generator;
+        i64             asset_idx_generator;
         mpsc_queue_t    asset_staging_queue;
         queue_t         notification_queue;
     } internal;
@@ -104,7 +104,7 @@ assetmanager_t assetmanager_init(bgtask_manager_t *const taskmanager)
         .assetmeta_lookup       = hashtable_init(MAX_ASSETS_ALLOWED_PER_TYPE * ASSET_TYPE_COUNT, HT_KEY_TYPE_U32, (ht_value_type){ .size = sizeof(asset_meta_t), .type = HT_STORAGE_BY_VALUE } , arena),
         .gpu_uploaded_assets    = hashtable_init(KB, HT_KEY_TYPE_U32, (ht_value_type) { .size = sizeof(gpu_asset_t), .type = HT_STORAGE_BY_REFERENCE }, arena),
         .internal = {
-            .asset_idx_generator        = GL_MESH_PRIMITIVE_TYPE_COUNT,
+            .asset_idx_generator        = -1,
             .asset_staging_queue        = mpsc_queue(arena, MAX_ASSETS_ALLOWED_PER_TYPE * 10 * ASSET_TYPE_COUNT),
             .notification_queue         = queue_init(10, asset_loaded_event_t, arena)
         }
@@ -684,7 +684,7 @@ gpu_mesh_t * assetmanager__internal__upload_camera_model(assetmanager_t *const s
 
 void assetmanager_load_all_primitives(assetmanager_t *const self)
 {
-    const u32 primitive_asset_id = 0;
+    const u32 asset_id = ++self->internal.asset_idx_generator;
 
     gpu_mesh_t *cube        = assetmanager__internal__upload_cube_to_gpu(self);
     gpu_mesh_t *capsule     = assetmanager__internal__upload_capsule_to_gpu(self);
@@ -693,7 +693,7 @@ void assetmanager_load_all_primitives(assetmanager_t *const self)
     gpu_mesh_t *sphere      = assetmanager__internal__upload_sphere_to_gpu(self);
 
     gpu_asset_t *asset = gpu_asset(
-        primitive_asset_id, 
+        asset_id, 
         (gpu_mesh_t *[]) {
             [GL_MESH_PRIMITIVE_TYPE_CUBE]       = cube,
             [GL_MESH_PRIMITIVE_TYPE_CAPSULE]    = capsule,
@@ -705,7 +705,7 @@ void assetmanager_load_all_primitives(assetmanager_t *const self)
         self->arena
     );
 
-    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = primitive_asset_id }, asset);
+    hashtable_insert(&self->gpu_uploaded_assets, (hashtable_key_t){ .u32 = asset_id }, asset);
 
     logging("loaded all primitive shapes");
 }
