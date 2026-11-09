@@ -490,7 +490,7 @@ void glmodel_play_animation(glmodel_t *self, const u16 new_anim_idx, const f32 b
     anim_sm->has_active       = true;
 }
 
-void glmodel_update(glmodel_t *self, f32 dt)
+void glmodel_update(glmodel_t *const self, const f32 dt)
 {
     ASSERT(self && self->data);
 
@@ -559,9 +559,15 @@ void glmodel_update(glmodel_t *self, f32 dt)
         node->has_rotation = 1;
         node->has_scale = 1;
 
+#if defined(_WIN64)
+        glm_vec3_copy(pose_a[i].translation.raw, node->translation);
+        glm_vec4_copy(pose_a[i].rotation.raw, node->rotation);
+        glm_vec3_copy(pose_a[i].scale.raw, node->scale);
+#else
         *(vec3s *)node->translation = pose_a[i].translation;
         *(versors *)node->rotation  = pose_a[i].rotation; 
         *(vec3s *)node->scale       = pose_a[i].scale;
+#endif
     }
 
     // Free stack arena poses in LIFO order

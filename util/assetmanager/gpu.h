@@ -73,7 +73,8 @@ gpu_asset_t * gpu_asset(const u32 asset_id, gpu_mesh_t **gpu_mesh, const u16 cou
                 .data = arena_store(arena, gpu_mesh, sizeof(*gpu_mesh) * count)
             }
         },
-        sizeof(gpu_asset_t));
+        sizeof(gpu_asset_t)
+    );
 
     return gpu_asset;
 }

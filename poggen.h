@@ -46,7 +46,7 @@ typedef struct poggen_t {
 global poggen_t *global_engine = NULL;
 
 poggen_t *                          poggen_init(application_t *const app, const poggen_config_t config);
-#define                             poggen_add_scene(PGEN, SCENE_NAME)                          poggen__internal_add_scene((PGEN), scene__internal_init(SCENE_NAME))
+#define                             poggen_add_scene(PGEN, SCENE_NAME)                          poggen__internal__add_scene((PGEN), scene__internal_init(SCENE_NAME))
 void                                poggen_remove_scene(poggen_t *self, str_t label);
 void                                poggen_change_scene(poggen_t *self, str_t scene_label);
 
@@ -86,7 +86,7 @@ poggen_t * poggen_init(application_t *const app, const poggen_config_t config)
         arena,
         &(poggen_t ){
             .config             = config,
-            .scenes             = hashtable_init(MAX_SCENES_ALLOWED, HT_KEY_TYPE_STR, (ht_value_type){ .size = sizeof(scene_t), .type = HT_STORAGE_BY_REFERENCE }, app->handle.arena),
+            .scenes             = hashtable_init(MAX_SCENES_ALLOWED, HT_KEY_TYPE_STR, (ht_value_type){ .size = sizeof(scene_t), .type = HT_STORAGE_BY_REFERENCE }, arena),
             .current_scene      = NULL,
             .arena              = arena,
             .handle = {
@@ -107,14 +107,14 @@ poggen_t * poggen_init(application_t *const app, const poggen_config_t config)
     return global_engine;
 }
 
-void poggen__internal_add_scene(poggen_t *const self, const scene_t scene_config)
+INTERNAL void poggen__internal__add_scene(poggen_t *const self, const scene_t scene_config)
 {
     assert(self);
 
     scene_t *const scene = mem_init((scene_t *)&scene_config, sizeof(scene_t));
     hashtable_insert(
         &self->scenes, 
-        (hashtable_key_t){scene_config.label},
+        (hashtable_key_t){ .str = scene_config.label },
         scene
     );
 

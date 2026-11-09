@@ -239,17 +239,8 @@ INTERNAL void colliderbatchqueue__internal__add_softbody_shape(ecs_component_col
         shared_settings, &pos, &rot, collider->object_layer_type
     );
 
-#if defined(__linux__)
-    //TODO: settin this under linux only, due to a low spec that am running, found this 
-    //config looks to be the most stylistic actualyy while trying to optmizing for this machine,
-    //need to futher explore this to get a better idea
     JPH_SoftBodyCreationSettings_SetNumIterations(creation_settings, 5);
     JPH_SoftBodyCreationSettings_SetVertexRadius(creation_settings, 0.1f);
-#else
-    JPH_SoftBodyCreationSettings_SetNumIterations(creation_settings, 20);
-    JPH_SoftBodyCreationSettings_SetVertexRadius(creation_settings, 0.01f);
-#endif
-
     JPH_SoftBodyCreationSettings_SetPressure(creation_settings, 0.0f);
     JPH_SoftBodyCreationSettings_SetUpdatePosition(creation_settings, false);
 

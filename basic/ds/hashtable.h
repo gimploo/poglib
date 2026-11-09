@@ -142,7 +142,7 @@ bool hashtable__internal_compare_key(const hashtable_t * const self, const hasht
         : key1.u32 == key2.u32;
 }
 
-u32 hashtable__internal_get_hashed_key_index(const hashtable_t * const self, const hashtable_key_t key)
+u32 hashtable__internal_get_hashed_key_index(const hashtable_t *const self, const hashtable_key_t key)
 {
     const ht_key_type keytype = self->internal.keytype;
     if (keytype == HT_KEY_TYPE_STR) ASSERT(key.str.len > 0);

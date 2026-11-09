@@ -9,7 +9,7 @@ gltexturelist_t     ecs_material_get_texturelist_for_mesh(const ecs_component_ma
 
 vec4s ecs_material_get_basecolor_for_mesh(const ecs_component_material_t *const material, const u8 mesh_idx)
 {
-    if (!material->meshidx_to_texture_lookup.count) return COLOR_WHITE;
+    if (!material->meshidx_to_texture_lookup.count) return COLOR_RED;
     return material->meshidx_to_texture_lookup.data[mesh_idx].basecolor;
 }
 
@@ -78,8 +78,7 @@ void ecs_system_material__internal__resolve_textures_from_model(ecs_component_ma
     gpu_asset_t *asset = (gpu_asset_t *)assetmanager_get_gpu_loaded_asset_async(&global_engine->systems.assets, asset_id);
     if (!asset) return;
 
-    const slot_t material_assetid_lookup = asset->material_assetid_lookup;
-    if (!material_assetid_lookup.len) return;
+    const bool asset_includes_textures = asset->material_assetid_lookup.len != 0;
 
     const cgltf_mesh *single_mesh = &model->data->meshes[mesh_idx];
 
@@ -93,9 +92,9 @@ void ecs_system_material__internal__resolve_textures_from_model(ecs_component_ma
             const vec4s color = *(vec4s *)material->pbr_metallic_roughness.base_color_factor;
             primmesh2texture_lookup.data[prim_idx].basecolor = color;
 
-            if (material->pbr_metallic_roughness.base_color_texture.texture) {
+            if (material->pbr_metallic_roughness.base_color_texture.texture && asset_includes_textures) {
                 const u64 material_index = material - model->data->materials;
-                const u64 basecolor_texture_id = *(u64 *)slot_get_value(&material_assetid_lookup, material_index);
+                const u64 basecolor_texture_id = *(u64 *)slot_get_value(&asset->material_assetid_lookup, material_index);
                 primmesh2texture_lookup.data[prim_idx].basecolor_texture_id = basecolor_texture_id;
                 has_textures = true;
             }

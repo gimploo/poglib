@@ -77,7 +77,7 @@ u64 __slot_iter_get_value(const slot_t *slot, u64 *hits, u64 *index)
 
 
 
-slot_t slot_init(const u64 array_capacity, const u64 elem_size, arena_t * const arena)
+slot_t slot_init(const u64 array_capacity, const u64 elem_size, arena_t *arena)
 {
     ASSERT(elem_size > 0);
 
