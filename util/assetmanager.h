@@ -568,13 +568,11 @@ gpu_mesh_t * assetmanager__internal__upload_cube_to_gpu(assetmanager_t *const se
     vao_unbind();
 
 
-    gpu_mesh_primitive_t *primitve  = gpu_mesh_primtive(vao, vbo, ebo, sizeof(f32) * 8, self->arena);
-    gpu_mesh_t *mesh                = gpu_mesh((gpu_mesh_primitive_t *[]){ primitve }, 1, self->arena);
+    gpu_mesh_primitive_t *primitive  = gpu_mesh_primtive(vao, vbo, ebo, sizeof(f32) * 8, self->arena);
+    gpu_mesh_t *mesh                 = gpu_mesh((gpu_mesh_primitive_t *[]){ primitive }, 1, self->arena);
 
     return mesh;
 }
-
-
 
 INTERNAL gpu_mesh_t * assetmanager__internal__upload_cylinder_to_gpu(assetmanager_t *const self)
 {
@@ -685,6 +683,7 @@ gpu_mesh_t * assetmanager__internal__upload_camera_model(assetmanager_t *const s
 void assetmanager_load_all_primitives(assetmanager_t *const self)
 {
     const u32 asset_id = ++self->internal.asset_idx_generator;
+    ASSERT(asset_id == 0);
 
     gpu_mesh_t *cube        = assetmanager__internal__upload_cube_to_gpu(self);
     gpu_mesh_t *capsule     = assetmanager__internal__upload_capsule_to_gpu(self);

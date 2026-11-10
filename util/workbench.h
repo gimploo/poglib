@@ -176,6 +176,8 @@ workbench_t * workbench_init(arena_t *const arena)
 
     assetmanager_t *const assetmanager = &global_engine->systems.assets;
 
+    assetmanager_load_all_primitives(&global_engine->systems.assets);
+
     workbench_t workbench = {
         .is_active = false,
         .disable_joltrenderer = true,
@@ -421,9 +423,6 @@ workbench_t * workbench_init(arena_t *const arena)
         },
     };
 
-
-    assetmanager_load_all_primitives(&global_engine->systems.assets);
-
     global_workbench = arena_store(arena, &workbench, sizeof(workbench));
 
     workbench_ecs_populate_entities();
@@ -447,73 +446,6 @@ INTERNAL matrix4f_t workbench__internal__get_camera_view(void)
     return glcamera_getview(camera);
 }
 
-
-
-#if 0
-void workbench__internal_render_lightsources(workbench_t *self)
-{
-    const list_t *lights = {0};
-    list_iterator(lights, iter) {
-        glrenderer3d_draw((glrendererconfig_t) {
-            .calls = {
-                .count = 1,
-                .call = {
-                    [0] = {
-                        .is_wireframe = self->render_config.wireframe_mode,
-                        .textures = {0},
-                        .vtx = (buffer_t){
-                            .raw_data = (u8 *)DEFAULT_CUBE_VERTICES_8,
-                            .size = sizeof(DEFAULT_CUBE_VERTICES_8)
-                        },
-                        .idx = {
-                            .data = (u8 *)DEFAULT_CUBE_INDICES_8,
-                            .nmemb = ARRAY_LEN(DEFAULT_CUBE_INDICES_8)
-                        },
-                        .attrs = {
-                            .count = 1,
-                            .attr = {
-                                [0] = {
-                                    .ncmp = 3,
-                                    .interleaved = {0},
-                                },
-                            }
-                        },
-                        .shader_config = {
-                            .shader = &self->shader,
-                            .uniforms = {
-                                .count = 4,
-                                .data = {
-                                    [0] = {
-                                        .name = str_lit("view"),
-                                        .value = workbench__internal_get_camera_view(self)
-                                    },
-                                    [1] = {
-                                        .name = str_lit("projection"),
-                                        .value = glms_perspective(
-                                            radians(45), global_poggen->handle.app->window.aspect_ratio, 1.0f, 10000.0f)
-                                    },
-                                    [2] = {
-                                        .name = str_lit("color"),
-                                        .value.vec4 = ((gllight_t *)iter)->color
-                                    },
-                                    [3] = {
-                                        .name = str_lit("transform"),
-                                        .value = glms_mat4_mul(
-                                            glms_translate_make(((gllight_t *)iter)->position),
-                                            glms_scale_make((vec3f_t){10.f, 10.f, 10.f})
-                                        ),
-                                    },
-                                }
-                            }
-                        }
-                    }
-                }
-            } 
-        });
-
-    }
-}
-#endif
 
 void workbench_destroy(void)
 {
@@ -566,8 +498,6 @@ void workbench_render(void)
         );
     }
 
-//    workbench__internal_render_lightsources(self);
-
     workbench_editor_render();
 
     renderqueue_dispatch(&self->renderqueue);
@@ -598,7 +528,7 @@ void workbench_render_camera(
 
     rendercommand_t rendercommand = {
         .enable_wireframe = true,
-        .vtx.data.primitive = asset->meshes.data[0]->primitives[GL_MESH_PRIMITIVE_TYPE_CAMERA],
+        .vtx.data.primitive = asset->meshes.data[GL_MESH_PRIMITIVE_TYPE_CAMERA]->primitives[0],
         .instance = {
             .raw_data = &(rendercommand_instance_primitive_mesh_t) {
                 .translation = { position.x, position.y, position.z, 0.f },
@@ -840,7 +770,7 @@ void workbench_draw_sphere(const vec3s position, const f32 radius, const vec4s c
         },
         .vtx = {
             .type = RENDERCOMMAND_VTX_TYPE_MESH,
-            .data.primitive = asset->meshes.data[0]->primitives[GL_MESH_PRIMITIVE_TYPE_SPHERE],
+            .data.primitive = asset->meshes.data[GL_MESH_PRIMITIVE_TYPE_SPHERE]->primitives[0],
         },
         .material = {
             .texture = {0},

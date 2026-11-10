@@ -144,7 +144,8 @@ void ecs_component__internal_bundle_validate_and_initalize_internals(ecs_compone
 
             case ECS_CMP_MESH: 
                 ASSERT(config->signature & (ECS_CMP_TRANSFORM));
-                ASSERT(config->signature & (ECS_CMP_MATERIAL));
+                if (!config->component[ECS_CMP_MESH_IDX].mesh.for_editor_only)
+                    ASSERT(config->signature & (ECS_CMP_MATERIAL));
             break;
 
             case ECS_CMP_MODEL: 

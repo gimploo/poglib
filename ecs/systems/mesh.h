@@ -54,9 +54,9 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
         const ecs_component_transform_t *transform = view.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
         ASSERT(transform);
 
-        const glshader_t *shader = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader_asset_id);
+        const u32 shader_asset_id = mesh->for_editor_only ? global_workbench->primitives.mesh_shader_id : material->shader_asset_id;
+        const glshader_t *shader = assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, shader_asset_id);
         ASSERT(shader);
-
 
         gltexturelist_t texturelist = ecs_material_get_texturelist_for_mesh(material, mesh->primitive_idx);
         gluniforms_t uniforms = material->internal.uniform_values;

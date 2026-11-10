@@ -56,7 +56,7 @@ gpu_mesh_t * gpu_mesh(gpu_mesh_primitive_t **primitives, const u8 count, arena_t
         arena,
         &(gpu_mesh_t) {
             .count = count,
-            .primitives = arena_store(arena, primitives, sizeof(*primitives) * count)
+            .primitives = arena_store(arena, primitives, sizeof(void *) * count)
         },
         sizeof(gpu_mesh_t)
     );
@@ -70,7 +70,7 @@ gpu_asset_t * gpu_asset(const u32 asset_id, gpu_mesh_t **gpu_mesh, const u16 cou
             .asset_id = asset_id,
             .meshes = {
                 .count = count,
-                .data = arena_store(arena, gpu_mesh, sizeof(*gpu_mesh) * count)
+                .data = arena_store(arena, gpu_mesh, sizeof(void *) * count)
             }
         },
         sizeof(gpu_asset_t)
