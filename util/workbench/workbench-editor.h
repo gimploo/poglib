@@ -660,15 +660,21 @@ INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collide
     const u32 entity_id                 = global_workbench->editor.current_selected_entity_id;
     const ecs_entity_query_t query      = ecs_entity_query_components(global_ecs, entity_id, ECS_CMP_COLLIDER | ECS_CMP_TRANSFORM);
     ecs_component_collider_t *collider  = query.entity_cmp_data[ECS_CMP_COLLIDER_IDX];
-
     if (!collider) return;
+    if (collider->type != ECS_COLLIDER_RIGIDBODY) return;
 
     //NOTE: updating the shape of the collider
     {
         ecs_component_transform_t *const transform = query.entity_cmp_data[ECS_CMP_TRANSFORM_IDX];
         ASSERT(transform);
 
-        if (!collider->body.rigid.kinematicbody) {
+        if (collider->body.rigid.kinematicbody) {
+
+            JPH_CharacterVirtual_SetPosition(collider->body.rigid.kinematicbody, (JPH_Vec3 *)&transform->position);
+            JPH_CharacterVirtual_SetRotation(collider->body.rigid.kinematicbody, (JPH_Quat *)&transform->orientation);
+
+        } else {
+
             JPH_BodyInterface_SetPositionAndRotation(
                 global_joltphysics_instance->bodyinterface, 
                 collider->body.rigid.body_ids[0], 
@@ -681,9 +687,7 @@ INTERNAL void workbench_editor__internal_update_position_and_rotation_of_collide
                 },
                 JPH_Activation_DontActivate
             );
-        } else {
-            JPH_CharacterVirtual_SetPosition(collider->body.rigid.kinematicbody, (JPH_Vec3 *)&transform->position);
-            JPH_CharacterVirtual_SetRotation(collider->body.rigid.kinematicbody, (JPH_Quat *)&transform->orientation);
+
         }
 
         collider->internal.position     = transform->position;

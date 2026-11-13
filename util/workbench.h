@@ -929,3 +929,21 @@ INTERNAL void workbench__internal__reload_shader(const u32 shader_asset_id)
     }
 }
 
+void workbench_draw_raycast(
+    const vec3s start, 
+    const vec4s start_color,
+    const vec3s end, 
+    const vec4s end_color,
+    const f32 sphere_radius)
+{
+    workbench_draw_sphere(start, sphere_radius, start_color, false);
+    workbench_draw_line(
+        start,
+        end,
+        start_color,
+        end_color,
+        false
+    );
+    workbench_draw_sphere(end, sphere_radius, end_color, false);
+}
+
