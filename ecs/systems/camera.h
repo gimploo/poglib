@@ -4,7 +4,7 @@
 #include "poglib/ecs/component/types.h"
 #include "poglib/util/glcamera.h"
 
-INTERNAL void ecs_system_camera__internal_update_follow_camera(
+INTERNAL void ecs_system_camera__internal_update_orbit_follow_camera(
     ecs_componentmanager_t *const cmp_manager,
     ecs_component_camera_t *const camera,
     const ecs_entity_query_t camera_view
@@ -65,7 +65,7 @@ void ecs_system_camera(ecs_componentmanager_t *const cmp_manager, const ecs_syst
                 );
             break;
             case ECS_CMP_CAMERA_MODE_ORBIT_FOLLOW:
-                ecs_system_camera__internal_update_follow_camera(
+                ecs_system_camera__internal_update_orbit_follow_camera(
                     cmp_manager,
                     camera, 
                     ecs_componentmanager__internal__query_components(cmp_manager, entry->entity_id, ECS_CMP_TRANSFORM)

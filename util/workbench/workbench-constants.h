@@ -1,7 +1,7 @@
 #pragma once
 #include <poglib/basic.h>
 
-f32 CAMERA_VERTICES [] = {
+const f32 CAMERA_VERTICES [] = {
        // Main camera body (trapezoid shape - wider at back)
     // Front face (smaller)
     -0.3f, -0.2f, -0.2f,    // 0: front bottom-left
@@ -44,7 +44,7 @@ f32 CAMERA_VERTICES [] = {
 };
 
 // Indices for rendering triangles
-u32 CAMERA_INDICES[] = {
+const u32 CAMERA_INDICES[] = {
        // Camera body faces (trapezoid)
     0, 1, 2,  2, 3, 0,    // front
     4, 7, 6,  6, 5, 4,    // back

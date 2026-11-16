@@ -9,8 +9,9 @@
 
 typedef struct {
 
+    bool                is_hit;
     JPH_RayCastResult   result;
-    JPH_Vec3            hitposition;
+    vec3s               hitposition;
 
 } joltraycast_result_t;
 
@@ -391,8 +392,9 @@ joltraycast_result_t joltphysics_raycast(const vec3f_t ray_pos, const vec3f_t di
         JPH_RayCast_GetPointOnRay((JPH_Vec3 *)&ray_pos, (JPH_Vec3 *)&dir, hit.fraction, &hit_position);
 
         return (joltraycast_result_t){
+            .is_hit     = true,
             .result     = hit,
-            .hitposition = hit_position
+            .hitposition = *(vec3s *)&hit_position
         };
     }
     return (joltraycast_result_t){0};

@@ -15,6 +15,7 @@ typedef struct glcamera_t {
 
     vec3f_t     position;
     vec2f_t     euler_angle;
+    f32         fov_degree;
 
     struct {
         vec3f_t front;
@@ -24,7 +25,7 @@ typedef struct glcamera_t {
 
 } glcamera_t ;
 
-glcamera_t      glcamera_perspective(const vec3f_t pos, const vec2f_t theta);
+glcamera_t      glcamera_perspective(const vec3f_t pos, const vec2f_t radians, const f32 fov_degree);
 void            glcamera_set(
                     glcamera_t *const self, 
                     const vec3f_t absolute_position, 
@@ -124,10 +125,11 @@ void glcamera_lookat(glcamera_t *const self, const vec3f_t target, const vec3f_t
 
 }
 
-glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t radians)
+glcamera_t glcamera_perspective(const vec3f_t pos, const vec2f_t radians, const f32 fov_degree)
 {
     glcamera_t o = {
         .position   = pos,
+        .fov_degree = fov_degree,
         .euler_angle = radians,
         .direction = {
             .front      = GL_CAMERA_DIRECTION_FRONT,

@@ -21,9 +21,9 @@ typedef enum {
     ECS_CMP_COLLIDER_IDX        = 5,
     ECS_CMP_MESH_IDX            = 6,
     ECS_CMP_SPRITE_IDX          = 7,
-    ECS_CMP_POINT_LIGHT_IDX           = 8, 
-    ECS_CMP_ANIMATION_IDX       = 9, 
-    ECS_CMP_DIRECTIONAL_LIGHT_IDX = 10,
+    ECS_CMP_POINT_LIGHT_IDX         = 8, 
+    ECS_CMP_ANIMATION_IDX           = 9, 
+    ECS_CMP_DIRECTIONAL_LIGHT_IDX   = 10,
     ECS_CMP_COUNT
 
 } ecs_component_storage_index;
@@ -40,7 +40,7 @@ typedef enum {
     ECS_CMP_SPRITE              = 1 << ECS_CMP_SPRITE_IDX,
     ECS_CMP_POINT_LIGHT         = 1 << ECS_CMP_POINT_LIGHT_IDX,
     ECS_CMP_ANIMATION           = 1 << ECS_CMP_ANIMATION_IDX,
-    ECS_CMP_DIRECTIONAL_LIGHT   = 1 << ECS_CMP_DIRECTIONAL_LIGHT_IDX
+    ECS_CMP_DIRECTIONAL_LIGHT   = 1 << ECS_CMP_DIRECTIONAL_LIGHT_IDX,
 
 } ecs_component_type;
 
