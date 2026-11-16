@@ -135,7 +135,7 @@ INTERNAL void workbench__internal__ecs_create_world_camera(workbench_t *const se
                     .source = ECS_CMP_TRANSFORM_SOURCE_INPUT,
                 },
                 [ECS_CMP_CAMERA_IDX].camera = (ecs_component_camera_t){
-                    .camera = glcamera_perspective((vec3f_t){2.0f, 4.f, -4.0f}, (vec2f_t){-0.32f, 1.59f}, 60),
+                    .camera = glcamera_perspective((vec3f_t){2.0f, 4.f, -4.0f}, (vec2f_t){-0.32f, 1.59f}, 45),
                     .mode = ECS_CMP_CAMERA_MODE_FREE_FLY,
                 },
                 [ECS_CMP_INPUT_IDX].input = (ecs_component_input_t ){
