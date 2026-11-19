@@ -26,8 +26,8 @@ typedef struct {
 
     bool                is_hit;
     JPH_ShapeCastResult result;
-    vec3s            hitposition;
-    vec3s            hitnormal;
+    vec3s               hitposition;
+    vec3s               hitnormal;
 
 } joltshapecast_result_t;
 
