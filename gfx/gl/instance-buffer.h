@@ -1,13 +1,14 @@
 #pragma once
 #include "./common.h"
-#include "./glconfig.h"
 
-#define INSTANCE_BUFFER_COUNT 3
+#define INSTANCE_BUFFER_COUNT               3
+#define INSTANCE_BUFFER_FENCE_TIMEOUT_NS    1000000000ULL
 
 typedef struct {
     u32       ssbo_ids[INSTANCE_BUFFER_COUNT];
     u64       capacity;
     void *    mem_offsets[INSTANCE_BUFFER_COUNT];
+    GLsync    fences[INSTANCE_BUFFER_COUNT];
     u8        active_index;
     struct {
         u64 current_offset;
@@ -16,6 +17,7 @@ typedef struct {
 
 
 glinstancebuffer_t      glinstancebuffer_init(const u32 capacity);
+void                    glinstancebuffer_begin_write(glinstancebuffer_t * const self);
 void                    glinstancebuffer_bind(glinstancebuffer_t * const self, const u32 offset, const u32 size);
 void                    glinstancebuffer_upload(glinstancebuffer_t * const self);
 void                    glinstancebuffer_push(glinstancebuffer_t * const self, const void * const mem, const u32 size);
@@ -56,6 +58,27 @@ void glinstancebuffer_bind(glinstancebuffer_t * const self, const u32 offset, co
         size
     ));
 #endif
+}
+
+void glinstancebuffer_begin_write(glinstancebuffer_t * const self)
+{
+    ASSERT(self);
+    ASSERT(self->internal.current_offset == 0);
+
+    const u8 idx = self->active_index;
+    if (!self->fences[idx]) return;
+
+    const GLenum status = glClientWaitSync(
+        self->fences[idx],
+        GL_SYNC_FLUSH_COMMANDS_BIT,
+        INSTANCE_BUFFER_FENCE_TIMEOUT_NS
+    );
+
+    if (status != GL_ALREADY_SIGNALED && status != GL_CONDITION_SATISFIED)
+        eprint("instance buffer `%u` fence not signaled within `%llu` ns (status 0x%x) - GPU is more than `%u` dispatches behind", idx, INSTANCE_BUFFER_FENCE_TIMEOUT_NS, status, INSTANCE_BUFFER_COUNT);
+
+    GL_CHECK(glDeleteSync(self->fences[idx]));
+    self->fences[idx] = NULL;
 }
 
 void glinstancebuffer_upload(glinstancebuffer_t * const self)
@@ -113,6 +136,9 @@ glinstancebuffer_t glinstancebuffer_init(const u32 capacity)
 
 void glinstancebuffer_unbind(glinstancebuffer_t * const self)
 {
+    ASSERT(self->fences[self->active_index] == NULL);
+    GL_CHECK(self->fences[self->active_index] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
+
     self->internal.current_offset = 0;
     self->active_index = (self->active_index + 1) % INSTANCE_BUFFER_COUNT;
 #ifdef __APPLE__
@@ -143,6 +169,11 @@ void glinstancebuffer_destroy(glinstancebuffer_t * const self)
 
     for (u8 i = 0; i < INSTANCE_BUFFER_COUNT; i++)
     {
+        if (self->fences[i]) {
+            GL_CHECK(glDeleteSync(self->fences[i]));
+            self->fences[i] = NULL;
+        }
+
 #ifdef __APPLE__
         free(self->mem_offsets[i]);
         self->mem_offsets[i] = NULL;

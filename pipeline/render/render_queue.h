@@ -251,6 +251,8 @@ INTERNAL void renderqueue__internal__dispatch(renderqueue_t *const self, const b
 
     //NOTE: Stage every instanced bucket's data into the CPU scratch first so the
     //GPU upload can happen exactly once per frame (glinstancebuffer_upload).
+    glinstancebuffer_begin_write(&self->internal.instancebuffer);
+
     list_iterator(&self->buckets, iter)
     {
         const list_t *bucket_commands = iter;
@@ -270,6 +272,13 @@ INTERNAL void renderqueue__internal__dispatch(renderqueue_t *const self, const b
         }
     }
     glinstancebuffer_upload(&self->internal.instancebuffer);
+
+#ifndef __APPLE__
+    //NOTE: make the CPU writes to the persistently mapped instance buffer visible
+    //to the draws below. Also required on drivers that dont honour coherent
+    //mapping fully. (macOS is GL 4.1, so this call doesnt exist there)
+    GL_CHECK(glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT));
+#endif
 
     list_iterator(&self->buckets, iter)
     {
