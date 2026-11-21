@@ -94487,7 +94487,13 @@ static void* ma_dr_mp3__realloc_from_callbacks(void* p, size_t szNew, size_t szO
         return NULL;
     }
     if (pAllocationCallbacks->onRealloc != NULL) {
-        return pAllocationCallbacks->onRealloc(p, szNew, pAllocationCallbacks->pUserData);
+
+        //NOTE: dbg.h expects realloc to not be provided by NULL pointer 
+        //                                         -simploo
+
+        if (p)  return pAllocationCallbacks->onRealloc(p, szNew, pAllocationCallbacks->pUserData);
+        else    return pAllocationCallbacks->onMalloc(szNew, pAllocationCallbacks->pUserData);
+
     }
     if (pAllocationCallbacks->onMalloc != NULL && pAllocationCallbacks->onFree != NULL) {
         void* p2;
