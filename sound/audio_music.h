@@ -49,6 +49,7 @@ void audio_music_play_layer(audio_music_t *const self, const u32 layer_idx)
     layer->internal.target_volume   = ma_volume_db_to_linear(target_db);
     layer->internal.is_active       = true;
 
+    ma_sound_set_positioning(layer->internal.sound, ma_positioning_relative);
     ma_sound_start(layer->internal.sound);
 }
 
