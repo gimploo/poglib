@@ -24,4 +24,14 @@ void ecs_collider__internal__softbody_update(gpu_mesh_primitive_t *gpu_mesh_prim
     {
         *(vec3s *)(gpu_mem + (vtx_idx * vtx_stride)) = ((vec3s *)scrap_buffer.raw_data)[vtx_idx];
     }
+
+#ifdef __APPLE__
+    // macOS (GL 4.1) has no persistent mapping, so `gpu_mem` is a CPU shadow.
+    // Push it to the VBO before the mesh is drawn this frame.
+    ASSERT(gpu_mesh_primitive->vbo.id);
+    ASSERT(gpu_mesh_primitive->vbo.size);
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, gpu_mesh_primitive->vbo.id));
+    GL_CHECK(glBufferSubData(GL_ARRAY_BUFFER, 0, gpu_mesh_primitive->vbo.size, gpu_mem));
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, 0));
+#endif
 }

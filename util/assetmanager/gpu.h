@@ -11,6 +11,8 @@ typedef struct {
         buffer_t cpu_write;
         buffer_t gpu_read;
         u8 *gpu_mem;
+        u32 id;
+        u32 size;
     } vbo;
 } gpu_mesh_primitive_t;
 
@@ -44,7 +46,12 @@ gpu_mesh_primitive_t * gpu_mesh_primtive(
             .attribute_count = vbo.internals.attribute_count,
             .index_type = ebo.index_type,
             .vtx_stride = vtx_stride,
-            .vbo.gpu_mem = vbo.internals.mapped_ptr,
+            .vbo = {
+                .gpu_mem = vbo.internals.mapped_ptr,
+                .id = vbo.id,
+                .size = vbo.internals.config.chunks[VBO_STREAM_TYPE_GEOMETRY].buffer.size
+                      + vbo.internals.config.chunks[VBO_STREAM_TYPE_INSTANCE].buffer.size,
+            },
         },
         sizeof(gpu_mesh_primitive_t)
     );

@@ -85,6 +85,11 @@ void vbo_destroy(const vbo_t *obj)
 
     GL_LOG("VBO `%i` deleted", obj->id);
     GL_CHECK(glDeleteBuffers(1, &obj->id));
+#ifdef __APPLE__
+    // macOS (GL 4.1) dynamic VBOs own a CPU shadow buffer instead of a
+    // persistently mapped GPU pointer.
+    free(obj->internals.mapped_ptr);
+#endif
 }
 
 
@@ -141,7 +146,24 @@ vbo_t vbo_init(const vbo_config_t config)
     GL_CHECK(glGenBuffers(1, &vbo_id)); 
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo_id));
 
-    const bool is_persistent = (config.usage == GL_DYNAMIC_DRAW);
+#ifdef __APPLE__
+    // macOS (GL 4.1): glBufferStorage + persistent mapping is 4.4-only.
+    // Use mutable storage and keep a CPU shadow buffer instead; the shadow is
+    // uploaded explicitly when the mesh changes (see
+    // ecs_collider__internal__softbody_update).
+    const bool is_persistent     = false;
+    const bool wants_cpu_shadow  = (config.usage == GL_DYNAMIC_DRAW);
+
+    GL_CHECK(glBufferData(GL_ARRAY_BUFFER, total_buffer_size, NULL, config.usage));
+
+    if (wants_cpu_shadow) {
+        mapped_ptr = malloc(total_buffer_size);
+        ASSERT(mapped_ptr);
+        memset(mapped_ptr, 0, total_buffer_size);
+    }
+#else
+    const bool is_persistent     = (config.usage == GL_DYNAMIC_DRAW);
+    const bool wants_cpu_shadow  = false;
 
     if (is_persistent) {
         // 1. Allocate immutable backing storage for the ENTIRE VBO upfront
@@ -155,6 +177,7 @@ vbo_t vbo_init(const vbo_config_t config)
         // 2. Allocate mutable backing storage for the ENTIRE VBO upfront
         GL_CHECK(glBufferData(GL_ARRAY_BUFFER, total_buffer_size, NULL, config.usage));
     }
+#endif
 
     // 3. Populate chunks and map range if required
     for (u32 idx = 0, offset = 0; idx < VBO_STREAM_TYPE_COUNT; idx++)
@@ -180,6 +203,10 @@ vbo_t vbo_init(const vbo_config_t config)
             // Safe to call glBufferSubData because storage for total_buffer_size was allocated upfront
             if (raw_data) {
                 GL_CHECK(glBufferSubData(GL_ARRAY_BUFFER, offset, chunk_size, raw_data));
+
+                if (wants_cpu_shadow) {
+                    memcpy((u8 *)mapped_ptr + offset, raw_data, chunk_size);
+                }
             }
         }
 
