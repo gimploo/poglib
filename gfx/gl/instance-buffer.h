@@ -32,18 +32,19 @@ void glinstancebuffer_bind(glinstancebuffer_t * const self, const u32 offset, co
 
 #ifdef __APPLE__
     // macOS (GL 4.1): no persistent SSBO mapping. Expose the per-instance
-    // vertex attributes (locations 3..7) for the buffer staged in
+    // vertex attributes (locations 5..9) for the buffer staged in
     // glinstancebuffer_push. The actual upload is deferred to
     // glinstancebuffer_upload so it happens once per frame instead of once
     // per draw bucket (Apple's driver makes per-bucket glBufferSubData
-    // calls disproportionately expensive).
+    // calls disproportionately expensive). Locations 3/4 stay reserved for the
+    // skinning weights/joints attributes used by model shaders.
     const u32 stride = sizeof(f32) * 20; // renderinstance_t == 5 * vec4
 
     GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, self->ssbo_ids[self->active_index]));
 
     for (u8 attr = 0; attr < 5; attr++)
     {
-        const u32 loc = 3 + attr;
+        const u32 loc = 5 + attr;
         GL_CHECK(glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, stride, (void *)(offset + attr * sizeof(f32) * 4)));
         GL_CHECK(glEnableVertexAttribArray(loc));
         GL_CHECK(glVertexAttribDivisor(loc, 1));

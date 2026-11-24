@@ -23,12 +23,19 @@ audio_sfx_t audio_sfx_init(ma_engine *const engine, arena_t *const arena, const 
     };
 }
 
+bool audio_sfx_is_playing(audio_sfx_t *const self)
+{
+    return ma_sound_is_playing(self->sound);
+}
+
 void audio_sfx_play(audio_sfx_t *const self)
 {
     ASSERT(self);
     ma_sound_set_volume(self->sound, 1.0f);
     ma_sound_seek_to_pcm_frame(self->sound, 0);
     ma_sound_start(self->sound);
+
+    logging("playing sfx "STR_FMT, STR_ARG(self->name));
 }
 
 void audio_sfx_destroy(audio_sfx_t *const self)

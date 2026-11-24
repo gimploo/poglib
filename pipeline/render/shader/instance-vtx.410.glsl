@@ -1,18 +1,19 @@
 #version 410 core
 
 // macOS downgrade of instance-vtx.glsl (GL 4.3 SSBO -> GL 4.1 instanced attributes).
-// Renderinstance data arrives as per-instance vertex attributes at locations 3..7
-// (set up by glinstancebuffer_bind with glVertexAttribDivisor).
+// Renderinstance data arrives as per-instance vertex attributes at locations 5..9
+// (set up by glinstancebuffer_bind with glVertexAttribDivisor). Locations 3/4 are
+// left free for the skinning weights/joints attributes used by model shaders.
 
 layout (location = 0) in vec3 v_vtx; 
 layout (location = 1) in vec3 v_normal; 
 layout (location = 2) in vec2 v_uv; 
 
-layout (location = 3) in vec4 i_uv;
-layout (location = 4) in vec4 i_color;
-layout (location = 5) in vec4 i_translation;
-layout (location = 6) in vec4 i_rotation;
-layout (location = 7) in vec4 i_scale;
+layout (location = 5) in vec4 i_uv;
+layout (location = 6) in vec4 i_color;
+layout (location = 7) in vec4 i_translation;
+layout (location = 8) in vec4 i_rotation;
+layout (location = 9) in vec4 i_scale;
 
 uniform mat4 projection;
 uniform mat4 view;

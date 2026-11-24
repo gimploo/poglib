@@ -391,8 +391,9 @@ void glshader_upload_uniform(const glshader_t *const shader, const str_t name, c
         break;
         case GL_UNIFORM_TYPE_I32:               GL_CHECK(glUniform1i(loc_idx, value.i32));
         break;
-        case GL_UNIFORM_TYPE_U32:
-        case GL_UNIFORM_TYPE_BOOL:              GL_CHECK(glUniform1ui(loc_idx, value.u32));
+        case GL_UNIFORM_TYPE_U32:               GL_CHECK(glUniform1ui(loc_idx, value.u32));
+        break;
+        case GL_UNIFORM_TYPE_BOOL:              GL_CHECK(glUniform1i(loc_idx, value.boolean ? 1 : 0));
         break;
         case GL_UNIFORM_TYPE_MATRIX4F_ARRAY: {
             ASSERT(value.mat4s.count);
@@ -440,8 +441,9 @@ void glshader_upload_uniforms(const glshader_t * const shader, const gluniforms_
             break;
             case GL_UNIFORM_TYPE_I32:               GL_CHECK(glUniform1i(loc_idx, value->i32));
             break;
-            case GL_UNIFORM_TYPE_U32:
-            case GL_UNIFORM_TYPE_BOOL:              GL_CHECK(glUniform1ui(loc_idx, value->u32));
+            case GL_UNIFORM_TYPE_U32:               GL_CHECK(glUniform1ui(loc_idx, value->u32));
+            break;
+            case GL_UNIFORM_TYPE_BOOL:              GL_CHECK(glUniform1i(loc_idx, value->boolean ? 1 : 0));
             break;
             case GL_UNIFORM_TYPE_MATRIX4F_ARRAY: {
                 if (!value->mat4s.count) continue;
