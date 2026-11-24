@@ -226,6 +226,34 @@ bool glshader_compile_shader_from_buffer(glshader_t *shader, const char *vs_code
 
     shader->id = shaderProgram;
 
+#ifdef __APPLE__
+    // macOS (GL 4.1): the 410 shader variants cannot use
+    // `layout(binding = ...)` on samplers (that needs
+    // GL_ARB_shading_language_420pack), so their sampler uniforms default to
+    // unit 0. Two different sampler types (e.g. sampler2D + sampler2DShadow)
+    // pointing at the same unit is a GL_INVALID_OPERATION at draw time, so
+    // assign the units explicitly here. The renderer binds textures in this
+    // same order (base texture -> unit 0, shadow maps -> unit 1+).
+    {
+        static const struct { const char *name; i32 unit; } sampler_units[] = {
+            { "texture1",         0 },
+            { "shadowmap",        1 },
+            { "prototypeTexture", 0 },
+            { "fontTexture",      0 },
+            { "skybox",           0 },
+        };
+
+        GL_CHECK(glUseProgram(shaderProgram));
+        for (u32 sampler_idx = 0; sampler_idx < ARRAY_LEN(sampler_units); sampler_idx++) {
+            const i32 location = glGetUniformLocation(shaderProgram, sampler_units[sampler_idx].name);
+            if (location >= 0) {
+                GL_CHECK(glUniform1i(location, sampler_units[sampler_idx].unit));
+            }
+        }
+        GL_CHECK(glUseProgram(0));
+    }
+#endif
+
     logging("Shader `%i` successfully linked", shader->id);
     return true;
 }
