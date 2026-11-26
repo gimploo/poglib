@@ -39,7 +39,7 @@ gltexture2d_t        gltexture2d_empty_init(u32 width, u32 height);
 gltexture2d_t        gltexture2d_load_from_file(const char *filepath);
 void                 gltexture2d_destroy(const gltexture2d_t *texture);
 bool                 gltexture2d_is_same(const gltexture2d_t *const texture1, const gltexture2d_t *const texture2);
-//NOTE:(macro)       gltexture2d_bind(gltexture2d_t *, u32 slot) --> void
+void                 gltexture2d_bind(const u32 tex_id, const u32 slot_idx, bool is_srgb);
 void                 gltexture2d_unbind(void);
 void                 gltexture2d_dump(const gltexture2d_t *texture);
 
@@ -48,24 +48,22 @@ void                 gltexture2d_dump(const gltexture2d_t *texture);
  // Implementation
 ------------------------------------------------------*/
 
-#define gltexture2d_bind(TEX_ID, SLOT_IDX, IS_SRGB) do {\
-\
-    if (IS_SRGB) GL_CHECK(glEnable(GL_FRAMEBUFFER_SRGB));\
-    GL_CHECK(glActiveTexture(GL_TEXTURE0 + (SLOT_IDX)));\
-    GL_CHECK(glBindTexture(GL_TEXTURE_2D, (TEX_ID)));\
-\
-} while(0)
+void gltexture2d_bind(const u32 tex_id, const u32 slot_idx, bool is_srgb)
+{
+    if (is_srgb) GL_CHECK(glEnable(GL_FRAMEBUFFER_SRGB));
+    GL_CHECK(glActiveTexture(GL_TEXTURE0 + (slot_idx)));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, (tex_id)));
+}
 
 void gltexture2d_unbind(void)
 {
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
-    GL_CHECK(glDisable(GL_FRAMEBUFFER_SRGB));
 }
 
 
 //NOTE: this function was created for framebuffers since they use color textures also the data is stored in RGB not RGBA8
 gltexture2d_t gltexture2d_empty_init(u32 width, u32 height)
-{   
+{
     GLuint id;
 
     GL_CHECK(glGenTextures(1, &id));

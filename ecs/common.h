@@ -69,9 +69,10 @@ typedef struct ecs_system_ctx_t ecs_system_ctx_t;
 typedef void (*ecs_system_callback)(ecs_componentmanager_t *const cmp_manager, const ecs_system_ctx_t ctx);
 
 struct ecs_system_ctx_t {
+    glframebuffer_t fbo;
     glcamera_t *active_camera;
     glubo_t *ubo;
-    glframebuffer_t fbo;
+    renderqueue_t *renderqueue;
     f32 dt;
 };
 
@@ -98,6 +99,7 @@ struct ecs_t {
     } managers;
 
     struct {
+        renderqueue_t renderqueue;
         u32 entity_generator_counter;
         glcamera_t *active_camera;
         glubo_t ubo;

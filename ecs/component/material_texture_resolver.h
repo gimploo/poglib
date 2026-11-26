@@ -2,6 +2,12 @@
 #include "poglib/ecs/component.h"
 #include "poglib/poggen.h"
 
+typedef enum {
+
+    ECS_RESERVED_TEXTURE_SLOT_SHADOWMAP_IDX = 0,
+    ECS_RESERVED_TEXTURE_SLOT_COUNT
+
+} ECS_RESERVED_TEXTURE_SLOTS;
 
 vec4s               ecs_material_get_basecolor_for_mesh(const ecs_component_material_t *const material, const u8 mesh_idx);
 gltexturelist_t     ecs_material_get_texturelist_for_mesh(const ecs_component_material_t *const material, const u8 mesh_idx);
@@ -41,7 +47,8 @@ gltexturelist_t ecs_material_get_texturelist_for_mesh(const ecs_component_materi
             .items = {
                 [0] = (gltextureitem_t){
                     .tex_id = tex_id,
-                    .is_srgb = is_srgb
+                    .is_srgb = is_srgb,
+                    .binding_id = ECS_RESERVED_TEXTURE_SLOT_COUNT, 
                 }
             }
         };

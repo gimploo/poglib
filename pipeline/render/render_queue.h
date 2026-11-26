@@ -251,7 +251,8 @@ INTERNAL void renderqueue__internal__dispatch(renderqueue_t *const self, const b
 
     //NOTE: Stage every instanced bucket's data into the CPU scratch first so the
     //GPU upload can happen exactly once per frame (glinstancebuffer_upload).
-    glinstancebuffer_begin_write(&self->internal.instancebuffer);
+    if (!is_depth_pass) 
+        glinstancebuffer_begin_write(&self->internal.instancebuffer);
 
     list_iterator(&self->buckets, iter)
     {
@@ -273,11 +274,12 @@ INTERNAL void renderqueue__internal__dispatch(renderqueue_t *const self, const b
     }
     glinstancebuffer_upload(&self->internal.instancebuffer);
 
-#ifndef __APPLE__
+#if defined(__linux__) || defined(_WIN64)
     //NOTE: make the CPU writes to the persistently mapped instance buffer visible
     //to the draws below. Also required on drivers that dont honour coherent
     //mapping fully. (macOS is GL 4.1, so this call doesnt exist there)
-    GL_CHECK(glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT));
+    if (!is_depth_pass)
+        GL_CHECK(glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT));
 #endif
 
     list_iterator(&self->buckets, iter)
@@ -311,20 +313,25 @@ INTERNAL void renderqueue__internal__dispatch(renderqueue_t *const self, const b
         }
 
         //NOTE: bind textures
-        for(u8 tex_idx = 0; !is_depth_pass && (tex_idx < first_command->material.texture.count); tex_idx++) 
-        {
-            const gltextureitem_t *item = &first_command->material.texture.items[tex_idx];
-            switch (item->type) {
-                case GL_TEXTURE_TYPE_CUBEMAP:
-                    GL_CHECK(glDepthMask(false));
-                    GL_CHECK(glDepthFunc(GL_LEQUAL));
-                    GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, item->tex_id));
-                break;
-                default:
-                    if (item->is_srgb) GL_CHECK(glEnable(GL_FRAMEBUFFER_SRGB));
-                    GL_CHECK(glActiveTexture(GL_TEXTURE0 + (tex_idx)));
-                    GL_CHECK(glBindTexture(GL_TEXTURE_2D, item->tex_id));
-                break;
+        const u8 total_textures = first_command->material.texture.count;
+        u8 texture_binding_ids[ARRAY_LEN(first_command->material.texture.items)] = {0};
+        if (!is_depth_pass) {
+            for(u8 tex_idx = 0; (tex_idx < total_textures); tex_idx++) 
+            {
+                const gltextureitem_t *item = &first_command->material.texture.items[tex_idx];
+                switch (item->type) {
+                    case GL_TEXTURE_TYPE_CUBEMAP:
+                        GL_CHECK(glDepthMask(false));
+                        GL_CHECK(glDepthFunc(GL_LEQUAL));
+                        GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, item->tex_id));
+                    break;
+                    default:
+                        if (item->is_srgb) GL_CHECK(glEnable(GL_FRAMEBUFFER_SRGB));
+                        texture_binding_ids[tex_idx] = item->binding_id;
+                        GL_CHECK(glActiveTexture(GL_TEXTURE0 + item->binding_id));
+                        GL_CHECK(glBindTexture(GL_TEXTURE_2D, item->tex_id));
+                    break;
+                }
             }
         }
 
@@ -335,9 +342,10 @@ INTERNAL void renderqueue__internal__dispatch(renderqueue_t *const self, const b
             GL_CHECK(glBindVertexArray(first_command->vtx.data.primitive->vao_id));
 
             glinstancebuffer_bind(
-                &self->internal.instancebuffer, 
+                &self->internal.instancebuffer,
                 instance_starting_offset,
-                bucket->len * first_command->instance.size);
+                bucket->len * first_command->instance.size
+            );
             instance_starting_offset += bucket->len * first_command->instance.size;
 
             if (binded_shader_id) {
@@ -362,11 +370,18 @@ INTERNAL void renderqueue__internal__dispatch(renderqueue_t *const self, const b
             renderqueue__internal_render_all_meshes_in_bucket(bucket, add_uniforms);
 
         }
-        GL_CHECK(glBindVertexArray(0));
 
-        if (!is_depth_pass) gltexture2d_unbind();
+        if (!is_depth_pass) {
+            for(u8 texture_idx = 0; texture_idx < total_textures; texture_idx++)
+            {
+                GL_CHECK(glActiveTexture(GL_TEXTURE0 + texture_binding_ids[texture_idx]));
+                GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+            }
+        }
+        GL_CHECK(glBindVertexArray(0));
+        GL_CHECK(glDisable(GL_FRAMEBUFFER_SRGB));
     }
-    glinstancebuffer_unbind(&self->internal.instancebuffer);
+    glinstancebuffer_unbind(&self->internal.instancebuffer, is_depth_pass);
 }
 
 void renderqueue_flush(renderqueue_t *const self)

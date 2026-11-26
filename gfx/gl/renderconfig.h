@@ -11,9 +11,10 @@
 #define MAX_ATTRIBUTES_COUNT_PER_CALL 16
 
 typedef struct {
-    u32 tex_id;
-    bool is_srgb;
-    gltexturetype type; 
+    u32             tex_id;
+    gltexturetype   type; 
+    u8              binding_id;
+    bool            is_srgb;
 } gltextureitem_t;
 
 typedef struct {

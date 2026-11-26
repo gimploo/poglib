@@ -161,7 +161,6 @@ void ecs_component__internal_bundle_validate_and_initalize_internals(ecs_compone
             break;
             case ECS_CMP_MATERIAL:
                 ASSERT(config->signature & (ECS_CMP_TRANSFORM));
-                config->component[ECS_CMP_MATERIAL_IDX].material.internal.lighting.recache_lighting = true;
             break;
             case ECS_CMP_CAMERA :
                 ASSERT(config->signature & (ECS_CMP_TRANSFORM));

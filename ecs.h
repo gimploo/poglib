@@ -38,6 +38,7 @@ bool                ecs_load_savefile(ecs_t *const self, const str_t filepath);
 ecs_componentbundle_t ecs_entity_get_componentbundle(ecs_t *const self, const u32 entity_id);
 
 void            ecs_update(ecs_t *const self);
+void            ecs_render(ecs_t *const self);
 void            ecs_destroy(ecs_t *const self);
 
 
@@ -56,6 +57,7 @@ ecs_t * ecs_init(void)
             .active_camera  = NULL,
             .ubo            = glubo_init(sizeof(gllightbuffer_t), GL_UBO_BINDING_IDX_LIGHT),
             .fbo            = glframebuffer_depthonly_init(),
+            .renderqueue    = renderqueue_init(),
         },
         .managers = {
             .entitymanager      = ecs_entitymanager(arena),
@@ -217,6 +219,7 @@ void ecs_update(ecs_t *const self)
             &self->managers.componentmanager,
             (ecs_system_ctx_t) {
                 .active_camera = self->internal.active_camera,
+                .renderqueue = &self->internal.renderqueue,
                 .dt = APPLICATION_UPDATE_FIXED_TIME_STEP,
                 .ubo = &self->internal.ubo,
                 .fbo = self->internal.fbo,
@@ -234,6 +237,7 @@ void ecs_destroy(ecs_t *const self)
 {
     glubo_destroy(&self->internal.ubo);
     arena_destroy(self->arena);
+    renderqueue_destroy(&self->internal.renderqueue);
 }
 
 
@@ -380,6 +384,11 @@ void ecs_save_to_file(ecs_t *const self, const str_t filepath)
     logging("ECS state saved to file `%.*s`", filepath.len, filepath.data);
 }
 
+
+void ecs_render(ecs_t *const self)
+{
+    renderqueue_dispatch(&self->internal.renderqueue);
+}
 
 
 #endif

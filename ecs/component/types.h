@@ -52,7 +52,7 @@ struct ecs_component_transform_t {
     vec3f_t position;
     versors orientation;
     vec3f_t scale;
-    vec3f_t velocity; //NOTE: worldspace
+    vec3f_t velocity;           //NOTE: worldspace
     enum {
         ECS_CMP_TRANSFORM_SOURCE_NONE,
         ECS_CMP_TRANSFORM_SOURCE_INPUT,
@@ -117,10 +117,12 @@ struct ecs_component_material_t {
     bool cast_shadow;
 
     struct {
+
+        //TODO: move this to arena allocation aka a pointer
         gluniforms_t uniform_values;
+
         bool has_any_textures; //NOTE: whether there are any actual textures in the lookup than just colors
         struct {
-            bool    recache_lighting;
             u8      count;
             mat4s   *lightview_matrices;
             u32     *shadowmap_tex_ids;
@@ -266,15 +268,15 @@ struct ecs_component_light_t {
 
 /* =========================== DIRECTIONAL LIGHT ================================== */
 
-const u32 SHADOW_WIDTH = 2048;
-const u32 SHADOW_HEIGHT = 2048;
+const u32 SHADOW_WIDTH = 1920;
+const u32 SHADOW_HEIGHT = 1080;
 
 typedef struct ecs_component_directional_light_t  ecs_component_directional_light_t;
 struct ecs_component_directional_light_t {
-    vec4s color;
-    vec3s direction;
-    f32 radius;
-    mat4s projection;
+    vec4s   color;
+    vec3s   direction;
+    f32     radius;
+    mat4s   projection;
     struct {
         u32 shadow_texid;
         mat4s shadowmap_matrix;

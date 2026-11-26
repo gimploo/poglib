@@ -72,10 +72,11 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 sprite_cmp->spritesheet_asset_id
             );
             uv = spriteatlas_get_sprite(atlas, sprite_cmp->sprite_idx);
+            eprint("TODO: sprite doesnt have binding id configured");
             texturelist.items[texturelist.count++] = (gltextureitem_t){
                 .type = GL_TEXTURE_TYPE_DEFAULT,
                 .tex_id = atlas->texture.id,
-                .is_srgb = atlas->texture.is_srgb
+                .is_srgb = atlas->texture.is_srgb,
             };
         }
 
@@ -91,11 +92,14 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
                 }
             };
 
-            for(u8 tex_idx = 0; tex_idx < material->internal.lighting.count; tex_idx++)
+            for(u8 tex_idx = 0; tex_idx < material->internal.lighting.count; tex_idx++) 
+            {
                 texturelist.items[texturelist.count++] = (gltextureitem_t){
                     .tex_id = material->internal.lighting.shadowmap_tex_ids[tex_idx],
-                    .is_srgb = false
+                    .is_srgb = false,
+                    .binding_id = ECS_RESERVED_TEXTURE_SLOT_SHADOWMAP_IDX
                 };
+            }
         }
 
 
@@ -125,7 +129,7 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
         };
 
         renderqueue_pass_command(
-            mesh->for_editor_only ? &global_workbench->renderqueue : &global_engine->systems.renderqueue, 
+            mesh->for_editor_only ? &global_workbench->renderqueue : ctx.renderqueue, 
             command
         );
     }

@@ -10,6 +10,7 @@
 #include "poglib/ecs/systems/model.h"
 #include "poglib/ecs/systems/transform.h"
 #include "poglib/ecs/systems/material.h"
+#include "poglib/pipeline/render/render_queue.h"
 
 void ecs_add_system(ecs_t *const self, const ecs_system_t system)
 {
@@ -24,6 +25,13 @@ void ecs_add_system(ecs_t *const self, const ecs_system_t system)
 
 void ecs_add_all_core_systems(ecs_t *const self)
 {
+    ecs_add_system(
+        self, 
+        (ecs_system_t) {
+            .callback = ecs_system_directional_light
+        }
+    );
+
     ecs_add_system(
         self, 
         (ecs_system_t) {
@@ -93,12 +101,6 @@ void ecs_add_all_core_systems(ecs_t *const self)
         }
     );
 
-    ecs_add_system(
-        self, 
-        (ecs_system_t) {
-            .callback = ecs_system_directional_light
-        }
-    );
 }
 
 

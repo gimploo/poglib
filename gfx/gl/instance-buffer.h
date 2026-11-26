@@ -22,7 +22,7 @@ void                    glinstancebuffer_bind(glinstancebuffer_t * const self, c
 void                    glinstancebuffer_upload(glinstancebuffer_t * const self);
 void                    glinstancebuffer_push(glinstancebuffer_t * const self, const void * const mem, const u32 size);
 u32                     glinstancebuffer_get_current_offest(const glinstancebuffer_t * const self);
-void                    glinstancebuffer_unbind(glinstancebuffer_t * const self);
+void                    glinstancebuffer_unbind(glinstancebuffer_t * const self, const bool disable_fence);
 void                    glinstancebuffer_destroy(glinstancebuffer_t * const self);
 
 void glinstancebuffer_bind(glinstancebuffer_t * const self, const u32 offset, const u32 size)
@@ -135,10 +135,12 @@ glinstancebuffer_t glinstancebuffer_init(const u32 capacity)
     return buf;
 }
 
-void glinstancebuffer_unbind(glinstancebuffer_t * const self)
+void glinstancebuffer_unbind(glinstancebuffer_t * const self, const bool disable_fence)
 {
-    ASSERT(self->fences[self->active_index] == NULL);
-    GL_CHECK(self->fences[self->active_index] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
+    if (!disable_fence) {
+        ASSERT(self->fences[self->active_index] == NULL);
+        GL_CHECK(self->fences[self->active_index] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
+    }
 
     self->internal.current_offset = 0;
     self->active_index = (self->active_index + 1) % INSTANCE_BUFFER_COUNT;

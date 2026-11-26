@@ -155,11 +155,8 @@ INTERNAL void ecs_system_material__internal__resolve_lighting(
     //to the uniform registry requirement in the shader that expects it always
     ASSERT(directional_lights->len);
 
-    if (!material->internal.lighting.recache_lighting) return;
-
     const glshader_t *shader = (glshader_t *)assetmanager_get_assetresource(&global_engine->systems.assets, ASSET_TYPE_GLSL_SHADER, material->shader_asset_id);
     if (!glshader_uniform_is_support(shader, ECS_UNIFORM_SUPPORTED_NAME_LOOKUP[ECS_UNIFORM_SHADOWMAP_MATRIX])) {
-        material->internal.lighting.recache_lighting = false;
         return;
     }
 
@@ -181,6 +178,15 @@ INTERNAL void ecs_system_material__internal__resolve_lighting(
            : material->internal.lighting.shadowmap_tex_ids,
     };
 
+    if (already_allocated) {
+
+        mat4s *lightview_matrices   = material->internal.lighting.lightview_matrices;
+        u32 *shadowmap_texids       = material->internal.lighting.shadowmap_tex_ids;
+
+        memset(lightview_matrices, 0, sizeof(mat4s) * max_capacity);
+        memset(shadowmap_texids, 0, sizeof(u32) * max_capacity);
+    }
+
     slot_iterator(directional_lights, iter)
     {
         const ecs_component_directional_light_t *light = (void *)((ecs_component_poolentry_t *)iter)->entity_cmpdata;
@@ -191,6 +197,5 @@ INTERNAL void ecs_system_material__internal__resolve_lighting(
     material->internal.lighting.count               = max_capacity;
     material->internal.lighting.lightview_matrices  = matrices.data;
     material->internal.lighting.shadowmap_tex_ids   = tex_ids.data;
-    material->internal.lighting.recache_lighting    = false;
 }
 

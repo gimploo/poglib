@@ -61,13 +61,17 @@ void ecs_system_render_model(ecs_componentmanager_t *const cmp_manager, const ec
                 };
 
                 for(u8 tex_idx = 0; tex_idx < material->internal.lighting.count; tex_idx++)
+                {
                     texturelist.items[texturelist.count++] = (gltextureitem_t){
                         .tex_id = material->internal.lighting.shadowmap_tex_ids[tex_idx],
-                        .is_srgb = false
+                        .is_srgb = false,
+                        .binding_id = ECS_RESERVED_TEXTURE_SLOT_SHADOWMAP_IDX
                     };
+                }
             }
 
-            renderqueue_pass_command(&global_engine->systems.renderqueue,
+            renderqueue_pass_command(
+                ctx.renderqueue,
                 (rendercommand_t ){
                     .include_in_depth_pass = material->cast_shadow,
                     .vtx.data = {
