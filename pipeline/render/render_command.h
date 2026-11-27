@@ -57,6 +57,7 @@ struct rendercommand_t {
     buffer_t    instance;
     bool        enable_wireframe;
     bool        include_in_depth_pass;
+    bool        disable_backface_culling;
 };
 
 #ifndef IGNORE_RENDER_COMMAND_IMPLEMENTATION

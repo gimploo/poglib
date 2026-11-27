@@ -210,11 +210,12 @@ void glrenderer3d_draw(const glrendererconfig_t config)
                 case GL_TEXTURE_TYPE_DEFAULT:
                     gltexture2d_bind(
                         config.calls.call[call_idx].textures.items[txt_idx].tex_id, 
-                        txt_idx, 
+                        config.calls.call[call_idx].textures.items[txt_idx].binding_id,
                         config.calls.call[call_idx].textures.items[txt_idx].is_srgb
                     );
                 break;
                 case GL_TEXTURE_TYPE_CUBEMAP:
+                    GL_CHECK(glDisable(GL_CULL_FACE));
                     GL_CHECK(glDepthMask(false));
                     GL_CHECK(glDepthFunc(GL_LEQUAL));
                     GL_CHECK(glBindTexture(

@@ -10,6 +10,7 @@ layout (location = 3) in float zorder;
 layout (location = 4) in vec4 uv_rect; // [x, y, w, h] in pixels
 layout (location = 5) in float is_text; 
 layout (location = 6) in float corner_radius; 
+layout (location = 7) in float has_texture;
 
 uniform mat4 projection;
 
@@ -18,17 +19,17 @@ out vec2 v_UV;
 out float v_is_text;
 out vec2 v_quad_coord;
 out float v_corner_radius;
+out float v_has_texture;
 
 void main()
 {
     v_Color = region_color;
-    v_UV = uv_rect.xy + (quad_vtx * uv_rect.zw);
     v_is_text = is_text;
     v_quad_coord = quad_vtx;
     v_corner_radius = corner_radius;
+    v_has_texture = has_texture;
+    v_UV = uv_rect.xy + (quad_vtx * uv_rect.zw);
 
-    // Instance Position calculation: 
-    // We scale the unit quad by width/height and offset by x/y
     vec2 pixel_pos = region_instance.xy + (quad_vtx * region_instance.zw);
 
     // We set Z to 0.0 or a specific layer if you use a depth buffer

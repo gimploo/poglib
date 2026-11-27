@@ -102,8 +102,8 @@ void ecs_system_render_mesh(ecs_componentmanager_t *const cmp_manager, const ecs
             }
         }
 
-
         const rendercommand_t command = {
+            .disable_backface_culling = mesh->disable_backface_culling,
             .include_in_depth_pass = material->cast_shadow,
             .vtx = {
                 .data.primitive = mesh_primtive,

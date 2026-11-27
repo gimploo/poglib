@@ -4,6 +4,13 @@
     #include <windows.h>
 #endif
 
+//NOTE: mostly used to know whether its mac since it only has support till 4.1
+#if defined(__linux__) || defined(_WIN64)
+    #define MODERN_OPENGL_SUPPORTED_PLATFORM 1
+#else
+    #define MODERN_OPENGL_SUPPORTED_PLATFORM 0
+#endif
+
 #include "basic/dbg.h"
 #include "basic/test.h"
 #include "basic/common.h"

@@ -38,6 +38,7 @@ typedef enum {
     UI_STYLE_NONE               = 0,
     UI_STYLE_ROUNDED_CORNERS    = 1 << 0,
     UI_STYLE_ONLY_TEXT          = 1 << 1,
+    UI_STYLE_ONLY_IMAGE         = 1 << 2,
 } ui_style_config;
 
 typedef enum {
@@ -97,6 +98,7 @@ typedef struct {
     } dim;
 
     str_t text;
+    u32 image_texture_id;
 
     struct {
         vec4f_t base;
@@ -127,6 +129,7 @@ typedef struct {
     f32            corner_radius;
     f32            zorder;
     f32            is_text;
+    f32            has_texture;
 } ui_attr_t;
 
 #define MAX_UI_NESTING_ALLOWED 16
@@ -152,6 +155,9 @@ struct gui_t {
     struct {
         list_t instanced_attrs;
     } gfx;
+
+    //NOTE: tracking all image texture ids passed during configuration
+    gltexturelist_t additional_supplied_textures;
 
     struct {
         struct {
@@ -204,7 +210,12 @@ gui_t gui_init(arena_t *const arena, const ui_region_t starting_region)
     gui_t o = {0};
     o.shader =  glshader_init(
         str(POGLIB_ROOT_DIR"/gui/uishader-vtx.glsl"), 
+#if MODERN_OPENGL_SUPPORTED_PLATFORM
         str(POGLIB_ROOT_DIR"/gui/uishader-frag.glsl"), 
+#else
+        str(POGLIB_ROOT_DIR"/gui/uishader-frag.410.glsl"), 
+#endif
+
         (gluniform_registry_t) {
             .count = 1,
             .data = {
@@ -351,12 +362,18 @@ INTERNAL void gui__internal__ui_validate_config(const ui_config_t config)
         ASSERT((config.composition.traits & UI_BEHAVIOR_TRACK_STATE_TOGGLE) == 0);
     }
 
+    if (config.composition.styles & UI_STYLE_ONLY_IMAGE) {
+        ASSERT(!(config.composition.styles & UI_STYLE_ONLY_TEXT));
+        ASSERT(config.image_texture_id);
+    }
+
     if (config.composition.styles & UI_STYLE_ONLY_TEXT) {
         ASSERT(config.text.len > 0);
     }
+
 }
 
-ui_region_t gui__internal_ui_add_child(gui_t *gui, const ui_config_t config)
+INTERNAL ui_region_t gui__internal__ui_add_child(gui_t *const gui, const ui_config_t config)
 {
     const cursor_ctx_t parent_layout = gui->internal
         .layout_cursor_stack
@@ -497,26 +514,39 @@ u32 gui_ui_compose_begin(gui_t *const gui, ui_config_t config)
 
     gui__internal__ui_validate_config(config);
 
-    const ui_region_t child_region = gui__internal_ui_add_child(gui, config);
+    const ui_region_t child_region = gui__internal__ui_add_child(gui, config);
 
     gui__internal_update_state(gui, config);
 
     const vec4f_t computed_color = gui__internal__get_color(gui, config);
 
     if (config.composition.styles & UI_STYLE_ONLY_TEXT) {
+
         gui__internal_ui_create_text_internal(gui, child_region, config);
         return config.internal.id;
+
+    } else if (config.composition.styles & UI_STYLE_ONLY_IMAGE) {
+
+        gui->additional_supplied_textures.items[gui->additional_supplied_textures.count] = (gltextureitem_t){
+            .binding_id = gui->additional_supplied_textures.count + 1,
+            .tex_id = config.image_texture_id,
+        };
+        ++gui->additional_supplied_textures.count;
     }
+
 
     const ui_attr_t attr = {
         .position = child_region,
         .color = computed_color,
         .zorder = GUI_ZORDER_LIMIT - UI_ZORDER_RESERVE + gui->internal.layout_cursor_stack.top - 1,
-        .uv = {0},
+        .uv = (config.composition.styles & UI_STYLE_ONLY_IMAGE) 
+            ? (box_t){0, 0, 1, 1} 
+            : (box_t){0},
         .corner_radius = (config.composition.styles & UI_STYLE_ROUNDED_CORNERS)
             ? (f32)config.corner_radius
             : 0.0f,
         .is_text = false,
+        .has_texture = (config.composition.styles & UI_STYLE_ONLY_IMAGE) != 0 
     };
     list_append(&gui->gfx.instanced_attrs, attr);
 
@@ -557,6 +587,32 @@ void gui__internal_reset_internals(gui_t *self)
 void gui_render(gui_t *const self, const bool render_as_wireframe)
 {
     ASSERT(self);
+    const u8 gui_reserved_texture_count = 1;
+    gltexturelist_t texturelist = {
+        .count = (u8)glm_clamp(
+            self->additional_supplied_textures.count + gui_reserved_texture_count, 
+            1, 
+            ARRAY_LEN(self->additional_supplied_textures.items)
+        ),
+        .items = {
+            [0] = {
+                .type = GL_TEXTURE_TYPE_DEFAULT,
+                .tex_id = self->freetypefont.texture.id,
+                .binding_id = 0, 
+            },
+        }
+    };
+
+#if MODERN_OPENGL_SUPPORTED_PLATFORM
+    //NOTE: since Opengl 4.1 dont have layout(binding = xx) feature for textures, disabling this feature on mac
+    //since i would need to hold the uniform name for the texture to have cross comp working - which is a hassle
+    memcpy(
+        &texturelist.items[1],
+        &self->additional_supplied_textures.items,
+        sizeof(gltextureitem_t) * (ARRAY_LEN(self->additional_supplied_textures.items) - gui_reserved_texture_count)
+    );
+#endif
+
 
     //NOTE: render starts here
     glrenderer3d_draw((glrendererconfig_t) {
@@ -596,17 +652,9 @@ void gui_render(gui_t *const self, const bool render_as_wireframe)
                             }
                         }
                     },
-                    .textures = {
-                        .count = 1,
-                        .items = {
-                            [0] = {
-                                .type = GL_TEXTURE_TYPE_DEFAULT,
-                                .tex_id = self->freetypefont.texture.id
-                            }
-                        }
-                    },
+                    .textures = texturelist,
                     .attrs = {
-                        .count = 7,
+                        .count = 8,
                         .attr = {
                             [0] = {
                                 .ncmp = 2,
@@ -667,6 +715,15 @@ void gui_render(gui_t *const self, const bool render_as_wireframe)
                                     .offset = offsetof(ui_attr_t, corner_radius),
                                     .stride = sizeof(ui_attr_t)
                                 }
+                            },
+                            [7] = {
+                                .ncmp = 1,
+                                .type = GL_FLOAT,
+                                .vbo_chunk_index = VBO_STREAM_TYPE_INSTANCE,
+                                .interleaved = {
+                                    .offset = offsetof(ui_attr_t, has_texture),
+                                    .stride = sizeof(ui_attr_t)
+                                }
                             }
                         }
                     }
@@ -676,6 +733,7 @@ void gui_render(gui_t *const self, const bool render_as_wireframe)
     });
 
     list_clear(&self->gfx.instanced_attrs);
+    memset(&self->additional_supplied_textures, 0, sizeof(self->additional_supplied_textures));
     gui__internal_reset_internals(self);
 }
 

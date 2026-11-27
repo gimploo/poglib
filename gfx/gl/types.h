@@ -518,12 +518,11 @@ const vec2f_t DEFAULT_QUAD_VTX[4] = {
 };
 
 const vec2f_t DEFAULT_QUAD__4TH_QUADRANT_VTX[4] = {
-    {0.0f, 0.0f}, // Top Left
-    {1.0f, 0.0f}, // Top Right
-    {1.0f, 1.0f}, // Bottom Right
-    {0.0f, 1.0f}, // Bottom Left
+    {0.0f, 0.0f}, // Bottom Left
+    {0.0f, 1.0f}, // Top Left
+    {1.0f, 1.0f}, // Top Right
+    {1.0f, 0.0f}, //Bottom Right
 };
-
 const u32 DEFAULT_QUAD_INDICES[] = {
     0, 1, 2,
     2, 3, 0

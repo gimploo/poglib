@@ -80,6 +80,7 @@ struct ecs_component_mesh_t {
     u8 primitive_idx;
     bool for_editor_only;
     bool is_scene_instanced;
+    bool disable_backface_culling;
 };
 
 /*========================= INPUT ====================================== */

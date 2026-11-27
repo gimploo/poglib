@@ -178,6 +178,8 @@ INTERNAL bool renderqueue__internal__check_for_batchable_commands(renderqueue_t 
 
 i32 renderqueue__internal_qsort_compare(const void *x, const void *y)
 {
+    //NOTE: havent taken cull option into account, do we need it here ?
+
     const list_t *bucket_a = (const list_t *)x;
     const list_t *bucket_b = (const list_t *)y;
 
@@ -290,6 +292,24 @@ INTERNAL void renderqueue__internal__dispatch(renderqueue_t *const self, const b
         const rendercommand_t *const first_command = list_get_value(bucket, 0);
         if (is_depth_pass && !first_command->include_in_depth_pass) continue;
 
+        if (is_depth_pass) {
+
+            GL_CHECK(glEnable(GL_CULL_FACE));
+            GL_CHECK(glCullFace(GL_FRONT));
+
+        } else {
+            if (first_command->disable_backface_culling) {
+
+                GL_CHECK(glDisable(GL_CULL_FACE));
+
+            } else {
+
+                GL_CHECK(glEnable(GL_CULL_FACE));
+                GL_CHECK(glCullFace(GL_BACK));
+
+            }
+        }
+
         if (first_command->vtx.type == RENDERCOMMAND_VTX_TYPE_LINE && !is_depth_pass) {
             renderqueue__internal__draw_lines(bucket);
             continue;
@@ -299,6 +319,7 @@ INTERNAL void renderqueue__internal__dispatch(renderqueue_t *const self, const b
             renderqueue__internal__draw_triangles(bucket);
             continue;
         }
+
 
         ASSERT(first_command->vtx.data.primitive->vao_id);
 
@@ -321,6 +342,7 @@ INTERNAL void renderqueue__internal__dispatch(renderqueue_t *const self, const b
                 const gltextureitem_t *item = &first_command->material.texture.items[tex_idx];
                 switch (item->type) {
                     case GL_TEXTURE_TYPE_CUBEMAP:
+                        GL_CHECK(glDisable(GL_CULL_FACE));
                         GL_CHECK(glDepthMask(false));
                         GL_CHECK(glDepthFunc(GL_LEQUAL));
                         GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, item->tex_id));
